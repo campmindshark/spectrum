@@ -80,7 +80,7 @@ namespace Spectrum {
 
     private Operator op;
     private SpectrumConfiguration config;
-    private bool loadingConfig = false;
+   private bool loadingConfig = false;
     private int[] audioDeviceIndices;
     private List<int> midiDeviceIndices;
     private List<int> midiPresetIndices;

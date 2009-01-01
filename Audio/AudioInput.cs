@@ -188,7 +188,7 @@ namespace Spectrum.Audio {
         this.process,
         IntPtr.Zero
       );
-      if (!result) {
+      if (!result && false) {
         throw new Exception(
           "Couldn't initialize BassWasapi: " +
             Bass.BASS_ErrorGetCode().ToString()
@@ -383,6 +383,7 @@ namespace Spectrum.Audio {
           channelIndex
         );
       if (midiLevel.HasValue) {
+        Console.WriteLine("midiLevel.HasValue");
         return midiLevel.Value;
       }
       string audioPreset =
