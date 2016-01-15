@@ -24,7 +24,7 @@ namespace Spectrum
             fft = new float[1024];
             thread = new DispatcherTimer();
             thread.Tick += thread_Tick;
-            thread.Interval = TimeSpan.FromMilliseconds(1);
+            thread.Interval = TimeSpan.FromMilliseconds(200);
             process = new WASAPIPROC(Process);
             this.devicelist = devicelist;
             initialized = false;
@@ -43,7 +43,9 @@ namespace Spectrum
                     {
                         var str = (devicelist.Items[devicelist.SelectedIndex] as string);
                         var array = str.Split(' ');
-                        devindex = Convert.ToInt32(array[0]);
+                        // remove this and uncomment the next line when entering production. also check Mainwindow CS for similar edit
+                        devindex = 21;
+                        // devindex = Convert.ToInt32(array[0]);
                         bool result = BassWasapi.BASS_WASAPI_Init(devindex, 0, 0,
                                                                   BASSWASAPIInit.BASS_WASAPI_BUFFER,
                                                                   1f, 0.05f,

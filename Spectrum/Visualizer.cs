@@ -38,6 +38,8 @@ namespace Spectrum
         private bool kick;
         private double bpm;
 
+        // debug quantities
+        private List<double> timervariance;
         public Visualizer()
         {
             lights = new List<int>(); // these are the light addresses, as fetched from the hue hub, from left to right
@@ -51,6 +53,9 @@ namespace Spectrum
             bassHistory = new List<double>();
             intervals = new List<int>();
             derivatives = new List<double>();
+
+            //debug code
+            timervariance = new List<double>();
 
             // necessary to support differentation & a cheap hack to avoid out of bounds errors on long startup times
             bassHistory.Add(0);
@@ -78,6 +83,19 @@ namespace Spectrum
         
         public void process(float[] spectrum, float level)
         {
+            // debug code:
+            // dump spectrum contents:
+            //      Console.WriteLine(String.Join(",", spectrum.Select(p => p.ToString()).ToArray()));
+            //timervariance.Add(timer.ElapsedTicks - lastTime);
+            //double average = timervariance.Average();
+            //double sumOfSquaresOfDifferences = timervariance.Select(val => (val - average) * (val - average)).Sum();
+            //double sd = Math.Sqrt(sumOfSquaresOfDifferences / timervariance.Count);
+            //Console.WriteLine(sd);
+            // code here to process signal.
+            // relevant objects: spectrum[] is an array of 1024 buckets of 21.53 Hz each.
+            // level is the volume level.
+            // timer is a running timer that has timer.ElapsedTicks
+            // rnd is a random number generator with rnd.Next(%)
             level = (float)Math.Pow(level, p);
             if (level != lastlevel)
             {
@@ -104,7 +122,7 @@ namespace Spectrum
 
                 if (level > 1.3 * gainNormalize / levelsHistory.Count) // consider instead of using a flat constant of using some envelope
                 {
-                    //Console.WriteLine("kick" + rnd.Next(10));
+                    Console.WriteLine("kick" + rnd.Next(10));
                 }
 
                 levelsHistory.Add(Math.Pow(level, p));
