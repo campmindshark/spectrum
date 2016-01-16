@@ -24,7 +24,7 @@ namespace Spectrum
             fft = new float[1024];
             thread = new DispatcherTimer();
             thread.Tick += thread_Tick;
-            thread.Interval = TimeSpan.FromMilliseconds(200);
+            thread.Interval = TimeSpan.FromMilliseconds(250);
             process = new WASAPIPROC(Process);
             this.devicelist = devicelist;
             initialized = false;
@@ -48,7 +48,7 @@ namespace Spectrum
                         // devindex = Convert.ToInt32(array[0]);
                         bool result = BassWasapi.BASS_WASAPI_Init(devindex, 0, 0,
                                                                   BASSWASAPIInit.BASS_WASAPI_BUFFER,
-                                                                  1f, 0.05f,
+                                                                  1f, 0.01f,
                                                                   process, IntPtr.Zero);
                         if (!result)
                         {

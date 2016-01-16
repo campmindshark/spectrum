@@ -14,78 +14,97 @@ namespace Spectrum
         **/
         
         private List<int> lights;
-        private List<double> levelsHistory;
-        private List<double> bassHistory; // defined as all frequencies from 20 hz to 60 hz (i.e. fft[1, 2, 3])
-        private List<int> intervals;
-        private List<double> derivatives;
-        private int primary;
-        private int secondary;
+        private Random rnd;
         private String hubaddress;
-        private String status1;
-        private Random rnd = new Random();
-        private Stopwatch timer;
-        private int p; // Lp space exponent
-        private long lastBassTime; // last bass detection time
-        private double beatTol;
-        private double bassTol;
+        private int buckets;
+
+        // Updates
+        private String[] updates;
+        private bool switchcolors;
+        private bool readyflag;
+        private bool cyclecolors;
+        private bool lightChanged;
+
+        private int[] binHits;
+        private int[] cutoffs;
 
         // analysis variables
-        private int analysisWindow = 8000000; // ticks (10000 per millisecond) (this corresponds to 75 bpm, the longest possible window)
         private float lastlevel;
-        private int lastTime;
-        
-        // musical property estimates
-        private bool kick;
-        private double bpm;
+        private int lastUpdated;
+        private double lastTrigger;
+
+        // algorithm parameters
+        private double repeatThreshold = 2; // threshold multiplier for repeating a light flash
+        private double triggerDecay = .5; // decay multiplier for trigger level
+        private double lightPersistence = 10;
 
         // debug quantities
         private List<double> timervariance;
+
         public Visualizer()
         {
+            rnd = new Random();
             lights = new List<int>(); // these are the light addresses, as fetched from the hue hub, from left to right
             lights.Add(5);
             lights.Add(3);
             lights.Add(2);
             lights.Add(7);
             lights.Add(4);
-
-            levelsHistory = new List<double>();
-            bassHistory = new List<double>();
-            intervals = new List<int>();
-            derivatives = new List<double>();
-
-            //debug code
-            timervariance = new List<double>();
-
-            // necessary to support differentation & a cheap hack to avoid out of bounds errors on long startup times
-            bassHistory.Add(0);
-            levelsHistory.Add(0);
-            intervals.Add(1);
-
-            beatTol = .1;
-            lastBassTime = 0;
-            bassTol = .1;
-            bpm = 126;
-
-            p = 2;
-
-            primary = lights[rnd.Next(4)];
-            secondary = lights[rnd.Next(4)];
+            
             hubaddress = "http://192.168.1.26/api/23ef4e6e60bfc672548018214333a8b/lights/";
-            timer = new Stopwatch();
-            timer.Start();
 
             lastlevel = 0;
+            lastUpdated = 2;
+            lastTrigger = 0;
+            
+            updates = new String[5];
+            updates[0] = "";
+            updates[1] = "";
+            updates[2] = "";
+            updates[3] = "";
+            updates[4] = "";
 
-            kick = false;
+            buckets = 5;
+            binHits = new int[buckets];
+            binHits[0] = 0;
+            binHits[1] = 0;
+            binHits[2] = 0;
+            binHits[3] = 0;
+            binHits[4] = 0;
+            cutoffs = new int[buckets];
+            cutoffs[0] = 0;
+            // | 0th bin
+            cutoffs[1] = 1;
+            // | 1st bin
+            cutoffs[2] = 2;
+            // | 2nd bin
+            cutoffs[3] = 3;
+            // | 3rd bin
+            cutoffs[4] = 4;
+            // | 4th bin
+
+            lightChanged = false;
+            readyflag = true;
 
         }
         
         public void process(float[] spectrum, float level)
         {
+            switchcolors = (level == 0 && lastlevel == 0);
+            cyclecolors = true;
+            lastlevel = level;
+            if (level == 0)
+            {
+                binHits[0] = 0;
+                binHits[1] = 0;
+                binHits[2] = 0;
+                binHits[3] = 0;
+                binHits[4] = 0;
+                return;
+            }
             // debug code:
             // dump spectrum contents:
-            //      Console.WriteLine(String.Join(",", spectrum.Select(p => p.ToString()).ToArray()));
+            // Console.WriteLine(String.Join(",", spectrum.Select(p => p.ToString()).ToArray()));
             //timervariance.Add(timer.ElapsedTicks - lastTime);
             //double average = timervariance.Average();
             //double sumOfSquaresOfDifferences = timervariance.Select(val => (val - average) * (val - average)).Sum();
@@ -96,7 +115,211 @@ namespace Spectrum
             // level is the volume level.
             // timer is a running timer that has timer.ElapsedTicks
             // rnd is a random number generator with rnd.Next(%)
-            level = (float)Math.Pow(level, p);
+            // Mode: Spectrogram
+            // Motivation: Group together spectrum into 5 buckets (using some norm; maximum for now)
+            // Use the 5 buckets as a brightness index for the lights
+            // Lights should be arranged in some line across hue space.
+            // First: Get the maximum of the five lights
+            float overallMax = 0;
+            int targetLight = 0;
+            for (int i = 0; i < spectrum.Length; i++)
+            {
+                if (spectrum[i] > overallMax)
+                {
+                    float tempMax = spectrum[i];
+                    targetLight = 0;
+                    for (int j = 0; j < buckets; j++)
+                    {
+                        if (i > cutoffs[j])
+                        {
+                            targetLight = j;
+                        }
+                    }
+                    if (targetLight != lastUpdated || tempMax > repeatThreshold*lastTrigger)
+                    {
+                        overallMax = spectrum[i];
+                    }
+                }
+            }
+            lastTrigger *= triggerDecay;
+            updates[lastUpdated] = jsonMake(0, -1, -1, (int)(lightPersistence*lastlevel), "none");
+            if(overallMax > lastTrigger)
+            {
+                //updates[targetLight] = jsonMake((int)(254 * overallMax), -1, -1, 1, "select");
+                updates[targetLight] = jsonMake(-1, -1, -1, -1, "select");
+                lastTrigger = overallMax;
+                lastUpdated = targetLight;
+                binHits[targetLight]++;
+            }
+            if (overallMax == 0)
+            {
+                updates[lastUpdated] = jsonMake(0, -1, -1, 0, "none");
+            }
+        }
+
+        private String jsonMake(int bri, int hue, int sat, int transitiontime, String alert)
+        {
+            String result = "{";
+            if (bri == 0)
+            {
+                result += "\"on\":" + "false" + ",";
+            }
+            else
+            {
+                result += "\"on\":" + "true" + ",";
+            }
+            if (bri != -1)
+            {
+                result += "\"bri\":" + bri + ",";
+            }
+            if (hue != -1)
+            {
+                result += "\"hue\":" + hue + ",";
+            } else
+            {
+                if (switchcolors) {
+                    result += "\"hue\":" + rnd.Next(65536) + ",";
+                }
+            }
+            if (sat != -1)
+            {
+                result += "\"sat\":" + sat + ",";
+            }
+            if (transitiontime != -1)
+            {
+                result += "\"transitiontime\":" + transitiontime + ",";
+            }
+            if (alert != "")
+            {
+                result += "\"alert\":\"" + alert + "\",";
+            }
+            if (cyclecolors)
+            {
+                result += "\"effect\":\"colorloop\"" + ",";
+            }
+            result = result.TrimEnd(',');
+            result += "}";
+            return result;
+        }
+
+        private String laddressHelper(int address)
+        {
+            return address + "/state/";
+        }
+        
+        public void updateHues()
+        {
+            if (switchcolors && readyflag)
+            {
+                Console.WriteLine("BANG");
+                // randomly switch up all the lights
+                for (int i = 0; i < 5; i++)
+                {
+                    new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[i])), "PUT", jsonMake(0, rnd.Next(65536), 254, -1, "none"));
+                }
+                readyflag = false;
+                switchcolors = false;
+            } else {
+                for (int i = 0; i < 5; i++)
+                {
+                    if (updates[i] != "")
+                    {
+                        new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[i])), "PUT", updates[i]);
+                        updates[i] = "";
+                        readyflag = true;
+                        lightChanged = true;
+                    }
+                }
+            }
+            //status1 = jsonMake(rnd.Next(255), rnd.Next(65536), rnd.Next(255), 0, "select");
+            postUpdate();
+        }
+
+        // put stuff that takes time here; while lights update this will occur
+        private void postUpdate()
+        {
+            if (lightChanged)
+            {
+                int mostHit = 0;
+                int leastHit = 0;
+                for (int i = 0; i < binHits.Length; i++)
+                {
+                    if (binHits[i] == binHits.Max())
+                    {
+                        mostHit = i;
+                    }
+                    if (binHits[i] == binHits.Min())
+                    {
+                        leastHit = i;
+                    }
+                }
+                growBin(leastHit);
+                shrinkBin(mostHit);
+                fixCutoffs();
+                Console.WriteLine(String.Join(",", binHits.Select(p => p.ToString()).ToArray()));
+                Console.WriteLine(String.Join(",", cutoffs.Select(p => p.ToString()).ToArray()));
+            }
+        }
+        private void growBin(int index)
+        {
+            if (index != 0 && index != (buckets-1))
+            {
+                cutoffs[index]--;
+                if (cutoffs[index - 1] == cutoffs[index])
+                {
+                    cutoffs[index - 1]--;
+                }
+                cutoffs[index + 1]++;
+            }
+            if (index == 0)
+            {
+                cutoffs[index + 1]++;
+            }
+            if (index == (buckets-1))
+            {
+                cutoffs[index]--;
+            }
+        }
+        private void shrinkBin(int index)
+        {
+            if (index != 0 && index != (buckets - 1))
+            {
+                if (index != 1)
+                {
+                    cutoffs[index]++;
+                }
+                cutoffs[index + 1]--;
+            }
+            if (index == 0)
+            {
+                cutoffs[1]--;
+                cutoffs[2]--;
+            }
+            if (index == (buckets-1))
+            {
+                cutoffs[buckets - 1]+= 2;
+                cutoffs[buckets - 2]++;
+            }
+        }
+        private void fixCutoffs()
+        {
+            for (int i = 0; i < cutoffs.Length; i++)
+            {
+                if (cutoffs[i] < 0)
+                {
+                    cutoffs[i] = 0;
+                    i = 1;
+                }
+                if (i != 0 && cutoffs[i] <= cutoffs[i - 1])
+                {
+                    cutoffs[i]++;
+                    i = 1;
+                }
+            }
+        }
+    }
+    /** old process code here
+                level = (float)Math.Pow(level, p);
             if (level != lastlevel)
             {
                 int elapsed = (int)timer.ElapsedTicks - lastTime;
@@ -113,7 +336,8 @@ namespace Spectrum
                     {
                         bassTol -= .01;
                     }
-                    else if (bassInterval < 4761904) // bass detection faster than 180 bpm
+            // bass detection faster than 180 bpm
+                    else if (bassInterval < 4761904) 
                     {
                         bassTol += .01;
                     }
@@ -141,23 +365,5 @@ namespace Spectrum
                 lastlevel = level;
                 lastTime = (int)timer.ElapsedTicks;
             }
-        }
-        
-        private String jsonMake(int bri, int hue, int sat, int transitiontime, String alert)
-        {
-            return "{\"bri\":" + bri + ",\"hue\":" + hue + ",\"sat\":" + sat + ",\"transitiontime\":" + transitiontime + ",\"alert\":\"" + alert + "\"}";
-        }
-
-        private String laddressHelper(int address)
-        {
-            return address + "/state/";
-        }
-        
-        public void updateHues()
-        {
-            status1 = jsonMake(rnd.Next(255), rnd.Next(65536), rnd.Next(255), 0, "select");
-            // Console.WriteLine(status1);
-            //new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(primary)), "PUT",status1);
-        }
-    }
+    **/
 }
