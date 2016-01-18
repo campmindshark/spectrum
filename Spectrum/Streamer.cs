@@ -19,8 +19,6 @@ namespace Spectrum
         private bool initialized;
         private int devindex;
 
-        private bool controlLights = true;
-
         public Streamer(ComboBox devicelist)
         {
             BassNet.Registration("larry.fenn@gmail.com", "2X531420152222");
@@ -96,10 +94,7 @@ namespace Spectrum
         }
         private void lightTimer_Tick(object sender)
         {
-            if (controlLights)
-            {
-                visualizer.updateHues();
-            }
+            visualizer.updateHues();
         }
 
         // WASAPI callback, required for continuous recording

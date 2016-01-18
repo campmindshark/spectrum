@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Diagnostics;
 using System.Linq;
 
 namespace Spectrum
@@ -10,175 +8,219 @@ namespace Spectrum
     {
         private List<int> lights;
         private Random rnd;
-        private String hubaddress;
+        private String hubaddress = "http://192.168.1.26/api/23ef4e6e60bfc672548018214333a8b/";
 
-        // Lighting updates and state flags
-        private String update;
-        private bool cyclecolors;
-        private int targetLight;
-
-        // FFT constants
+        // FFT dicts
         private Dictionary<String, double[]> bins;
-        private Dictionary<String, float> hits;
-        private Dictionary<String, float> prevHits;
-        private Dictionary<String, float> diffs;
-        private int buckets;
-        private int[] binHits;
+        private Dictionary<String, float[]> energyHistory;
+        private Dictionary<String, float> energyLevels;
+        private int historyLength = 16;
+        private int processCount;
 
         // analysis/history variables
-        private bool silence;
-        private int silentCounter;
-        private bool kickCounted;
-        private bool snareCounted;
-        private bool kickPending;
-        private bool snarePending;
+        private bool silence = true;
+        private int silentCounter = 0;
+        private bool silentMode = true;
+        private int silentModeHueIndex = 0;
+        private int silentModeLightIndex = 0;
+        private bool kickCounted = false;
+        private bool snareCounted = false;
+        private bool kickPending = false;
+        private bool snarePending = false;
+        private int idleCounter = 0;
+        private bool lightPending = false;
+        private bool drop = false;
+        private int dropDuration = 0;
+        private int target = 0;
         
-        // algorithm parameters
-        private double repeatThreshold = 2; // threshold multiplier for repeating a light flash
-        private double triggerDecay = .5; // decay multiplier for trigger level
-        private double lightPersistence = 10; // multiplier for how long lights stay lit
-
-        //debug
-        private int processCount = 0;
-        private double max = 0;
-
         public Visualizer()
         {
+            rnd = new Random();
             bins = new Dictionary<String, double[]>();
-            hits = new Dictionary<String, float>();
-            prevHits = new Dictionary<String, float>();
-            diffs = new Dictionary<String, float>();
+            energyHistory = new Dictionary<String, float[]>();
+            energyLevels = new Dictionary<String, float>();
 
-            // ranges
-            bins.Add("subbass", new double[] { 0, 60, 0 });
-            bins.Add("bass", new double[] { 60, 250, 0 });
-            bins.Add("midrange", new double[] { 250, 2000, 0 });
-            bins.Add("highmids", new double[] { 2000, 6000, 0 });
-            bins.Add("highfreqs", new double[] { 6000, 20000, 0 });
-
+            // frequency detection bands
+            // format: { bottom freq, top freq, activation level (delta)}
+            bins.Add("midrange", new double[] { 250, 2000, .025 });
+            bins.Add("total", new double[] { 60, 2000, .05 });
             // specific instruments
-            bins.Add("kick", new double[] { 0, 100, .007 });
-            bins.Add("snareattack", new double[] { 2500, 4000, .00033 });
-
-            // initialize hits
+            bins.Add("kick", new double[] { 40, 50, .01});
+            bins.Add("snareattack", new double[] { 2500, 3000, .001});
             foreach (String band in bins.Keys)
             {
-                hits.Add(band, 0);
-                prevHits.Add(band, 0);
+                energyLevels.Add(band, 0);
+                energyHistory.Add(band, Enumerable.Repeat((float)0, historyLength).ToArray());
             }
 
-            rnd = new Random();
-            hubaddress = "http://192.168.1.26/api/23ef4e6e60bfc672548018214333a8b/lights/";
             lights = new List<int>(); // these are the light addresses, as fetched from the hue hub, from left to right
             lights.Add(5);
             lights.Add(3);
             lights.Add(2);
             lights.Add(7);
             lights.Add(4);
-
-            targetLight = -1;
-            silence = true;
-            silentCounter = 0;
-
-            update = "";
-
-            buckets = 5;
-            binHits = new int[buckets];
-            binHits[0] = 0;
-            binHits[1] = 0;
-            binHits[2] = 0;
-            binHits[3] = 0;
-            binHits[4] = 0;
-            cyclecolors = false;
-            kickCounted = false;
-            snareCounted = false;
-            kickPending = false;
-            snarePending = false;
+            // in the future use the API itself to get the light IDs correctly... also set up the "all lights" group automatically
         }
         
         public void process(float[] spectrum, float level)
         {
             processCount++;
-            
-            for (int i = 0; i < spectrum.Length; i++)
+            processCount = processCount % historyLength;
+            for (int i = 1; i < spectrum.Length/2; i++)
             {
-                // scan over every detection band and count hits
                 foreach (KeyValuePair<String, double[]> band in bins)
                 {
                     String name = band.Key;
                     double[] window = band.Value;
                     if (windowContains(window, i))
                     {
-                        hits[name]+= spectrum[i];
+                        energyLevels[name] += (spectrum[i] * spectrum[i]);
                     }
                 }
             }
+            foreach (String band in energyHistory.Keys.ToList())
+            {
+                float current = energyLevels[band];
+                float[] history = energyHistory[band];
+                float previous = history[(processCount + historyLength - 1) % historyLength];
+                float change = current - previous;
+                float avg = history.Average();
+                float ssd = history.Select(val => (val - avg) * (val - avg)).Sum();
+                float sd = (float)Math.Sqrt(ssd / historyLength);
+                float threshold = (float)bins[band][2];
+                bool signal = change > threshold;
+
+                if (band == "total")
+                {
+                    if (current > avg + 2*sd && avg < .08 && signal && sd < .03)
+                    {
+                        drop = true;
+                    }
+                }
+                if (band == "kick")
+                {
+                    if (current < avg)
+                    {
+                        kickCounted = false;
+                    }
+                    if (signal && current > avg + 2 * sd && avg < .1 && !kickCounted)
+                    {
+
+                        kickCounted = true;
+                        kickPending = true;
+                    }
+                }
+                if (band == "snareattack")
+                {
+                    if (current < avg)
+                    {
+                        snareCounted = false;
+                    }
+                    if (signal && current > avg + 2 * sd && avg < .1 && !snareCounted)
+                    {
+                        snareCounted = true;
+                        snarePending = true;
+                    }
+                }
+            }
+            foreach (String band in energyHistory.Keys.ToList())
+            {
+                energyHistory[band][processCount] = energyLevels[band];
+                energyLevels[band] = 0;
+            }
             silence = (level < .01) && silence;
-
-            foreach (String band in hits.Keys.ToList())
-            {
-                diffs[band] = (hits[band] - prevHits[band]) / binWidth(band);
-            }
-
-            foreach (String band in hits.Keys.ToList())
-            {
-                prevHits[band] = hits[band];
-                hits[band] = 0;
-            }
-
-            // postprocess logic
-            if (diffs["kick"] < 0) kickCounted = false;
-            if (diffs["snareattack"] < -.0002)
-            {
-                snareCounted = false;
-            }
-            if (diffs["snareattack"]> max) max = diffs["snareattack"];
-            if (diffs["kick"] > bins["kick"][2] && !kickCounted)
-            {
-                Console.WriteLine(diffs["kick"]);
-                kickCounted = true;
-                kickPending = true;
-            }
-            if ((diffs["snareattack"]) > bins["snareattack"][2] && !snareCounted)
-            {
-                snareCounted = true;
-                snarePending = true;
-            }
-            update = jsonMake(-1, rnd.Next(1, 65536), -1, 0, "none");
         }
 
         public void updateHues()
         {
-            // highest priority: kick hit
-            if (kickPending)
+            if (!lightPending)
             {
-                Console.WriteLine("kick");
-                new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[0])), "PUT", update);
-                kickPending = false;
+                target = rnd.Next(5);
+            }
+            if (silentMode)
+            {
+                silentModeLightIndex = (silentModeLightIndex + 1) % 5;
+                new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[silentModeLightIndex])), "PUT", silent(silentModeHueIndex));
+                silentModeHueIndex = (silentModeHueIndex + 10000) % 65535;
+            }
+            else if (drop)
+            {
+                if (dropDuration == 0)
+                {
+                    Console.WriteLine("dropOn");
+                    new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + "groups/2/action/"), "PUT", dropEffect(true));
+                }
+                else if (dropDuration == 1)
+                {
+                    new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + "groups/2/action/"), "PUT", dropEffect(false));
+                }
+                else if (dropDuration > 9)
+                {
+                    Console.WriteLine("dropOff");
+                    drop = false;
+                    dropDuration = -1;
+                }
+                dropDuration++;
+            }
+            else if (kickPending)
+            {
+                if (lightPending)
+                {
+                    new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[target])), "PUT", kickEffect(false));
+                    lightPending = false;
+                    kickPending = false;
+                }
+                else
+                {
+                    lightPending = true;
+                    Console.WriteLine("kickOn");
+                    new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[target])), "PUT", kickEffect(true));
+                }
             }
             else if (snarePending) // second highest priority: snare hit (?)
             {
-                Console.WriteLine("snare");
-                new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[4])), "PUT", update);
-                snarePending = false;
+                if (lightPending)
+                {
+                    new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[target])), "PUT", snareEffect(false));
+                    snarePending = false;
+                    lightPending = false;
+                }
+                else
+                {
+                    lightPending = true;
+                    Console.WriteLine("snareOn");
+                    new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[target])), "PUT", snareEffect(true));
+                }
             }
-            max = 0;
+            else
+            {
+                idleCounter++;
+                if (idleCounter > 4)
+                {
+                    new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[target])), "PUT", idle());
+                    idleCounter = 0;
+                }
+            }
             postUpdate();
         }
 
-        // put stuff that takes time here; while lights update this will occur
         private void postUpdate()
         {
-            processCount = 0;
             if (silence && silentCounter == 10)
             {
                 Console.WriteLine("Silence detected.");
-                silentCounter = 0;
+                silentMode = true;
             }
             else if (silence)
             {
                 silentCounter++;
             }
+            if (!silence)
+            {
+                silentCounter = 0;
+                silentMode = false;
+            }
+            // this will be changed in process() UNLESS level < .1 for the duration of process()
             silence = true;
         }
         private bool windowContains(double[] window, int index)
@@ -196,7 +238,7 @@ namespace Spectrum
         }
         private String laddressHelper(int address)
         {
-            return address + "/state/";
+            return "lights/" + address + "/state/";
         }
         private String jsonMake(int bri, int hue, int sat, int transitiontime, String alert)
         {
@@ -236,17 +278,50 @@ namespace Spectrum
             {
                 result += "\"alert\":\"" + alert + "\",";
             }
-            if (cyclecolors)
-            {
-                result += "\"effect\":\"colorloop\"" + ",";
-            }
-            else
-            {
-                result += "\"effect\":\"none\"" + ",";
-            }
             result = result.TrimEnd(',');
             result += "}";
             return result;
+        }
+        private String dropEffect(bool dropOn)
+        {
+            if (dropOn)
+            {
+                return "{\"on\": true, \"hue\":" + rnd.Next(1, 65535) + ",\"bri\": 254, \"effect\":\"colorloop\",\"sat\":254,\"transitiontime\":0}";
+            }
+            else
+            {
+                return "{\"on\": true, \"bri\":1,\"effect\":\"colorloop\",\"sat\":254,\"transitiontime\":4}";
+            }
+        }
+        private String kickEffect(bool on)
+        {
+            if (on)
+            {
+                return jsonMake(254, 300, 254, 1, "none");
+            }
+            else
+            {
+                return jsonMake(1, 300, 254, 2, "none");
+            }
+        }
+        private String snareEffect(bool on)
+        {
+            if (on)
+            {
+                return jsonMake(254, 43000, 254, 1, "none");
+            }
+            else
+            {
+                return jsonMake(1, 43000, 254, 2, "none");
+            }
+        }
+        private String idle()
+        {
+            return jsonMake(0, -1, 254, 20, "none");
+        }
+        private String silent(int index)
+        {
+            return "{\"on\": true,\"hue\":" + (index + 1) + ",\"effect\":\"none\",\"bri\":1,\"sat\":254,\"transitiontime\":10}";
         }
     }
 }
