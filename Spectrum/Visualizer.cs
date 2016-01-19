@@ -206,7 +206,7 @@ namespace Spectrum
 
         private void postUpdate()
         {
-            if (silence && silentCounter == 10)
+            if (silence && silentCounter == 24 && !silentMode)
             {
                 Console.WriteLine("Silence detected.");
                 silentMode = true;

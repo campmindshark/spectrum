@@ -5,9 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Spectrum"
         mc:Ignorable="d"
-        Title="WinHue" Height="66.868" Width="225.764" SizeToContent="WidthAndHeight">
-    <Grid Margin="0,0,2,4">
+        Title="WinHue" Height="80" Width="210" ResizeMode="NoResize">
+    <Grid Margin="0,0,0,0">
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition Height="0*"/>
+        </Grid.RowDefinitions>
         <ComboBox x:Name="devices" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="120"/>
-        <Button x:Name="button" Content="Go" HorizontalAlignment="Left" Margin="135,10,0,0" VerticalAlignment="Top" Width="75" Click="button_Click"/>
+        <Button x:Name="button" Content="Go" HorizontalAlignment="Left" Margin="135,10,0,0" VerticalAlignment="Top" Width="44" Click="button_Click" Height="22"/>
     </Grid>
 </Window>

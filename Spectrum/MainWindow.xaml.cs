@@ -26,8 +26,7 @@ namespace Spectrum
             InitializeComponent();
             st = new Streamer(devices);
             // remove this and uncomment below when entering production
-            st.Enable = true;
-            // st.Enable = false;
+            st.Enable = false;
         }
 
         private void button_Click(object sender, RoutedEventArgs e)
