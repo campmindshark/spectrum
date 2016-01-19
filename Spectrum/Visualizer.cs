@@ -25,11 +25,18 @@ namespace Spectrum
         private int silentModeLightIndex = 0;
         private bool kickCounted = false;
         private bool snareCounted = false;
+        private bool kickMaxPossible = false;
+        private bool kickMax = false;
         private bool kickPending = false;
         private bool snarePending = false;
+        private bool snareMaxPossible = false;
+        private bool snareMax = false;
+        private bool totalMaxPossible = false;
+        private bool totalMax = false;
         private int idleCounter = 0;
         private bool lightPending = false;
         private bool drop = false;
+        private bool dropPossible = false;
         private int dropDuration = 0;
         private int target = 0;
         
@@ -45,7 +52,7 @@ namespace Spectrum
             bins.Add("midrange", new double[] { 250, 2000, .025 });
             bins.Add("total", new double[] { 60, 2000, .05 });
             // specific instruments
-            bins.Add("kick", new double[] { 40, 50, .01});
+            bins.Add("kick", new double[] { 40, 50, .001});
             bins.Add("snareattack", new double[] { 2500, 3000, .001});
             foreach (String band in bins.Keys)
             {
@@ -89,12 +96,31 @@ namespace Spectrum
                 float sd = (float)Math.Sqrt(ssd / historyLength);
                 float threshold = (float)bins[band][2];
                 bool signal = change > threshold;
-
                 if (band == "total")
                 {
-                    if (current > avg + 2*sd && avg < .08 && signal && sd < .03)
+                    if (totalMaxPossible && change < 0)
                     {
-                        drop = true;
+                        totalMax = true;
+                        totalMaxPossible = false;
+                        if (dropPossible)
+                        {
+                            drop = true;
+                            dropPossible = false;
+                        }
+                    }
+                    if (current >= history.Max() && current > avg + 2*sd)
+                    {
+                        if (current > 3 * avg && avg < .08 && signal && current > .2)
+                        {
+                            //Console.WriteLine("Band:" + band + " cur:" + Math.Round(current * 10000) / 10000 + " avg:" + Math.Round(avg * 10000) / 10000 + " sd:" + Math.Round(sd * 10000) / 10000 + " delta:" + Math.Round(change * 10000) / 10000);
+                            dropPossible = true;
+                        }
+                        totalMaxPossible = true;
+                    }
+                    else
+                    {
+                        dropPossible = false;
+                        totalMaxPossible = false;
                     }
                 }
                 if (band == "kick")
@@ -103,7 +129,7 @@ namespace Spectrum
                     {
                         kickCounted = false;
                     }
-                    if (signal && current > avg + 2 * sd && avg < .1 && !kickCounted)
+                    if (signal && current > avg + 2 * sd && avg < .1) // !kickcounted here
                     {
 
                         kickCounted = true;
@@ -116,7 +142,7 @@ namespace Spectrum
                     {
                         snareCounted = false;
                     }
-                    if (signal && current > avg + 2 * sd && avg < .1 && !snareCounted)
+                    if (current > avg + sd) // !snarecounted here
                     {
                         snareCounted = true;
                         snarePending = true;
@@ -133,6 +159,8 @@ namespace Spectrum
 
         public void updateHues()
         {
+            kickPending = kickPending && totalMax;
+            snarePending = snarePending && totalMax;
             if (!lightPending)
             {
                 target = rnd.Next(5);
@@ -222,6 +250,8 @@ namespace Spectrum
             }
             // this will be changed in process() UNLESS level < .1 for the duration of process()
             silence = true;
+            totalMax = false;
+            kickMax = false;
         }
         private bool windowContains(double[] window, int index)
         {

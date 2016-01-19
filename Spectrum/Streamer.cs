@@ -44,7 +44,7 @@ namespace Spectrum
                         devindex = Convert.ToInt32(array[0]);
                         bool result = BassWasapi.BASS_WASAPI_Init(devindex, 0, 0,
                                                                   BASSWASAPIInit.BASS_WASAPI_BUFFER,
-                                                                  1f, 0.00001f,
+                                                                  1f, 0,
                                                                   process, IntPtr.Zero);
                         if (!result)
                         {
@@ -99,7 +99,7 @@ namespace Spectrum
         // WASAPI callback, required for continuous recording
         private int Process(IntPtr buffer, int length, IntPtr user)
         {
-            return length;
+            return 1;
         }
         
         public void Free()
