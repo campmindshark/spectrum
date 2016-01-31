@@ -8,7 +8,7 @@ namespace Spectrum
     {
         private List<int> lights;
         private Random rnd;
-        private String hubaddress = "http://192.168.1.26/api/23ef4e6e60bfc672548018214333a8b/";
+        private String hubaddress = "http://192.168.1.26/api/161d04c425fa45e293386cf241a26bf/";
 
         // FFT dicts
         private Dictionary<String, double[]> bins;
@@ -53,7 +53,7 @@ namespace Spectrum
             bins.Add("total", new double[] { 60, 2000, .05 });
             // specific instruments
             bins.Add("kick", new double[] { 40, 50, .001});
-            bins.Add("snareattack", new double[] { 2500, 3000, .001});
+            bins.Add("snareattack", new double[] { 1500, 2500, .001});
             foreach (String band in bins.Keys)
             {
                 energyLevels.Add(band, 0);
@@ -61,15 +61,15 @@ namespace Spectrum
             }
 
             lights = new List<int>(); // these are the light addresses, as fetched from the hue hub, from left to right
+            lights.Add(2);
+            lights.Add(1);
+            lights.Add(4);
             lights.Add(5);
             lights.Add(3);
-            lights.Add(2);
-            lights.Add(7);
-            lights.Add(4);
             // in the future use the API itself to get the light IDs correctly... also set up the "all lights" group automatically
         }
         
-        public void process(float[] spectrum, float level)
+        public void process(float[] spectrum, float level, float peakChange, float dropQuiet, float dropThreshold, float kickQuiet, float kickChange, float snareQuiet, float snareChange)
         {
             processCount++;
             processCount = processCount % historyLength;
@@ -108,11 +108,12 @@ namespace Spectrum
                             dropPossible = false;
                         }
                     }
-                    if (current >= history.Max() && current > avg + 2*sd)
+                    if (current >= history.Max() && current > avg + peakChange*sd)
                     {
-                        if (current > 3 * avg && avg < .08 && signal && current > .2)
+                        // was: avg < .08
+                        if (current > 3 * avg && avg < dropQuiet && change > dropThreshold && current > .26)
                         {
-                            //Console.WriteLine("Band:" + band + " cur:" + Math.Round(current * 10000) / 10000 + " avg:" + Math.Round(avg * 10000) / 10000 + " sd:" + Math.Round(sd * 10000) / 10000 + " delta:" + Math.Round(change * 10000) / 10000);
+                            System.Diagnostics.Debug.WriteLine(probe(band, current, avg, sd, change));
                             dropPossible = true;
                         }
                         totalMaxPossible = true;
@@ -125,25 +126,33 @@ namespace Spectrum
                 }
                 if (band == "kick")
                 {
-                    if (current < avg)
+                    if (current < avg || change < 0)
                     {
                         kickCounted = false;
                     }
-                    if (signal && current > avg + 2 * sd && avg < .1) // !kickcounted here
+                    // was: avg < .1, current > avg + 2 * sd
+                    if (current > avg + kickChange*sd && avg < kickQuiet && current > .001) // !kickcounted here
                     {
-
+                        if (totalMax)
+                        {
+                            System.Diagnostics.Debug.WriteLine(probe(band, current, avg, sd, change));
+                        }
                         kickCounted = true;
                         kickPending = true;
                     }
                 }
                 if (band == "snareattack")
                 {
-                    if (current < avg)
+                    if (current < avg || change < 0)
                     {
                         snareCounted = false;
                     }
-                    if (current > avg + sd) // !snarecounted here
+                    if (current > avg + snareChange*sd && avg < snareQuiet && current > .001) // !snarecounted here
                     {
+                        if (totalMax && current > .001)
+                        {
+                            System.Diagnostics.Debug.WriteLine(probe(band, current, avg, sd, change));
+                        }
                         snareCounted = true;
                         snarePending = true;
                     }
@@ -157,34 +166,36 @@ namespace Spectrum
             silence = (level < .01) && silence;
         }
 
-        public void updateHues()
+        public void updateHues(bool controlLights)
         {
-            kickPending = kickPending && totalMax;
-            snarePending = snarePending && totalMax;
             if (!lightPending)
             {
+                kickPending = kickPending && totalMax;
+                snarePending = snarePending && totalMax;
                 target = rnd.Next(5);
             }
-            if (silentMode)
+            if (silentMode || !controlLights)
             {
+                System.Diagnostics.Debug.WriteLine("Quiet!");
                 silentModeLightIndex = (silentModeLightIndex + 1) % 5;
-                new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[silentModeLightIndex])), "PUT", silent(silentModeHueIndex));
+                new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[silentModeLightIndex])), "PUT", silent(silentModeHueIndex, controlLights));
                 silentModeHueIndex = (silentModeHueIndex + 10000) % 65535;
             }
             else if (drop)
             {
                 if (dropDuration == 0)
                 {
-                    Console.WriteLine("dropOn");
-                    new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + "groups/2/action/"), "PUT", dropEffect(true));
+                    System.Diagnostics.Debug.WriteLine("dropOn");
+                    new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + "groups/0/action/"), "PUT", dropEffect(true));
                 }
-                else if (dropDuration == 1)
+                // was: dropDuration == 1
+                else if (dropDuration == 4)
                 {
-                    new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + "groups/2/action/"), "PUT", dropEffect(false));
+                    //new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + "groups/0/action/"), "PUT", dropEffect(false));
                 }
-                else if (dropDuration > 9)
+                else if (dropDuration > 8)
                 {
-                    Console.WriteLine("dropOff");
+                    System.Diagnostics.Debug.WriteLine("dropOff");
                     drop = false;
                     dropDuration = -1;
                 }
@@ -201,7 +212,7 @@ namespace Spectrum
                 else
                 {
                     lightPending = true;
-                    Console.WriteLine("kickOn");
+                    System.Diagnostics.Debug.WriteLine("kickOn");
                     new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[target])), "PUT", kickEffect(true));
                 }
             }
@@ -216,14 +227,15 @@ namespace Spectrum
                 else
                 {
                     lightPending = true;
-                    Console.WriteLine("snareOn");
+                    System.Diagnostics.Debug.WriteLine("snareOn");
                     new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[target])), "PUT", snareEffect(true));
                 }
             }
             else
             {
                 idleCounter++;
-                if (idleCounter > 4)
+                // was: idlecounter > 4
+                if (idleCounter > 2)
                 {
                     new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[target])), "PUT", idle());
                     idleCounter = 0;
@@ -234,9 +246,9 @@ namespace Spectrum
 
         private void postUpdate()
         {
-            if (silence && silentCounter == 24 && !silentMode)
+            if (silence && silentCounter == 40 && !silentMode)
             {
-                Console.WriteLine("Silence detected.");
+                System.Diagnostics.Debug.WriteLine("Silence detected.");
                 silentMode = true;
             }
             else if (silence)
@@ -247,6 +259,7 @@ namespace Spectrum
             {
                 silentCounter = 0;
                 silentMode = false;
+                silentModeLightIndex = 0;
             }
             // this will be changed in process() UNLESS level < .1 for the duration of process()
             silence = true;
@@ -308,6 +321,10 @@ namespace Spectrum
             {
                 result += "\"alert\":\"" + alert + "\",";
             }
+            if (bri == 0)
+            {
+                result += "\"effect\":\"colorloop\",";
+            }
             result = result.TrimEnd(',');
             result += "}";
             return result;
@@ -316,17 +333,19 @@ namespace Spectrum
         {
             if (dropOn)
             {
-                return "{\"on\": true, \"hue\":" + rnd.Next(1, 65535) + ",\"bri\": 254, \"effect\":\"colorloop\",\"sat\":254,\"transitiontime\":0}";
+                int dropColor = rnd.Next(1, 65535);
+                //return "{\"on\": true, \"hue\":" + dropColor + ",\"bri\": 254, \"effect\":\"colorloop\",\"sat\":254,\"transitiontime\":0, \"alert\":\"select\"}";
+                return "{\"alert\":\"select\"}";
             }
             else
             {
-                return "{\"on\": true, \"bri\":1,\"effect\":\"colorloop\",\"sat\":254,\"transitiontime\":4}";
+                return "{\"bri\":1,\"effect\":\"colorloop\",\"transitiontime\":2}";
             }
         }
         private String kickEffect(bool on)
         {
             if (on)
-            {
+            {// used to be hue 300, now -1
                 return jsonMake(254, 300, 254, 1, "none");
             }
             else
@@ -338,6 +357,7 @@ namespace Spectrum
         {
             if (on)
             {
+                // used to be hue 43000
                 return jsonMake(254, 43000, 254, 1, "none");
             }
             else
@@ -349,9 +369,16 @@ namespace Spectrum
         {
             return jsonMake(0, -1, 254, 20, "none");
         }
-        private String silent(int index)
+        private String silent(int index, bool controlLights)
         {
-            return "{\"on\": true,\"hue\":" + (index + 1) + ",\"effect\":\"none\",\"bri\":1,\"sat\":254,\"transitiontime\":10}";
+            if (controlLights)
+                return "{\"on\": true,\"hue\":" + (index + 1) + ",\"effect\":\"none\",\"bri\":1,\"sat\":254,\"transitiontime\":10}";
+            else
+                return "{\"on\": true,\"hue\":11712,\"effect\":\"none\",\"sat\":125,\"bri\":254}";
+        }
+        private String probe(String band, float current, float avg, float sd, float change)
+        {
+            return "Band:" + band + " cur:" + Math.Round(current * 10000) / 10000 + " avg:" + Math.Round(avg * 10000) / 10000 + " sd:" + Math.Round(sd * 10000) / 10000 + " delta:" + Math.Round(change * 10000) / 10000;
         }
     }
 }

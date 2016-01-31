@@ -17,7 +17,15 @@ namespace Spectrum
         private Visualizer visualizer;
         private ComboBox devicelist;
         private bool initialized;
+        public bool controlLights = true;
         private int devindex;
+        private float peakC = .864f;
+        private float dropQ = .12f;
+        private float dropT = .075f;
+        private float kickQ = 1;
+        private float kickT = 0;
+        private float snareQ = 1;
+        private float snareT = .5f;
 
         public Streamer(ComboBox devicelist)
         {
@@ -62,7 +70,12 @@ namespace Spectrum
                     BassWasapi.BASS_WASAPI_Start();
                     visualizer = new Visualizer();
                 }
-                else BassWasapi.BASS_WASAPI_Stop(true);
+                else
+                {
+                    BassWasapi.BASS_WASAPI_Free();
+                    initialized = false;
+                    devicelist.IsEnabled = true;
+                }
             }
         }
         
@@ -89,11 +102,14 @@ namespace Spectrum
             // get fft data. Return value is -1 on error
             // type: 1/8192 of the channel sample rate (here, 44100 hz; so the bin size is roughly 2.69 Hz)
             int ret = BassWasapi.BASS_WASAPI_GetData(fft, (int)BASSData.BASS_DATA_FFT16384);
-            visualizer.process(fft, BassWasapi.BASS_WASAPI_GetDeviceLevel(devindex, -1));
+            if (controlLights)
+            {
+                visualizer.process(fft, BassWasapi.BASS_WASAPI_GetDeviceLevel(devindex, -1), peakC, dropQ, dropT, kickQ, kickT, snareQ, snareT);
+            }
         }
         private void lightTimer_Tick(object sender)
         {
-            visualizer.updateHues();
+            visualizer.updateHues(controlLights);
         }
 
         // WASAPI callback, required for continuous recording
@@ -106,6 +122,48 @@ namespace Spectrum
         {
             BassWasapi.BASS_WASAPI_Free();
             Bass.BASS_Free();
+        }
+
+        public void updateConstants(String name, float val)
+        {
+            if (name == "controlLights")
+            {
+                if (val == 1)
+                {
+                    controlLights = true;
+                } else
+                {
+                    controlLights = false;
+                }
+            }
+            if (name == "peakChangeS")
+            {
+                peakC = val;
+            }
+            if (name == "dropQuietS")
+            {
+                dropQ = val;
+            }
+            if (name == "dropChangeS")
+            {
+                dropT = val;
+            }
+            if (name == "kickQuietS")
+            {
+                kickQ = val;
+            }
+            if (name == "kickChangeS")
+            {
+                kickT = val;
+            }
+            if (name == "snareQuietS")
+            {
+                snareQ = val;
+            }
+            if (name == "snareChangeS")
+            {
+                snareT = val;
+            }
         }
     }
 }
