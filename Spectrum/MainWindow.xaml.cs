@@ -11,19 +11,28 @@ namespace Spectrum
         Streamer st;
         private bool dragStarted = true;
         private bool boxInitialized = false;
-        HotKey _hotkey;
+        HotKey white_toggle;
+        HotKey off_toggle;
         public MainWindow()
         {
             InitializeComponent();
             st = new Streamer(devices);
             st.Enable = false;
             boxInitialized = true;
-            HotKey _hotKey = new HotKey(Key.Q, KeyModifier.Alt, OnHotKeyHandler);
+            HotKey white_toggle = new HotKey(Key.Q, KeyModifier.Alt, OnHotKeyHandler);
+            HotKey off_toggle = new HotKey(Key.OemTilde, KeyModifier.Alt, OnHotKeyHandler);
         }
 
         private void OnHotKeyHandler(HotKey hotKey)
         {
-            checkBox.IsChecked = !checkBox.IsChecked;
+            if (hotKey.Key.Equals(Key.Q))
+            {
+                checkBox.IsChecked = !checkBox.IsChecked;
+            }
+            if (hotKey.Key.Equals(Key.OemTilde))
+            {
+                st.lightsOff = !st.lightsOff;
+            }
         }
 
         private void button_Click(object sender, RoutedEventArgs e)

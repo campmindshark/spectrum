@@ -39,6 +39,7 @@ namespace Spectrum
         private bool dropPossible = false;
         private int dropDuration = 0;
         private int target = 0;
+        public bool lightsOff = false;
         
         public Visualizer()
         {
@@ -174,7 +175,7 @@ namespace Spectrum
                 snarePending = snarePending && totalMax;
                 target = rnd.Next(5);
             }
-            if (silentMode || !controlLights)
+            if (silentMode || !controlLights || lightsOff)
             {
                 System.Diagnostics.Debug.WriteLine("Quiet!");
                 silentModeLightIndex = (silentModeLightIndex + 1) % 5;
@@ -259,7 +260,6 @@ namespace Spectrum
             {
                 silentCounter = 0;
                 silentMode = false;
-                silentModeLightIndex = 0;
             }
             // this will be changed in process() UNLESS level < .1 for the duration of process()
             silence = true;
@@ -371,10 +371,18 @@ namespace Spectrum
         }
         private String silent(int index, bool controlLights)
         {
-            if (controlLights)
+            if (lightsOff)
+            {
+                return "{\"on\": false}";
+            }
+            else if (controlLights)
+            {
                 return "{\"on\": true,\"hue\":" + (index + 1) + ",\"effect\":\"none\",\"bri\":1,\"sat\":254,\"transitiontime\":10}";
+            }
             else
-                return "{\"on\": true,\"hue\":11712,\"effect\":\"none\",\"sat\":125,\"bri\":254}";
+            {
+                return "{\"on\": true,\"hue\":11712,\"effect\":\"none\",\"sat\":100,\"bri\":254}";
+            }
         }
         private String probe(String band, float current, float avg, float sd, float change)
         {
