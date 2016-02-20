@@ -381,7 +381,7 @@ namespace Spectrum
             }
             else
             {
-                return "{\"on\": true,\"hue\":11712,\"effect\":\"none\",\"sat\":100,\"bri\":254}";
+                return "{\"on\": true,\"hue\":16000,\"effect\":\"none\",\"sat\":100,\"bri\":254}";
             }
         }
         private String probe(String band, float current, float avg, float sd, float change)
