@@ -40,6 +40,10 @@ namespace Spectrum
         private int dropDuration = 0;
         private int target = 0;
         public bool lightsOff = false;
+        public bool redAlert = false;
+        public int brighten = 0;
+        public int colorslide = 0;
+        public int sat = 0;
         
         public Visualizer()
         {
@@ -175,7 +179,7 @@ namespace Spectrum
                 snarePending = snarePending && totalMax;
                 target = rnd.Next(5);
             }
-            if (silentMode || !controlLights || lightsOff)
+            if (silentMode || !controlLights || lightsOff || redAlert)
             {
                 System.Diagnostics.Debug.WriteLine("Quiet!");
                 silentModeLightIndex = (silentModeLightIndex + 1) % 5;
@@ -375,13 +379,20 @@ namespace Spectrum
             {
                 return "{\"on\": false}";
             }
+            if (redAlert)
+            {
+                return "{\"on\": true,\"hue\":1,\"effect\":\"none\",\"sat\":254,\"bri\":1}";
+            }
             else if (controlLights)
             {
                 return "{\"on\": true,\"hue\":" + (index + 1) + ",\"effect\":\"none\",\"bri\":1,\"sat\":254,\"transitiontime\":10}";
             }
             else
             {
-                return "{\"on\": true,\"hue\":16000,\"effect\":\"none\",\"sat\":100,\"bri\":254}";
+                int newbri = Math.Min(Math.Max(254 + 25 * brighten, 1), 254);
+                int newsat = Math.Min(Math.Max(100 + 50 * sat, 0), 254);
+                int newhue = (65536 + 16000 + colorslide * 5000) % 65536;
+                return "{\"on\": true,\"hue\":" + newhue + ",\"effect\":\"none\",\"sat\":" + newsat + ",\"bri\":" + newbri + "}";
             }
         }
         private String probe(String band, float current, float avg, float sd, float change)

@@ -20,13 +20,17 @@ namespace Spectrum
         public bool controlLights = true;
         private int devindex;
         private float peakC = .800f;
-        private float dropQ = .075f;
+        private float dropQ = .025f;
         private float dropT = .075f;
         private float kickQ = 1;
         private float kickT = 0;
         private float snareQ = 1;
         private float snareT = .5f;
         public bool lightsOff = false;
+        public bool redAlert = false;
+        public int brighten = 0;
+        public int colorslide = 0;
+        public int sat = 0;
 
         public Streamer(ComboBox devicelist)
         {
@@ -110,7 +114,16 @@ namespace Spectrum
         }
         private void lightTimer_Tick(object sender)
         {
+            visualizer.updateHues(controlLights);
+        }
+
+        public void forceUpdate()
+        {
             visualizer.lightsOff = lightsOff;
+            visualizer.redAlert = redAlert;
+            visualizer.brighten = brighten;
+            visualizer.colorslide = colorslide;
+            visualizer.sat = sat;
             visualizer.updateHues(controlLights);
         }
 

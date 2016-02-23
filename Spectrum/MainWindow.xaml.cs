@@ -11,8 +11,6 @@ namespace Spectrum
         Streamer st;
         private bool dragStarted = true;
         private bool boxInitialized = false;
-        HotKey white_toggle;
-        HotKey off_toggle;
         public MainWindow()
         {
             InitializeComponent();
@@ -21,6 +19,13 @@ namespace Spectrum
             boxInitialized = true;
             HotKey white_toggle = new HotKey(Key.Q, KeyModifier.Alt, OnHotKeyHandler);
             HotKey off_toggle = new HotKey(Key.OemTilde, KeyModifier.Alt, OnHotKeyHandler);
+            HotKey red_alert = new HotKey(Key.R, KeyModifier.Alt, OnHotKeyHandler);
+            HotKey bri_up = new HotKey(Key.Up, KeyModifier.Alt, OnHotKeyHandler);
+            HotKey bri_down = new HotKey(Key.Down, KeyModifier.Alt, OnHotKeyHandler);
+            HotKey hue_left = new HotKey(Key.Left, KeyModifier.Alt, OnHotKeyHandler);
+            HotKey hue_right = new HotKey(Key.Right, KeyModifier.Alt, OnHotKeyHandler);
+            HotKey sat_up = new HotKey(Key.OemPeriod, KeyModifier.Alt, OnHotKeyHandler);
+            HotKey sat_down = new HotKey(Key.OemComma, KeyModifier.Alt, OnHotKeyHandler);
         }
 
         private void OnHotKeyHandler(HotKey hotKey)
@@ -28,11 +33,43 @@ namespace Spectrum
             if (hotKey.Key.Equals(Key.Q))
             {
                 checkBox.IsChecked = !checkBox.IsChecked;
+                st.brighten = 0;
+                st.colorslide = 0;
+                st.sat = 0;
             }
             if (hotKey.Key.Equals(Key.OemTilde))
             {
                 st.lightsOff = !st.lightsOff;
             }
+            if (hotKey.Key.Equals(Key.R))
+            {
+                st.redAlert = !st.redAlert;
+            }
+            if (hotKey.Key.Equals(Key.Up))
+            {
+                st.brighten += 1;
+            }
+            if (hotKey.Key.Equals(Key.Down))
+            {
+                st.brighten -= 1;
+            }
+            if (hotKey.Key.Equals(Key.Left))
+            {
+                st.colorslide -= 1;
+            }
+            if (hotKey.Key.Equals(Key.Right))
+            {
+                st.colorslide += 1;
+            }
+            if (hotKey.Key.Equals(Key.OemPeriod))
+            {
+                st.sat += 1;
+            }
+            if (hotKey.Key.Equals(Key.OemComma))
+            {
+                st.sat -= 1;
+            }
+            st.forceUpdate();
         }
 
         private void button_Click(object sender, RoutedEventArgs e)
