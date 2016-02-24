@@ -20,8 +20,11 @@ namespace Spectrum
         // analysis/history variables
         private bool silence = true;
         private int silentCounter = 0;
-        private bool silentMode = true;
+        public bool silentMode = true;
+        private bool silentModeAlternatingFlag = false;
         private int silentModeHueIndex = 0;
+        private int silentModeSatIndex = 254;
+        private bool silentModeSatFall = false;
         private int silentModeLightIndex = 0;
         private bool kickCounted = false;
         private bool snareCounted = false;
@@ -39,11 +42,13 @@ namespace Spectrum
         private bool dropPossible = false;
         private int dropDuration = 0;
         private int target = 0;
+        public bool controlLights = true;
         public bool lightsOff = false;
         public bool redAlert = false;
         public int brighten = 0;
         public int colorslide = 0;
         public int sat = 0;
+        public int needupdate = 0;
         
         public Visualizer()
         {
@@ -171,7 +176,7 @@ namespace Spectrum
             silence = (level < .01) && silence;
         }
 
-        public void updateHues(bool controlLights)
+        public void updateHues()
         {
             if (!lightPending)
             {
@@ -181,10 +186,19 @@ namespace Spectrum
             }
             if (silentMode || !controlLights || lightsOff || redAlert)
             {
-                System.Diagnostics.Debug.WriteLine("Quiet!");
-                silentModeLightIndex = (silentModeLightIndex + 1) % 5;
-                new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[silentModeLightIndex])), "PUT", silent(silentModeHueIndex, controlLights));
-                silentModeHueIndex = (silentModeHueIndex + 10000) % 65535;
+                if (silentMode || needupdate > 0) // not idling & nonzero lights need to be updated.
+                {
+                    silentModeAlternatingFlag = !silentModeAlternatingFlag;
+                    if (!silentMode || (silentMode && silentModeAlternatingFlag) || !controlLights || lightsOff || redAlert)
+                    {
+                        silentModeHueIndex = (silentModeHueIndex + 10000) % 65535;
+                        silentModeLightIndex = (silentModeLightIndex + 1) % 5;
+                        new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[silentModeLightIndex])), "PUT", silent(silentModeHueIndex));
+                        needupdate--;
+                        System.Diagnostics.Debug.WriteLine("Updating.." + needupdate);
+                        System.Diagnostics.Debug.WriteLine("silentMode.." + silentMode);
+                    }
+                }
             }
             else if (drop)
             {
@@ -251,7 +265,7 @@ namespace Spectrum
 
         private void postUpdate()
         {
-            if (silence && silentCounter == 40 && !silentMode)
+            if (controlLights && silence && silentCounter > 40 && !silentMode)
             {
                 System.Diagnostics.Debug.WriteLine("Silence detected.");
                 silentMode = true;
@@ -264,6 +278,25 @@ namespace Spectrum
             {
                 silentCounter = 0;
                 silentMode = false;
+            }
+            if (silentModeAlternatingFlag)
+            {
+                if (silentModeSatIndex < 127)
+                {
+                    silentModeSatFall = false;
+                }
+                if (silentModeSatIndex > 380)
+                {
+                    silentModeSatFall = true;
+                }
+                if (silentModeSatFall)
+                {
+                    silentModeSatIndex--;
+                }
+                else
+                {
+                    silentModeSatIndex++;
+                }
             }
             // this will be changed in process() UNLESS level < .1 for the duration of process()
             silence = true;
@@ -373,7 +406,7 @@ namespace Spectrum
         {
             return jsonMake(0, -1, 254, 20, "none");
         }
-        private String silent(int index, bool controlLights)
+        private String silent(int index)
         {
             if (lightsOff)
             {
@@ -385,14 +418,14 @@ namespace Spectrum
             }
             else if (controlLights)
             {
-                return "{\"on\": true,\"hue\":" + (index + 1) + ",\"effect\":\"none\",\"bri\":1,\"sat\":254,\"transitiontime\":10}";
+                return "{\"on\": true,\"hue\":" + (index + 1) + ",\"effect\":\"none\",\"bri\":1,\"sat\":" + Math.Min(silentModeSatIndex, 254) + ",\"transitiontime\":12}";
             }
             else
             {
-                int newbri = Math.Min(Math.Max(254 + 25 * brighten, 1), 254);
-                int newsat = Math.Min(Math.Max(100 + 50 * sat, 0), 254);
-                int newhue = (65536 + 16000 + colorslide * 5000) % 65536;
-                return "{\"on\": true,\"hue\":" + newhue + ",\"effect\":\"none\",\"sat\":" + newsat + ",\"bri\":" + newbri + "}";
+                int newbri = Math.Min(Math.Max(254 + 64 * brighten, 1), 254);
+                int newsat = Math.Min(Math.Max(126 + 63 * sat, 0), 254);
+                int newhue = Math.Min(Math.Max(16384 + colorslide * 4096, 0), 65535);
+                return "{\"on\": true,\"hue\":" + newhue + ",\"sat\":" + newsat + ",\"bri\":" + newbri + ",\"effect\":\"none\"}";
             }
         }
         private String probe(String band, float current, float avg, float sd, float change)

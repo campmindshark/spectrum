@@ -14,7 +14,7 @@ namespace Spectrum
         private Timer audioProcessTimer;
         private float[] fft;
         private WASAPIPROC process;     //to keep it from being garbage collected
-        private Visualizer visualizer;
+        public Visualizer visualizer;
         private ComboBox devicelist;
         private bool initialized;
         public bool controlLights = true;
@@ -107,24 +107,40 @@ namespace Spectrum
             // get fft data. Return value is -1 on error
             // type: 1/8192 of the channel sample rate (here, 44100 hz; so the bin size is roughly 2.69 Hz)
             int ret = BassWasapi.BASS_WASAPI_GetData(fft, (int)BASSData.BASS_DATA_FFT16384);
-            if (controlLights)
+            if (controlLights && !lightsOff && !redAlert)
             {
                 visualizer.process(fft, BassWasapi.BASS_WASAPI_GetDeviceLevel(devindex, -1), peakC, dropQ, dropT, kickQ, kickT, snareQ, snareT);
             }
         }
         private void lightTimer_Tick(object sender)
         {
-            visualizer.updateHues(controlLights);
+            visualizer.updateHues();
         }
 
         public void forceUpdate()
         {
+            bool change = (visualizer.lightsOff != lightsOff) || (visualizer.redAlert != redAlert)
+                || (visualizer.controlLights != controlLights) || (visualizer.brighten != brighten) ||
+                (visualizer.colorslide != colorslide) || (visualizer.sat != sat);
+            if (visualizer.controlLights)
+            {
+                visualizer.needupdate = 20;
+            }
+            else if (change)
+            {
+                visualizer.needupdate = 10;
+            }
             visualizer.lightsOff = lightsOff;
             visualizer.redAlert = redAlert;
             visualizer.brighten = brighten;
             visualizer.colorslide = colorslide;
+            visualizer.controlLights = controlLights;
             visualizer.sat = sat;
-            visualizer.updateHues(controlLights);
+            if (!controlLights)
+            {
+                visualizer.silentMode = false;
+            }
+            visualizer.updateHues();
         }
 
         // WASAPI callback, required for continuous recording
