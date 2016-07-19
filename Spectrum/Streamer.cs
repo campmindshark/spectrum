@@ -16,7 +16,7 @@ namespace Spectrum
         private WASAPIPROC process;     //to keep it from being garbage collected
         public Visualizer visualizer;
         private ComboBox devicelist;
-        private bool initialized;
+        public bool initialized;
         public bool controlLights = true;
         private int devindex;
         private float peakC = .800f;
@@ -66,14 +66,14 @@ namespace Spectrum
                         }
                         else
                         {
-                            audioProcessTimer = new Timer(audioTimer_Tick, null, 100, 10);
-                            lightTimer = new Timer(lightTimer_Tick, null, 100, 125); // Hue API limits 10/s light changes
+                            audioProcessTimer = new Timer(audioTimer_Tick, null, 100, 1);
+                            lightTimer = new Timer(lightTimer_Tick, null, 100, 1); // Hue API limits 10/s light changes
                             initialized = true;
                             devicelist.IsEnabled = false;
                         }
                     }
                     BassWasapi.BASS_WASAPI_Start();
-                    visualizer = new Visualizer();
+                    visualizer = new Visualizer(controlLights);
                 }
                 else
                 {
@@ -117,32 +117,6 @@ namespace Spectrum
             visualizer.updateHues();
         }
 
-        public void forceUpdate()
-        {
-            bool change = (visualizer.lightsOff != lightsOff) || (visualizer.redAlert != redAlert)
-                || (visualizer.controlLights != controlLights) || (visualizer.brighten != brighten) ||
-                (visualizer.colorslide != colorslide) || (visualizer.sat != sat);
-            if (visualizer.controlLights)
-            {
-                visualizer.needupdate = 20;
-            }
-            else if (change)
-            {
-                visualizer.needupdate = 10;
-            }
-            visualizer.lightsOff = lightsOff;
-            visualizer.redAlert = redAlert;
-            visualizer.brighten = brighten;
-            visualizer.colorslide = colorslide;
-            visualizer.controlLights = controlLights;
-            visualizer.sat = sat;
-            if (!controlLights)
-            {
-                visualizer.silentMode = false;
-            }
-            visualizer.updateHues();
-        }
-
         // WASAPI callback, required for continuous recording
         private int Process(IntPtr buffer, int length, IntPtr user)
         {
@@ -157,16 +131,6 @@ namespace Spectrum
 
         public void updateConstants(String name, float val)
         {
-            if (name == "controlLights")
-            {
-                if (val == 1)
-                {
-                    controlLights = true;
-                } else
-                {
-                    controlLights = false;
-                }
-            }
             if (name == "peakChangeS")
             {
                 peakC = val;
