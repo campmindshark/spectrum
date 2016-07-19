@@ -3,18 +3,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.IO.Ports;
 
 namespace LEDome {
 
   class Program {
 
     static void Main(string[] args) {
-      /*string[] ports = SerialPort.GetPortNames();
+      string[] ports = SerialPort.GetPortNames();
       foreach (string port in ports) {
         Console.WriteLine(port);
       }
-      Console.ReadLine();*/
-      SquareAPI api = new SquareAPI("COM3", 30, 5);
+      Console.ReadLine();
+      /*SquareAPI api = new SquareAPI("COM3", 30, 5);
       api.Open();
       for (int i = 0; i < 30; i++) {
         for (int j = 0; j < 40; j++) {
@@ -67,7 +68,7 @@ namespace LEDome {
       api.SetPixel(0, 30, 0xFFFFFF);
       api.SetPixel(2, 31, 0xFFFFFF);
       api.Flush();
-      api.Close();
+      api.Close();*/
     }
 
   }

@@ -66,7 +66,7 @@ namespace Spectrum
                         }
                         else
                         {
-                            audioProcessTimer = new Timer(audioTimer_Tick, null, 100, 10);
+                            audioProcessTimer = new Timer(audioTimer_Tick, null, 100, 1);
                             lightTimer = new Timer(lightTimer_Tick, null, 100, 125); // Hue API limits 10/s light changes
                             initialized = true;
                             devicelist.IsEnabled = false;
