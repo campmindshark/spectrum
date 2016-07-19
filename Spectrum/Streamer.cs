@@ -73,7 +73,7 @@ namespace Spectrum
                         }
                     }
                     BassWasapi.BASS_WASAPI_Start();
-                    visualizer = new Visualizer();
+                    visualizer = new Visualizer(controlLights);
                 }
                 else
                 {
