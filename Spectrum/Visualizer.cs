@@ -56,10 +56,10 @@ namespace Spectrum {
     private SquareAPI api;
 
     public Visualizer() {
-      /**
-      this.api = new SquareAPI("COM3", 30, 5);
-      this.api.Open();
-      **/
+      
+      /*this.api = new SquareAPI("COM3", 30, 5);
+      this.api.Open();*/
+      
       rnd = new Random();
       bins = new Dictionary<String, double[]>();
       energyHistory = new Dictionary<String, float[]>();
@@ -232,16 +232,16 @@ namespace Spectrum {
         }
       }
       postUpdate();
-      /**
-      int numColumnsToLight = (int)(vol * 30);
+      
+      /*int numColumnsToLight = (int)(vol * 30);
       for (int j = 0; j < 40; j++) {
         for (int i = 0; i < 30; i++) {
           int color = numColumnsToLight > i ? 0xFFFFFF : 0x000000;
           this.api.SetPixel(i, j, color);
         }
       }
-      this.api.Flush();
-      **/
+      this.api.Flush();*/
+      
       // run every tick of the timer
       if (silence) {
         System.Diagnostics.Debug.WriteLine("silence");

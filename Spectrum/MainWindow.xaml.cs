@@ -12,7 +12,6 @@ namespace Spectrum {
     public MainWindow() {
       InitializeComponent();
       st = new Streamer(devices);
-      st.Enable = false;
       boxInitialized = true;
       HotKey white_toggle = new HotKey(Key.Q, KeyModifier.Alt, OnHotKeyHandler);
       HotKey off_toggle = new HotKey(Key.OemTilde, KeyModifier.Alt, OnHotKeyHandler);
@@ -69,7 +68,7 @@ namespace Spectrum {
       snareQuietS.IsEnabled = !snareQuietS.IsEnabled;
       snareChangeS.IsEnabled = !snareChangeS.IsEnabled;
       peakChangeS.IsEnabled = !peakChangeS.IsEnabled;
-      st.Enable = !st.Enable;
+      st.ToggleState();
       dragStarted = false;
     }
 

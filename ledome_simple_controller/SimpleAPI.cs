@@ -1,19 +1,23 @@
-﻿using System.IO.Ports;
+﻿using System.Collections.Generic;
+using System.IO.Ports;
 
 namespace LEDome {
 
   public class SimpleAPI {
 
     private SerialPort port;
+    private List<byte> buffer;
 
     public SimpleAPI(string portName) {
       this.port = new SerialPort(portName);
+      this.buffer = new List<byte>();
     }
 
     public void Open() {
       this.port.Open();
       byte[] mode_buffer = new byte[1] { 1 };
       this.port.Write(mode_buffer, 0, 1);
+      this.buffer.Clear();
     }
 
     public void Close() {
@@ -23,20 +27,20 @@ namespace LEDome {
     }
 
     public void Flush() {
-      byte[] flush_buffer = new byte[2] { 1, 0 };
-      this.port.Write(flush_buffer, 0, 2);
+      this.buffer.Add(1);
+      this.buffer.Add(0);
+      byte[] buffer_array = this.buffer.ToArray();
+      this.port.Write(buffer_array, 0, this.buffer.Count);
+      this.buffer.Clear();
     }
 
     public void SetPixel(int pixelIndex, int color) {
       int message = pixelIndex + 2;
-      byte[] command_buffer = new byte[5] {
-        (byte)message,
-        (byte)(message >> 8),
-        (byte)color,
-        (byte)(color >> 8),
-        (byte)(color >> 16),
-      };
-      this.port.Write(command_buffer, 0, 5);
+      this.buffer.Add((byte)message);
+      this.buffer.Add((byte)(message >> 8));
+      this.buffer.Add((byte)color);
+      this.buffer.Add((byte)(color >> 8));
+      this.buffer.Add((byte)(color >> 16));
     }
 
   }
