@@ -11,6 +11,7 @@ namespace Spectrum {
     private String hubaddress = "http://192.168.1.26/api/161d04c425fa45e293386cf241a26bf/";
 
     // state variables
+    public bool controlLights = true;
     public bool lightsOff = false;
     public bool redAlert = false;
 
@@ -46,7 +47,6 @@ namespace Spectrum {
     private bool dropPossible = false;
     private int dropDuration = 0;
     private int target = 0;
-    public bool controlLights;
     public int brighten = 0;
     public int colorslide = 0;
     public int sat = 0;
@@ -55,8 +55,7 @@ namespace Spectrum {
 
     private SquareAPI api;
 
-    public Visualizer(bool controlLights) {
-      this.controlLights = controlLights;
+    public Visualizer() {
       /**
       this.api = new SquareAPI("COM3", 30, 5);
       this.api.Open();
@@ -77,12 +76,16 @@ namespace Spectrum {
         energyLevels.Add(band, 0);
         energyHistory.Add(band, Enumerable.Repeat((float)0, historyLength).ToArray());
       }
-      lights = new List<int>();
+      lights = new List<int>(); // light IDs in left to right order
       lights.Add(2);
       lights.Add(1);
       lights.Add(4);
       lights.Add(5);
-      lights.Add(3);
+      lights.Add(6);
+    }
+
+    public void init(bool controlLights) {
+      this.controlLights = controlLights;
     }
 
     // music pattern detection

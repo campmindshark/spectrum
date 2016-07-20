@@ -115,6 +115,7 @@ namespace Spectrum {
       if (name == "peakChangeS") {
         peakChangeL.Content = val.ToString("F3");
       }
+      st.forceUpdate();
     }
   }
 }
