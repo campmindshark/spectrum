@@ -22,6 +22,7 @@ namespace Spectrum {
       HotKey hue_right = new HotKey(Key.Right, KeyModifier.Alt, OnHotKeyHandler);
       HotKey sat_up = new HotKey(Key.Up, KeyModifier.Alt, OnHotKeyHandler);
       HotKey sat_down = new HotKey(Key.Down, KeyModifier.Alt, OnHotKeyHandler);
+      this.Closing += this.HandleClose;
     }
 
     private void OnHotKeyHandler(HotKey hotKey) {
@@ -115,6 +116,10 @@ namespace Spectrum {
         peakChangeL.Content = val.ToString("F3");
       }
       st.forceUpdate();
+    }
+
+    private void HandleClose(object sender, EventArgs e) {
+      st.CleanUp();
     }
   }
 }

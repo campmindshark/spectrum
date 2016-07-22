@@ -7,9 +7,10 @@ using Un4seen.BassWasapi;
 
 namespace Spectrum {
   public class Streamer {
-    private Timer lightTimer;
-    private Timer audioProcessTimer;
-    private WASAPIPROC process;     //to keep it from being garbage collected
+    private Thread audioProcessingThread;
+    private Thread lightUpdatingThread;
+
+    private WASAPIPROC process; // more details in MagicIncantations()
     public Visualizer visualizer;
     private ComboBox devicelist;
     private bool initialized = false;
@@ -84,12 +85,9 @@ namespace Spectrum {
     }
 
     public void ToggleState() {
-      this.initialized = !initialized;
+      this.initialized = !this.initialized;
       if (!this.initialized) {
-        BassWasapi.BASS_WASAPI_Free();
-        Bass.BASS_Free();
-        initialized = false;
-        devicelist.IsEnabled = true;
+        this.CleanUp();
         return;
       }
       var str = (this.devicelist.Items[devicelist.SelectedIndex] as string);
@@ -106,30 +104,47 @@ namespace Spectrum {
         IntPtr.Zero
       );
       if (!result) {
-        var error = Bass.BASS_ErrorGetCode();
-        MessageBox.Show(error.ToString());
+        MessageBox.Show(Bass.BASS_ErrorGetCode().ToString());
         this.initialized = false;
         return;
       }
-      audioProcessTimer = new Timer(audioTimer_Tick, null, 100, 1);
-      lightTimer = new Timer(lightTimer_Tick, null, 100, 125); // Hue API limits 10/s light changes
-      devicelist.IsEnabled = false;
-      BassWasapi.BASS_WASAPI_Start();
-      visualizer.init(controlLights);
+      this.devicelist.IsEnabled = false;
+      this.visualizer.init(controlLights);
+      this.audioProcessingThread = new Thread(AudioProcessingThread);
+      this.audioProcessingThread.Start();
+      this.lightUpdatingThread = new Thread(LightProcessingThread);
+      this.lightUpdatingThread.Start();
     }
 
-    private void audioTimer_Tick(object sender) {
-      // get fft data. Return value is -1 on error
-      // type: 1/8192 of the channel sample rate (here, 44100 hz; so the bin size is roughly 2.69 Hz)
-      float[] fft = new float[8192];
-      int ret = BassWasapi.BASS_WASAPI_GetData(fft, (int)BASSData.BASS_DATA_FFT16384);
-      if (controlLights && !lightsOff && !redAlert) {
-        visualizer.process(fft, BassWasapi.BASS_WASAPI_GetDeviceLevel(devindex, -1), peakC, dropQ, dropT, kickQ, kickT, snareQ, snareT);
+    private void AudioProcessingThread() {
+      BassWasapi.BASS_WASAPI_Start();
+      while (true) {
+        // get fft data. Return value is -1 on error
+        // type: 1/8192 of the channel sample rate (here, 44100 hz; so the bin size is roughly 2.69 Hz)
+        float[] fft = new float[8192];
+        int ret = BassWasapi.BASS_WASAPI_GetData(fft, (int)BASSData.BASS_DATA_FFT16384);
+        if (controlLights && !lightsOff && !redAlert) {
+          this.visualizer.process(
+            fft,
+            BassWasapi.BASS_WASAPI_GetDeviceLevel(devindex, -1),
+            peakC,
+            dropQ,
+            dropT,
+            kickQ,
+            kickT,
+            snareQ,
+            snareT
+          );
+        }
       }
     }
 
-    private void lightTimer_Tick(object sender) {
-      visualizer.updateHues();
+    private void LightProcessingThread() {
+      while (true) {
+        this.visualizer.updateHues();
+        // Hue API limits 10/s light changes
+        Thread.Sleep(100);
+      }
     }
 
     public void forceUpdate() {
@@ -188,5 +203,16 @@ namespace Spectrum {
         snareT = val;
       }
     }
+
+    public void CleanUp() {
+      this.audioProcessingThread.Abort();
+      this.lightUpdatingThread.Abort();
+      this.audioProcessingThread.Join();
+      this.lightUpdatingThread.Join();
+      BassWasapi.BASS_WASAPI_Free();
+      Bass.BASS_Free();
+      this.devicelist.IsEnabled = true;
+    }
   }
+
 }
