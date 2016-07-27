@@ -25,7 +25,7 @@ namespace LEDome {
     public MultiAPI(string[] portNames) {
       this.teensies = new SimpleAPI[portNames.Length];
       for (int i = 0; i < portNames.Length; i++) {
-        this.teensies[i] = new SimpleAPI(portName);
+        this.teensies[i] = new SimpleAPI(portNames[i]);
       }
       this.needsFlushing = new bool[portNames.Length];
     }
