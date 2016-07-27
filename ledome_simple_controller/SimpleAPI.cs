@@ -3,6 +3,11 @@ using System.IO.Ports;
 
 namespace LEDome {
 
+  /**
+   * SimpleAI is an API that can handle a single Teensy. It has no conception
+   * of how many LEDs the Teensy is addressing - it just communicates a given
+   * index and color to the Teensy.
+   */
   public class SimpleAPI {
 
     private SerialPort port;
