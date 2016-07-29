@@ -5,13 +5,18 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 
 namespace Spectrum {
+
   public partial class MainWindow : Window {
+
     Streamer st;
+    SpectrumConfiguration config;
     private bool dragStarted = true;
     private bool boxInitialized = false;
+
     public MainWindow() {
       InitializeComponent();
-      st = new Streamer(devices);
+      config = new SpectrumConfiguration();
+      st = new Streamer(devices, config);
       boxInitialized = true;
       HotKey white_toggle = new HotKey(Key.Q, KeyModifier.Alt, OnHotKeyHandler);
       HotKey off_toggle = new HotKey(Key.OemTilde, KeyModifier.Alt, OnHotKeyHandler);
@@ -28,40 +33,41 @@ namespace Spectrum {
     private void OnHotKeyHandler(HotKey hotKey) {
       if (hotKey.Key.Equals(Key.Q)) {
         checkBox.IsChecked = !checkBox.IsChecked;
-        st.brighten = 0;
-        st.colorslide = 0;
-        st.sat = 0;
+        config.controlLights = !config.controlLights;
+        config.brighten = 0;
+        config.colorslide = 0;
+        config.sat = 0;
       }
       if (hotKey.Key.Equals(Key.OemTilde)) {
-        st.lightsOff = !st.lightsOff;
+        config.lightsOff = !config.lightsOff;
       }
       if (hotKey.Key.Equals(Key.R)) {
-        st.redAlert = !st.redAlert;
+        config.redAlert = !config.redAlert;
       }
       if (hotKey.Key.Equals(Key.OemPeriod)) {
-        st.brighten = Math.Min(st.brighten + 1, 0);
+        config.brighten = Math.Min(config.brighten + 1, 0);
       }
       if (hotKey.Key.Equals(Key.OemComma)) {
-        st.brighten = Math.Max(st.brighten - 1, -4);
+        config.brighten = Math.Max(config.brighten - 1, -4);
       }
       if (hotKey.Key.Equals(Key.Left)) {
-        st.colorslide -= 1;
+        config.colorslide -= 1;
       }
       if (hotKey.Key.Equals(Key.Right)) {
-        st.colorslide += 1;
+        config.colorslide += 1;
       }
-      st.colorslide = (st.colorslide + 4 + 16) % 16 - 4;
+      config.colorslide = (config.colorslide + 4 + 16) % 16 - 4;
       if (hotKey.Key.Equals(Key.Up)) {
-        st.sat = Math.Min(st.sat + 1, 2);
+        config.sat = Math.Min(config.sat + 1, 2);
       }
       if (hotKey.Key.Equals(Key.Down)) {
-        st.sat = Math.Max(st.sat - 1, -2);
+        config.sat = Math.Max(config.sat - 1, -2);
       }
       st.forceUpdate();
     }
 
     private void button_Click(object sender, RoutedEventArgs e) {
-      st.controlLights = (bool)checkBox.IsChecked;
+      config.controlLights = (bool)checkBox.IsChecked;
       dropQuietS.IsEnabled = !dropQuietS.IsEnabled;
       dropChangeS.IsEnabled = !dropChangeS.IsEnabled;
       kickQuietS.IsEnabled = !kickQuietS.IsEnabled;
@@ -86,34 +92,41 @@ namespace Spectrum {
     }
     private void HandleCheck(object sender, RoutedEventArgs e) {
       if (boxInitialized)
-        set("controlLights", 1);
+        config.controlLights = true;
     }
 
     private void HandleUnchecked(object sender, RoutedEventArgs e) {
-      set("controlLights", 0);
+      config.controlLights = true;
     }
+
     private void set(String name, double val) {
-      st.updateConstants(name, (float)val);
       if (name == "dropQuietS") {
         dropQuietL.Content = val.ToString("F3");
+        config.dropQ = (float)val;
       }
       if (name == "dropChangeS") {
         dropChangeL.Content = val.ToString("F3");
+        config.dropT = (float)val;
       }
       if (name == "kickQuietS") {
         kickQuietL.Content = val.ToString("F3");
+        config.kickQ = (float)val;
       }
       if (name == "kickChangeS") {
         kickChangeL.Content = val.ToString("F3");
+        config.kickT = (float)val;
       }
       if (name == "snareQuietS") {
         snareQuietL.Content = val.ToString("F3");
+        config.snareQ = (float)val;
       }
       if (name == "snareChangeS") {
         snareChangeL.Content = val.ToString("F3");
+        config.snareT = (float)val;
       }
       if (name == "peakChangeS") {
         peakChangeL.Content = val.ToString("F3");
+        config.peakC = (float)val;
       }
     }
 

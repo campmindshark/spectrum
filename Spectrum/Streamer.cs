@@ -4,38 +4,38 @@ using System.Windows.Controls;
 using System.Threading;
 using Un4seen.Bass;
 using Un4seen.BassWasapi;
+using Spectrum.Base;
 
 namespace Spectrum {
+
   public class Streamer {
+
+    private Configuration config;
+    // Reference to the visualizer that receives the processed signal
+    public Visualizer visualizer;
+    // Reference to the ComboBox containing possible audio input devices
+    private ComboBox devicelist;
+    // Index identifying the audio input device
+    private int devindex;
+
+    // If initialized, the input and visualization threads are running
+    private bool initialized = false;
+    // Handle for the audio input thread
     private Thread audioProcessingThread;
+    // Handle for the light updating thread
     private Thread lightUpdatingThread;
 
-    private WASAPIPROC process; // more details in MagicIncantations()
-    public Visualizer visualizer;
-    private ComboBox devicelist;
-    private bool initialized = false;
-    public bool controlLights = true;
-    private int devindex;
-    private float peakC = .800f;
-    private float dropQ = .025f;
-    private float dropT = .075f;
-    private float kickQ = 1;
-    private float kickT = 0;
-    private float snareQ = 1;
-    private float snareT = .5f;
-    public bool lightsOff = false;
-    public bool redAlert = false;
-    public int brighten = 0;
-    public int colorslide = 0;
-    public int sat = 0;
+    // Needed for memory management reasons. More details in MagicIncantations()
+    private WASAPIPROC process;
 
-    public Streamer(ComboBox devicelist) {
-      this.MagicIncantations();
-
+    public Streamer(ComboBox devicelist, Configuration config) {
       this.devicelist = devicelist;
+      this.config = config;
+
+      this.MagicIncantations();
       this.PopulateDeviceList();
 
-      this.visualizer = new Visualizer();
+      this.visualizer = new Visualizer(config);
     }
 
     /**
@@ -109,7 +109,7 @@ namespace Spectrum {
         return;
       }
       this.devicelist.IsEnabled = false;
-      this.visualizer.init(controlLights);
+      this.visualizer.init(this.config.controlLights);
       this.audioProcessingThread = new Thread(AudioProcessingThread);
       this.audioProcessingThread.Start();
       this.lightUpdatingThread = new Thread(LightProcessingThread);
@@ -118,24 +118,22 @@ namespace Spectrum {
 
     private void AudioProcessingThread() {
       BassWasapi.BASS_WASAPI_Start();
+      float[] fft = new float[8192];
       while (true) {
+        if (
+          !this.config.controlLights ||
+          this.config.lightsOff ||
+          this.config.redAlert
+        ) {
+          continue;
+        }
         // get fft data. Return value is -1 on error
         // type: 1/8192 of the channel sample rate (here, 44100 hz; so the bin size is roughly 2.69 Hz)
-        float[] fft = new float[8192];
-        int ret = BassWasapi.BASS_WASAPI_GetData(fft, (int)BASSData.BASS_DATA_FFT16384);
-        if (controlLights && !lightsOff && !redAlert) {
-          this.visualizer.process(
-            fft,
-            BassWasapi.BASS_WASAPI_GetDeviceLevel(devindex, -1),
-            peakC,
-            dropQ,
-            dropT,
-            kickQ,
-            kickT,
-            snareQ,
-            snareT
-          );
-        }
+        BassWasapi.BASS_WASAPI_GetData(fft, (int)BASSData.BASS_DATA_FFT16384);
+        this.visualizer.process(
+          fft,
+          BassWasapi.BASS_WASAPI_GetDeviceLevel(devindex, -1)
+        );
       }
     }
 
@@ -148,21 +146,24 @@ namespace Spectrum {
     }
 
     public void forceUpdate() {
-      bool change = (visualizer.lightsOff != lightsOff) || (visualizer.redAlert != redAlert)
-          || (visualizer.controlLights != controlLights) || (visualizer.brighten != brighten) ||
-          (visualizer.colorslide != colorslide) || (visualizer.sat != sat);
+      bool change = visualizer.lightsOff != this.config.lightsOff
+        || visualizer.redAlert != this.config.redAlert
+        || visualizer.controlLights != this.config.controlLights
+        || visualizer.brighten != this.config.brighten
+        || visualizer.colorslide != this.config.colorslide
+        || visualizer.sat != this.config.sat;
       if (visualizer.controlLights) {
         visualizer.needupdate = 20;
       } else if (change) {
         visualizer.needupdate = 10;
       }
-      visualizer.lightsOff = lightsOff;
-      visualizer.redAlert = redAlert;
-      visualizer.brighten = brighten;
-      visualizer.colorslide = colorslide;
-      visualizer.controlLights = controlLights;
-      visualizer.sat = sat;
-      if (!controlLights) {
+      visualizer.lightsOff = this.config.lightsOff;
+      visualizer.redAlert = this.config.redAlert;
+      visualizer.brighten = this.config.brighten;
+      visualizer.colorslide = this.config.colorslide;
+      visualizer.controlLights = this.config.controlLights;
+      visualizer.sat = this.config.sat;
+      if (!this.config.controlLights) {
         visualizer.silentMode = false;
       }
       visualizer.updateHues();
@@ -171,37 +172,6 @@ namespace Spectrum {
     // WASAPI callback, required for continuous recording
     private int Process(IntPtr buffer, int length, IntPtr user) {
       return 1;
-    }
-
-    public void updateConstants(String name, float val) {
-      if (name == "controlLights") {
-        if (val == 1) {
-          controlLights = true;
-        } else {
-          controlLights = false;
-        }
-      }
-      if (name == "peakChangeS") {
-        peakC = val;
-      }
-      if (name == "dropQuietS") {
-        dropQ = val;
-      }
-      if (name == "dropChangeS") {
-        dropT = val;
-      }
-      if (name == "kickQuietS") {
-        kickQ = val;
-      }
-      if (name == "kickChangeS") {
-        kickT = val;
-      }
-      if (name == "snareQuietS") {
-        snareQ = val;
-      }
-      if (name == "snareChangeS") {
-        snareT = val;
-      }
     }
 
     public void CleanUp() {

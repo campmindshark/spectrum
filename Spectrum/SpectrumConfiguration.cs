@@ -1,0 +1,29 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Spectrum.Base;
+
+namespace Spectrum {
+
+  class SpectrumConfiguration : Configuration {
+
+    public bool lightsOff { get; set; } = false;
+    public bool redAlert { get; set; } = false;
+    public bool controlLights { get; set; } = true;
+    public int brighten { get; set; } = 0;
+    public int colorslide { get; set; } = 0;
+    public int sat { get; set; } = 0;
+
+    public float peakC { get; set; } = .800f;
+    public float dropQ { get; set; } = .025f;
+    public float dropT { get; set; } = .075f;
+    public float kickQ { get; set; } = 1;
+    public float kickT { get; set; } = 0;
+    public float snareQ { get; set; } = 1;
+    public float snareT { get; set; } = .5f;
+
+  }
+
+}

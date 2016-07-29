@@ -2,9 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using Spectrum.LEDs;
+using Spectrum.Base;
 
 namespace Spectrum {
   public class Visualizer {
+
+    private Configuration config;
 
     private List<int> lights;
     private Random rnd;
@@ -55,7 +58,9 @@ namespace Spectrum {
 
     private CartesianTeensyOutput teensy;
 
-    public Visualizer() {
+    public Visualizer(Configuration config) {
+      this.config = config;
+
       this.teensy = new CartesianTeensyOutput("COM3", 30, 5);
       
       rnd = new Random();
@@ -92,7 +97,7 @@ namespace Spectrum {
     }
 
     // music pattern detection
-    public void process(float[] spectrum, float level, float peakChange, float dropQuiet, float dropThreshold, float kickQuiet, float kickChange, float snareQuiet, float snareChange) {
+    public void process(float[] spectrum, float level) {
       vol = level;
       processCount++;
       processCount = processCount % historyLength;
@@ -124,9 +129,9 @@ namespace Spectrum {
               dropPossible = false;
             }
           }
-          if (current >= history.Max() && current > avg + peakChange * sd) {
+          if (current >= history.Max() && current > avg + this.config.peakC * sd) {
             // was: avg < .08
-            if (current > 3 * avg && avg < dropQuiet && change > dropThreshold && current > .26) {
+            if (current > 3 * avg && avg < this.config.dropQ && change > this.config.dropT && current > .26) {
               System.Diagnostics.Debug.WriteLine(probe(band, current, avg, sd, change));
               dropPossible = true;
             }
@@ -141,7 +146,7 @@ namespace Spectrum {
             kickCounted = false;
           }
           // was: avg < .1, current > avg + 2 * sd
-          if (current > avg + kickChange * sd && avg < kickQuiet && current > .001) // !kickcounted here
+          if (current > avg + this.config.kickT * sd && avg < this.config.kickQ && current > .001) // !kickcounted here
           {
             if (totalMax) {
               System.Diagnostics.Debug.WriteLine(probe(band, current, avg, sd, change));
@@ -154,7 +159,7 @@ namespace Spectrum {
           if (current < avg || change < 0) {
             snareCounted = false;
           }
-          if (current > avg + snareChange * sd && avg < snareQuiet && current > .001) // !snarecounted here
+          if (current > avg + this.config.snareT * sd && avg < this.config.snareQ && current > .001) // !snarecounted here
           {
             if (totalMax && current > .001) {
               System.Diagnostics.Debug.WriteLine(probe(band, current, avg, sd, change));

@@ -60,6 +60,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="SpectrumConfiguration.cs" />
     <Compile Include="Hotkey.cs" />
     <Compile Include="Visualizer.cs" />
     <Page Include="MainWindow.xaml">
@@ -118,6 +119,10 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Base\Base.csproj">
+      <Project>{5258999b-1e36-4a6c-9674-23c259dad81e}</Project>
+      <Name>Base</Name>
+    </ProjectReference>
     <ProjectReference Include="..\LEDs\LEDs.csproj">
       <Project>{872a880b-ddf1-47c8-ba70-f1aecef2546c}</Project>
       <Name>LEDs</Name>
