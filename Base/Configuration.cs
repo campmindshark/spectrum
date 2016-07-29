@@ -32,6 +32,18 @@ namespace Spectrum.Base {
     float snareQ { get; set; }
     float snareT { get; set; }
 
+    // The URL at which the Hue hub can be accessed
+    string hueURL { get; set; }
+    // The list of IDs of Hue bulbs, from left to right
+    int[] hueIndices { get; set; }
+
+    // The USB port where the Teensy is located
+    string teensyUSBPort { get; set; }
+    // Parameters to SquareTeensyOutput
+    int teensyRowLength { get; set; }
+    int teensyRowsPerStrip { get; set; }
+
+
   }
 
 }

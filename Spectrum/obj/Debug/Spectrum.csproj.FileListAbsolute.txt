@@ -21,3 +21,7 @@ C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\LEDs.dll
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Base.dll
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\LEDs.pdb
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Base.pdb
+C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Hues.dll
+C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Newtonsoft.Json.dll
+C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Hues.pdb
+C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Newtonsoft.Json.xml

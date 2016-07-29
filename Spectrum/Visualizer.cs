@@ -3,15 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using Spectrum.LEDs;
 using Spectrum.Base;
+using Spectrum.Hues;
 
 namespace Spectrum {
   public class Visualizer {
 
     private Configuration config;
+    private HueOutput hue;
+    private CartesianTeensyOutput teensy;
 
-    private List<int> lights;
     private Random rnd;
-    private String hubaddress = "http://192.168.1.26/api/161d04c425fa45e293386cf241a26bf/";
 
     // FFT analysis dicts
     private Dictionary<String, double[]> bins;
@@ -48,12 +49,10 @@ namespace Spectrum {
     public int needupdate = 0;
     private float vol = 0;
 
-    private CartesianTeensyOutput teensy;
-
     public Visualizer(Configuration config) {
       this.config = config;
-
-      this.teensy = new CartesianTeensyOutput("COM3", 30, 5);
+      this.hue = new HueOutput(config);
+      this.teensy = new CartesianTeensyOutput(config);
       
       rnd = new Random();
       bins = new Dictionary<String, double[]>();
@@ -71,21 +70,16 @@ namespace Spectrum {
         energyLevels.Add(band, 0);
         energyHistory.Add(band, Enumerable.Repeat((float)0, historyLength).ToArray());
       }
-      lights = new List<int>(); // light IDs in left to right order
-      lights.Add(2);
-      lights.Add(1);
-      lights.Add(4);
-      lights.Add(5);
-      lights.Add(6);
     }
 
     public void CleanUp() {
+      this.hue.Enabled = false;
       this.teensy.Enabled = false;
     }
 
-    public void init(bool controlLights) {
+    public void Start() {
+      this.hue.Enabled = true;
       this.teensy.Enabled = true;
-      this.controlLights = controlLights;
     }
 
     // music pattern detection
@@ -182,7 +176,7 @@ namespace Spectrum {
           if (!silentMode || silentModeAlternatingFlag) {
             silentModeHueIndex = (silentModeHueIndex + 10000) % 65535;
             silentModeLightIndex = (silentModeLightIndex + 1) % 5;
-            new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[silentModeLightIndex])), "PUT", silent(silentModeHueIndex));
+            this.hue.SendLightCommand(silentModeLightIndex, silent(silentModeHueIndex));
             needupdate--;
             System.Diagnostics.Debug.WriteLine("Updating.." + needupdate);
             System.Diagnostics.Debug.WriteLine("silentMode.." + silentMode);
@@ -191,11 +185,29 @@ namespace Spectrum {
       } else if (drop) {
         if (dropDuration == 0) {
           System.Diagnostics.Debug.WriteLine("dropOn");
-          new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + "groups/0/action/"), "PUT", dropEffect(true));
+          this.hue.SendGroupCommand(
+            0,
+            new HueOutput.HueCommand() {
+              /*on = true,
+              brightness = 254,
+              hue = rnd.Next(1, 65535),
+              saturation = 254,
+              transitiontime = 0,
+              effect = "colorloop",*/
+              alert = "select",
+            }
+          );
         }
         // was: dropDuration == 1
         else if (dropDuration == 4) {
-          //new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + "groups/0/action/"), "PUT", dropEffect(false));
+          /*this.hue.SendGroupCommand(
+            0,
+            new HueOutput.HueCommand() {
+              brightness = 1,
+              effect = "colorloop",
+              transitiontime = 2,
+            }
+          );*/
         } else if (dropDuration > 8) {
           System.Diagnostics.Debug.WriteLine("dropOff");
           drop = false;
@@ -204,30 +216,80 @@ namespace Spectrum {
         dropDuration++;
       } else if (kickPending) {
         if (lightPending) {
-          new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[target])), "PUT", kickEffect(false));
+          this.hue.SendLightCommand(
+            target,
+            new HueOutput.HueCommand() {
+              on = true,
+              brightness = 1,
+              hue = 300,
+              saturation = 254,
+              transitiontime = 2,
+              alert = "none",
+            }
+          );
           lightPending = false;
           kickPending = false;
         } else {
           lightPending = true;
           System.Diagnostics.Debug.WriteLine("kickOn");
-          new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[target])), "PUT", kickEffect(true));
+          this.hue.SendLightCommand(
+            target,
+            new HueOutput.HueCommand() {
+              on = true,
+              brightness = 254,
+              hue = 300,
+              saturation = 254,
+              transitiontime = 1,
+              alert = "none",
+            }
+          );
         }
       } else if (snarePending) // second highest priority: snare hit (?)
         {
         if (lightPending) {
-          new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[target])), "PUT", snareEffect(false));
+          this.hue.SendLightCommand(
+            target,
+            new HueOutput.HueCommand() {
+              on = true,
+              brightness = 1,
+              hue = 43000,
+              saturation = 254,
+              transitiontime = 2,
+              alert = "none",
+            }
+          );
           snarePending = false;
           lightPending = false;
         } else {
           lightPending = true;
           System.Diagnostics.Debug.WriteLine("snareOn");
-          new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[target])), "PUT", snareEffect(true));
+          this.hue.SendLightCommand(
+            target,
+            new HueOutput.HueCommand() {
+              on = true,
+              brightness = 254,
+              hue = 43000,
+              saturation = 254,
+              transitiontime = 1,
+              alert = "none",
+            }
+          );
         }
       } else {
         idleCounter++;
         // was: idlecounter > 4
         if (idleCounter > 2) {
-          new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[target])), "PUT", idle());
+          this.hue.SendLightCommand(
+            target,
+            new HueOutput.HueCommand() {
+              on = false,
+              brightness = 0,
+              saturation = 254,
+              transitiontime = 20,
+              alert = "none",
+              effect = "colorloop",
+            }
+          );
           idleCounter = 0;
         }
       }
@@ -288,89 +350,48 @@ namespace Spectrum {
       double[] window = bins[bin];
       return freqToFFTBin(window[1]) - freqToFFTBin(window[0]);
     }
+
     private String probe(String band, float current, float avg, float sd, float change) {
       return "Band:" + band + " cur:" + Math.Round(current * 10000) / 10000 + " avg:" + Math.Round(avg * 10000) / 10000 + " sd:" + Math.Round(sd * 10000) / 10000 + " delta:" + Math.Round(change * 10000) / 10000;
     }
     private String laddressHelper(int address) {
       return "lights/" + address + "/state/";
     }
-    private String idle() {
-      return jsonMake(0, -1, 254, 20, "none");
-    }
-    private String silent(int index) {
+
+    private HueOutput.HueCommand silent(int index) {
       if (this.config.lightsOff) {
-        return "{\"on\": false}";
+        return new HueOutput.HueCommand() {
+          on = false,
+        };
       }
       if (this.config.redAlert) {
-        return "{\"on\": true,\"hue\":1,\"effect\":\"none\",\"sat\":254,\"bri\":1}";
+        return new HueOutput.HueCommand() {
+          on = true,
+          brightness = 1,
+          hue = 1,
+          saturation = 254,
+          effect = "none",
+        };
       } else if (this.config.controlLights) {
-        return "{\"on\": true,\"hue\":" + (index + 1) + ",\"effect\":\"none\",\"bri\":1,\"sat\":" + Math.Min(silentModeSatIndex, 254) + ",\"transitiontime\":12}";
+        return new HueOutput.HueCommand() {
+          on = true,
+          brightness = 1,
+          hue = index + 1,
+          saturation = Math.Min(silentModeSatIndex, 254),
+          transitiontime = 12,
+          effect = "none",
+        };
       } else {
         int newbri = Math.Min(Math.Max(254 + 64 * this.config.brighten, 1), 254);
         int newsat = Math.Min(Math.Max(126 + 63 * this.config.sat, 0), 254);
         int newhue = Math.Min(Math.Max(16384 + this.config.colorslide * 4096, 0), 65535);
-        return "{\"on\": true,\"hue\":" + newhue + ",\"sat\":" + newsat + ",\"bri\":" + newbri + ",\"effect\":\"none\"}";
-      }
-    }
-
-    private String jsonMake(int bri, int hue, int sat, int transitiontime, String alert) {
-      // bri: 1-254 brightness, -1 to do nothing, 0 to turn off
-      // hue: 0-65535 hue, actual color reproduction hardware-dependent
-      // sat: 0-254 saturation, 0 white
-      // transitiontime: ms, -1 to use defaults
-      // alert: none - no effect
-      //        select - a breath cycle (aka flash)
-      //        lselect - breath cycles for 15 seconds
-      String result = "{";
-      if (bri == 0) {
-        result += "\"on\":" + "false" + ",";
-      } else {
-        result += "\"on\":" + "true" + ",";
-      }
-      if (bri != -1) {
-        result += "\"bri\":" + bri + ",";
-      }
-      if (hue != -1) {
-        result += "\"hue\":" + hue + ",";
-      }
-      if (sat != -1) {
-        result += "\"sat\":" + sat + ",";
-      }
-      if (transitiontime != -1) {
-        result += "\"transitiontime\":" + transitiontime + ",";
-      }
-      if (alert != "") {
-        result += "\"alert\":\"" + alert + "\",";
-      }
-      if (bri == 0) {
-        result += "\"effect\":\"colorloop\",";
-      }
-      result = result.TrimEnd(',');
-      result += "}";
-      return result;
-    }
-    private String dropEffect(bool dropOn) {
-      if (dropOn) {
-        int dropColor = rnd.Next(1, 65535);
-        //return "{\"on\": true, \"hue\":" + dropColor + ",\"bri\": 254, \"effect\":\"colorloop\",\"sat\":254,\"transitiontime\":0, \"alert\":\"select\"}";
-        return "{\"alert\":\"select\"}";
-      } else {
-        return "{\"bri\":1,\"effect\":\"colorloop\",\"transitiontime\":2}";
-      }
-    }
-    private String kickEffect(bool on) {
-      if (on) {// used to be hue 300, now -1
-        return jsonMake(254, 300, 254, 1, "none");
-      } else {
-        return jsonMake(1, 300, 254, 2, "none");
-      }
-    }
-    private String snareEffect(bool on) {
-      if (on) {
-        // used to be hue 43000
-        return jsonMake(254, 43000, 254, 1, "none");
-      } else {
-        return jsonMake(1, 43000, 254, 2, "none");
+        return new HueOutput.HueCommand() {
+          on = true,
+          brightness = newbri,
+          hue = newhue,
+          saturation = newsat,
+          effect = "none",
+        };
       }
     }
   }

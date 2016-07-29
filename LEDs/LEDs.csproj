@@ -43,7 +43,7 @@
     <Compile Include="MultiTeensyOutput.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SimpleTeensyOutput.cs" />
-    <Compile Include="SquareTeensyOutput.cs" />
+    <Compile Include="CartesianTeensyOutput.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Base\Base.csproj">

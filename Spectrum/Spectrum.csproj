@@ -123,6 +123,10 @@
       <Project>{5258999b-1e36-4a6c-9674-23c259dad81e}</Project>
       <Name>Base</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Hues\Hues.csproj">
+      <Project>{5a363af7-650a-4a12-86bb-facc73a6def2}</Project>
+      <Name>Hues</Name>
+    </ProjectReference>
     <ProjectReference Include="..\LEDs\LEDs.csproj">
       <Project>{872a880b-ddf1-47c8-ba70-f1aecef2546c}</Project>
       <Name>LEDs</Name>

@@ -109,7 +109,7 @@ namespace Spectrum {
         return;
       }
       this.devicelist.IsEnabled = false;
-      this.visualizer.init(this.config.controlLights);
+      this.visualizer.Start();
       this.audioProcessingThread = new Thread(AudioProcessingThread);
       this.audioProcessingThread.Start();
       this.lightUpdatingThread = new Thread(LightProcessingThread);
