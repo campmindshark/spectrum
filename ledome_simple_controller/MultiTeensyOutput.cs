@@ -3,31 +3,31 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Spectrum.Base;
 
-namespace LEDome {
+namespace Spectrum.LEDs {
 
   /**
-   * MultiAPI is a thin layer that holds multiple SimpleAPIs. The intent is to
-   * expose a single API to multiple Teensies.
+   * MultiTeensyOutput is a thin layer that holds multiple SimpleTeensyOutputs.
+   * The intent is to expose a single API to multiple Teensies. Note that when
+   * enabled, one output thread exists for each Teensy.
    */
-  public class MultiAPI {
+  public class MultiTeensyOutput : Output {
 
-    private SimpleAPI[] teensies;
+    private SimpleTeensyOutput[] teensies;
     private int? teensyLength;
-    private bool[] needsFlushing;
 
     /**
      * The only parameter is the names of the USB ports corresponding to each
-     * Teensy you want this MultiAPI to control. Since this constructor does not
-     * specify a teensyLength, you will not be able to use the setPixel that
-     * takes only a single LED index.
+     * Teensy you want this MultiTeensyOutput to control. Since this constructor
+     * does not specify a teensyLength, you will not be able to use the setPixel
+     * that takes only a single LED index.
      */
-    public MultiAPI(string[] portNames) {
-      this.teensies = new SimpleAPI[portNames.Length];
+    public MultiTeensyOutput(string[] portNames) {
+      this.teensies = new SimpleTeensyOutput[portNames.Length];
       for (int i = 0; i < portNames.Length; i++) {
-        this.teensies[i] = new SimpleAPI(portNames[i]);
+        this.teensies[i] = new SimpleTeensyOutput(portNames[i]);
       }
-      this.needsFlushing = new bool[portNames.Length];
     }
 
     /**
@@ -38,31 +38,36 @@ namespace LEDome {
      * setPixel method that takes both Teensy index and an LED index). To use
      * this setPixel method, Each Teensy must address the same number of LEDs. 
      */
-    public MultiAPI(
+    public MultiTeensyOutput(
       string[] portNames,
       int teensyLength
     ) : this(portNames) {
       this.teensyLength = teensyLength;
     }
 
-    public void Open() {
-      foreach (SimpleAPI teensy in this.teensies) {
-        teensy.Open();
+    private bool enabled;
+    public bool Enabled {
+      get {
+        lock (this.teensies) {
+          return this.enabled;
+        }
       }
-    }
-
-    public void Close() {
-      foreach (SimpleAPI teensy in this.teensies) {
-        teensy.Close();
+      set {
+        lock (this.teensies) {
+          if (this.enabled == value) {
+            return;
+          }
+          foreach (SimpleTeensyOutput teensy in this.teensies) {
+            teensy.Enabled = value;
+          }
+          this.enabled = value;
+        }
       }
     }
 
     public void Flush() {
-      for (int i = 0; i < this.teensies.Length; i++) {
-        if (!this.needsFlushing[i]) {
-          continue;
-        }
-        this.teensies[i].Flush();
+      foreach (SimpleTeensyOutput teensy in this.teensies) {
+        teensy.Flush();
       }
     }
 
@@ -81,7 +86,6 @@ namespace LEDome {
 
     public void SetPixel(int teensyIndex, int subPixelIndex, int color) {
       this.teensies[teensyIndex].SetPixel(subPixelIndex, color);
-      this.needsFlushing[teensyIndex] = true;
     }
 
   }

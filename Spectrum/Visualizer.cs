@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using LEDome;
+using Spectrum.LEDs;
 
 namespace Spectrum {
   public class Visualizer {
@@ -53,12 +53,10 @@ namespace Spectrum {
     public int needupdate = 0;
     private float vol = 0;
 
-    private SquareAPI api;
+    private SquareTeensyOutput teensy;
 
     public Visualizer() {
-      
-      /*this.api = new SquareAPI("COM3", 30, 5);
-      this.api.Open();*/
+      this.teensy = new SquareTeensyOutput("COM3", 30, 5);
       
       rnd = new Random();
       bins = new Dictionary<String, double[]>();
@@ -84,7 +82,12 @@ namespace Spectrum {
       lights.Add(6);
     }
 
+    public void CleanUp() {
+      this.teensy.Enabled = false;
+    }
+
     public void init(bool controlLights) {
+      this.teensy.Enabled = true;
       this.controlLights = controlLights;
     }
 
@@ -179,7 +182,7 @@ namespace Spectrum {
         if (silentMode || needupdate > 0) // not idling & nonzero lights need to be updated.
         {
           silentModeAlternatingFlag = !silentModeAlternatingFlag;
-          if (!silentMode || (silentMode && silentModeAlternatingFlag) || !controlLights || lightsOff || redAlert) {
+          if (!silentMode || silentModeAlternatingFlag) {
             silentModeHueIndex = (silentModeHueIndex + 10000) % 65535;
             silentModeLightIndex = (silentModeLightIndex + 1) % 5;
             new System.Net.WebClient().UploadStringAsync(new Uri(hubaddress + laddressHelper(lights[silentModeLightIndex])), "PUT", silent(silentModeHueIndex));
@@ -233,14 +236,14 @@ namespace Spectrum {
       }
       postUpdate();
       
-      /*int numColumnsToLight = (int)(vol * 30);
+      int numColumnsToLight = (int)(vol * 30);
       for (int j = 0; j < 40; j++) {
         for (int i = 0; i < 30; i++) {
-          int color = numColumnsToLight > i ? 0xFFFFFF : 0x000000;
-          this.api.SetPixel(i, j, color);
+          int color = numColumnsToLight > i ? 0x111111 : 0x000000;
+          this.teensy.SetPixel(i, j, color);
         }
       }
-      this.api.Flush();*/
+      this.teensy.Flush();
       
       // run every tick of the timer
       if (silence) {

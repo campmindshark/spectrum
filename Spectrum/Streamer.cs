@@ -205,10 +205,15 @@ namespace Spectrum {
     }
 
     public void CleanUp() {
-      this.audioProcessingThread.Abort();
-      this.lightUpdatingThread.Abort();
-      this.audioProcessingThread.Join();
-      this.lightUpdatingThread.Join();
+      this.visualizer.CleanUp();
+      if (this.audioProcessingThread != null) {
+        this.audioProcessingThread.Abort();
+        this.audioProcessingThread.Join();
+      }
+      if (this.lightUpdatingThread != null) {
+        this.lightUpdatingThread.Abort();
+        this.lightUpdatingThread.Join();
+      }
       BassWasapi.BASS_WASAPI_Free();
       Bass.BASS_Free();
       this.devicelist.IsEnabled = true;

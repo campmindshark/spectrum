@@ -104,9 +104,9 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ledome_simple_controller\LEDome.csproj">
+    <ProjectReference Include="..\ledome_simple_controller\LEDs.csproj">
       <Project>{a1afd82f-30b1-40e6-8595-05e80fc1e3d2}</Project>
-      <Name>LEDome</Name>
+      <Name>LEDs</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
