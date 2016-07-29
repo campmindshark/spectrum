@@ -5,7 +5,7 @@
    * Cartestian coordinate system for a LED grid that is arrayed in a particular
    * back-and-forth grid structure (see the drawing in the constructor).
    */
-  public class SquareTeensyOutput {
+  public class CartesianTeensyOutput {
 
     private SimpleTeensyOutput output;
     private int rowLength;
@@ -23,7 +23,7 @@
      * In this set up, we have two total strips composed of three rows each.
      * The rowLength is 5 and rowsPerStrip is 3.
      */
-    public SquareTeensyOutput(string portName, int rowLength, int rowsPerStrip) {
+    public CartesianTeensyOutput(string portName, int rowLength, int rowsPerStrip) {
       this.output = new SimpleTeensyOutput(portName);
       this.rowLength = rowLength;
       this.rowsPerStrip = rowsPerStrip;

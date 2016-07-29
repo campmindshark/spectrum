@@ -53,10 +53,10 @@ namespace Spectrum {
     public int needupdate = 0;
     private float vol = 0;
 
-    private SquareTeensyOutput teensy;
+    private CartesianTeensyOutput teensy;
 
     public Visualizer() {
-      this.teensy = new SquareTeensyOutput("COM3", 30, 5);
+      this.teensy = new CartesianTeensyOutput("COM3", 30, 5);
       
       rnd = new Random();
       bins = new Dictionary<String, double[]>();
