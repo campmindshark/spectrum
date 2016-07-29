@@ -1,0 +1,7 @@
+C:\Users\Ashoat\Dropbox\src\spectrum\LEDs\bin\Debug\LEDs.dll
+C:\Users\Ashoat\Dropbox\src\spectrum\LEDs\bin\Debug\LEDs.pdb
+C:\Users\Ashoat\Dropbox\src\spectrum\LEDs\bin\Debug\Base.dll
+C:\Users\Ashoat\Dropbox\src\spectrum\LEDs\bin\Debug\Base.pdb
+C:\Users\Ashoat\Dropbox\src\spectrum\LEDs\obj\Debug\LEDs.csprojResolveAssemblyReference.cache
+C:\Users\Ashoat\Dropbox\src\spectrum\LEDs\obj\Debug\LEDs.dll
+C:\Users\Ashoat\Dropbox\src\spectrum\LEDs\obj\Debug\LEDs.pdb

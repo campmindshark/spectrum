@@ -104,12 +104,6 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ledome_simple_controller\LEDs.csproj">
-      <Project>{a1afd82f-30b1-40e6-8595-05e80fc1e3d2}</Project>
-      <Name>LEDs</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="bass.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -122,6 +116,12 @@
     <Content Include="basswasapi.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LEDs\LEDs.csproj">
+      <Project>{872a880b-ddf1-47c8-ba70-f1aecef2546c}</Project>
+      <Name>LEDs</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

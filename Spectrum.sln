@@ -5,15 +5,11 @@ VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Spectrum", "Spectrum\Spectrum.csproj", "{C485F7F4-1DB1-4AF4-859B-F8CAF0D19D09}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LEDs", "ledome_simple_controller\LEDs.csproj", "{A1AFD82F-30B1-40E6-8595-05E80FC1E3D2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Base", "Base\Base.csproj", "{5258999B-1E36-4A6C-9674-23C259DAD81E}"
 EndProject
-Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Base", "SpectrumBase\Base.shproj", "{3BCB62B2-0FF6-429F-906F-C7474E72AAA8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LEDs", "LEDs\LEDs.csproj", "{872A880B-DDF1-47C8-BA70-F1AECEF2546C}"
 EndProject
 Global
-	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		SpectrumBase\SpectrumBase.projitems*{a1afd82f-30b1-40e6-8595-05e80fc1e3d2}*SharedItemsImports = 4
-		SpectrumBase\SpectrumBase.projitems*{3bcb62b2-0ff6-429f-906f-c7474e72aaa8}*SharedItemsImports = 13
-	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
@@ -23,10 +19,14 @@ Global
 		{C485F7F4-1DB1-4AF4-859B-F8CAF0D19D09}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C485F7F4-1DB1-4AF4-859B-F8CAF0D19D09}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C485F7F4-1DB1-4AF4-859B-F8CAF0D19D09}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A1AFD82F-30B1-40E6-8595-05E80FC1E3D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A1AFD82F-30B1-40E6-8595-05E80FC1E3D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A1AFD82F-30B1-40E6-8595-05E80FC1E3D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A1AFD82F-30B1-40E6-8595-05E80FC1E3D2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5258999B-1E36-4A6C-9674-23C259DAD81E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5258999B-1E36-4A6C-9674-23C259DAD81E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5258999B-1E36-4A6C-9674-23C259DAD81E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5258999B-1E36-4A6C-9674-23C259DAD81E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{872A880B-DDF1-47C8-BA70-F1AECEF2546C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{872A880B-DDF1-47C8-BA70-F1AECEF2546C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{872A880B-DDF1-47C8-BA70-F1AECEF2546C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{872A880B-DDF1-47C8-BA70-F1AECEF2546C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
