@@ -63,7 +63,6 @@ namespace Spectrum {
       if (hotKey.Key.Equals(Key.Down)) {
         config.sat = Math.Max(config.sat - 1, -2);
       }
-      st.forceUpdate();
     }
 
     private void button_Click(object sender, RoutedEventArgs e) {

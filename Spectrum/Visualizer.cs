@@ -13,11 +13,6 @@ namespace Spectrum {
     private Random rnd;
     private String hubaddress = "http://192.168.1.26/api/161d04c425fa45e293386cf241a26bf/";
 
-    // state variables
-    public bool controlLights = true;
-    public bool lightsOff = false;
-    public bool redAlert = false;
-
     // FFT analysis dicts
     private Dictionary<String, double[]> bins;
     private Dictionary<String, float[]> energyHistory;
@@ -50,9 +45,6 @@ namespace Spectrum {
     private bool dropPossible = false;
     private int dropDuration = 0;
     private int target = 0;
-    public int brighten = 0;
-    public int colorslide = 0;
-    public int sat = 0;
     public int needupdate = 0;
     private float vol = 0;
 
@@ -183,7 +175,7 @@ namespace Spectrum {
         snarePending = snarePending && totalMax;
         target = rnd.Next(5);
       }
-      if (silentMode || !controlLights || lightsOff || redAlert) {
+      if (silentMode || !this.config.controlLights || this.config.lightsOff || this.config.redAlert) {
         if (silentMode || needupdate > 0) // not idling & nonzero lights need to be updated.
         {
           silentModeAlternatingFlag = !silentModeAlternatingFlag;
@@ -257,7 +249,7 @@ namespace Spectrum {
       System.Diagnostics.Debug.WriteLine(vol);
     }
     private void postUpdate() {
-      if (controlLights && silence && silentCounter > 40 && !silentMode) {
+      if (this.config.controlLights && silence && silentCounter > 40 && !silentMode) {
         System.Diagnostics.Debug.WriteLine("Silence detected.");
         silentMode = true;
       } else if (silence) {
@@ -306,17 +298,17 @@ namespace Spectrum {
       return jsonMake(0, -1, 254, 20, "none");
     }
     private String silent(int index) {
-      if (lightsOff) {
+      if (this.config.lightsOff) {
         return "{\"on\": false}";
       }
-      if (redAlert) {
+      if (this.config.redAlert) {
         return "{\"on\": true,\"hue\":1,\"effect\":\"none\",\"sat\":254,\"bri\":1}";
-      } else if (controlLights) {
+      } else if (this.config.controlLights) {
         return "{\"on\": true,\"hue\":" + (index + 1) + ",\"effect\":\"none\",\"bri\":1,\"sat\":" + Math.Min(silentModeSatIndex, 254) + ",\"transitiontime\":12}";
       } else {
-        int newbri = Math.Min(Math.Max(254 + 64 * brighten, 1), 254);
-        int newsat = Math.Min(Math.Max(126 + 63 * sat, 0), 254);
-        int newhue = Math.Min(Math.Max(16384 + colorslide * 4096, 0), 65535);
+        int newbri = Math.Min(Math.Max(254 + 64 * this.config.brighten, 1), 254);
+        int newsat = Math.Min(Math.Max(126 + 63 * this.config.sat, 0), 254);
+        int newhue = Math.Min(Math.Max(16384 + this.config.colorslide * 4096, 0), 65535);
         return "{\"on\": true,\"hue\":" + newhue + ",\"sat\":" + newsat + ",\"bri\":" + newbri + ",\"effect\":\"none\"}";
       }
     }

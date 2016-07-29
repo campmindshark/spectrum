@@ -145,30 +145,6 @@ namespace Spectrum {
       }
     }
 
-    public void forceUpdate() {
-      bool change = visualizer.lightsOff != this.config.lightsOff
-        || visualizer.redAlert != this.config.redAlert
-        || visualizer.controlLights != this.config.controlLights
-        || visualizer.brighten != this.config.brighten
-        || visualizer.colorslide != this.config.colorslide
-        || visualizer.sat != this.config.sat;
-      if (visualizer.controlLights) {
-        visualizer.needupdate = 20;
-      } else if (change) {
-        visualizer.needupdate = 10;
-      }
-      visualizer.lightsOff = this.config.lightsOff;
-      visualizer.redAlert = this.config.redAlert;
-      visualizer.brighten = this.config.brighten;
-      visualizer.colorslide = this.config.colorslide;
-      visualizer.controlLights = this.config.controlLights;
-      visualizer.sat = this.config.sat;
-      if (!this.config.controlLights) {
-        visualizer.silentMode = false;
-      }
-      visualizer.updateHues();
-    }
-
     // WASAPI callback, required for continuous recording
     private int Process(IntPtr buffer, int length, IntPtr user) {
       return 1;
