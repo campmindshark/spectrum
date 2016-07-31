@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Spectrum.Base {
+﻿namespace Spectrum.Base {
 
   /**
    * An Output represents a device that receives output from Spectrum. Each

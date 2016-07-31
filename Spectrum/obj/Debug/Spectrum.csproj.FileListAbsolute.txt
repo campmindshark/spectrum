@@ -16,7 +16,6 @@ C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Bass.Net.dll
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\bass.dll
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\bassmix.dll
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\basswasapi.dll
-C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\obj\Debug\Spectrum_Content.g.cs
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\LEDs.dll
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Base.dll
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\LEDs.pdb
@@ -25,3 +24,5 @@ C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Hues.dll
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Newtonsoft.Json.dll
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Hues.pdb
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Newtonsoft.Json.xml
+C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Audio.dll
+C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Audio.pdb
