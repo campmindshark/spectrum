@@ -106,27 +106,6 @@ namespace Spectrum.Audio {
       }
     }
 
-    private int deviceIndex = -1;
-    public int DeviceIndex {
-      get {
-        lock (this.process) {
-          return this.deviceIndex;
-        }
-      }
-      set {
-        lock (this.process) {
-          bool wasEnabled = this.enabled;
-          if (wasEnabled) {
-            this.enabled = false;
-          }
-          this.deviceIndex = value;
-          if (wasEnabled) {
-            this.enabled = true;
-          }
-        }
-      }
-    }
-
     /**
      * The Un4seen libraries need some function to call.
      */
@@ -136,11 +115,11 @@ namespace Spectrum.Audio {
 
     private void InitializeAudio() {
       this.MagicIncantations();
-      if (this.deviceIndex == -1) {
-        throw new Exception("DeviceIndex not set!");
+      if (this.config.audioDeviceIndex == -1) {
+        throw new Exception("audioDeviceIndex not set!");
       }
       bool result = BassWasapi.BASS_WASAPI_Init(
-        this.deviceIndex,
+        this.config.audioDeviceIndex,
         0,
         0,
         BASSWASAPIInit.BASS_WASAPI_BUFFER,
@@ -163,15 +142,8 @@ namespace Spectrum.Audio {
       Bass.BASS_Free();
     }
 
-    public void Update() {
+    private void Update() {
       lock (this.process) {
-        if (
-          !this.config.controlLights ||
-          this.config.lightsOff ||
-          this.config.redAlert
-        ) {
-          return;
-        }
         // get fft data. Return value is -1 on error
         // type: 1/8192 of the channel sample rate
         // (here, 44100 hz; so the bin size is roughly 2.69 Hz)
@@ -181,7 +153,7 @@ namespace Spectrum.Audio {
           (int)BASSData.BASS_DATA_FFT16384
         );
         float tempVolume = BassWasapi.BASS_WASAPI_GetDeviceLevel(
-          this.deviceIndex,
+          this.config.audioDeviceIndex,
           -1
         );
         this.AudioData = tempAudioData;
@@ -197,6 +169,12 @@ namespace Spectrum.Audio {
         }
       } catch (ThreadAbortException) {
         this.TerminateAudio();
+      }
+    }
+
+    public void OperatorUpdate() {
+      if (!this.config.audioInputInSeparateThread) {
+        this.Update();
       }
     }
 

@@ -12,7 +12,7 @@ namespace Spectrum.LEDs {
    * The intent is to expose a single API to multiple Teensies. Note that when
    * enabled, one output thread exists for each Teensy.
    */
-  public class MultiTeensyOutput : Output {
+  public class MultiTeensyOutput {
 
     private SimpleTeensyOutput[] teensies;
     private int? teensyLength;
@@ -68,9 +68,9 @@ namespace Spectrum.LEDs {
       }
     }
 
-    public void Update() {
+    public void OperatorUpdate() {
       foreach (SimpleTeensyOutput teensy in this.teensies) {
-        teensy.Update();
+        teensy.OperatorUpdate();
       }
     }
 

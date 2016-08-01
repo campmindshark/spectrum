@@ -12,6 +12,9 @@ namespace Spectrum.Base {
    */
   public interface Configuration {
 
+    // The unique index identifying the audio device we are listening to
+    int audioDeviceIndex { get; set; }
+
     // If this is true, we will poll the Un4seen APIs in a thread separate to
     // the one running the visualizers. If it is false, a single thread will
     // first poll the Un4seen APIs and then run the visualizers.

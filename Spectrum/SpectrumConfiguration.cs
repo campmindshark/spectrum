@@ -9,6 +9,8 @@ namespace Spectrum {
 
   class SpectrumConfiguration : Configuration {
 
+    public int audioDeviceIndex { get; set; } = -1;
+
     public bool audioInputInSeparateThread { get; set; } = false;
     public bool hueOutputInSeparateThread { get; set; } = true;
     public bool ledsOutputInSeparateThread { get; set; } = false;

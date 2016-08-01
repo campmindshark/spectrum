@@ -1,4 +1,5 @@
 ﻿using Spectrum.Base;
+using System.Collections.Generic;
 
 namespace Spectrum.LEDs {
 
@@ -19,6 +20,7 @@ namespace Spectrum.LEDs {
 
     private SimpleTeensyOutput output;
     private Configuration config;
+    private List<Visualizer> visualizers;
 
     public CartesianTeensyOutput(Configuration config) {
       this.config = config;
@@ -26,6 +28,7 @@ namespace Spectrum.LEDs {
         this.config.teensyUSBPort,
         this.config.ledsOutputInSeparateThread
       );
+      this.visualizers = new List<Visualizer>();
     }
 
     public bool Enabled {
@@ -33,8 +36,16 @@ namespace Spectrum.LEDs {
       set { this.output.Enabled = value; }
     }
 
-    public void Update() {
-      this.output.Update();
+    public void OperatorUpdate() {
+      this.output.OperatorUpdate();
+    }
+
+    public void RegisterVisualizer(Visualizer visualizer) {
+      this.visualizers.Add(visualizer);
+    }
+
+    public Visualizer[] GetVisualizers() {
+      return this.visualizers.ToArray();
     }
 
     public void Flush() {

@@ -41,10 +41,12 @@ namespace Spectrum.Hues {
 
     private Configuration config;
     private ConcurrentQueue<HueMessage> buffer;
+    private List<Visualizer> visualizers;
 
     public HueOutput(Configuration config) {
       this.config = config;
       this.buffer = new ConcurrentQueue<HueMessage>();
+      this.visualizers = new List<Visualizer>();
     }
 
     private bool enabled;
@@ -84,7 +86,13 @@ namespace Spectrum.Hues {
       }
     }
 
-    public void Update() {
+    public int BufferSize {
+      get {
+        return this.buffer.Count;
+      }
+    }
+
+    private void Update() {
       HueMessage message;
       bool result = this.buffer.TryDequeue(out message);
       if (!result) {
@@ -98,6 +106,20 @@ namespace Spectrum.Hues {
       // Sadly, we need to make sure that we don't
       // update the Hues more than 10 times a second.
       Thread.Sleep(100);
+    }
+
+    public void OperatorUpdate() {
+      if (!this.config.hueOutputInSeparateThread) {
+        this.Update();
+      }
+    }
+
+    public void RegisterVisualizer(Visualizer visualizer) {
+      this.visualizers.Add(visualizer);
+    }
+
+    public Visualizer[] GetVisualizers() {
+      return this.visualizers.ToArray();
     }
 
     /**

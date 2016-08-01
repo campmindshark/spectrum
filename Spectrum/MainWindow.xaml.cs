@@ -3,46 +3,62 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using Spectrum.Audio;
 
 namespace Spectrum {
 
   public partial class MainWindow : Window {
 
-    Streamer st;
+    Operator st;
     SpectrumConfiguration config;
     private bool dragStarted = true;
     private bool boxInitialized = false;
 
     public MainWindow() {
       InitializeComponent();
-      config = new SpectrumConfiguration();
-      st = new Streamer(devices, config);
-      boxInitialized = true;
-      HotKey white_toggle = new HotKey(Key.Q, KeyModifier.Alt, OnHotKeyHandler);
-      HotKey off_toggle = new HotKey(Key.OemTilde, KeyModifier.Alt, OnHotKeyHandler);
-      HotKey red_alert = new HotKey(Key.R, KeyModifier.Alt, OnHotKeyHandler);
-      HotKey bri_up = new HotKey(Key.OemPeriod, KeyModifier.Alt, OnHotKeyHandler);
-      HotKey bri_down = new HotKey(Key.OemComma, KeyModifier.Alt, OnHotKeyHandler);
-      HotKey hue_left = new HotKey(Key.Left, KeyModifier.Alt, OnHotKeyHandler);
-      HotKey hue_right = new HotKey(Key.Right, KeyModifier.Alt, OnHotKeyHandler);
-      HotKey sat_up = new HotKey(Key.Up, KeyModifier.Alt, OnHotKeyHandler);
-      HotKey sat_down = new HotKey(Key.Down, KeyModifier.Alt, OnHotKeyHandler);
+      this.config = new SpectrumConfiguration();
+      this.st = new Operator(this.config);
+
+      this.boxInitialized = true;
+      HotKey white_toggle = new HotKey(Key.Q, KeyModifier.Alt, this.OnHotKeyHandler);
+      HotKey off_toggle = new HotKey(Key.OemTilde, KeyModifier.Alt, this.OnHotKeyHandler);
+      HotKey red_alert = new HotKey(Key.R, KeyModifier.Alt, this.OnHotKeyHandler);
+      HotKey bri_up = new HotKey(Key.OemPeriod, KeyModifier.Alt, this.OnHotKeyHandler);
+      HotKey bri_down = new HotKey(Key.OemComma, KeyModifier.Alt, this.OnHotKeyHandler);
+      HotKey hue_left = new HotKey(Key.Left, KeyModifier.Alt, this.OnHotKeyHandler);
+      HotKey hue_right = new HotKey(Key.Right, KeyModifier.Alt, this.OnHotKeyHandler);
+      HotKey sat_up = new HotKey(Key.Up, KeyModifier.Alt, this.OnHotKeyHandler);
+      HotKey sat_down = new HotKey(Key.Down, KeyModifier.Alt, this.OnHotKeyHandler);
       this.Closing += this.HandleClose;
+
+      for (int i = 0; i < AudioInput.DeviceCount; i++) {
+        if (AudioInput.IsEnabledLoopbackDevice(i)) {
+          this.devices.Items.Add(string.Format(
+            "{0} - {1}",
+            i,
+            AudioInput.GetDeviceName(i)
+          ));
+        }
+      }
+      this.devices.SelectedIndex = 0;
+      this.InputDeviceChanged(null, null);
+      this.devices.SelectionChanged += this.InputDeviceChanged;
     }
 
     private void OnHotKeyHandler(HotKey hotKey) {
       if (hotKey.Key.Equals(Key.Q)) {
         checkBox.IsChecked = !checkBox.IsChecked;
-        config.controlLights = !config.controlLights;
         config.brighten = 0;
         config.colorslide = 0;
         config.sat = 0;
       }
       if (hotKey.Key.Equals(Key.OemTilde)) {
         config.lightsOff = !config.lightsOff;
+        System.Diagnostics.Debug.WriteLine("off");
       }
       if (hotKey.Key.Equals(Key.R)) {
         config.redAlert = !config.redAlert;
+        System.Diagnostics.Debug.WriteLine("red");
       }
       if (hotKey.Key.Equals(Key.OemPeriod)) {
         config.brighten = Math.Min(config.brighten + 1, 0);
@@ -56,13 +72,22 @@ namespace Spectrum {
       if (hotKey.Key.Equals(Key.Right)) {
         config.colorslide += 1;
       }
-      config.colorslide = (config.colorslide + 4 + 16) % 16 - 4;
+      //config.colorslide = (config.colorslide + 4 + 16) % 16 - 4;??
       if (hotKey.Key.Equals(Key.Up)) {
         config.sat = Math.Min(config.sat + 1, 2);
       }
       if (hotKey.Key.Equals(Key.Down)) {
         config.sat = Math.Max(config.sat - 1, -2);
       }
+    }
+
+    private void InputDeviceChanged(
+      object sender,
+      SelectionChangedEventArgs e
+    ) {
+      var str = (this.devices.Items[this.devices.SelectedIndex] as string);
+      var deviceName = str.Split(' ');
+      this.config.audioDeviceIndex = Convert.ToInt32(deviceName[0]);
     }
 
     private void button_Click(object sender, RoutedEventArgs e) {
@@ -74,7 +99,8 @@ namespace Spectrum {
       snareQuietS.IsEnabled = !snareQuietS.IsEnabled;
       snareChangeS.IsEnabled = !snareChangeS.IsEnabled;
       peakChangeS.IsEnabled = !peakChangeS.IsEnabled;
-      st.ToggleState();
+      st.Enabled = !st.Enabled;
+      this.devices.IsEnabled = !st.Enabled;
       dragStarted = false;
     }
 
@@ -95,7 +121,7 @@ namespace Spectrum {
     }
 
     private void HandleUnchecked(object sender, RoutedEventArgs e) {
-      config.controlLights = true;
+      config.controlLights = false;
     }
 
     private void set(String name, double val) {
@@ -130,7 +156,7 @@ namespace Spectrum {
     }
 
     private void HandleClose(object sender, EventArgs e) {
-      st.CleanUp();
+      this.st.Enabled = false;
     }
   }
 }

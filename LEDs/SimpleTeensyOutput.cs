@@ -12,7 +12,7 @@ namespace Spectrum.LEDs {
    *  a given index and color to the Teensy. When enabled, an output thread is
    *  started. When disabled, this thread exits.
    */
-  public class SimpleTeensyOutput : Output {
+  public class SimpleTeensyOutput {
 
     private SerialPort port;
     private ConcurrentQueue<byte[]> buffer;
@@ -70,7 +70,7 @@ namespace Spectrum.LEDs {
       this.buffer = new ConcurrentQueue<byte[]>();
     }
 
-    public void Update() {
+    private void Update() {
       lock (this.port) {
         int num_messages = this.buffer.Count;
         if (num_messages == 0) {
@@ -86,6 +86,12 @@ namespace Spectrum.LEDs {
         byte[] bytes = messages.SelectMany(a => a).ToArray();
         int num_bytes = messages.Sum(a => a.Length);
         this.port.Write(bytes, 0, num_bytes);
+      }
+    }
+
+    public void OperatorUpdate() {
+      if (!this.separateThread) {
+        this.Update();
       }
     }
 

@@ -20,11 +20,24 @@
     bool Enabled { get; set; }
 
     /**
-     * This method will flush the cached commands we have to the output device
-     * in question. We need this method in the base interface so that if the
-     * Operator is running output on their thread, they know how to trigger it.
+     * This method gets called at the end of the Operator loop (from within the
+     * Operator thread) when there exists an Visualizer that is running on this
+     * Output. It may be a no-op (if, for instance, the Output is being updated
+     * in a separate thread).
      */
-    void Update();
+    void OperatorUpdate();
+
+    /**
+     * Registers a Visualizer with this Output (to be returned via
+     * GetVisualizers).
+     */
+    void RegisterVisualizer(Visualizer visualizer);
+
+    /**
+     * Returns all the Visualizers that have called RegisterVisualizer on this
+     * Output.
+     */
+    Visualizer[] GetVisualizers();
 
   }
 

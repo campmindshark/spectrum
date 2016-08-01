@@ -18,12 +18,12 @@
     bool Enabled { get; set; }
 
     /**
-     * This method will update the input in question. We don't know what it will
-     * do exactly; subclasses will implement members that expose this updated
-     * input. We need this method in the base interface so that if the Operator
-     * is running input on their thread, they know how to trigger it.
+     * This method gets called at the start of the Operator loop (from within
+     * the Operator thread) when there exists an active Visualizer that needs
+     * this Input. It may be a no-op (if, for instance, the Input is being
+     * updated in a separate thread).
      */
-    void Update();
+    void OperatorUpdate();
 
   }
 
