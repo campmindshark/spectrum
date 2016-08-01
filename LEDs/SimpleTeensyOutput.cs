@@ -60,12 +60,9 @@ namespace Spectrum.LEDs {
 
     private void InitializeTeensies() {
       this.port.Open();
-      this.buffer.Enqueue(new byte[] { 1 }); // start mode1 on Teensy
     }
 
     private void TerminateTeensies() {
-      byte[] exit_buffer = new byte[] { 0, 0 }; // exits mode1 on Teensy
-      this.port.Write(exit_buffer, 0, 2);
       this.port.Close();
       this.buffer = new ConcurrentQueue<byte[]>();
     }
