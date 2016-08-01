@@ -16,10 +16,12 @@ namespace Spectrum.LEDs {
 
     private SerialPort port;
     private ConcurrentQueue<byte[]> buffer;
+    private bool separateThread;
 
-    public SimpleTeensyOutput(string portName) {
+    public SimpleTeensyOutput(string portName, bool separateThread) {
       this.port = new SerialPort(portName);
       this.buffer = new ConcurrentQueue<byte[]>();
+      this.separateThread = separateThread;
     }
 
     private bool enabled;
@@ -36,33 +38,43 @@ namespace Spectrum.LEDs {
             return;
           }
           if (value) {
-            this.port.Open();
-            this.buffer.Enqueue(new byte[] { 1 }); // start mode1 on Teensy
-            this.outputThread = new Thread(OutputThread);
-            this.outputThread.Start();
+            if (this.separateThread) {
+              this.outputThread = new Thread(OutputThread);
+              this.outputThread.Start();
+            } else {
+              this.InitializeTeensies();
+            }
           } else {
-            // Note: if this Abort somehow splits a message that was in the
-            // process of being sent, the Teensy can be left in a bad state.
-            // That seems unlikely to happen, though?
-            this.outputThread.Abort();
-            this.outputThread.Join();
-            // We write this ourselves instead of letting OutputThread do it to
-            // avoid a race between our Abort call and the enqueued exit message
-            byte[] exit_buffer = new byte[2] { 0, 0 }; // exits mode1 on Teensy
-            this.port.Write(exit_buffer, 0, 2);
-            this.port.Close();
+            if (this.outputThread != null) {
+              this.outputThread.Abort();
+              this.outputThread.Join();
+              this.outputThread = null;
+            } else {
+              this.TerminateTeensies();
+            }
           }
           this.enabled = value;
         }
       }
     }
 
-    private void OutputThread() {
-      while (true) {
-        // Since we are the only ones dequeueing, this is safe
+    private void InitializeTeensies() {
+      this.port.Open();
+      this.buffer.Enqueue(new byte[] { 1 }); // start mode1 on Teensy
+    }
+
+    private void TerminateTeensies() {
+      byte[] exit_buffer = new byte[] { 0, 0 }; // exits mode1 on Teensy
+      this.port.Write(exit_buffer, 0, 2);
+      this.port.Close();
+      this.buffer = new ConcurrentQueue<byte[]>();
+    }
+
+    public void Update() {
+      lock (this.port) {
         int num_messages = this.buffer.Count;
         if (num_messages == 0) {
-          continue;
+          return;
         }
         byte[][] messages = new byte[num_messages][];
         for (int i = 0; i < num_messages; i++) {
@@ -74,6 +86,17 @@ namespace Spectrum.LEDs {
         byte[] bytes = messages.SelectMany(a => a).ToArray();
         int num_bytes = messages.Sum(a => a.Length);
         this.port.Write(bytes, 0, num_bytes);
+      }
+    }
+
+    private void OutputThread() {
+      this.InitializeTeensies();
+      try {
+        while (true) {
+          this.Update();
+        }
+      } catch (ThreadAbortException) {
+        this.TerminateTeensies();
       }
     }
 

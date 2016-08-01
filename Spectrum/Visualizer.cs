@@ -4,15 +4,19 @@ using System.Linq;
 using Spectrum.LEDs;
 using Spectrum.Base;
 using Spectrum.Hues;
+using Spectrum.Audio;
+using System.Threading;
 
 namespace Spectrum {
+
   public class Visualizer {
 
     private Configuration config;
+    private AudioInput audio;
     private HueOutput hue;
     private CartesianTeensyOutput teensy;
 
-    private Random rnd;
+    private Random random;
 
     // FFT analysis dicts
     private Dictionary<String, double[]> bins;
@@ -30,14 +34,8 @@ namespace Spectrum {
     private int silentModeSatIndex = 254;
     private bool silentModeSatFall = false;
     private int silentModeLightIndex = 0;
-    private bool kickCounted = false;
-    private bool snareCounted = false;
-    private bool kickMaxPossible = false;
-    private bool kickMax = false;
     private bool kickPending = false;
     private bool snarePending = false;
-    private bool snareMaxPossible = false;
-    private bool snareMax = false;
     private bool totalMaxPossible = false;
     private bool totalMax = false;
     private int idleCounter = 0;
@@ -49,12 +47,18 @@ namespace Spectrum {
     public int needupdate = 0;
     private float vol = 0;
 
-    public Visualizer(Configuration config) {
+    public Visualizer(
+      Configuration config,
+      AudioInput audio,
+      HueOutput hue,
+      CartesianTeensyOutput teensy
+    ) {
       this.config = config;
-      this.hue = new HueOutput(config);
-      this.teensy = new CartesianTeensyOutput(config);
+      this.audio = audio;
+      this.hue = hue;
+      this.teensy = teensy;
       
-      rnd = new Random();
+      this.random = new Random();
       bins = new Dictionary<String, double[]>();
       energyHistory = new Dictionary<String, float[]>();
       energyLevels = new Dictionary<String, float>();
@@ -72,18 +76,63 @@ namespace Spectrum {
       }
     }
 
-    public void CleanUp() {
-      this.hue.Enabled = false;
-      this.teensy.Enabled = false;
+    private bool enabled;
+    private Thread inputThread;
+    private Thread outputThread;
+    public bool Enabled {
+      get {
+        lock (this.random) {
+          return this.enabled;
+        }
+      }
+      set {
+        lock (this.random) {
+          if (this.enabled == value) {
+            return;
+          }
+          if (value) {
+            this.inputThread = new Thread(AudioProcessingThread);
+            this.inputThread.Start();
+            this.outputThread = new Thread(LightProcessingThread);
+            this.outputThread.Start();
+          } else {
+            this.inputThread.Abort();
+            this.inputThread.Join();
+            this.inputThread = null;
+            this.outputThread.Abort();
+            this.outputThread.Join();
+            this.outputThread = null;
+          }
+          this.enabled = value;
+        }
+      }
     }
 
-    public void Start() {
-      this.hue.Enabled = true;
-      this.teensy.Enabled = true;
+    private void AudioProcessingThread() {
+      while (true) {
+        if (!this.config.audioInputInSeparateThread) {
+          this.audio.Update();
+        }
+        if (
+          this.config.controlLights &&
+          !this.config.lightsOff &&
+          !this.config.redAlert
+        ) {
+          this.process(this.audio.AudioData, this.audio.Volume);
+        }
+      }
+    }
+
+    private void LightProcessingThread() {
+      while (true) {
+        this.updateHues();
+        // Hue API limits 10/s light changes
+        Thread.Sleep(100);
+      }
     }
 
     // music pattern detection
-    public void process(float[] spectrum, float level) {
+    private void process(float[] spectrum, float level) {
       vol = level;
       processCount++;
       processCount = processCount % historyLength;
@@ -129,7 +178,6 @@ namespace Spectrum {
         }
         if (band == "kick") {
           if (current < avg || change < 0) {
-            kickCounted = false;
           }
           // was: avg < .1, current > avg + 2 * sd
           if (current > avg + this.config.kickT * sd && avg < this.config.kickQ && current > .001) // !kickcounted here
@@ -137,20 +185,15 @@ namespace Spectrum {
             if (totalMax) {
               System.Diagnostics.Debug.WriteLine(probe(band, current, avg, sd, change));
             }
-            kickCounted = true;
             kickPending = true;
           }
         }
         if (band == "snareattack") {
-          if (current < avg || change < 0) {
-            snareCounted = false;
-          }
           if (current > avg + this.config.snareT * sd && avg < this.config.snareQ && current > .001) // !snarecounted here
           {
             if (totalMax && current > .001) {
               System.Diagnostics.Debug.WriteLine(probe(band, current, avg, sd, change));
             }
-            snareCounted = true;
             snarePending = true;
           }
         }
@@ -163,11 +206,11 @@ namespace Spectrum {
     }
 
     // status update for hues
-    public void updateHues() {
+    private void updateHues() {
       if (!lightPending) {
         kickPending = kickPending && totalMax;
         snarePending = snarePending && totalMax;
-        target = rnd.Next(5);
+        target = this.random.Next(5);
       }
       if (silentMode || !this.config.controlLights || this.config.lightsOff || this.config.redAlert) {
         if (silentMode || needupdate > 0) // not idling & nonzero lights need to be updated.
@@ -187,11 +230,11 @@ namespace Spectrum {
           System.Diagnostics.Debug.WriteLine("dropOn");
           this.hue.SendGroupCommand(
             0,
-            new HueOutput.HueCommand() {
+            new HueCommand() {
               /*on = true,
-              brightness = 254,
-              hue = rnd.Next(1, 65535),
-              saturation = 254,
+              bri = 254,
+              hue = this.random.Next(1, 65535),
+              sat = 254,
               transitiontime = 0,
               effect = "colorloop",*/
               alert = "select",
@@ -202,8 +245,8 @@ namespace Spectrum {
         else if (dropDuration == 4) {
           /*this.hue.SendGroupCommand(
             0,
-            new HueOutput.HueCommand() {
-              brightness = 1,
+            new HueCommand() {
+              bri = 1,
               effect = "colorloop",
               transitiontime = 2,
             }
@@ -218,11 +261,11 @@ namespace Spectrum {
         if (lightPending) {
           this.hue.SendLightCommand(
             target,
-            new HueOutput.HueCommand() {
+            new HueCommand() {
               on = true,
-              brightness = 1,
+              bri = 1,
               hue = 300,
-              saturation = 254,
+              sat = 254,
               transitiontime = 2,
               alert = "none",
             }
@@ -234,11 +277,11 @@ namespace Spectrum {
           System.Diagnostics.Debug.WriteLine("kickOn");
           this.hue.SendLightCommand(
             target,
-            new HueOutput.HueCommand() {
+            new HueCommand() {
               on = true,
-              brightness = 254,
+              bri = 254,
               hue = 300,
-              saturation = 254,
+              sat = 254,
               transitiontime = 1,
               alert = "none",
             }
@@ -249,11 +292,11 @@ namespace Spectrum {
         if (lightPending) {
           this.hue.SendLightCommand(
             target,
-            new HueOutput.HueCommand() {
+            new HueCommand() {
               on = true,
-              brightness = 1,
+              bri = 1,
               hue = 43000,
-              saturation = 254,
+              sat = 254,
               transitiontime = 2,
               alert = "none",
             }
@@ -265,11 +308,11 @@ namespace Spectrum {
           System.Diagnostics.Debug.WriteLine("snareOn");
           this.hue.SendLightCommand(
             target,
-            new HueOutput.HueCommand() {
+            new HueCommand() {
               on = true,
-              brightness = 254,
+              bri = 254,
               hue = 43000,
-              saturation = 254,
+              sat = 254,
               transitiontime = 1,
               alert = "none",
             }
@@ -281,10 +324,10 @@ namespace Spectrum {
         if (idleCounter > 2) {
           this.hue.SendLightCommand(
             target,
-            new HueOutput.HueCommand() {
+            new HueCommand() {
               on = false,
-              brightness = 0,
-              saturation = 254,
+              bri = 0,
+              sat = 254,
               transitiontime = 20,
               alert = "none",
               effect = "colorloop",
@@ -309,7 +352,15 @@ namespace Spectrum {
         System.Diagnostics.Debug.WriteLine("silence");
       }
       System.Diagnostics.Debug.WriteLine(vol);
+
+      if (!this.config.hueOutputInSeparateThread) {
+        this.hue.Update();
+      }
+      if (!this.config.ledsOutputInSeparateThread) {
+        this.teensy.Update();
+      }
     }
+
     private void postUpdate() {
       if (this.config.controlLights && silence && silentCounter > 40 && !silentMode) {
         System.Diagnostics.Debug.WriteLine("Silence detected.");
@@ -337,7 +388,6 @@ namespace Spectrum {
       // this will be changed in process() UNLESS level < .1 for the duration of process()
       silence = true;
       totalMax = false;
-      kickMax = false;
     }
     // math helper functions
     private bool windowContains(double[] window, int index) {
@@ -354,30 +404,27 @@ namespace Spectrum {
     private String probe(String band, float current, float avg, float sd, float change) {
       return "Band:" + band + " cur:" + Math.Round(current * 10000) / 10000 + " avg:" + Math.Round(avg * 10000) / 10000 + " sd:" + Math.Round(sd * 10000) / 10000 + " delta:" + Math.Round(change * 10000) / 10000;
     }
-    private String laddressHelper(int address) {
-      return "lights/" + address + "/state/";
-    }
 
-    private HueOutput.HueCommand silent(int index) {
+    private HueCommand silent(int index) {
       if (this.config.lightsOff) {
-        return new HueOutput.HueCommand() {
+        return new HueCommand() {
           on = false,
         };
       }
       if (this.config.redAlert) {
-        return new HueOutput.HueCommand() {
+        return new HueCommand() {
           on = true,
-          brightness = 1,
+          bri = 1,
           hue = 1,
-          saturation = 254,
+          sat = 254,
           effect = "none",
         };
       } else if (this.config.controlLights) {
-        return new HueOutput.HueCommand() {
+        return new HueCommand() {
           on = true,
-          brightness = 1,
+          bri = 1,
           hue = index + 1,
-          saturation = Math.Min(silentModeSatIndex, 254),
+          sat = Math.Min(silentModeSatIndex, 254),
           transitiontime = 12,
           effect = "none",
         };
@@ -385,11 +432,11 @@ namespace Spectrum {
         int newbri = Math.Min(Math.Max(254 + 64 * this.config.brighten, 1), 254);
         int newsat = Math.Min(Math.Max(126 + 63 * this.config.sat, 0), 254);
         int newhue = Math.Min(Math.Max(16384 + this.config.colorslide * 4096, 0), 65535);
-        return new HueOutput.HueCommand() {
+        return new HueCommand() {
           on = true,
-          brightness = newbri,
+          bri = newbri,
           hue = newhue,
-          saturation = newsat,
+          sat = newsat,
           effect = "none",
         };
       }

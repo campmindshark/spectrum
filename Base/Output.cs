@@ -19,6 +19,13 @@
      */
     bool Enabled { get; set; }
 
+    /**
+     * This method will flush the cached commands we have to the output device
+     * in question. We need this method in the base interface so that if the
+     * Operator is running output on their thread, they know how to trigger it.
+     */
+    void Update();
+
   }
 
 }

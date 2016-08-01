@@ -9,7 +9,18 @@ using Un4seen.BassWasapi;
 
 namespace Spectrum.Audio {
 
-  public class AudioInput : Input {
+  /**
+   * There are two ways to use AudioInput. In one way, AudioInput will
+   * initialize its own thread, and will automatically update the AudioData and
+   * Volume properties. Your thread will check them as desired. In the other way
+   * of using AudioInput, you will have to manually poll the UpdateAudio method
+   * in order to update AudioData and Volume.
+   *
+   * Choose between them with config.audioInputInSeparateThread. Note that
+   * either way, you'll need to set the Enabled property to true in order to get
+   * updates. Setting it to false will disable any running threads.
+   */
+   public class AudioInput : Input {
 
     private Configuration config;
 
@@ -22,7 +33,13 @@ namespace Spectrum.Audio {
 
     public AudioInput(Configuration config) {
       this.config = config;
-      this.MagicIncantations();
+
+      BassNet.Registration("larry.fenn@gmail.com", "2X531420152222");
+
+      // This is being initialized here because we need to pass this variable
+      // into some scary old C-style API and it doesn't get refcounted there.
+      // We declare the variable as a member to avoid garbage collection.
+      this.process = new WASAPIPROC(NoOp);
     }
 
     /**
@@ -30,11 +47,6 @@ namespace Spectrum.Audio {
      * quarantined here.
      */
     private void MagicIncantations() {
-      BassNet.Registration("larry.fenn@gmail.com", "2X531420152222");
-      // This is being initialized here because we need to pass this variable
-      // into some scary old C-style API and it doesn't get refcounted there.
-      // We declare the variable as a member to avoid garbage collection.
-      this.process = new WASAPIPROC(NoOp);
       // A common usage pattern of the Un4seen libraries involves setting up an
       // auto-updating HSTREAM object and passing it around to various functions
       // that will extract data off of it. To accomplish the auto-updating
@@ -74,32 +86,20 @@ namespace Spectrum.Audio {
             return;
           }
           if (value) {
-            if (this.deviceIndex == -1) {
-              throw new Exception("DeviceIndex not set!");
+            if (this.config.audioInputInSeparateThread) {
+              this.inputThread = new Thread(AudioProcessingThread);
+              this.inputThread.Start();
+            } else {
+              this.InitializeAudio();
             }
-            bool result = BassWasapi.BASS_WASAPI_Init(
-              this.deviceIndex,
-              0,
-              0,
-              BASSWASAPIInit.BASS_WASAPI_BUFFER,
-              1f,
-              0,
-              this.process,
-              IntPtr.Zero
-            );
-            if (!result) {
-              throw new Exception(
-                "Couldn't initialize BassWasapi: " +
-                  Bass.BASS_ErrorGetCode().ToString()
-              );
-            }
-            this.inputThread = new Thread(AudioProcessingThread);
-            this.inputThread.Start();
           } else {
-            this.inputThread.Abort();
-            this.inputThread.Join();
-            BassWasapi.BASS_WASAPI_Free();
-            Bass.BASS_Free();
+            if (this.inputThread != null) {
+              this.inputThread.Abort();
+              this.inputThread.Join();
+              this.inputThread = null;
+            } else {
+              this.TerminateAudio();
+            }
           }
           this.enabled = value;
         }
@@ -134,29 +134,69 @@ namespace Spectrum.Audio {
       return 1;
     }
 
-    private void AudioProcessingThread() {
+    private void InitializeAudio() {
+      this.MagicIncantations();
+      if (this.deviceIndex == -1) {
+        throw new Exception("DeviceIndex not set!");
+      }
+      bool result = BassWasapi.BASS_WASAPI_Init(
+        this.deviceIndex,
+        0,
+        0,
+        BASSWASAPIInit.BASS_WASAPI_BUFFER,
+        1f,
+        0,
+        this.process,
+        IntPtr.Zero
+      );
+      if (!result) {
+        throw new Exception(
+          "Couldn't initialize BassWasapi: " +
+            Bass.BASS_ErrorGetCode().ToString()
+        );
+      }
       BassWasapi.BASS_WASAPI_Start();
-      float[] tempAudioData = new float[8192];
-      while (true) {
+    }
+
+    private void TerminateAudio() {
+      BassWasapi.BASS_WASAPI_Free();
+      Bass.BASS_Free();
+    }
+
+    public void Update() {
+      lock (this.process) {
         if (
           !this.config.controlLights ||
           this.config.lightsOff ||
           this.config.redAlert
         ) {
-          continue;
+          return;
         }
         // get fft data. Return value is -1 on error
         // type: 1/8192 of the channel sample rate
         // (here, 44100 hz; so the bin size is roughly 2.69 Hz)
+        float[] tempAudioData = new float[8192];
         BassWasapi.BASS_WASAPI_GetData(
           tempAudioData,
           (int)BASSData.BASS_DATA_FFT16384
         );
-        this.AudioData = tempAudioData;
-        this.Volume = BassWasapi.BASS_WASAPI_GetDeviceLevel(
+        float tempVolume = BassWasapi.BASS_WASAPI_GetDeviceLevel(
           this.deviceIndex,
           -1
         );
+        this.AudioData = tempAudioData;
+        this.Volume = tempVolume;
+      }
+    }
+
+    private void AudioProcessingThread() {
+      this.InitializeAudio();
+      try {
+        while (true) {
+          this.Update();
+        }
+      } catch (ThreadAbortException) {
+        this.TerminateAudio();
       }
     }
 

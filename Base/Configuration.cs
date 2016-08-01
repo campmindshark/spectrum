@@ -12,6 +12,19 @@ namespace Spectrum.Base {
    */
   public interface Configuration {
 
+    // If this is true, we will poll the Un4seen APIs in a thread separate to
+    // the one running the visualizers. If it is false, a single thread will
+    // first poll the Un4seen APIs and then run the visualizers.
+    bool audioInputInSeparateThread { get; set; }
+    // If this is true, we will update the Hues in a thread separate to the one
+    // running the visualizers. If it is false, a single thread will first run
+    // the visualizers and cache output commands, and then flush them.
+    bool hueOutputInSeparateThread { get; set; }
+    // If this is true, we will update the LEDs in a thread separate to the one
+    // running the visualizers. If it is false, a single thread will first run
+    // the visualizers and cache output commands, and then flush them.
+    bool ledsOutputInSeparateThread { get; set; }
+
     // If lightsOff is true then we turn off the lights
     bool lightsOff { get; set; }
     // If redAlert is true then we just display red

@@ -4,6 +4,8 @@ using System.Windows.Controls;
 using System.Threading;
 using Spectrum.Base;
 using Spectrum.Audio;
+using Spectrum.Hues;
+using Spectrum.LEDs;
 
 namespace Spectrum {
 
@@ -11,6 +13,8 @@ namespace Spectrum {
 
     private Configuration config;
     private AudioInput audio;
+    private HueOutput hue;
+    private CartesianTeensyOutput teensy;
     // Reference to the visualizer that receives the processed signal
     public Visualizer visualizer;
     // Reference to the ComboBox containing possible audio input devices
@@ -18,19 +22,23 @@ namespace Spectrum {
 
     // If initialized, the input and visualization threads are running
     private bool initialized = false;
-    // Handle for the audio input thread
-    private Thread audioProcessingThread;
-    // Handle for the light updating thread
-    private Thread lightUpdatingThread;
 
     public Streamer(ComboBox devicelist, Configuration config) {
       this.devicelist = devicelist;
+
       this.config = config;
       this.audio = new AudioInput(config);
+      this.hue = new HueOutput(config);
+      this.teensy = new CartesianTeensyOutput(config);
+      this.visualizer = new Visualizer(
+        config,
+        this.audio,
+        this.hue,
+        this.teensy
+      );
 
       this.PopulateDeviceList();
 
-      this.visualizer = new Visualizer(config);
     }
 
     private void PopulateDeviceList() {
@@ -57,48 +65,21 @@ namespace Spectrum {
       var str = (this.devicelist.Items[devicelist.SelectedIndex] as string);
       var deviceName = str.Split(' ');
       this.audio.DeviceIndex = Convert.ToInt32(deviceName[0]);
-      this.audio.Enabled = true;
 
       this.devicelist.IsEnabled = false;
-      this.visualizer.Start();
-      this.audioProcessingThread = new Thread(AudioProcessingThread);
-      this.audioProcessingThread.Start();
-      this.lightUpdatingThread = new Thread(LightProcessingThread);
-      this.lightUpdatingThread.Start();
-    }
 
-    private void AudioProcessingThread() {
-      while (true) {
-        if (
-          !this.config.controlLights ||
-          this.config.lightsOff ||
-          this.config.redAlert
-        ) {
-          continue;
-        }
-        this.visualizer.process(this.audio.AudioData, this.audio.Volume);
-      }
-    }
-
-    private void LightProcessingThread() {
-      while (true) {
-        this.visualizer.updateHues();
-        // Hue API limits 10/s light changes
-        Thread.Sleep(100);
-      }
+      this.audio.Enabled = true;
+      this.hue.Enabled = true;
+      this.teensy.Enabled = true;
+      this.visualizer.Enabled = true;
     }
 
     public void CleanUp() {
-      this.visualizer.CleanUp();
+      this.visualizer.Enabled = false;
+      this.teensy.Enabled = false;
+      this.hue.Enabled = false;
       this.audio.Enabled = false;
-      if (this.audioProcessingThread != null) {
-        this.audioProcessingThread.Abort();
-        this.audioProcessingThread.Join();
-      }
-      if (this.lightUpdatingThread != null) {
-        this.lightUpdatingThread.Abort();
-        this.lightUpdatingThread.Join();
-      }
+
       this.devicelist.IsEnabled = true;
     }
   }

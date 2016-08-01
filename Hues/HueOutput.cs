@@ -11,28 +11,28 @@ using Newtonsoft.Json;
 
 namespace Spectrum.Hues {
 
-  public class HueOutput : Output {
+  public struct HueCommand {
 
-    public struct HueCommand {
+    private static JsonSerializerSettings jsonSettings
+      = new JsonSerializerSettings {
+        NullValueHandling = NullValueHandling.Ignore
+      };
 
-      private static JsonSerializerSettings jsonSettings
-        = new JsonSerializerSettings {
-          NullValueHandling = NullValueHandling.Ignore
-        };
+    public bool? on;
+    public int? bri;
+    public int? hue;
+    public int? sat;
+    public int? transitiontime;
+    public string alert;
+    public string effect;
 
-      public bool? on;
-      public int? brightness;
-      public int? hue;
-      public int? saturation;
-      public int? transitiontime;
-      public string alert;
-      public string effect;
-
-      public string ToJson() {
-        return JsonConvert.SerializeObject(this, HueCommand.jsonSettings);
-      }
-
+    public string ToJson() {
+      return JsonConvert.SerializeObject(this, HueCommand.jsonSettings);
     }
+
+  }
+
+  public class HueOutput : Output {
 
     private struct HueMessage {
       public Uri uri;
@@ -61,11 +61,17 @@ namespace Spectrum.Hues {
             return;
           }
           if (value) {
-            this.outputThread = new Thread(OutputThread);
-            this.outputThread.Start();
+            if (this.config.hueOutputInSeparateThread) {
+              this.outputThread = new Thread(OutputThread);
+              this.outputThread.Start();
+            }
           } else {
-            this.outputThread.Abort();
-            this.outputThread.Join();
+            if (this.outputThread != null) {
+              this.outputThread.Abort();
+              this.outputThread.Join();
+              this.outputThread = null;
+            }
+            this.buffer = new ConcurrentQueue<HueMessage>();
           }
           this.enabled = value;
         }
@@ -73,19 +79,25 @@ namespace Spectrum.Hues {
     }
 
     private void OutputThread() {
-      HueMessage message;
       while (true) {
-        bool result = this.buffer.TryDequeue(out message);
-        if (!result) {
-          continue;
-        }
-        new WebClient().UploadStringAsync(
-          message.uri,
-          "PUT",
-          message.command.ToJson()
-        );
-        Thread.Sleep(100);
+        this.Update();
       }
+    }
+
+    public void Update() {
+      HueMessage message;
+      bool result = this.buffer.TryDequeue(out message);
+      if (!result) {
+        return;
+      }
+      new WebClient().UploadStringAsync(
+        message.uri,
+        "PUT",
+        message.command.ToJson()
+      );
+      // Sadly, we need to make sure that we don't
+      // update the Hues more than 10 times a second.
+      Thread.Sleep(100);
     }
 
     /**

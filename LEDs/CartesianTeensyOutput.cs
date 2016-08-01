@@ -22,12 +22,19 @@ namespace Spectrum.LEDs {
 
     public CartesianTeensyOutput(Configuration config) {
       this.config = config;
-      this.output = new SimpleTeensyOutput(this.config.teensyUSBPort);
+      this.output = new SimpleTeensyOutput(
+        this.config.teensyUSBPort,
+        this.config.ledsOutputInSeparateThread
+      );
     }
 
     public bool Enabled {
       get { return this.output.Enabled; }
       set { this.output.Enabled = value; }
+    }
+
+    public void Update() {
+      this.output.Update();
     }
 
     public void Flush() {

@@ -16,6 +16,7 @@ namespace Spectrum.LEDs {
 
     private SimpleTeensyOutput[] teensies;
     private int? teensyLength;
+    private bool separateThread;
 
     /**
      * The only parameter is the names of the USB ports corresponding to each
@@ -23,11 +24,12 @@ namespace Spectrum.LEDs {
      * does not specify a teensyLength, you will not be able to use the setPixel
      * that takes only a single LED index.
      */
-    public MultiTeensyOutput(string[] portNames) {
+    public MultiTeensyOutput(string[] portNames, bool separateThread) {
       this.teensies = new SimpleTeensyOutput[portNames.Length];
       for (int i = 0; i < portNames.Length; i++) {
-        this.teensies[i] = new SimpleTeensyOutput(portNames[i]);
+        this.teensies[i] = new SimpleTeensyOutput(portNames[i], separateThread);
       }
+      this.separateThread = separateThread;
     }
 
     /**
@@ -40,8 +42,9 @@ namespace Spectrum.LEDs {
      */
     public MultiTeensyOutput(
       string[] portNames,
-      int teensyLength
-    ) : this(portNames) {
+      int teensyLength,
+      bool separateThread
+    ) : this(portNames, separateThread) {
       this.teensyLength = teensyLength;
     }
 
@@ -62,6 +65,12 @@ namespace Spectrum.LEDs {
           }
           this.enabled = value;
         }
+      }
+    }
+
+    public void Update() {
+      foreach (SimpleTeensyOutput teensy in this.teensies) {
+        teensy.Update();
       }
     }
 
