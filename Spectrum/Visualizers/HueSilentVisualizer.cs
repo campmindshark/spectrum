@@ -77,7 +77,7 @@ namespace Spectrum {
       this.stopwatch.Restart();
 
       this.hueIndex = (this.hueIndex + 10000) % 65535;
-      this.lightIndex = (this.lightIndex + 1) % 5;
+      this.lightIndex = (this.lightIndex + 1) % this.config.hueIndices.Length;
       this.hue.SendLightCommand(
         this.lightIndex,
         new HueCommand() {

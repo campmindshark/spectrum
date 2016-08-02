@@ -9,154 +9,153 @@ namespace Spectrum {
 
   public partial class MainWindow : Window {
 
-    Operator st;
+    Operator op;
     SpectrumConfiguration config;
-    private bool dragStarted = true;
-    private bool boxInitialized = false;
+    private int[] audioDeviceIndices;
 
     public MainWindow() {
       InitializeComponent();
       this.config = new SpectrumConfiguration();
-      this.st = new Operator(this.config);
+      this.op = new Operator(this.config);
 
-      this.boxInitialized = true;
-      HotKey white_toggle = new HotKey(Key.Q, KeyModifier.Alt, this.OnHotKeyHandler);
-      HotKey off_toggle = new HotKey(Key.OemTilde, KeyModifier.Alt, this.OnHotKeyHandler);
-      HotKey red_alert = new HotKey(Key.R, KeyModifier.Alt, this.OnHotKeyHandler);
-      HotKey bri_up = new HotKey(Key.OemPeriod, KeyModifier.Alt, this.OnHotKeyHandler);
-      HotKey bri_down = new HotKey(Key.OemComma, KeyModifier.Alt, this.OnHotKeyHandler);
-      HotKey hue_left = new HotKey(Key.Left, KeyModifier.Alt, this.OnHotKeyHandler);
-      HotKey hue_right = new HotKey(Key.Right, KeyModifier.Alt, this.OnHotKeyHandler);
-      HotKey sat_up = new HotKey(Key.Up, KeyModifier.Alt, this.OnHotKeyHandler);
-      HotKey sat_down = new HotKey(Key.Down, KeyModifier.Alt, this.OnHotKeyHandler);
-      this.Closing += this.HandleClose;
+      new HotKey(Key.Q, KeyModifier.Alt, this.OnHotKeyHandler);
+      new HotKey(Key.OemTilde, KeyModifier.Alt, this.OnHotKeyHandler);
+      new HotKey(Key.R, KeyModifier.Alt, this.OnHotKeyHandler);
+      new HotKey(Key.OemPeriod, KeyModifier.Alt, this.OnHotKeyHandler);
+      new HotKey(Key.OemComma, KeyModifier.Alt, this.OnHotKeyHandler);
+      new HotKey(Key.Left, KeyModifier.Alt, this.OnHotKeyHandler);
+      new HotKey(Key.Right, KeyModifier.Alt, this.OnHotKeyHandler);
+      new HotKey(Key.Up, KeyModifier.Alt, this.OnHotKeyHandler);
+      new HotKey(Key.Down, KeyModifier.Alt, this.OnHotKeyHandler);
 
+      this.RefreshAudioDevices(null, null);
+    }
+
+    private void RefreshAudioDevices(object sender, RoutedEventArgs e) {
+      this.op.Enabled = false;
+      this.powerButton.Content = "Go";
+
+      this.audioDeviceIndices = new int[AudioInput.DeviceCount];
+
+      this.audioDevices.Items.Clear();
+      int itemIndex = 0;
       for (int i = 0; i < AudioInput.DeviceCount; i++) {
-        if (AudioInput.IsEnabledLoopbackDevice(i)) {
-          this.devices.Items.Add(string.Format(
-            "{0} - {1}",
-            i,
-            AudioInput.GetDeviceName(i)
-          ));
+        if (!AudioInput.IsEnabledInputDevice(i)) {
+          continue;
         }
+        this.audioDevices.Items.Add(AudioInput.GetDeviceName(i));
+        this.audioDeviceIndices[itemIndex++] = i;
       }
-      this.devices.SelectedIndex = 0;
-      this.InputDeviceChanged(null, null);
-      this.devices.SelectionChanged += this.InputDeviceChanged;
+      this.audioDevices.SelectedIndex = 0;
+      this.AudioInputDeviceChanged(null, null);
+    }
+
+    private void AudioInputDeviceChanged(
+      object sender,
+      SelectionChangedEventArgs e
+    ) {
+      if (this.audioDevices.SelectedIndex == -1) {
+        return;
+      }
+      this.config.audioDeviceIndex =
+        this.audioDeviceIndices[this.audioDevices.SelectedIndex];
+      if (this.op.Enabled) {
+        this.op.Enabled = false;
+        this.op.Enabled = true;
+      }
     }
 
     private void OnHotKeyHandler(HotKey hotKey) {
       if (hotKey.Key.Equals(Key.Q)) {
-        checkBox.IsChecked = !checkBox.IsChecked;
-        config.brighten = 0;
-        config.colorslide = 0;
-        config.sat = 0;
-      }
-      if (hotKey.Key.Equals(Key.OemTilde)) {
-        config.lightsOff = !config.lightsOff;
-        System.Diagnostics.Debug.WriteLine("off");
-      }
-      if (hotKey.Key.Equals(Key.R)) {
-        config.redAlert = !config.redAlert;
-        System.Diagnostics.Debug.WriteLine("red");
-      }
-      if (hotKey.Key.Equals(Key.OemPeriod)) {
-        config.brighten = Math.Min(config.brighten + 1, 0);
-      }
-      if (hotKey.Key.Equals(Key.OemComma)) {
-        config.brighten = Math.Max(config.brighten - 1, -4);
-      }
-      if (hotKey.Key.Equals(Key.Left)) {
-        config.colorslide -= 1;
-      }
-      if (hotKey.Key.Equals(Key.Right)) {
-        config.colorslide += 1;
+        // Will propagate to this.config.controlLights
+        this.hueAudioCheckbox.IsChecked = !this.hueAudioCheckbox.IsChecked;
+        this.config.brighten = 0;
+        this.config.colorslide = 0;
+        this.config.sat = 0;
+      } else if (hotKey.Key.Equals(Key.OemTilde)) {
+        this.config.lightsOff = !this.config.lightsOff;
+      } else if (hotKey.Key.Equals(Key.R)) {
+        this.config.redAlert = !this.config.redAlert;
+      } else if (hotKey.Key.Equals(Key.OemPeriod)) {
+        this.config.brighten = Math.Min(this.config.brighten + 1, 0);
+      } else if (hotKey.Key.Equals(Key.OemComma)) {
+        this.config.brighten = Math.Max(this.config.brighten - 1, -4);
+      } else if (hotKey.Key.Equals(Key.Left)) {
+        this.config.colorslide -= 1;
+      } else if (hotKey.Key.Equals(Key.Right)) {
+        this.config.colorslide += 1;
+      } else if (hotKey.Key.Equals(Key.Up)) {
+        this.config.sat = Math.Min(this.config.sat + 1, 2);
+      } else if (hotKey.Key.Equals(Key.Down)) {
+        this.config.sat = Math.Max(this.config.sat - 1, -2);
       }
       //config.colorslide = (config.colorslide + 4 + 16) % 16 - 4;??
-      if (hotKey.Key.Equals(Key.Up)) {
-        config.sat = Math.Min(config.sat + 1, 2);
+    }
+
+    private void AudioSeparateThreadChanged(object sender, RoutedEventArgs e) {
+      if (this.config == null) {
+        return;
       }
-      if (hotKey.Key.Equals(Key.Down)) {
-        config.sat = Math.Max(config.sat - 1, -2);
+      this.config.audioInputInSeparateThread = this.audioThreadCheckbox.IsEnabled;
+      if (this.op.Enabled) {
+        this.op.Enabled = false;
+        this.op.Enabled = true;
       }
     }
 
-    private void InputDeviceChanged(
+    private void PowerButtonClicked(object sender, RoutedEventArgs e) {
+      if (this.op.Enabled) {
+        this.op.Enabled = false;
+        this.powerButton.Content = "Go";
+      } else {
+        this.op.Enabled = true;
+        this.powerButton.Content = "Stop";
+      }
+    }
+
+    private void HueAudioSliderChanged(
       object sender,
-      SelectionChangedEventArgs e
+      RoutedPropertyChangedEventArgs<double> e
     ) {
-      var str = (this.devices.Items[this.devices.SelectedIndex] as string);
-      var deviceName = str.Split(' ');
-      this.config.audioDeviceIndex = Convert.ToInt32(deviceName[0]);
+      if (this.config == null) {
+        return;
+      }
+      Slider slider = (Slider)sender;
+      if (slider.Name == "dropQuietS") {
+        this.dropQuietL.Content = slider.Value.ToString("F3");
+        this.config.dropQ = (float)slider.Value;
+      } else if (slider.Name == "dropChangeS") {
+        this.dropChangeL.Content = slider.Value.ToString("F3");
+        this.config.dropT = (float)slider.Value;
+      } else if (slider.Name == "kickQuietS") {
+        this.kickQuietL.Content = slider.Value.ToString("F3");
+        this.config.kickQ = (float)slider.Value;
+      } else if (slider.Name == "kickChangeS") {
+        this.kickChangeL.Content = slider.Value.ToString("F3");
+        this.config.kickT = (float)slider.Value;
+      } else if (slider.Name == "snareQuietS") {
+        this.snareQuietL.Content = slider.Value.ToString("F3");
+        this.config.snareQ = (float)slider.Value;
+      } else if (slider.Name == "snareChangeS") {
+        this.snareChangeL.Content = slider.Value.ToString("F3");
+        this.config.snareT = (float)slider.Value;
+      } else if (slider.Name == "peakChangeS") {
+        this.peakChangeL.Content = slider.Value.ToString("F3");
+        this.config.peakC = (float)slider.Value;
+      }
     }
 
-    private void button_Click(object sender, RoutedEventArgs e) {
-      config.controlLights = (bool)checkBox.IsChecked;
-      dropQuietS.IsEnabled = !dropQuietS.IsEnabled;
-      dropChangeS.IsEnabled = !dropChangeS.IsEnabled;
-      kickQuietS.IsEnabled = !kickQuietS.IsEnabled;
-      kickChangeS.IsEnabled = !kickChangeS.IsEnabled;
-      snareQuietS.IsEnabled = !snareQuietS.IsEnabled;
-      snareChangeS.IsEnabled = !snareChangeS.IsEnabled;
-      peakChangeS.IsEnabled = !peakChangeS.IsEnabled;
-      st.Enabled = !st.Enabled;
-      this.devices.IsEnabled = !st.Enabled;
-      dragStarted = false;
-    }
-
-    private void Slider_DragStarted(object sender, DragStartedEventArgs e) {
-      dragStarted = true;
-    }
-    private void Slider_DragCompleted(object sender, DragCompletedEventArgs e) {
-      set(((Slider)sender).Name, ((Slider)sender).Value);
-      dragStarted = false;
-    }
-    private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e) {
-      if (!dragStarted)
-        set(((Slider)sender).Name, e.NewValue);
-    }
-    private void HandleCheck(object sender, RoutedEventArgs e) {
-      if (boxInitialized)
-        config.controlLights = true;
-    }
-
-    private void HandleUnchecked(object sender, RoutedEventArgs e) {
-      config.controlLights = false;
-    }
-
-    private void set(String name, double val) {
-      if (name == "dropQuietS") {
-        dropQuietL.Content = val.ToString("F3");
-        config.dropQ = (float)val;
+    private void HueControlLightsChanged(object sender, RoutedEventArgs e) {
+      if (this.config == null) {
+        return;
       }
-      if (name == "dropChangeS") {
-        dropChangeL.Content = val.ToString("F3");
-        config.dropT = (float)val;
-      }
-      if (name == "kickQuietS") {
-        kickQuietL.Content = val.ToString("F3");
-        config.kickQ = (float)val;
-      }
-      if (name == "kickChangeS") {
-        kickChangeL.Content = val.ToString("F3");
-        config.kickT = (float)val;
-      }
-      if (name == "snareQuietS") {
-        snareQuietL.Content = val.ToString("F3");
-        config.snareQ = (float)val;
-      }
-      if (name == "snareChangeS") {
-        snareChangeL.Content = val.ToString("F3");
-        config.snareT = (float)val;
-      }
-      if (name == "peakChangeS") {
-        peakChangeL.Content = val.ToString("F3");
-        config.peakC = (float)val;
-      }
+      this.config.controlLights = this.hueAudioCheckbox.IsChecked == true;
     }
 
     private void HandleClose(object sender, EventArgs e) {
-      this.st.Enabled = false;
+      this.op.Enabled = false;
     }
+
   }
+
 }

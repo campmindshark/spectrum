@@ -184,9 +184,9 @@ namespace Spectrum.Audio {
       }
     }
 
-    public static bool IsEnabledLoopbackDevice(int deviceIndex) {
+    public static bool IsEnabledInputDevice(int deviceIndex) {
       var device = BassWasapi.BASS_WASAPI_GetDeviceInfo(deviceIndex);
-      return device.IsEnabled && device.IsLoopback;
+      return device.IsEnabled && device.IsInput;
     }
 
     public static string GetDeviceName(int deviceIndex) {

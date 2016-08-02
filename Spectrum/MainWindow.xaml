@@ -1,39 +1,61 @@
-﻿<Window x:Class="Spectrum.MainWindow"
+﻿<Window x:Name="Window" x:Class="Spectrum.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Spectrum"
         mc:Ignorable="d"
-        Title="WinHue" Height="297.547" Width="374" ResizeMode="NoResize">
-    <Grid Margin="0,0,0,0">
-        <Grid.RowDefinitions>
-            <RowDefinition/>
-            <RowDefinition Height="0*"/>
-        </Grid.RowDefinitions>
-        <ComboBox x:Name="devices" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="120"/>
-        <Button x:Name="button" Content="Go" HorizontalAlignment="Left" Margin="135,10,0,0" VerticalAlignment="Top" Width="44" Click="button_Click" Height="22"/>
-        <Slider x:Name="dropQuietS" Value="0.025" HorizontalAlignment="Left" Margin="100,75,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="0.1" LargeChange="0.01" ValueChanged="Slider_ValueChanged" Thumb.DragStarted="Slider_DragStarted" Thumb.DragCompleted="Slider_DragCompleted" IsEnabled="False" SmallChange="0.001"/>
-        <Slider x:Name="dropChangeS" Value=".075" HorizontalAlignment="Left" Margin="100,100,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="0.1" LargeChange="0.01" SmallChange="0.001" ValueChanged="Slider_ValueChanged" Thumb.DragStarted="Slider_DragStarted" Thumb.DragCompleted="Slider_DragCompleted" IsEnabled="False"/>
-        <Slider x:Name="kickQuietS" Value="1" HorizontalAlignment="Left" Margin="100,125,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="1" LargeChange="0.1" SmallChange="0.01" ValueChanged="Slider_ValueChanged" Thumb.DragStarted="Slider_DragStarted" Thumb.DragCompleted="Slider_DragCompleted" IsEnabled="False"/>
-        <Slider x:Name="kickChangeS" Value="0" HorizontalAlignment="Left" Margin="100,150,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="4" ValueChanged="Slider_ValueChanged" Thumb.DragStarted="Slider_DragStarted" Thumb.DragCompleted="Slider_DragCompleted" IsEnabled="False" LargeChange="0.1" SmallChange="0.01"/>
-        <Slider x:Name="snareQuietS" Value="1" HorizontalAlignment="Left" Margin="100,175,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="1" ValueChanged="Slider_ValueChanged" Thumb.DragStarted="Slider_DragStarted" Thumb.DragCompleted="Slider_DragCompleted" IsEnabled="False" LargeChange="0.1" SmallChange="0.01"/>
-        <Slider x:Name="snareChangeS" Value=".5" HorizontalAlignment="Left" Margin="100,200,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="4" ValueChanged="Slider_ValueChanged" Thumb.DragStarted="Slider_DragStarted" Thumb.DragCompleted="Slider_DragCompleted" IsEnabled="False" LargeChange="0.1" SmallChange="0"/>
-        <Label x:Name="dropQuietL" Content="0.025" HorizontalAlignment="Left" Margin="305,69,0,0" VerticalAlignment="Top"/>
-        <Label x:Name="dropChangeL" Content="0.075" HorizontalAlignment="Left" Margin="305,94,0,0" VerticalAlignment="Top"/>
-        <Label x:Name="kickQuietL" Content="1.000" HorizontalAlignment="Left" Margin="305,119,0,0" VerticalAlignment="Top"/>
-        <Label x:Name="kickChangeL" Content="0.000" HorizontalAlignment="Left" Margin="305,144,0,0" VerticalAlignment="Top"/>
-        <Label x:Name="snareQuietL" Content="1.000" HorizontalAlignment="Left" Margin="305,169,0,0" VerticalAlignment="Top"/>
-        <Label x:Name="snareChangeL" Content="0.500" HorizontalAlignment="Left" Margin="305,194,0,0" VerticalAlignment="Top"/>
-        <Label x:Name="label" Content="Drop Quiet" HorizontalAlignment="Left" Margin="10,69,0,0" VerticalAlignment="Top"/>
-        <Label x:Name="label1" Content="Drop Change" HorizontalAlignment="Left" Margin="10,94,0,0" VerticalAlignment="Top"/>
-        <Label x:Name="label2" Content="Kick Quiet" HorizontalAlignment="Left" Margin="10,119,0,0" VerticalAlignment="Top"/>
-        <Label x:Name="label3" Content="Kick Change" HorizontalAlignment="Left" Margin="10,144,0,0" VerticalAlignment="Top"/>
-        <Label x:Name="label4" Content="Snare Quiet" HorizontalAlignment="Left" Margin="10,168,0,0" VerticalAlignment="Top"/>
-        <Label x:Name="label5" Content="Snare Change" HorizontalAlignment="Left" Margin="10,194,0,0" VerticalAlignment="Top"/>
-        <CheckBox x:Name="checkBox" Content="Light Control" Checked="HandleCheck" Unchecked="HandleUnchecked" HorizontalAlignment="Left" Margin="193,10,0,0" VerticalAlignment="Top" IsChecked="True"/>
-        <Slider x:Name="peakChangeS" Value="0.8" HorizontalAlignment="Left" Margin="100,50,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="2" LargeChange="0.1" ValueChanged="Slider_ValueChanged" Thumb.DragStarted="Slider_DragStarted" Thumb.DragCompleted="Slider_DragCompleted" IsEnabled="False" SmallChange="0.01"/>
-        <Label x:Name="peakChangeL" Content="0.800" HorizontalAlignment="Left" Margin="305,44,0,0" VerticalAlignment="Top"/>
-        <Label x:Name="label6" Content="Peak Detection" HorizontalAlignment="Left" Margin="10,44,0,0" VerticalAlignment="Top" RenderTransformOrigin="0.332,0.316"/>
-    </Grid>
+        Title="Spectrum" Height="480" Width="600" ResizeMode="NoResize"
+        Icon="pack://siteoforigin:,,,/Resources/simple dome.png"
+        Closing="HandleClose">
+  <Grid x:Name="Body" Margin="4">
+    <Grid.RowDefinitions>
+      <RowDefinition/>
+      <RowDefinition Height="0*"/>
+    </Grid.RowDefinitions>
+    <Border Margin="76,86,384,378"/>
+    <TabControl x:Name="TabNavigationControl" Margin="4,0,4,4">
+      <TabItem Header="Home">
+        <Grid>
+          <ComboBox x:Name="audioDevices" HorizontalAlignment="Left" Margin="126,192,0,0" VerticalAlignment="Top" Width="266" SelectionChanged="AudioInputDeviceChanged" />
+          <Button x:Name="powerButton" Content="Go" HorizontalAlignment="Left" Margin="397,192,0,0" VerticalAlignment="Top" Width="44" Click="PowerButtonClicked" Height="22" />
+          <Image x:Name="spectrumWordmark" HorizontalAlignment="Center" Height="72" VerticalAlignment="Top" Width="314" Margin="0,120,0,0" Source="pack://siteoforigin:,,,/Resources/spectrum wordmark.PNG"/>
+          <CheckBox x:Name="audioThreadCheckbox" Content="Process audio in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" Checked="AudioSeparateThreadChanged" Unchecked="AudioSeparateThreadChanged"/>
+          <Button x:Name="audioDeviceRefresh" Content="Refresh audio devices" VerticalAlignment="Bottom" HorizontalAlignment="Right" Style="{StaticResource HyperlinkButton}" Margin="0,0,5,5" FontStyle="Italic" Click="RefreshAudioDevices" />
+        </Grid>
+      </TabItem>
+      <TabItem Header="Hues">
+        <Grid>
+          <CheckBox x:Name="hueAudioCheckbox" Content="Light Control" Checked="HueControlLightsChanged" Unchecked="HueControlLightsChanged" HorizontalAlignment="Left" Margin="0,291,0,0" VerticalAlignment="Top" IsChecked="True"/>
+          <Grid Width="340" Height="180" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,50,0,0">
+            <Label x:Name="dropQuietT" Content="Drop Quiet" HorizontalAlignment="Left" Margin="0,25,0,0" VerticalAlignment="Top"/>
+            <Slider x:Name="dropQuietS" Value="0.025" HorizontalAlignment="Left" Margin="90,31,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="0.1" LargeChange="0.01" ValueChanged="HueAudioSliderChanged" SmallChange="0.001" />
+            <Label x:Name="dropQuietL" Content="0.025" HorizontalAlignment="Left" Margin="295,25,0,0" VerticalAlignment="Top"/>
+            <Label x:Name="dropChangeT" Content="Drop Change" HorizontalAlignment="Left" Margin="0,50,0,0" VerticalAlignment="Top"/>
+            <Slider x:Name="dropChangeS" Value=".075" HorizontalAlignment="Left" Margin="90,56,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="0.1" LargeChange="0.01" SmallChange="0.001" ValueChanged="HueAudioSliderChanged" />
+            <Label x:Name="dropChangeL" Content="0.075" HorizontalAlignment="Left" Margin="295,50,0,0" VerticalAlignment="Top"/>
+            <Label x:Name="kickQuietT" Content="Kick Quiet" HorizontalAlignment="Left" Margin="0,75,0,0" VerticalAlignment="Top"/>
+            <Slider x:Name="kickQuietS" Value="1" HorizontalAlignment="Left" Margin="90,81,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="1" LargeChange="0.1" SmallChange="0.01" ValueChanged="HueAudioSliderChanged" />
+            <Label x:Name="kickQuietL" Content="1.000" HorizontalAlignment="Left" Margin="295,75,0,0" VerticalAlignment="Top"/>
+            <Label x:Name="kickChangeT" Content="Kick Change" HorizontalAlignment="Left" Margin="0,100,0,0" VerticalAlignment="Top"/>
+            <Slider x:Name="kickChangeS" Value="0" HorizontalAlignment="Left" Margin="90,106,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="4" ValueChanged="HueAudioSliderChanged" />
+            <Label x:Name="kickChangeL" Content="0.000" HorizontalAlignment="Left" Margin="295,100,0,0" VerticalAlignment="Top"/>
+            <Label x:Name="snareQuietT" Content="Snare Quiet" HorizontalAlignment="Left" Margin="0,124,0,0" VerticalAlignment="Top"/>
+            <Slider x:Name="snareQuietS" Value="1" HorizontalAlignment="Left" Margin="90,131,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="1" ValueChanged="HueAudioSliderChanged" />
+            <Label x:Name="snareQuietL" Content="1.000" HorizontalAlignment="Left" Margin="295,125,0,0" VerticalAlignment="Top"/>
+            <Label x:Name="snareChangeT" Content="Snare Change" HorizontalAlignment="Left" Margin="0,150,0,0" VerticalAlignment="Top"/>
+            <Slider x:Name="snareChangeS" Value=".5" HorizontalAlignment="Left" Margin="90,156,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="4" ValueChanged="HueAudioSliderChanged" />
+            <Label x:Name="snareChangeL" Content="0.500" HorizontalAlignment="Left" Margin="295,150,0,0" VerticalAlignment="Top"/>
+            <Label x:Name="peakChangeT" Content="Peak Detection" HorizontalAlignment="Left" VerticalAlignment="Top" RenderTransformOrigin="0.332,0.316"/>
+            <Slider x:Name="peakChangeS" Value="0.8" HorizontalAlignment="Left" Margin="90,6,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="2" LargeChange="0.1" ValueChanged="HueAudioSliderChanged" />
+            <Label x:Name="peakChangeL" Content="0.800" HorizontalAlignment="Left" Margin="295,0,0,0" VerticalAlignment="Top"/>
+          </Grid>
+        </Grid>
+      </TabItem>
+      <TabItem Header="LEDs">
+        <Grid>
+        </Grid>
+      </TabItem>
+    </TabControl>
+  </Grid>
 </Window>

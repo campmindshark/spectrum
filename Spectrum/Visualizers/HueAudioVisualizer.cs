@@ -161,7 +161,7 @@ namespace Spectrum {
       if (!lightPending) {
         kickPending = kickPending && totalMax;
         snarePending = snarePending && totalMax;
-        target = this.random.Next(5);
+        target = this.random.Next(this.config.hueIndices.Length);
       }
       if (drop) {
         if (dropDuration == 0) {
