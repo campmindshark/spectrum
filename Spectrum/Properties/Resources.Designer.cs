@@ -63,19 +63,9 @@ namespace Spectrum.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap mindshark_color {
+        internal static System.Drawing.Bitmap s {
             get {
-                object obj = ResourceManager.GetObject("mindshark_color", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap simple_dome {
-            get {
-                object obj = ResourceManager.GetObject("simple_dome", resourceCulture);
+                object obj = ResourceManager.GetObject("s", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

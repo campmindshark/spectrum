@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:Spectrum"
         mc:Ignorable="d"
         Title="Spectrum" Height="480" Width="600" ResizeMode="NoResize"
-        Icon="pack://siteoforigin:,,,/Resources/simple dome.png"
+        Icon="pack://siteoforigin:,,,/Resources/s.PNG"
         Closing="HandleClose">
   <Grid x:Name="Body" Margin="4">
     <Grid.RowDefinitions>

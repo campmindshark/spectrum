@@ -26,7 +26,6 @@ C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Hues.pdb
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Newtonsoft.Json.xml
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Audio.dll
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Audio.pdb
-C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Resources\simple dome.png
-C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Resources\mindshark color.png
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Resources\spectrum wordmark.PNG
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\obj\Debug\App.baml
+C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Resources\s.PNG
