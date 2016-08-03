@@ -31,6 +31,10 @@ namespace Spectrum {
       this.RefreshAudioDevices(null, null);
     }
 
+    private void HandleClose(object sender, EventArgs e) {
+      this.op.Enabled = false;
+    }
+
     private void RefreshAudioDevices(object sender, RoutedEventArgs e) {
       this.op.Enabled = false;
       this.powerButton.Content = "Go";
@@ -96,11 +100,9 @@ namespace Spectrum {
       if (this.config == null) {
         return;
       }
-      this.config.audioInputInSeparateThread = this.audioThreadCheckbox.IsEnabled;
-      if (this.op.Enabled) {
-        this.op.Enabled = false;
-        this.op.Enabled = true;
-      }
+      this.config.audioInputInSeparateThread =
+        this.audioThreadCheckbox.IsChecked == true;
+      this.op.Reboot();
     }
 
     private void PowerButtonClicked(object sender, RoutedEventArgs e) {
@@ -111,6 +113,13 @@ namespace Spectrum {
         this.op.Enabled = true;
         this.powerButton.Content = "Stop";
       }
+    }
+
+    private void HueEnabled(object sender, RoutedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.huesEnabled = this.hueEnabled.IsChecked == true;
     }
 
     private void HueAudioSliderChanged(
@@ -152,8 +161,29 @@ namespace Spectrum {
       this.config.controlLights = this.hueAudioCheckbox.IsChecked == true;
     }
 
-    private void HandleClose(object sender, EventArgs e) {
-      this.op.Enabled = false;
+    private void HueSeparateThreadChanged(object sender, RoutedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.huesOutputInSeparateThread =
+        this.hueThreadCheckbox.IsChecked == true;
+      this.op.Reboot();
+    }
+
+    private void LEDBoardEnabled(object sender, RoutedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.ledBoardEnabled = this.ledBoardEnabled.IsChecked == true;
+    }
+
+    private void LEDBoardSeparateThreadChanged(object sender, RoutedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.ledBoardOutputInSeparateThread =
+        this.ledBoardThreadCheckbox.IsChecked == true;
+      this.op.Reboot();
     }
 
   }

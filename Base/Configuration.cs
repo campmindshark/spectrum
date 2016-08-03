@@ -15,6 +15,9 @@ namespace Spectrum.Base {
     // The unique index identifying the audio device we are listening to
     int audioDeviceIndex { get; set; }
 
+    bool huesEnabled { get; set; }
+    bool ledBoardEnabled { get; set; }
+
     // If this is true, we will poll the Un4seen APIs in a thread separate to
     // the one running the visualizers. If it is false, a single thread will
     // first poll the Un4seen APIs and then run the visualizers.
@@ -22,11 +25,11 @@ namespace Spectrum.Base {
     // If this is true, we will update the Hues in a thread separate to the one
     // running the visualizers. If it is false, a single thread will first run
     // the visualizers and cache output commands, and then flush them.
-    bool hueOutputInSeparateThread { get; set; }
+    bool huesOutputInSeparateThread { get; set; }
     // If this is true, we will update the LEDs in a thread separate to the one
     // running the visualizers. If it is false, a single thread will first run
     // the visualizers and cache output commands, and then flush them.
-    bool ledsOutputInSeparateThread { get; set; }
+    bool ledBoardOutputInSeparateThread { get; set; }
 
     // If lightsOff is true then we turn off the lights
     bool lightsOff { get; set; }

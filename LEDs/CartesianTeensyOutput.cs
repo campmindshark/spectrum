@@ -18,26 +18,45 @@ namespace Spectrum.LEDs {
    */
   public class CartesianTeensyOutput : Output {
 
-    private SimpleTeensyOutput output;
+    private SimpleTeensyAPI api;
     private Configuration config;
     private List<Visualizer> visualizers;
 
     public CartesianTeensyOutput(Configuration config) {
       this.config = config;
-      this.output = new SimpleTeensyOutput(
-        this.config.teensyUSBPort,
-        this.config.ledsOutputInSeparateThread
-      );
       this.visualizers = new List<Visualizer>();
     }
 
-    public bool Enabled {
-      get { return this.output.Enabled; }
-      set { this.output.Enabled = value; }
+    private bool active = false;
+    public bool Active {
+      get {
+        return this.active;
+      }
+      set {
+        if (value == this.active) {
+          return;
+        }
+        if (value) {
+          this.api = new SimpleTeensyAPI(
+            this.config.teensyUSBPort,
+            this.config.ledBoardOutputInSeparateThread
+          );
+          this.api.Active = true;
+        } else {
+          this.api.Active = false;
+        }
+        this.active = value;
+      }
     }
 
+    public bool Enabled {
+      get {
+        return this.config.ledBoardEnabled;
+      }
+   }
+
     public void OperatorUpdate() {
-      this.output.OperatorUpdate();
+      this.api.OperatorUpdate();
     }
 
     public void RegisterVisualizer(Visualizer visualizer) {
@@ -49,7 +68,7 @@ namespace Spectrum.LEDs {
     }
 
     public void Flush() {
-      this.output.Flush();
+      this.api.Flush();
     }
 
     public void SetPixel(int x, int y, int color) {
@@ -62,7 +81,7 @@ namespace Spectrum.LEDs {
       } else {
         pixelIndex += x;
       }
-      this.output.SetPixel(pixelIndex, color);
+      this.api.SetPixel(pixelIndex, color);
     }
 
   }

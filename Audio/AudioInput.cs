@@ -17,7 +17,7 @@ namespace Spectrum.Audio {
    * in order to update AudioData and Volume.
    *
    * Choose between them with config.audioInputInSeparateThread. Note that
-   * either way, you'll need to set the Enabled property to true in order to get
+   * either way, you'll need to set the Active property to true in order to get
    * updates. Setting it to false will disable any running threads.
    */
    public class AudioInput : Input {
@@ -72,17 +72,17 @@ namespace Spectrum.Audio {
       }
     }
 
-    private bool enabled;
+    private bool active;
     private Thread inputThread;
-    public bool Enabled {
+    public bool Active {
       get {
         lock (this.process) {
-          return this.enabled;
+          return this.active;
         }
       }
       set {
         lock (this.process) {
-          if (this.enabled == value) {
+          if (this.active == value) {
             return;
           }
           if (value) {
@@ -101,7 +101,7 @@ namespace Spectrum.Audio {
               this.TerminateAudio();
             }
           }
-          this.enabled = value;
+          this.active = value;
         }
       }
     }

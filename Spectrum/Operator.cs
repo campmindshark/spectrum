@@ -74,13 +74,22 @@ namespace Spectrum {
             this.operatorThread = null;
 
             foreach (var input in this.inputs) {
-              input.Enabled = false;
+              input.Active = false;
             }
             foreach (var output in this.outputs) {
-              output.Enabled = false;
+              output.Active = false;
             }
           }
           this.enabled = value;
+        }
+      }
+    }
+
+    public void Reboot() {
+      lock (this.visualizers) {
+        if (this.Enabled) {
+          this.Enabled = false;
+          this.Enabled = true;
         }
       }
     }
@@ -90,6 +99,10 @@ namespace Spectrum {
         List<Output> activeOutputs = new List<Output>();
         HashSet<Visualizer> activeVisualizers = new HashSet<Visualizer>();
         foreach (var output in this.outputs) {
+          if (!output.Enabled) {
+            output.Active = false;
+            continue;
+          }
           int topPri = 1;
           List<Visualizer> topPriVisualizers = new List<Visualizer>();
           foreach (var visualizer in output.GetVisualizers()) {
@@ -102,7 +115,7 @@ namespace Spectrum {
               topPriVisualizers.Add(visualizer);
             }
           }
-          output.Enabled = topPriVisualizers.Count != 0;
+          output.Active = topPriVisualizers.Count != 0;
           if (topPriVisualizers.Count != 0) {
             activeOutputs.Add(output);
           }
@@ -118,7 +131,7 @@ namespace Spectrum {
           activeInputs.UnionWith(visualizer.GetInputs());
         }
         foreach (var input in this.inputs) {
-          input.Enabled = activeInputs.Contains(input);
+          input.Active = activeInputs.Contains(input);
         }
 
         foreach (var input in activeInputs) {

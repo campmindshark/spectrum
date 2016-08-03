@@ -49,21 +49,21 @@ namespace Spectrum.Hues {
       this.visualizers = new List<Visualizer>();
     }
 
-    private bool enabled;
+    private bool active;
     private Thread outputThread;
-    public bool Enabled {
+    public bool Active {
       get {
         lock (this.buffer) {
-          return this.enabled;
+          return this.active;
         }
       }
       set {
         lock (this.buffer) {
-          if (this.enabled == value) {
+          if (this.active == value) {
             return;
           }
           if (value) {
-            if (this.config.hueOutputInSeparateThread) {
+            if (this.config.huesOutputInSeparateThread) {
               this.outputThread = new Thread(OutputThread);
               this.outputThread.Start();
             }
@@ -75,10 +75,16 @@ namespace Spectrum.Hues {
             }
             this.buffer = new ConcurrentQueue<HueMessage>();
           }
-          this.enabled = value;
+          this.active = value;
         }
       }
     }
+
+    public bool Enabled {
+      get {
+        return this.config.huesEnabled;
+      }
+   }
 
     private void OutputThread() {
       while (true) {
@@ -109,7 +115,7 @@ namespace Spectrum.Hues {
     }
 
     public void OperatorUpdate() {
-      if (!this.config.hueOutputInSeparateThread) {
+      if (!this.config.huesOutputInSeparateThread) {
         this.Update();
       }
     }

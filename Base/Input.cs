@@ -15,7 +15,7 @@
      * If a given Input is enabled, then there is a thread running that is
      * updating the Input object in some way.
      */
-    bool Enabled { get; set; }
+    bool Active { get; set; }
 
     /**
      * This method gets called at the start of the Operator loop (from within

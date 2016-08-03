@@ -12,9 +12,9 @@ namespace Spectrum.LEDs {
    * The intent is to expose a single API to multiple Teensies. Note that when
    * enabled, one output thread exists for each Teensy.
    */
-  public class MultiTeensyOutput {
+  public class MultiTeensyAPI {
 
-    private SimpleTeensyOutput[] teensies;
+    private SimpleTeensyAPI[] teensies;
     private int? teensyLength;
     private bool separateThread;
 
@@ -24,10 +24,10 @@ namespace Spectrum.LEDs {
      * does not specify a teensyLength, you will not be able to use the setPixel
      * that takes only a single LED index.
      */
-    public MultiTeensyOutput(string[] portNames, bool separateThread) {
-      this.teensies = new SimpleTeensyOutput[portNames.Length];
+    public MultiTeensyAPI(string[] portNames, bool separateThread) {
+      this.teensies = new SimpleTeensyAPI[portNames.Length];
       for (int i = 0; i < portNames.Length; i++) {
-        this.teensies[i] = new SimpleTeensyOutput(portNames[i], separateThread);
+        this.teensies[i] = new SimpleTeensyAPI(portNames[i], separateThread);
       }
       this.separateThread = separateThread;
     }
@@ -40,7 +40,7 @@ namespace Spectrum.LEDs {
      * setPixel method that takes both Teensy index and an LED index). To use
      * this setPixel method, Each Teensy must address the same number of LEDs. 
      */
-    public MultiTeensyOutput(
+    public MultiTeensyAPI(
       string[] portNames,
       int teensyLength,
       bool separateThread
@@ -48,34 +48,34 @@ namespace Spectrum.LEDs {
       this.teensyLength = teensyLength;
     }
 
-    private bool enabled;
-    public bool Enabled {
+    private bool active;
+    public bool Active {
       get {
         lock (this.teensies) {
-          return this.enabled;
+          return this.active;
         }
       }
       set {
         lock (this.teensies) {
-          if (this.enabled == value) {
+          if (this.active == value) {
             return;
           }
-          foreach (SimpleTeensyOutput teensy in this.teensies) {
-            teensy.Enabled = value;
+          foreach (var teensy in this.teensies) {
+            teensy.Active = value;
           }
-          this.enabled = value;
+          this.active = value;
         }
       }
     }
 
     public void OperatorUpdate() {
-      foreach (SimpleTeensyOutput teensy in this.teensies) {
+      foreach (var teensy in this.teensies) {
         teensy.OperatorUpdate();
       }
     }
 
     public void Flush() {
-      foreach (SimpleTeensyOutput teensy in this.teensies) {
+      foreach (var teensy in this.teensies) {
         teensy.Flush();
       }
     }

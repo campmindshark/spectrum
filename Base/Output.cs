@@ -12,12 +12,17 @@
   public interface Output {
 
     /**
-     * If a given Output is enabled, then there is a thread running that is
-     * dequeuing commands from the Visualizer and sending them to the device.
-     * We only need an Output to be enabled when there exists at least one
-     * enabled Visualizer that is active on that Output.
+     * If a given Output is enabled, then we are dequeuing commands from the
+     * Visualizer and sending them to the device. We only need an Output to
+     * be active when there exists at least one enabled Visualizer that is
+     * active on that Output.
      */
-    bool Enabled { get; set; }
+    bool Active { get; set; }
+
+    /**
+     * This property reflects whether the Output is enabled by the UI.
+     */
+    bool Enabled { get; }
 
     /**
      * This method gets called at the end of the Operator loop (from within the

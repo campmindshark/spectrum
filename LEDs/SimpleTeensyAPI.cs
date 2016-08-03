@@ -9,32 +9,33 @@ namespace Spectrum.LEDs {
   /**
    * SimpleTeensyOutput is an API that can handle a single Teensy. It has no
    * conception of how many LEDs the Teensy is addressing - it just communicates
-   *  a given index and color to the Teensy. When enabled, an output thread is
-   *  started. When disabled, this thread exits.
+   * a given index and color to the Teensy.
    */
-  public class SimpleTeensyOutput {
+  public class SimpleTeensyAPI {
 
     private SerialPort port;
+    private string portName;
     private ConcurrentQueue<byte[]> buffer;
     private bool separateThread;
 
-    public SimpleTeensyOutput(string portName, bool separateThread) {
+    public SimpleTeensyAPI(string portName, bool separateThread) {
       this.port = new SerialPort(portName);
       this.buffer = new ConcurrentQueue<byte[]>();
       this.separateThread = separateThread;
     }
 
-    private bool enabled;
+    private bool active;
     private Thread outputThread;
-    public bool Enabled {
+    private object lockObject = new object();
+    public bool Active {
       get {
-        lock (this.port) {
-          return this.enabled;
+        lock (this.lockObject) {
+          return this.active;
         }
       }
       set {
-        lock (this.port) {
-          if (this.enabled == value) {
+        lock (this.lockObject) {
+          if (this.active == value) {
             return;
           }
           if (value) {
@@ -53,7 +54,7 @@ namespace Spectrum.LEDs {
               this.TerminateTeensies();
             }
           }
-          this.enabled = value;
+          this.active = value;
         }
       }
     }
@@ -68,7 +69,7 @@ namespace Spectrum.LEDs {
     }
 
     private void Update() {
-      lock (this.port) {
+      lock (this.lockObject) {
         int num_messages = this.buffer.Count;
         if (num_messages == 0) {
           return;
@@ -104,11 +105,11 @@ namespace Spectrum.LEDs {
     }
 
     public void Flush() {
-      this.buffer.Enqueue(new byte[] { 1, 0 });
+      this.buffer.Enqueue(new byte[] { 0, 0, 0, 0, 0 });
     }
 
     public void SetPixel(int pixelIndex, int color) {
-      int message = pixelIndex + 2;
+      int message = pixelIndex + 1;
       this.buffer.Enqueue(new byte[] {
         (byte)message,
         (byte)(message >> 8),

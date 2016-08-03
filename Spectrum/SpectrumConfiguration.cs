@@ -11,9 +11,12 @@ namespace Spectrum {
 
     public int audioDeviceIndex { get; set; } = -1;
 
+    public bool huesEnabled { get; set; } = false;
+    public bool ledBoardEnabled { get; set; } = false;
+
     public bool audioInputInSeparateThread { get; set; } = false;
-    public bool hueOutputInSeparateThread { get; set; } = true;
-    public bool ledsOutputInSeparateThread { get; set; } = false;
+    public bool huesOutputInSeparateThread { get; set; } = true;
+    public bool ledBoardOutputInSeparateThread { get; set; } = false;
 
     public bool lightsOff { get; set; } = false;
     public bool redAlert { get; set; } = false;
