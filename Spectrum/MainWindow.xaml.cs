@@ -28,11 +28,15 @@ namespace Spectrum {
       new HotKey(Key.Up, KeyModifier.Alt, this.OnHotKeyHandler);
       new HotKey(Key.Down, KeyModifier.Alt, this.OnHotKeyHandler);
 
-      this.RefreshAudioDevices(null, null);
-
       this.hueHubAddress.Text = this.config.hueURL;
       this.hueLightIndices.Text = String.Join(",", this.config.hueIndices);
       this.hueCommandDelay.Text = this.config.hueDelay.ToString();
+      this.ledBoardRowLength.Text = this.config.teensyRowLength.ToString();
+      this.ledBoardRowsPerStrip.Text =
+        this.config.teensyRowsPerStrip.ToString();
+
+      this.RefreshAudioDevices(null, null);
+      this.RefreshLEDBoardPorts(null, null);
     }
 
     private void HandleClose(object sender, EventArgs e) {
@@ -67,10 +71,7 @@ namespace Spectrum {
       }
       this.config.audioDeviceIndex =
         this.audioDeviceIndices[this.audioDevices.SelectedIndex];
-      if (this.op.Enabled) {
-        this.op.Enabled = false;
-        this.op.Enabled = true;
-      }
+      this.op.Reboot();
     }
 
     private void OnHotKeyHandler(HotKey hotKey) {
@@ -158,7 +159,9 @@ namespace Spectrum {
       if (this.config == null) {
         return;
       }
-      this.config.hueDelay = Convert.ToInt32(this.hueCommandDelay.Text);
+      try {
+        this.config.hueDelay = Convert.ToInt32(this.hueCommandDelay.Text);
+      } catch (FormatException) { }
     }
 
     private void HueAudioSliderChanged(
@@ -255,21 +258,27 @@ namespace Spectrum {
       if (this.config == null) {
         return;
       }
-      this.config.brighten = Convert.ToInt32(this.hueCustomBrightness.Text);
+      try {
+        this.config.brighten = Convert.ToInt32(this.hueCustomBrightness.Text);
+      } catch (FormatException) { }
     }
 
     private void HueCustomSaturation(object sender, TextChangedEventArgs e) {
       if (this.config == null) {
         return;
       }
-      this.config.sat = Convert.ToInt32(this.hueCustomBrightness.Text);
+      try {
+        this.config.sat = Convert.ToInt32(this.hueCustomBrightness.Text);
+      } catch (FormatException) { }
     }
 
     private void HueCustomHue(object sender, TextChangedEventArgs e) {
       if (this.config == null) {
         return;
       }
-      this.config.colorslide = Convert.ToInt32(this.hueCustomBrightness.Text);
+      try {
+        this.config.colorslide = Convert.ToInt32(this.hueCustomBrightness.Text);
+      } catch (FormatException) { }
     }
 
     private void HueIdleWhileSilent(object sender, RoutedEventArgs e) {
@@ -288,11 +297,54 @@ namespace Spectrum {
       this.op.Reboot();
     }
 
+    private void RefreshLEDBoardPorts(object sender, RoutedEventArgs e) {
+      this.ledBoardEnabled.IsChecked = false;
+
+      this.ledBoardUSBPorts.Items.Clear();
+      foreach (string portName in System.IO.Ports.SerialPort.GetPortNames()) {
+        this.ledBoardUSBPorts.Items.Add(portName);
+      }
+
+      this.ledBoardUSBPorts.SelectedIndex = 0;
+      this.LEDBoardUSBPortsChanged(null, null);
+    }
+
+    private void LEDBoardUSBPortsChanged(
+      object sender,
+      SelectionChangedEventArgs e
+    ) {
+      if (this.ledBoardUSBPorts.SelectedIndex == -1) {
+        return;
+      }
+      this.config.teensyUSBPort = this.ledBoardUSBPorts.SelectedItem as string;
+      this.op.Reboot();
+    }
+
     private void LEDBoardEnabled(object sender, RoutedEventArgs e) {
       if (this.config == null) {
         return;
       }
       this.config.ledBoardEnabled = this.ledBoardEnabled.IsChecked == true;
+    }
+
+    private void LEDBoardRowLength(object sender, TextChangedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      try {
+        this.config.teensyRowLength =
+          Convert.ToInt32(this.ledBoardRowLength.Text);
+      } catch (FormatException) { }
+    }
+
+    private void LEDBoardRowsPerStrip(object sender, TextChangedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      try {
+        this.config.teensyRowsPerStrip =
+          Convert.ToInt32(this.ledBoardRowsPerStrip.Text);
+      } catch (FormatException) { }
     }
 
     private void LEDBoardSeparateThreadChanged(object sender, RoutedEventArgs e) {

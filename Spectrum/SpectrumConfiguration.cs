@@ -40,7 +40,7 @@ namespace Spectrum {
       = "http://192.168.1.26/api/161d04c425fa45e293386cf241a26bf/";
     public int[] hueIndices { get; set; } = new int[] { 2, 1, 4, 5, 6 };
 
-    public string teensyUSBPort { get; set; } = "COM3";
+    public string teensyUSBPort { get; set; } = "COM4";
     public int teensyRowLength { get; set; } = 30;
     public int teensyRowsPerStrip { get; set; } = 5;
 

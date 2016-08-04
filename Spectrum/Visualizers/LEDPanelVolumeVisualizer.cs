@@ -40,9 +40,10 @@ namespace Spectrum {
     }
 
     public void Visualize() {
-      int numColumnsToLight = (int)(this.audio.Volume * 30);
-      for (int j = 0; j < 40; j++) {
-        for (int i = 0; i < 30; i++) {
+      int numColumnsToLight =
+        (int)(this.audio.Volume * this.config.teensyRowLength);
+      for (int j = 0; j < this.config.teensyRowsPerStrip * 8; j++) {
+        for (int i = 0; i < this.config.teensyRowLength; i++) {
           int color = numColumnsToLight > i ? 0x111111 : 0x000000;
           this.teensy.SetPixel(i, j, color);
         }
