@@ -26,36 +26,72 @@
       </TabItem>
       <TabItem Header="Hues">
         <Grid>
-          <CheckBox x:Name="hueEnabled" Content="Enabled" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,5,5,0" Checked="HueEnabled" Unchecked="HueEnabled" IsChecked="False" FontWeight="Bold" />
-          <Grid Width="340" Height="200"  HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0">
-            <Label x:Name="HueAudioPanel" Content="Audio Processing" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" VerticalAlignment="Top" Padding="0">
-              <Grid Width="340" Height="180">
-                <Label x:Name="dropQuietT" Content="Drop Quiet" HorizontalAlignment="Left" Margin="0,25,0,0" VerticalAlignment="Top"/>
-                <Slider x:Name="dropQuietS" Value="0.025" HorizontalAlignment="Left" Margin="90,31,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="0.1" LargeChange="0.01" ValueChanged="HueAudioSliderChanged" SmallChange="0.001" />
-                <Label x:Name="dropQuietL" Content="0.025" HorizontalAlignment="Left" Margin="295,25,0,0" VerticalAlignment="Top"/>
-                <Label x:Name="dropChangeT" Content="Drop Change" HorizontalAlignment="Left" Margin="0,50,0,0" VerticalAlignment="Top"/>
-                <Slider x:Name="dropChangeS" Value=".075" HorizontalAlignment="Left" Margin="90,56,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="0.1" LargeChange="0.01" SmallChange="0.001" ValueChanged="HueAudioSliderChanged" />
-                <Label x:Name="dropChangeL" Content="0.075" HorizontalAlignment="Left" Margin="295,50,0,0" VerticalAlignment="Top"/>
-                <Label x:Name="kickQuietT" Content="Kick Quiet" HorizontalAlignment="Left" Margin="0,75,0,0" VerticalAlignment="Top"/>
-                <Slider x:Name="kickQuietS" Value="1" HorizontalAlignment="Left" Margin="90,81,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="1" LargeChange="0.1" SmallChange="0.01" ValueChanged="HueAudioSliderChanged" />
-                <Label x:Name="kickQuietL" Content="1.000" HorizontalAlignment="Left" Margin="295,75,0,0" VerticalAlignment="Top"/>
-                <Label x:Name="kickChangeT" Content="Kick Change" HorizontalAlignment="Left" Margin="0,100,0,0" VerticalAlignment="Top"/>
-                <Slider x:Name="kickChangeS" Value="0" HorizontalAlignment="Left" Margin="90,106,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="4" ValueChanged="HueAudioSliderChanged" />
-                <Label x:Name="kickChangeL" Content="0.000" HorizontalAlignment="Left" Margin="295,100,0,0" VerticalAlignment="Top"/>
-                <Label x:Name="snareQuietT" Content="Snare Quiet" HorizontalAlignment="Left" Margin="0,124,0,0" VerticalAlignment="Top"/>
-                <Slider x:Name="snareQuietS" Value="1" HorizontalAlignment="Left" Margin="90,131,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="1" ValueChanged="HueAudioSliderChanged" />
-                <Label x:Name="snareQuietL" Content="1.000" HorizontalAlignment="Left" Margin="295,125,0,0" VerticalAlignment="Top"/>
-                <Label x:Name="snareChangeT" Content="Snare Change" HorizontalAlignment="Left" Margin="0,150,0,0" VerticalAlignment="Top"/>
-                <Slider x:Name="snareChangeS" Value=".5" HorizontalAlignment="Left" Margin="90,156,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="4" ValueChanged="HueAudioSliderChanged" />
-                <Label x:Name="snareChangeL" Content="0.500" HorizontalAlignment="Left" Margin="295,150,0,0" VerticalAlignment="Top"/>
-                <Label x:Name="peakChangeT" Content="Peak Detection" HorizontalAlignment="Left" VerticalAlignment="Top" RenderTransformOrigin="0.332,0.316"/>
-                <Slider x:Name="peakChangeS" Value="0.8" HorizontalAlignment="Left" Margin="90,6,0,0" VerticalAlignment="Top" Height="20" Width="200" RenderTransformOrigin="0.5,0.5" Maximum="2" LargeChange="0.1" ValueChanged="HueAudioSliderChanged" />
-                <Label x:Name="peakChangeL" Content="0.800" HorizontalAlignment="Left" Margin="295,0,0,0" VerticalAlignment="Top"/>
+          <Grid HorizontalAlignment="Left" Width="355">
+            <Label x:Name="HueGeneralPanel" Content="General" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid>
+                <Label Content="Enabled" FontWeight="Bold" Padding="0" />
+                <CheckBox x:Name="hueEnabled" Margin="94,2,0,2" Checked="HueEnabled" Unchecked="HueEnabled" IsChecked="False" VerticalAlignment="Top" />
+                <Label Content="Hub address" Margin="0,22,0,0" Padding="0" />
+                <TextBox x:Name="hueHubAddress" Margin="94,22,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="HueHubAddress" />
+                <Label Content="Light indices" Margin="0,47,0,0" Padding="0" />
+                <TextBox x:Name="hueLightIndices" Margin="94,47,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="HueLightIndices" />
+                <Label Content="Command delay" Margin="0,72,0,0" Padding="0" />
+                <TextBox x:Name="hueCommandDelay" Margin="94,72,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="HueCommandDelay" />
               </Grid>
             </Border>
           </Grid>
-          <CheckBox x:Name="hueAudioCheckbox" Content="Light Control" Checked="HueControlLightsChanged" Unchecked="HueControlLightsChanged" HorizontalAlignment="Left" Margin="5,291,0,0" VerticalAlignment="Top" IsChecked="True"/>
+          <Grid HorizontalAlignment="Left" Width="355" Margin="0,125,0,0">
+            <Label x:Name="HueAudioPanel" Content="Audio Processing" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid>
+                <Label x:Name="peakChangeT" Content="Peak Detection" HorizontalAlignment="Left" Padding="0"/>
+                <Slider x:Name="peakChangeS" Value="0.8" HorizontalAlignment="Left" Margin="90,0,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="2" LargeChange="0.1" ValueChanged="HueAudioSliderChanged" />
+                <Label x:Name="peakChangeL" Content="0.800" HorizontalAlignment="Left" Margin="300,0,0,0" Padding="0"/>
+                <Label x:Name="dropQuietT" Content="Drop Quiet" HorizontalAlignment="Left" Margin="0,25,0,0" Padding="0"/>
+                <Slider x:Name="dropQuietS" Value="0.025" HorizontalAlignment="Left" Margin="90,25,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="0.1" LargeChange="0.01" ValueChanged="HueAudioSliderChanged" SmallChange="0.001" />
+                <Label x:Name="dropQuietL" Content="0.025" HorizontalAlignment="Left" Margin="300,25,0,0" Padding="0"/>
+                <Label x:Name="dropChangeT" Content="Drop Change" HorizontalAlignment="Left" Margin="0,50,0,0" Padding="0"/>
+                <Slider x:Name="dropChangeS" Value=".075" HorizontalAlignment="Left" Margin="90,50,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="0.1" LargeChange="0.01" SmallChange="0.001" ValueChanged="HueAudioSliderChanged" />
+                <Label x:Name="dropChangeL" Content="0.075" HorizontalAlignment="Left" Margin="300,50,0,0" Padding="0"/>
+                <Label x:Name="kickQuietT" Content="Kick Quiet" HorizontalAlignment="Left" Margin="0,75,0,0" Padding="0"/>
+                <Slider x:Name="kickQuietS" Value="1" HorizontalAlignment="Left" Margin="90,75,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1" LargeChange="0.1" SmallChange="0.01" ValueChanged="HueAudioSliderChanged" />
+                <Label x:Name="kickQuietL" Content="1.000" HorizontalAlignment="Left" Margin="300,75,0,0" Padding="0"/>
+                <Label x:Name="kickChangeT" Content="Kick Change" HorizontalAlignment="Left" Margin="0,100,0,0" Padding="0"/>
+                <Slider x:Name="kickChangeS" Value="0" HorizontalAlignment="Left" Margin="90,100,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="4" ValueChanged="HueAudioSliderChanged" />
+                <Label x:Name="kickChangeL" Content="0.000" HorizontalAlignment="Left" Margin="300,100,0,0" Padding="0"/>
+                <Label x:Name="snareQuietT" Content="Snare Quiet" HorizontalAlignment="Left" Margin="0,125,0,0" Padding="0"/>
+                <Slider x:Name="snareQuietS" Value="1" HorizontalAlignment="Left" Margin="90,125,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1" ValueChanged="HueAudioSliderChanged" />
+                <Label x:Name="snareQuietL" Content="1.000" HorizontalAlignment="Left" Margin="300,125,0,0" Padding="0"/>
+                <Label x:Name="snareChangeT" Content="Snare Change" HorizontalAlignment="Left" Margin="0,150,0,0" Padding="0"/>
+                <Slider x:Name="snareChangeS" Value=".5" HorizontalAlignment="Left" Margin="90,150,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="4" ValueChanged="HueAudioSliderChanged" />
+                <Label x:Name="snareChangeL" Content="0.500" HorizontalAlignment="Left" Margin="300,150,0,0" Padding="0"/>
+              </Grid>
+            </Border>
+          </Grid>
+          <Grid Width="200" HorizontalAlignment="Right" Margin="0,0,5,0">
+            <Label x:Name="HueOverridePanel" Content="Override" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid>
+                <ComboBox x:Name="hueOverride" HorizontalAlignment="Left" VerticalAlignment="Top" Width="120">
+                  <ComboBoxItem x:Name="hueOverrideDisable" Content="No override" IsSelected="True" Selected="HueOverrideDisabled" />
+                  <ComboBoxItem x:Name="hueOverrideOn" Content="All on" Selected="HueOverrideOn" />
+                  <ComboBoxItem x:Name="hueOverrideOff" Content="All off" Selected="HueOverrideOff" />
+                  <ComboBoxItem x:Name="hueOverrideRed" Content="Red" Selected="HueOverrideRed" />
+                  <ComboBoxItem x:Name="hueOverrideCustom" Content="Custom" Selected="HueOverrideCustom" />
+                </ComboBox>
+                <Grid x:Name="hueCustomGrid" HorizontalAlignment="Right" Visibility="Collapsed">
+                  <Label Content="Brightness" Margin="0,30,110,0" Padding="0" HorizontalContentAlignment="Right" />
+                  <TextBox x:Name="hueCustomBrightness" Margin="60,30,0,0" Width="100" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="HueCustomBrightness" Text="0" />
+                  <Label Content="Saturation" Margin="0,55,110,0" Padding="0" HorizontalContentAlignment="Right" />
+                  <TextBox x:Name="hueCustomSaturation" Margin="60,55,0,0" Width="100" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="HueCustomSaturation" Text="0" />
+                  <Label Content="Hue" Margin="0,80,110,0" Padding="0" HorizontalContentAlignment="Right" />
+                  <TextBox x:Name="hueCustomHue" Margin="60,80,0,0" Width="100" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="HueCustomHue" Text="0" />
+                </Grid>
+                <CheckBox x:Name="hueIdleOnSilent" Content="Idle while silent" Margin="0,27,0,0" Checked="HueIdleWhileSilent" Unchecked="HueIdleWhileSilent" IsChecked="True" />
+              </Grid>
+            </Border>
+          </Grid>
           <CheckBox x:Name="hueThreadCheckbox" Content="Call Hues in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" Checked="HueSeparateThreadChanged" Unchecked="HueSeparateThreadChanged" IsChecked="True" />
         </Grid>
       </TabItem>

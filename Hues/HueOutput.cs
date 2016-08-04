@@ -111,7 +111,7 @@ namespace Spectrum.Hues {
       );
       // Sadly, we need to make sure that we don't
       // update the Hues more than 10 times a second.
-      Thread.Sleep(100);
+      Thread.Sleep(this.config.hueDelay);
     }
 
     public void OperatorUpdate() {

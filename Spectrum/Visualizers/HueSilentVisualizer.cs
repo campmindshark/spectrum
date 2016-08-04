@@ -39,7 +39,10 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        if (silentMode) {
+        if (!this.config.hueIdleOnSilent) {
+          return 0;
+        }
+        if (this.silentMode) {
           return 2;
         }
         return 1;

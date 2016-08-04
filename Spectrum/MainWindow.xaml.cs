@@ -29,6 +29,10 @@ namespace Spectrum {
       new HotKey(Key.Down, KeyModifier.Alt, this.OnHotKeyHandler);
 
       this.RefreshAudioDevices(null, null);
+
+      this.hueHubAddress.Text = this.config.hueURL;
+      this.hueLightIndices.Text = String.Join(",", this.config.hueIndices);
+      this.hueCommandDelay.Text = this.config.hueDelay.ToString();
     }
 
     private void HandleClose(object sender, EventArgs e) {
@@ -71,27 +75,36 @@ namespace Spectrum {
 
     private void OnHotKeyHandler(HotKey hotKey) {
       if (hotKey.Key.Equals(Key.Q)) {
-        // Will propagate to this.config.controlLights
-        this.hueAudioCheckbox.IsChecked = !this.hueAudioCheckbox.IsChecked;
-        this.config.brighten = 0;
-        this.config.colorslide = 0;
-        this.config.sat = 0;
+        this.hueOverride.SelectedItem =
+          this.hueOverride.SelectedItem == this.hueOverrideOn
+            ? this.hueOverrideDisable
+            : this.hueOverrideOn;
       } else if (hotKey.Key.Equals(Key.OemTilde)) {
-        this.config.lightsOff = !this.config.lightsOff;
+        this.hueOverride.SelectedItem =
+          this.hueOverride.SelectedItem == this.hueOverrideOff
+            ? this.hueOverrideDisable
+            : this.hueOverrideOff;
       } else if (hotKey.Key.Equals(Key.R)) {
-        this.config.redAlert = !this.config.redAlert;
+        this.hueOverride.SelectedItem =
+          this.hueOverride.SelectedItem == this.hueOverrideRed
+            ? this.hueOverrideDisable
+            : this.hueOverrideRed;
       } else if (hotKey.Key.Equals(Key.OemPeriod)) {
-        this.config.brighten = Math.Min(this.config.brighten + 1, 0);
+        this.hueCustomBrightness.Text =
+          Math.Min(this.config.brighten + 1, 0).ToString();
       } else if (hotKey.Key.Equals(Key.OemComma)) {
-        this.config.brighten = Math.Max(this.config.brighten - 1, -4);
+        this.hueCustomBrightness.Text =
+          Math.Max(this.config.brighten - 1, -4).ToString();
       } else if (hotKey.Key.Equals(Key.Left)) {
-        this.config.colorslide -= 1;
+        this.hueCustomHue.Text = (this.config.colorslide - 1).ToString();
       } else if (hotKey.Key.Equals(Key.Right)) {
-        this.config.colorslide += 1;
+        this.hueCustomHue.Text = (this.config.colorslide + 1).ToString();
       } else if (hotKey.Key.Equals(Key.Up)) {
-        this.config.sat = Math.Min(this.config.sat + 1, 2);
+        this.hueCustomSaturation.Text =
+          Math.Min(this.config.sat + 1, 2).ToString();
       } else if (hotKey.Key.Equals(Key.Down)) {
-        this.config.sat = Math.Max(this.config.sat - 1, -2);
+        this.hueCustomSaturation.Text =
+          Math.Max(this.config.sat - 1, -2).ToString();
       }
       //config.colorslide = (config.colorslide + 4 + 16) % 16 - 4;??
     }
@@ -120,6 +133,32 @@ namespace Spectrum {
         return;
       }
       this.config.huesEnabled = this.hueEnabled.IsChecked == true;
+    }
+
+    private void HueHubAddress(object sender, TextChangedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.hueURL = this.hueHubAddress.Text;
+    }
+
+    private void HueLightIndices(object sender, TextChangedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      try {
+        this.config.hueIndices = Array.ConvertAll(
+          this.hueLightIndices.Text.Split(','),
+          int.Parse
+        );
+      } catch (FormatException) { }
+    }
+
+    private void HueCommandDelay(object sender, TextChangedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.hueDelay = Convert.ToInt32(this.hueCommandDelay.Text);
     }
 
     private void HueAudioSliderChanged(
@@ -154,11 +193,90 @@ namespace Spectrum {
       }
     }
 
-    private void HueControlLightsChanged(object sender, RoutedEventArgs e) {
+    private void HueOverrideDisabled(object sender, RoutedEventArgs e) {
       if (this.config == null) {
         return;
       }
-      this.config.controlLights = this.hueAudioCheckbox.IsChecked == true;
+      this.config.controlLights = true;
+      this.config.lightsOff = false;
+      this.config.redAlert = false;
+      this.hueCustomGrid.Visibility = Visibility.Collapsed;
+      this.hueIdleOnSilent.Visibility = Visibility.Visible;
+    }
+
+    private void HueOverrideOn(object sender, RoutedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.controlLights = false;
+      this.config.lightsOff = false;
+      this.config.redAlert = false;
+      this.hueCustomBrightness.Text = "0";
+      this.hueCustomHue.Text = "0";
+      this.hueCustomSaturation.Text = "0";
+      this.hueCustomGrid.Visibility = Visibility.Collapsed;
+      this.hueIdleOnSilent.Visibility = Visibility.Collapsed;
+    }
+
+    private void HueOverrideOff(object sender, RoutedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.controlLights = true;
+      this.config.lightsOff = true;
+      this.config.redAlert = false;
+      this.hueCustomGrid.Visibility = Visibility.Collapsed;
+      this.hueIdleOnSilent.Visibility = Visibility.Collapsed;
+    }
+
+    private void HueOverrideRed(object sender, RoutedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.controlLights = true;
+      this.config.lightsOff = false;
+      this.config.redAlert = true;
+      this.hueCustomGrid.Visibility = Visibility.Collapsed;
+      this.hueIdleOnSilent.Visibility = Visibility.Collapsed;
+    }
+
+    private void HueOverrideCustom(object sender, RoutedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.controlLights = false;
+      this.config.lightsOff = false;
+      this.config.redAlert = false;
+      this.hueCustomGrid.Visibility = Visibility.Visible;
+      this.hueIdleOnSilent.Visibility = Visibility.Collapsed;
+    }
+
+    private void HueCustomBrightness(object sender, TextChangedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.brighten = Convert.ToInt32(this.hueCustomBrightness.Text);
+    }
+
+    private void HueCustomSaturation(object sender, TextChangedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.sat = Convert.ToInt32(this.hueCustomBrightness.Text);
+    }
+
+    private void HueCustomHue(object sender, TextChangedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.colorslide = Convert.ToInt32(this.hueCustomBrightness.Text);
+    }
+
+    private void HueIdleWhileSilent(object sender, RoutedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.hueIdleOnSilent = this.hueIdleOnSilent.IsChecked == true;
     }
 
     private void HueSeparateThreadChanged(object sender, RoutedEventArgs e) {

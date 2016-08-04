@@ -31,6 +31,12 @@ namespace Spectrum.Base {
     // the visualizers and cache output commands, and then flush them.
     bool ledBoardOutputInSeparateThread { get; set; }
 
+    // This is the delay in milliseconds between consecutive commands we give
+    // the Hue hub
+    int hueDelay { get; set; }
+    // If true, when the audio stream goes silent the Hues will "idle"
+    bool hueIdleOnSilent { get; set; }
+
     // If lightsOff is true then we turn off the lights
     bool lightsOff { get; set; }
     // If redAlert is true then we just display red

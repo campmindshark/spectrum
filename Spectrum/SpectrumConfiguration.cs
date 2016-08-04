@@ -18,6 +18,9 @@ namespace Spectrum {
     public bool huesOutputInSeparateThread { get; set; } = true;
     public bool ledBoardOutputInSeparateThread { get; set; } = false;
 
+    public int hueDelay { get; set; } = 125;
+    public bool hueIdleOnSilent { get; set; } = true;
+
     public bool lightsOff { get; set; } = false;
     public bool redAlert { get; set; } = false;
     public bool controlLights { get; set; } = true;
