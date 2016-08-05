@@ -106,6 +106,12 @@ namespace Spectrum.Audio {
       }
     }
 
+    public bool Enabled {
+      get {
+        return true;
+      }
+    }
+
     /**
      * The Un4seen libraries need some function to call.
      */

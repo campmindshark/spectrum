@@ -29,3 +29,8 @@ C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Audio.pdb
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Resources\spectrum wordmark.PNG
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\obj\Debug\App.baml
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Resources\s.PNG
+C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\MIDI.dll
+C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Sanford.Multimedia.Midi.dll
+C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\MIDI.pdb
+C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Sanford.Multimedia.Midi.pdb
+C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Sanford.Multimedia.Midi.xml

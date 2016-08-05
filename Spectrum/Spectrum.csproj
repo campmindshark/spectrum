@@ -65,6 +65,7 @@
     <Compile Include="Visualizers\HueSilentVisualizer.cs" />
     <Compile Include="Visualizers\HueSolidColorVisualizer.cs" />
     <Compile Include="Visualizers\LEDPanelVolumeVisualizer.cs" />
+    <Compile Include="Visualizers\LEDPanelMidiVisualizer.cs" />
     <Compile Include="SpectrumConfiguration.cs" />
     <Compile Include="Hotkey.cs" />
     <Compile Include="Visualizers\HueAudioVisualizer.cs" />
@@ -125,6 +126,10 @@
     <ProjectReference Include="..\LEDs\LEDs.csproj">
       <Project>{872a880b-ddf1-47c8-ba70-f1aecef2546c}</Project>
       <Name>LEDs</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\MIDI\MIDI.csproj">
+      <Project>{6360857c-0b88-4af4-b939-ba60083063f0}</Project>
+      <Name>MIDI</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

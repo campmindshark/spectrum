@@ -111,6 +111,23 @@
           <CheckBox x:Name="ledBoardThreadCheckbox" Content="Call LED board in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" Checked="LEDBoardSeparateThreadChanged" Unchecked="LEDBoardSeparateThreadChanged" IsChecked="False" />
         </Grid>
       </TabItem>
+      <TabItem Header="MIDI">
+        <Grid>
+          <Grid HorizontalAlignment="Left" Width="355">
+            <Label Content="General" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid>
+                <Label Content="Enabled" FontWeight="Bold" Padding="0" />
+                <CheckBox x:Name="midiEnabled" VerticalAlignment="Top" Margin="94,2,0,2" Checked="MidiEnabled" Unchecked="MidiEnabled" IsChecked="False" />
+                <Label Content="MIDI device" Margin="0,24,0,0" Padding="0" />
+                <ComboBox x:Name="midiDevices" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,22,0,0" Width="120" SelectionChanged="MidiDeviceChanged" />
+                <Button Content="Refresh MIDI devices" VerticalAlignment="Top" HorizontalAlignment="Right" Style="{StaticResource HyperlinkButton}" Margin="0,24,5,0" FontStyle="Italic" Click="RefreshMidiDevices" />
+              </Grid>
+            </Border>
+          </Grid>
+          <CheckBox x:Name="midiThreadCheckbox" Content="Process MIDI input in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" Checked="MidiSeparateThreadChanged" Unchecked="MidiSeparateThreadChanged" IsChecked="False" />
+        </Grid>
+      </TabItem>
     </TabControl>
   </Grid>
 </Window>

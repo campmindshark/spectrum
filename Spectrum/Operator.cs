@@ -6,7 +6,9 @@ using Spectrum.Base;
 using Spectrum.Audio;
 using Spectrum.Hues;
 using Spectrum.LEDs;
+using Spectrum.MIDI;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Spectrum {
 
@@ -23,6 +25,8 @@ namespace Spectrum {
       this.inputs = new List<Input>();
       var audio = new AudioInput(config);
       this.inputs.Add(audio);
+      var midi = new MidiInput(config);
+      this.inputs.Add(midi);
 
       this.outputs = new List<Output>();
       var hue = new HueOutput(config);
@@ -49,6 +53,11 @@ namespace Spectrum {
         this.config,
         audio,
         hue
+      ));
+      this.visualizers.Add(new LEDPanelMidiVisualizer(
+        this.config,
+        midi,
+        teensy
       ));
     }
 
@@ -96,16 +105,26 @@ namespace Spectrum {
 
     private void OperatorThread() {
       while (true) {
+        // We're going to start by figuring out which Outputs consider
+        // themselves enabled. For each enabled Output, we'll find what the
+        // highest priority reported by any Visualizer is, and we'll consider
+        // those Visualizers as candidates to enable.
         List<Output> activeOutputs = new List<Output>();
         HashSet<Visualizer> activeVisualizers = new HashSet<Visualizer>();
         foreach (var output in this.outputs) {
           if (!output.Enabled) {
-            output.Active = false;
             continue;
           }
           int topPri = 1;
           List<Visualizer> topPriVisualizers = new List<Visualizer>();
           foreach (var visualizer in output.GetVisualizers()) {
+            // We can only consider a visualizer if all its inputs are enabled
+            bool allInputsEnabled = visualizer.GetInputs().All(
+              input => input.Enabled
+            );
+            if (!allInputsEnabled) {
+              continue;
+            }
             int pri = visualizer.Priority;
             if (pri > topPri) {
               topPri = pri;
@@ -115,20 +134,22 @@ namespace Spectrum {
               topPriVisualizers.Add(visualizer);
             }
           }
-          output.Active = topPriVisualizers.Count != 0;
           if (topPriVisualizers.Count != 0) {
             activeOutputs.Add(output);
           }
           activeVisualizers.UnionWith(topPriVisualizers);
         }
 
-        foreach (var visualizer in visualizers) {
-          visualizer.Enabled = activeVisualizers.Contains(visualizer);
-        }
-
         HashSet<Input> activeInputs = new HashSet<Input>();
         foreach (var visualizer in activeVisualizers) {
           activeInputs.UnionWith(visualizer.GetInputs());
+        }
+
+        foreach (var output in this.outputs) {
+          output.Active = activeOutputs.Contains(output);
+        }
+        foreach (var visualizer in this.visualizers) {
+          visualizer.Enabled = activeVisualizers.Contains(visualizer);
         }
         foreach (var input in this.inputs) {
           input.Active = activeInputs.Contains(input);

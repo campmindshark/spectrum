@@ -17,6 +17,7 @@ namespace Spectrum.Base {
 
     bool huesEnabled { get; set; }
     bool ledBoardEnabled { get; set; }
+    bool midiInputEnabled { get; set; }
 
     // If this is true, we will poll the Un4seen APIs in a thread separate to
     // the one running the visualizers. If it is false, a single thread will
@@ -30,6 +31,10 @@ namespace Spectrum.Base {
     // running the visualizers. If it is false, a single thread will first run
     // the visualizers and cache output commands, and then flush them.
     bool ledBoardOutputInSeparateThread { get; set; }
+    // If this is true, we will poll the MIDI APIs in a thread separate to the
+    // one running the visualizers. If it is false, a single thread will first
+    // poll the MIDI APIs and then run the visualizers.
+    bool midiInputInSeparateThread { get; set; }
 
     // This is the delay in milliseconds between consecutive commands we give
     // the Hue hub
@@ -68,6 +73,8 @@ namespace Spectrum.Base {
     int teensyRowLength { get; set; }
     int teensyRowsPerStrip { get; set; }
 
+    // The index of the device representing the MIDI controller
+    int midiDeviceIndex { get; set; }
 
   }
 

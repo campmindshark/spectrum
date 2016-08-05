@@ -1,11 +1,13 @@
 <?xml version="1.0"?>
 <SpectrumConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <audioDeviceIndex>14</audioDeviceIndex>
+  <audioDeviceIndex>11</audioDeviceIndex>
   <huesEnabled>true</huesEnabled>
   <ledBoardEnabled>true</ledBoardEnabled>
+  <midiInputEnabled>false</midiInputEnabled>
   <audioInputInSeparateThread>false</audioInputInSeparateThread>
   <huesOutputInSeparateThread>true</huesOutputInSeparateThread>
   <ledBoardOutputInSeparateThread>false</ledBoardOutputInSeparateThread>
+  <midiInputInSeparateThread>false</midiInputInSeparateThread>
   <hueDelay>125</hueDelay>
   <hueIdleOnSilent>true</hueIdleOnSilent>
   <lightsOff>false</lightsOff>
@@ -32,4 +34,5 @@
   <teensyUSBPort>COM4</teensyUSBPort>
   <teensyRowLength>30</teensyRowLength>
   <teensyRowsPerStrip>5</teensyRowsPerStrip>
+  <midiDeviceIndex>0</midiDeviceIndex>
 </SpectrumConfiguration>

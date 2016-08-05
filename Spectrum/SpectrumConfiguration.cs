@@ -14,10 +14,12 @@ namespace Spectrum {
 
     public bool huesEnabled { get; set; } = false;
     public bool ledBoardEnabled { get; set; } = false;
+    public bool midiInputEnabled { get; set; } = false;
 
     public bool audioInputInSeparateThread { get; set; } = false;
-    public bool huesOutputInSeparateThread { get; set; } = true;
+    public bool huesOutputInSeparateThread { get; set; } = false;
     public bool ledBoardOutputInSeparateThread { get; set; } = false;
+    public bool midiInputInSeparateThread { get; set; } = false;
 
     public int hueDelay { get; set; } = 125;
     public bool hueIdleOnSilent { get; set; } = true;
@@ -44,6 +46,8 @@ namespace Spectrum {
     public string teensyUSBPort { get; set; } = "COM4";
     public int teensyRowLength { get; set; } = 30;
     public int teensyRowsPerStrip { get; set; } = 5;
+
+    public int midiDeviceIndex { get; set; } = -1;
 
   }
 

@@ -17,6 +17,12 @@
      */
     bool Active { get; set; }
 
+
+    /**
+     * This property reflects whether the Output is enabled by the UI.
+     */
+    bool Enabled { get; }
+
     /**
      * This method gets called at the start of the Operator loop (from within
      * the Operator thread) when there exists an active Visualizer that needs

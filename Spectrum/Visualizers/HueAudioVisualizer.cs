@@ -119,7 +119,7 @@ namespace Spectrum {
           if (current >= history.Max() && current > avg + this.config.peakC * sd) {
             // was: avg < .08
             if (current > 3 * avg && avg < this.config.dropQ && change > this.config.dropT && current > .26) {
-              System.Diagnostics.Debug.WriteLine(probe(band, current, avg, sd, change));
+              //System.Diagnostics.Debug.WriteLine(probe(band, current, avg, sd, change));
               dropPossible = true;
             }
             totalMaxPossible = true;
@@ -135,7 +135,7 @@ namespace Spectrum {
           if (current > avg + this.config.kickT * sd && avg < this.config.kickQ && current > .001) // !kickcounted here
           {
             if (totalMax) {
-              System.Diagnostics.Debug.WriteLine(probe(band, current, avg, sd, change));
+              //System.Diagnostics.Debug.WriteLine(probe(band, current, avg, sd, change));
             }
             kickPending = true;
           }
@@ -144,7 +144,7 @@ namespace Spectrum {
           if (current > avg + this.config.snareT * sd && avg < this.config.snareQ && current > .001) // !snarecounted here
           {
             if (totalMax && current > .001) {
-              System.Diagnostics.Debug.WriteLine(probe(band, current, avg, sd, change));
+              //System.Diagnostics.Debug.WriteLine(probe(band, current, avg, sd, change));
             }
             snarePending = true;
           }
@@ -165,7 +165,7 @@ namespace Spectrum {
       }
       if (drop) {
         if (dropDuration == 0) {
-          System.Diagnostics.Debug.WriteLine("dropOn");
+          //System.Diagnostics.Debug.WriteLine("dropOn");
           this.hue.SendGroupCommand(
             0,
             new HueCommand() {
@@ -190,7 +190,7 @@ namespace Spectrum {
             }
           );*/
         } else if (dropDuration > 8) {
-          System.Diagnostics.Debug.WriteLine("dropOff");
+          //System.Diagnostics.Debug.WriteLine("dropOff");
           drop = false;
           dropDuration = -1;
         }
@@ -212,7 +212,7 @@ namespace Spectrum {
           kickPending = false;
         } else {
           lightPending = true;
-          System.Diagnostics.Debug.WriteLine("kickOn");
+          //System.Diagnostics.Debug.WriteLine("kickOn");
           this.hue.SendLightCommand(
             target,
             new HueCommand() {
@@ -242,7 +242,7 @@ namespace Spectrum {
           lightPending = false;
         } else {
           lightPending = true;
-          System.Diagnostics.Debug.WriteLine("snareOn");
+          //System.Diagnostics.Debug.WriteLine("snareOn");
           this.hue.SendLightCommand(
             target,
             new HueCommand() {

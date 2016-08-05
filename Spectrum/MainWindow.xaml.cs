@@ -6,6 +6,7 @@ using System.Windows.Controls.Primitives;
 using Spectrum.Audio;
 using System.Xml.Serialization;
 using System.IO;
+using Spectrum.MIDI;
 
 namespace Spectrum {
 
@@ -14,6 +15,7 @@ namespace Spectrum {
     Operator op;
     SpectrumConfiguration config;
     private int[] audioDeviceIndices;
+    private int[] midiDeviceIndices;
 
     private bool loadingConfig = false;
 
@@ -75,19 +77,17 @@ namespace Spectrum {
 
       this.RefreshAudioDevices(null, null);
       this.RefreshLEDBoardPorts(null, null);
+      this.RefreshMidiDevices(null, null);
 
-      this.audioDevices.SelectedIndex = Array.FindIndex(
-        this.audioDeviceIndices,
-        i => i == this.config.audioDeviceIndex
-      );
-      this.audioDevices.SelectedIndex = this.config.audioDeviceIndex;
       this.hueEnabled.IsChecked = this.config.huesEnabled;
       this.ledBoardEnabled.IsChecked = this.config.ledBoardEnabled;
+      this.midiEnabled.IsChecked = this.config.midiInputEnabled;
       this.audioThreadCheckbox.IsChecked =
         this.config.audioInputInSeparateThread;
       this.hueThreadCheckbox.IsChecked = this.config.huesOutputInSeparateThread;
       this.ledBoardThreadCheckbox.IsChecked =
         this.config.ledBoardOutputInSeparateThread;
+      this.midiThreadCheckbox.IsChecked = this.config.midiInputInSeparateThread;
       this.hueCommandDelay.Text = this.config.hueDelay.ToString();
       this.hueIdleOnSilent.IsChecked = this.config.hueIdleOnSilent;
 
@@ -127,7 +127,6 @@ namespace Spectrum {
 
       this.hueHubAddress.Text = this.config.hueURL;
       this.hueLightIndices.Text = String.Join(",", this.config.hueIndices);
-      this.ledBoardUSBPorts.SelectedValue = this.config.teensyUSBPort;
       this.ledBoardRowLength.Text = this.config.teensyRowLength.ToString();
       this.ledBoardRowsPerStrip.Text =
         this.config.teensyRowsPerStrip.ToString();
@@ -150,7 +149,11 @@ namespace Spectrum {
         this.audioDevices.Items.Add(AudioInput.GetDeviceName(i));
         this.audioDeviceIndices[itemIndex++] = i;
       }
-      this.AudioInputDeviceChanged(null, null);
+
+      this.audioDevices.SelectedIndex = Array.FindIndex(
+        this.audioDeviceIndices,
+        i => i == this.config.audioDeviceIndex
+      );
     }
 
     private void AudioInputDeviceChanged(
@@ -413,7 +416,7 @@ namespace Spectrum {
         this.ledBoardUSBPorts.Items.Add(portName);
       }
 
-      this.LEDBoardUSBPortsChanged(null, null);
+      this.ledBoardUSBPorts.SelectedValue = this.config.teensyUSBPort;
     }
 
     private void LEDBoardUSBPortsChanged(
@@ -464,6 +467,54 @@ namespace Spectrum {
       }
       this.config.ledBoardOutputInSeparateThread =
         this.ledBoardThreadCheckbox.IsChecked == true;
+      this.op.Reboot();
+      this.SaveConfig();
+    }
+
+    private void MidiEnabled(object sender, RoutedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.midiInputEnabled = this.midiEnabled.IsChecked == true;
+      this.SaveConfig();
+    }
+
+    private void RefreshMidiDevices(object sender, RoutedEventArgs e) {
+      this.midiEnabled.IsChecked = false;
+
+      this.midiDeviceIndices = new int[MidiInput.DeviceCount];
+
+      this.midiDevices.Items.Clear();
+      for (int i = 0; i < MidiInput.DeviceCount; i++) {
+        this.midiDevices.Items.Add(MidiInput.GetDeviceName(i));
+        this.midiDeviceIndices[i] = i;
+      }
+
+      this.midiDevices.SelectedIndex = Array.FindIndex(
+        this.midiDeviceIndices,
+        i => i == this.config.midiDeviceIndex
+      );
+    }
+
+    private void MidiDeviceChanged(
+      object sender,
+      SelectionChangedEventArgs e
+    ) {
+      if (this.midiDevices.SelectedIndex == -1) {
+        return;
+      }
+      this.config.midiDeviceIndex =
+        this.midiDeviceIndices[this.midiDevices.SelectedIndex];
+      this.op.Reboot();
+      this.SaveConfig();
+    }
+
+    private void MidiSeparateThreadChanged(object sender, RoutedEventArgs e) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.midiInputInSeparateThread =
+        this.midiThreadCheckbox.IsChecked == true;
       this.op.Reboot();
       this.SaveConfig();
     }
