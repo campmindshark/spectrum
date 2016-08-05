@@ -34,6 +34,8 @@
   <teensyUSBPort>COM4</teensyUSBPort>
   <teensyRowLength>30</teensyRowLength>
   <teensyRowsPerStrip>5</teensyRowsPerStrip>
-  <ledBoardBrightness>0.65820105820105812</ledBoardBrightness>
+  <ledBoardBrightness>0.1</ledBoardBrightness>
   <midiDeviceIndex>0</midiDeviceIndex>
+  <hueOverrideIsCustom>false</hueOverrideIsCustom>
+  <hueOverrideIndex>0</hueOverrideIndex>
 </SpectrumConfiguration>

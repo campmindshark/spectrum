@@ -4,10 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Spectrum.Base;
+using PropertyChanged;
 
 namespace Spectrum {
 
-  [Serializable]
+  [Serializable, ImplementPropertyChanged]
   public class SpectrumConfiguration : Configuration {
 
     public int audioDeviceIndex { get; set; } = -1;
@@ -49,6 +50,48 @@ namespace Spectrum {
     public double ledBoardBrightness { get; set; } = 0.1;
 
     public int midiDeviceIndex { get; set; } = -1;
+
+    // The rest is not on Configuration
+    // Just convenience properties for data binding
+
+    public bool hueOverrideIsCustom { get; set; } = false;
+
+    public bool hueOverrideIsDisabled {
+      get {
+        return this.controlLights
+          && !this.hueOverrideIsCustom
+          && !this.lightsOff
+          && !this.redAlert;
+      }
+    }
+
+    // This is all annoyingly UI-specific stuff
+    public int hueOverrideIndex {
+      get {
+        if (!this.controlLights && this.hueOverrideIsCustom) {
+          return 4;
+        } else if (!this.controlLights) {
+          return 1;
+        } else if (this.lightsOff) {
+          return 2;
+        } else if (this.redAlert) {
+          return 3;
+        } else {
+          return 0;
+        }
+      }
+      set {
+        this.controlLights = value != 1 && value != 4;
+        this.lightsOff = value == 2;
+        this.redAlert = value == 3;
+        this.hueOverrideIsCustom = value == 4;
+        if (value == 1) {
+          this.brighten = 0;
+          this.colorslide = 0;
+          this.sat = 0;
+        }
+      }
+    }
 
   }
 

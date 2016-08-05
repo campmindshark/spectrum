@@ -12,7 +12,7 @@
   <hueIdleOnSilent>true</hueIdleOnSilent>
   <lightsOff>false</lightsOff>
   <redAlert>false</redAlert>
-  <controlLights>true</controlLights>
+  <controlLights>false</controlLights>
   <brighten>0</brighten>
   <colorslide>0</colorslide>
   <sat>0</sat>
@@ -34,6 +34,8 @@
   <teensyUSBPort>COM4</teensyUSBPort>
   <teensyRowLength>30</teensyRowLength>
   <teensyRowsPerStrip>5</teensyRowsPerStrip>
-  <ledBoardBrightness>0.55820105820105814</ledBoardBrightness>
+  <ledBoardBrightness>0.1</ledBoardBrightness>
   <midiDeviceIndex>0</midiDeviceIndex>
+  <hueOverrideIsCustom>false</hueOverrideIsCustom>
+  <hueOverrideIndex>1</hueOverrideIndex>
 </SpectrumConfiguration>

@@ -15,7 +15,7 @@
           <ComboBox x:Name="audioDevices" HorizontalAlignment="Left" Margin="126,192,0,0" VerticalAlignment="Top" Width="266" SelectionChanged="AudioInputDeviceChanged" />
           <Button x:Name="powerButton" Content="Go" HorizontalAlignment="Left" Margin="397,192,0,0" VerticalAlignment="Top" Width="44" Click="PowerButtonClicked" Height="22" />
           <Image HorizontalAlignment="Center" Height="72" VerticalAlignment="Top" Width="314" Margin="0,120,0,0" Source="pack://siteoforigin:,,,/Resources/spectrum wordmark.PNG"/>
-          <CheckBox x:Name="audioThreadCheckbox" Content="Process audio in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" Checked="AudioSeparateThreadChanged" Unchecked="AudioSeparateThreadChanged"/>
+          <CheckBox x:Name="audioThreadCheckbox" Content="Process audio in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" />
           <Button Content="Refresh audio devices" VerticalAlignment="Bottom" HorizontalAlignment="Right" Style="{StaticResource HyperlinkButton}" Margin="0,0,5,5" FontStyle="Italic" Click="RefreshAudioDevices" />
         </Grid>
       </TabItem>
@@ -26,13 +26,13 @@
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <Label Content="Enabled" FontWeight="Bold" Padding="0" />
-                <CheckBox x:Name="hueEnabled" Margin="94,2,0,2" Checked="HueEnabled" Unchecked="HueEnabled" IsChecked="False" VerticalAlignment="Top" />
+                <CheckBox x:Name="hueEnabled" Margin="94,2,0,2" IsChecked="False" VerticalAlignment="Top" />
                 <Label Content="Hub address" Margin="0,22,0,0" Padding="0" />
-                <TextBox x:Name="hueHubAddress" Margin="94,22,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="HueHubAddress" />
+                <TextBox x:Name="hueHubAddress" Margin="94,22,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" />
                 <Label Content="Light indices" Margin="0,47,0,0" Padding="0" />
-                <TextBox x:Name="hueLightIndices" Margin="94,47,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="HueLightIndices" />
+                <TextBox x:Name="hueLightIndices" Margin="94,47,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" />
                 <Label Content="Command delay" Margin="0,72,0,0" Padding="0" />
-                <TextBox x:Name="hueCommandDelay" Margin="94,72,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="HueCommandDelay" />
+                <TextBox x:Name="hueCommandDelay" Margin="94,72,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" />
               </Grid>
             </Border>
           </Grid>
@@ -41,26 +41,26 @@
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <Label Content="Peak Detection" HorizontalAlignment="Left" Padding="0"/>
-                <Slider x:Name="peakChangeS" Value="0.8" HorizontalAlignment="Left" Margin="90,0,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="2" LargeChange="0.1" ValueChanged="HueAudioSliderChanged" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                <Label x:Name="peakChangeL" Content="0.800" HorizontalAlignment="Left" Margin="300,0,0,0" Padding="0"/>
+                <Slider x:Name="peakChangeS" Value="0.8" HorizontalAlignment="Left" Margin="90,0,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="2" LargeChange="0.1" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="peakChangeL" Content="0.800" HorizontalAlignment="Left" Margin="300,0,0,0" Padding="0" ContentStringFormat="F3" />
                 <Label Content="Drop Quiet" HorizontalAlignment="Left" Margin="0,25,0,0" Padding="0"/>
-                <Slider x:Name="dropQuietS" Value="0.025" HorizontalAlignment="Left" Margin="90,25,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="0.1" LargeChange="0.01" ValueChanged="HueAudioSliderChanged" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                <Label x:Name="dropQuietL" Content="0.025" HorizontalAlignment="Left" Margin="300,25,0,0" Padding="0"/>
+                <Slider x:Name="dropQuietS" Value="0.025" HorizontalAlignment="Left" Margin="90,25,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="0.1" LargeChange="0.01" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="dropQuietL" Content="0.025" HorizontalAlignment="Left" Margin="300,25,0,0" Padding="0" ContentStringFormat="F3" />
                 <Label Content="Drop Change" HorizontalAlignment="Left" Margin="0,50,0,0" Padding="0"/>
-                <Slider x:Name="dropChangeS" Value=".075" HorizontalAlignment="Left" Margin="90,50,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="0.1" LargeChange="0.01" SmallChange="0.001" ValueChanged="HueAudioSliderChanged" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                <Label x:Name="dropChangeL" Content="0.075" HorizontalAlignment="Left" Margin="300,50,0,0" Padding="0"/>
+                <Slider x:Name="dropChangeS" Value=".075" HorizontalAlignment="Left" Margin="90,50,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="0.1" LargeChange="0.01" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="dropChangeL" Content="0.075" HorizontalAlignment="Left" Margin="300,50,0,0" Padding="0" ContentStringFormat="F3" />
                 <Label Content="Kick Quiet" HorizontalAlignment="Left" Margin="0,75,0,0" Padding="0"/>
-                <Slider x:Name="kickQuietS" Value="1" HorizontalAlignment="Left" Margin="90,75,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1" LargeChange="0.1" SmallChange="0.01" ValueChanged="HueAudioSliderChanged" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                <Label x:Name="kickQuietL" Content="1.000" HorizontalAlignment="Left" Margin="300,75,0,0" Padding="0"/>
+                <Slider x:Name="kickQuietS" Value="1" HorizontalAlignment="Left" Margin="90,75,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1" LargeChange="0.1" SmallChange="0.01" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="kickQuietL" Content="1.000" HorizontalAlignment="Left" Margin="300,75,0,0" Padding="0" ContentStringFormat="F3" />
                 <Label Content="Kick Change" HorizontalAlignment="Left" Margin="0,100,0,0" Padding="0"/>
-                <Slider x:Name="kickChangeS" Value="0" HorizontalAlignment="Left" Margin="90,100,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="4" ValueChanged="HueAudioSliderChanged" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                <Label x:Name="kickChangeL" Content="0.000" HorizontalAlignment="Left" Margin="300,100,0,0" Padding="0"/>
+                <Slider x:Name="kickChangeS" Value="0" HorizontalAlignment="Left" Margin="90,100,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="4" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="kickChangeL" Content="0.000" HorizontalAlignment="Left" Margin="300,100,0,0" Padding="0" ContentStringFormat="F3" />
                 <Label Content="Snare Quiet" HorizontalAlignment="Left" Margin="0,125,0,0" Padding="0"/>
-                <Slider x:Name="snareQuietS" Value="1" HorizontalAlignment="Left" Margin="90,125,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1" ValueChanged="HueAudioSliderChanged" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                <Label x:Name="snareQuietL" Content="1.000" HorizontalAlignment="Left" Margin="300,125,0,0" Padding="0"/>
+                <Slider x:Name="snareQuietS" Value="1" HorizontalAlignment="Left" Margin="90,125,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="snareQuietL" Content="1.000" HorizontalAlignment="Left" Margin="300,125,0,0" Padding="0" ContentStringFormat="F3" />
                 <Label Content="Snare Change" HorizontalAlignment="Left" Margin="0,150,0,0" Padding="0"/>
-                <Slider x:Name="snareChangeS" Value=".5" HorizontalAlignment="Left" Margin="90,150,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="4" ValueChanged="HueAudioSliderChanged" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                <Label x:Name="snareChangeL" Content="0.500" HorizontalAlignment="Left" Margin="300,150,0,0" Padding="0"/>
+                <Slider x:Name="snareChangeS" Value=".5" HorizontalAlignment="Left" Margin="90,150,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="4" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="snareChangeL" Content="0.500" HorizontalAlignment="Left" Margin="300,150,0,0" Padding="0" ContentStringFormat="F3" />
               </Grid>
             </Border>
           </Grid>
@@ -69,25 +69,25 @@
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <ComboBox x:Name="hueOverride" HorizontalAlignment="Left" VerticalAlignment="Top" Width="120">
-                  <ComboBoxItem x:Name="hueOverrideDisable" Content="No override" IsSelected="True" Selected="HueOverrideDisabled" />
-                  <ComboBoxItem x:Name="hueOverrideOn" Content="All on" Selected="HueOverrideOn" />
-                  <ComboBoxItem x:Name="hueOverrideOff" Content="All off" Selected="HueOverrideOff" />
-                  <ComboBoxItem x:Name="hueOverrideRed" Content="Red" Selected="HueOverrideRed" />
-                  <ComboBoxItem x:Name="hueOverrideCustom" Content="Custom" Selected="HueOverrideCustom" />
+                  <ComboBoxItem x:Name="hueOverrideDisable" Content="No override" IsSelected="True" />
+                  <ComboBoxItem x:Name="hueOverrideOn" Content="All on" />
+                  <ComboBoxItem x:Name="hueOverrideOff" Content="All off" />
+                  <ComboBoxItem x:Name="hueOverrideRed" Content="Red" />
+                  <ComboBoxItem x:Name="hueOverrideCustom" Content="Custom" />
                 </ComboBox>
                 <Grid x:Name="hueCustomGrid" HorizontalAlignment="Right" Visibility="Collapsed">
                   <Label Content="Brightness" Margin="0,30,110,0" Padding="0" HorizontalContentAlignment="Right" />
-                  <TextBox x:Name="hueCustomBrightness" Margin="60,30,0,0" Width="100" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="HueCustomBrightness" Text="0" />
+                  <TextBox x:Name="hueCustomBrightness" Margin="60,30,0,0" Width="100" HorizontalAlignment="Left" VerticalAlignment="Top" Text="0" />
                   <Label Content="Saturation" Margin="0,55,110,0" Padding="0" HorizontalContentAlignment="Right" />
-                  <TextBox x:Name="hueCustomSaturation" Margin="60,55,0,0" Width="100" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="HueCustomSaturation" Text="0" />
+                  <TextBox x:Name="hueCustomSaturation" Margin="60,55,0,0" Width="100" HorizontalAlignment="Left" VerticalAlignment="Top" Text="0" />
                   <Label Content="Hue" Margin="0,80,110,0" Padding="0" HorizontalContentAlignment="Right" />
-                  <TextBox x:Name="hueCustomHue" Margin="60,80,0,0" Width="100" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="HueCustomHue" Text="0" />
+                  <TextBox x:Name="hueCustomHue" Margin="60,80,0,0" Width="100" HorizontalAlignment="Left" VerticalAlignment="Top" Text="0" />
                 </Grid>
-                <CheckBox x:Name="hueIdleOnSilent" Content="Idle while silent" Margin="0,27,0,0" Checked="HueIdleWhileSilent" Unchecked="HueIdleWhileSilent" IsChecked="True" />
+                <CheckBox x:Name="hueIdleOnSilent" Content="Idle while silent" Margin="0,27,0,0" IsChecked="True" />
               </Grid>
             </Border>
           </Grid>
-          <CheckBox x:Name="hueThreadCheckbox" Content="Call Hues in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" Checked="HueSeparateThreadChanged" Unchecked="HueSeparateThreadChanged" IsChecked="True" />
+          <CheckBox x:Name="hueThreadCheckbox" Content="Call Hues in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="True" />
         </Grid>
       </TabItem>
       <TabItem Header="LED Board">
@@ -97,21 +97,21 @@
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <Label Content="Enabled" FontWeight="Bold" Padding="0" />
-                <CheckBox x:Name="ledBoardEnabled" VerticalAlignment="Top" Margin="94,2,0,2" Checked="LEDBoardEnabled" Unchecked="LEDBoardEnabled" IsChecked="False" />
+                <CheckBox x:Name="ledBoardEnabled" VerticalAlignment="Top" Margin="94,2,0,2" IsChecked="False" />
                 <Label Content="USB port" Margin="0,24,0,0" Padding="0" />
                 <ComboBox x:Name="ledBoardUSBPorts" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,22,0,0" Width="120" SelectionChanged="LEDBoardUSBPortsChanged" />
                 <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Right" Style="{StaticResource HyperlinkButton}" Margin="0,24,5,0" FontStyle="Italic" Click="RefreshLEDBoardPorts" />
                 <Label Content="Row length" Margin="0,51,0,0" Padding="0" />
-                <TextBox x:Name="ledBoardRowLength" Margin="94,51,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="LEDBoardRowLength" />
+                <TextBox x:Name="ledBoardRowLength" Margin="94,51,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" />
                 <Label Content="Rows per strip" Margin="0,76,0,0" Padding="0" />
-                <TextBox x:Name="ledBoardRowsPerStrip" Margin="94,76,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="LEDBoardRowsPerStrip" />
+                <TextBox x:Name="ledBoardRowsPerStrip" Margin="94,76,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" />
                 <Label Content="Brightness" HorizontalAlignment="Left" Padding="0" Margin="0,101,0,0" />
-                <Slider x:Name="ledBoardBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,101,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" ValueChanged="LEDBoardBrightnessChanged" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                <Label x:Name="ledBoardBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="300,101,0,0" Padding="0"/>
+                <Slider x:Name="ledBoardBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,101,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="ledBoardBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="300,101,0,0" Padding="0" ContentStringFormat="F3" />
               </Grid>
             </Border>
           </Grid>
-          <CheckBox x:Name="ledBoardThreadCheckbox" Content="Call LED board in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" Checked="LEDBoardSeparateThreadChanged" Unchecked="LEDBoardSeparateThreadChanged" IsChecked="False" />
+          <CheckBox x:Name="ledBoardThreadCheckbox" Content="Call LED board in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
         </Grid>
       </TabItem>
       <TabItem Header="MIDI">
@@ -121,14 +121,14 @@
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <Label Content="Enabled" FontWeight="Bold" Padding="0" />
-                <CheckBox x:Name="midiEnabled" VerticalAlignment="Top" Margin="94,2,0,2" Checked="MidiEnabled" Unchecked="MidiEnabled" IsChecked="False" />
+                <CheckBox x:Name="midiEnabled" VerticalAlignment="Top" Margin="94,2,0,2" IsChecked="False" />
                 <Label Content="MIDI device" Margin="0,24,0,0" Padding="0" />
                 <ComboBox x:Name="midiDevices" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,22,0,0" Width="120" SelectionChanged="MidiDeviceChanged" />
                 <Button Content="Refresh MIDI devices" VerticalAlignment="Top" HorizontalAlignment="Right" Style="{StaticResource HyperlinkButton}" Margin="0,24,5,0" FontStyle="Italic" Click="RefreshMidiDevices" />
               </Grid>
             </Border>
           </Grid>
-          <CheckBox x:Name="midiThreadCheckbox" Content="Process MIDI input in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" Checked="MidiSeparateThreadChanged" Unchecked="MidiSeparateThreadChanged" IsChecked="False" />
+          <CheckBox x:Name="midiThreadCheckbox" Content="Process MIDI input in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
         </Grid>
       </TabItem>
     </TabControl>
