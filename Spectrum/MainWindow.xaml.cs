@@ -70,6 +70,7 @@ namespace Spectrum {
 
     private void HandleClose(object sender, EventArgs e) {
       this.op.Enabled = false;
+      this.SaveConfig();
     }
 
     private void SaveConfig() {

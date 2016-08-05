@@ -59,6 +59,11 @@ namespace Spectrum {
         midi,
         teensy
       ));
+      this.visualizers.Add(new LEDPanelConfigVisualizer(
+        this.config,
+        midi,
+        teensy
+      ));
     }
 
     private bool enabled;
@@ -117,6 +122,7 @@ namespace Spectrum {
           }
           int topPri = 1;
           List<Visualizer> topPriVisualizers = new List<Visualizer>();
+          List<Visualizer> alwaysRunVisualizers = new List<Visualizer>();
           foreach (var visualizer in output.GetVisualizers()) {
             // We can only consider a visualizer if all its inputs are enabled
             bool allInputsEnabled = visualizer.GetInputs().All(
@@ -126,7 +132,9 @@ namespace Spectrum {
               continue;
             }
             int pri = visualizer.Priority;
-            if (pri > topPri) {
+            if (pri == -1) {
+              alwaysRunVisualizers.Add(visualizer);
+            } else if (pri > topPri) {
               topPri = pri;
               topPriVisualizers.Clear();
               topPriVisualizers.Add(visualizer);
@@ -134,6 +142,7 @@ namespace Spectrum {
               topPriVisualizers.Add(visualizer);
             }
           }
+          topPriVisualizers.AddRange(alwaysRunVisualizers);
           if (topPriVisualizers.Count != 0) {
             activeOutputs.Add(output);
           }

@@ -70,12 +70,12 @@ namespace Spectrum.LEDs {
 
     private void Update() {
       lock (this.lockObject) {
-        int num_messages = this.buffer.Count;
-        if (num_messages == 0) {
+        int numMessages = this.buffer.Count;
+        if (numMessages == 0) {
           return;
         }
-        byte[][] messages = new byte[num_messages][];
-        for (int i = 0; i < num_messages; i++) {
+        byte[][] messages = new byte[numMessages][];
+        for (int i = 0; i < numMessages; i++) {
           bool result = this.buffer.TryDequeue(out messages[i]);
           if (!result) {
             throw new System.Exception("Someone else is dequeueing!");

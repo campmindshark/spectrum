@@ -3,7 +3,7 @@
   <audioDeviceIndex>16</audioDeviceIndex>
   <huesEnabled>true</huesEnabled>
   <ledBoardEnabled>true</ledBoardEnabled>
-  <midiInputEnabled>false</midiInputEnabled>
+  <midiInputEnabled>true</midiInputEnabled>
   <audioInputInSeparateThread>false</audioInputInSeparateThread>
   <huesOutputInSeparateThread>true</huesOutputInSeparateThread>
   <ledBoardOutputInSeparateThread>false</ledBoardOutputInSeparateThread>
@@ -34,7 +34,7 @@
   <teensyUSBPort>COM4</teensyUSBPort>
   <teensyRowLength>30</teensyRowLength>
   <teensyRowsPerStrip>5</teensyRowsPerStrip>
-  <ledBoardBrightness>0.1</ledBoardBrightness>
+  <ledBoardBrightness>0.10236220472440945</ledBoardBrightness>
   <midiDeviceIndex>0</midiDeviceIndex>
   <hueOverrideIsCustom>false</hueOverrideIsCustom>
   <hueOverrideIndex>0</hueOverrideIndex>

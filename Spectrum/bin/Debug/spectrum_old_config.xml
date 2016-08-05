@@ -3,7 +3,7 @@
   <audioDeviceIndex>16</audioDeviceIndex>
   <huesEnabled>true</huesEnabled>
   <ledBoardEnabled>true</ledBoardEnabled>
-  <midiInputEnabled>false</midiInputEnabled>
+  <midiInputEnabled>true</midiInputEnabled>
   <audioInputInSeparateThread>false</audioInputInSeparateThread>
   <huesOutputInSeparateThread>true</huesOutputInSeparateThread>
   <ledBoardOutputInSeparateThread>false</ledBoardOutputInSeparateThread>
@@ -12,7 +12,7 @@
   <hueIdleOnSilent>true</hueIdleOnSilent>
   <lightsOff>false</lightsOff>
   <redAlert>false</redAlert>
-  <controlLights>false</controlLights>
+  <controlLights>true</controlLights>
   <brighten>0</brighten>
   <colorslide>0</colorslide>
   <sat>0</sat>
@@ -34,8 +34,8 @@
   <teensyUSBPort>COM4</teensyUSBPort>
   <teensyRowLength>30</teensyRowLength>
   <teensyRowsPerStrip>5</teensyRowsPerStrip>
-  <ledBoardBrightness>0.1</ledBoardBrightness>
+  <ledBoardBrightness>0.10236220472440945</ledBoardBrightness>
   <midiDeviceIndex>0</midiDeviceIndex>
   <hueOverrideIsCustom>false</hueOverrideIsCustom>
-  <hueOverrideIndex>1</hueOverrideIndex>
+  <hueOverrideIndex>0</hueOverrideIndex>
 </SpectrumConfiguration>
