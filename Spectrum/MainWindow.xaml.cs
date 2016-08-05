@@ -4,6 +4,8 @@ using System.Windows.Input;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using Spectrum.Audio;
+using System.Xml.Serialization;
+using System.IO;
 
 namespace Spectrum {
 
@@ -13,10 +15,10 @@ namespace Spectrum {
     SpectrumConfiguration config;
     private int[] audioDeviceIndices;
 
+    private bool loadingConfig = false;
+
     public MainWindow() {
       InitializeComponent();
-      this.config = new SpectrumConfiguration();
-      this.op = new Operator(this.config);
 
       new HotKey(Key.Q, KeyModifier.Alt, this.OnHotKeyHandler);
       new HotKey(Key.OemTilde, KeyModifier.Alt, this.OnHotKeyHandler);
@@ -28,19 +30,109 @@ namespace Spectrum {
       new HotKey(Key.Up, KeyModifier.Alt, this.OnHotKeyHandler);
       new HotKey(Key.Down, KeyModifier.Alt, this.OnHotKeyHandler);
 
-      this.hueHubAddress.Text = this.config.hueURL;
-      this.hueLightIndices.Text = String.Join(",", this.config.hueIndices);
-      this.hueCommandDelay.Text = this.config.hueDelay.ToString();
-      this.ledBoardRowLength.Text = this.config.teensyRowLength.ToString();
-      this.ledBoardRowsPerStrip.Text =
-        this.config.teensyRowsPerStrip.ToString();
-
-      this.RefreshAudioDevices(null, null);
-      this.RefreshLEDBoardPorts(null, null);
+      this.LoadConfig();
     }
 
     private void HandleClose(object sender, EventArgs e) {
       this.op.Enabled = false;
+    }
+
+    private void SaveConfig() {
+      if (this.loadingConfig) {
+        return;
+      }
+      // We keep around the old config in case the new config causes a crash
+      if (File.Exists("spectrum_config.xml")) {
+        File.Copy("spectrum_config.xml", "spectrum_old_config.xml", true);
+      }
+      using (
+        FileStream stream = new FileStream(
+          "spectrum_config.xml",
+          FileMode.Create
+        )
+      ) {
+        new XmlSerializer(typeof(SpectrumConfiguration)).Serialize(
+          stream,
+          this.config
+        );
+      }
+    }
+
+    private void LoadConfig() {
+      this.loadingConfig = true;
+
+      if (File.Exists("spectrum_config.xml")) {
+        using (FileStream stream = File.OpenRead("spectrum_config.xml")) {
+          this.config = new XmlSerializer(
+            typeof(SpectrumConfiguration)
+          ).Deserialize(stream) as SpectrumConfiguration;
+        }
+      }
+      if (this.config == null) {
+        this.config = new SpectrumConfiguration();
+      }
+      this.op = new Operator(this.config);
+
+      this.RefreshAudioDevices(null, null);
+      this.RefreshLEDBoardPorts(null, null);
+
+      this.audioDevices.SelectedIndex = Array.FindIndex(
+        this.audioDeviceIndices,
+        i => i == this.config.audioDeviceIndex
+      );
+      this.audioDevices.SelectedIndex = this.config.audioDeviceIndex;
+      this.hueEnabled.IsChecked = this.config.huesEnabled;
+      this.ledBoardEnabled.IsChecked = this.config.ledBoardEnabled;
+      this.audioThreadCheckbox.IsChecked =
+        this.config.audioInputInSeparateThread;
+      this.hueThreadCheckbox.IsChecked = this.config.huesOutputInSeparateThread;
+      this.ledBoardThreadCheckbox.IsChecked =
+        this.config.ledBoardOutputInSeparateThread;
+      this.hueCommandDelay.Text = this.config.hueDelay.ToString();
+      this.hueIdleOnSilent.IsChecked = this.config.hueIdleOnSilent;
+
+      if (!this.config.controlLights) {
+        if (
+          this.config.brighten == 0 &&
+          this.config.colorslide == 0 &&
+          this.config.sat == 0
+        ) {
+          this.hueOverride.SelectedItem = this.hueOverrideCustom;
+        } else {
+          this.hueOverride.SelectedItem = this.hueOverrideOn;
+        }
+      } else if (this.config.lightsOff) {
+        this.hueOverride.SelectedItem = this.hueOverrideOff;
+      } else if (this.config.redAlert) {
+        this.hueOverride.SelectedItem = this.hueOverrideRed;
+      }
+      this.hueCustomBrightness.Text = this.config.brighten.ToString();
+      this.hueCustomSaturation.Text = this.config.sat.ToString();
+      this.hueCustomHue.Text = this.config.colorslide.ToString();
+
+      this.peakChangeS.Value = this.config.peakC;
+      this.peakChangeL.Content = this.config.peakC.ToString("F3");
+      this.dropQuietS.Value = this.config.dropQ;
+      this.dropQuietL.Content = this.config.dropQ.ToString("F3");
+      this.dropChangeS.Value = this.config.dropT;
+      this.dropChangeL.Content = this.config.dropT.ToString("F3");
+      this.kickQuietS.Value = this.config.kickQ;
+      this.kickQuietL.Content = this.config.kickQ.ToString("F3");
+      this.kickChangeS.Value = this.config.kickT;
+      this.kickChangeL.Content = this.config.kickT.ToString("F3");
+      this.snareQuietS.Value = this.config.snareQ;
+      this.snareQuietL.Content = this.config.snareQ.ToString("F3");
+      this.snareChangeS.Value = this.config.snareT;
+      this.snareChangeL.Content = this.config.snareT.ToString("F3");
+
+      this.hueHubAddress.Text = this.config.hueURL;
+      this.hueLightIndices.Text = String.Join(",", this.config.hueIndices);
+      this.ledBoardUSBPorts.SelectedValue = this.config.teensyUSBPort;
+      this.ledBoardRowLength.Text = this.config.teensyRowLength.ToString();
+      this.ledBoardRowsPerStrip.Text =
+        this.config.teensyRowsPerStrip.ToString();
+
+      this.loadingConfig = false;
     }
 
     private void RefreshAudioDevices(object sender, RoutedEventArgs e) {
@@ -58,7 +150,6 @@ namespace Spectrum {
         this.audioDevices.Items.Add(AudioInput.GetDeviceName(i));
         this.audioDeviceIndices[itemIndex++] = i;
       }
-      this.audioDevices.SelectedIndex = 0;
       this.AudioInputDeviceChanged(null, null);
     }
 
@@ -72,6 +163,7 @@ namespace Spectrum {
       this.config.audioDeviceIndex =
         this.audioDeviceIndices[this.audioDevices.SelectedIndex];
       this.op.Reboot();
+      this.SaveConfig();
     }
 
     private void OnHotKeyHandler(HotKey hotKey) {
@@ -117,6 +209,7 @@ namespace Spectrum {
       this.config.audioInputInSeparateThread =
         this.audioThreadCheckbox.IsChecked == true;
       this.op.Reboot();
+      this.SaveConfig();
     }
 
     private void PowerButtonClicked(object sender, RoutedEventArgs e) {
@@ -134,6 +227,7 @@ namespace Spectrum {
         return;
       }
       this.config.huesEnabled = this.hueEnabled.IsChecked == true;
+      this.SaveConfig();
     }
 
     private void HueHubAddress(object sender, TextChangedEventArgs e) {
@@ -141,6 +235,7 @@ namespace Spectrum {
         return;
       }
       this.config.hueURL = this.hueHubAddress.Text;
+      this.SaveConfig();
     }
 
     private void HueLightIndices(object sender, TextChangedEventArgs e) {
@@ -152,6 +247,7 @@ namespace Spectrum {
           this.hueLightIndices.Text.Split(','),
           int.Parse
         );
+        this.SaveConfig();
       } catch (FormatException) { }
     }
 
@@ -161,6 +257,7 @@ namespace Spectrum {
       }
       try {
         this.config.hueDelay = Convert.ToInt32(this.hueCommandDelay.Text);
+        this.SaveConfig();
       } catch (FormatException) { }
     }
 
@@ -172,28 +269,29 @@ namespace Spectrum {
         return;
       }
       Slider slider = (Slider)sender;
-      if (slider.Name == "dropQuietS") {
+      if (slider.Name == "peakChangeS") {
+        this.peakChangeL.Content = slider.Value.ToString("F3");
+        this.config.peakC = slider.Value;
+      } else if (slider.Name == "dropQuietS") {
         this.dropQuietL.Content = slider.Value.ToString("F3");
-        this.config.dropQ = (float)slider.Value;
+        this.config.dropQ = slider.Value;
       } else if (slider.Name == "dropChangeS") {
         this.dropChangeL.Content = slider.Value.ToString("F3");
-        this.config.dropT = (float)slider.Value;
+        this.config.dropT = slider.Value;
       } else if (slider.Name == "kickQuietS") {
         this.kickQuietL.Content = slider.Value.ToString("F3");
-        this.config.kickQ = (float)slider.Value;
+        this.config.kickQ = slider.Value;
       } else if (slider.Name == "kickChangeS") {
         this.kickChangeL.Content = slider.Value.ToString("F3");
-        this.config.kickT = (float)slider.Value;
+        this.config.kickT = slider.Value;
       } else if (slider.Name == "snareQuietS") {
         this.snareQuietL.Content = slider.Value.ToString("F3");
-        this.config.snareQ = (float)slider.Value;
+        this.config.snareQ = slider.Value;
       } else if (slider.Name == "snareChangeS") {
         this.snareChangeL.Content = slider.Value.ToString("F3");
-        this.config.snareT = (float)slider.Value;
-      } else if (slider.Name == "peakChangeS") {
-        this.peakChangeL.Content = slider.Value.ToString("F3");
-        this.config.peakC = (float)slider.Value;
+        this.config.snareT = slider.Value;
       }
+      this.SaveConfig();
     }
 
     private void HueOverrideDisabled(object sender, RoutedEventArgs e) {
@@ -205,6 +303,7 @@ namespace Spectrum {
       this.config.redAlert = false;
       this.hueCustomGrid.Visibility = Visibility.Collapsed;
       this.hueIdleOnSilent.Visibility = Visibility.Visible;
+      this.SaveConfig();
     }
 
     private void HueOverrideOn(object sender, RoutedEventArgs e) {
@@ -219,6 +318,7 @@ namespace Spectrum {
       this.hueCustomSaturation.Text = "0";
       this.hueCustomGrid.Visibility = Visibility.Collapsed;
       this.hueIdleOnSilent.Visibility = Visibility.Collapsed;
+      this.SaveConfig();
     }
 
     private void HueOverrideOff(object sender, RoutedEventArgs e) {
@@ -230,6 +330,7 @@ namespace Spectrum {
       this.config.redAlert = false;
       this.hueCustomGrid.Visibility = Visibility.Collapsed;
       this.hueIdleOnSilent.Visibility = Visibility.Collapsed;
+      this.SaveConfig();
     }
 
     private void HueOverrideRed(object sender, RoutedEventArgs e) {
@@ -241,6 +342,7 @@ namespace Spectrum {
       this.config.redAlert = true;
       this.hueCustomGrid.Visibility = Visibility.Collapsed;
       this.hueIdleOnSilent.Visibility = Visibility.Collapsed;
+      this.SaveConfig();
     }
 
     private void HueOverrideCustom(object sender, RoutedEventArgs e) {
@@ -252,6 +354,7 @@ namespace Spectrum {
       this.config.redAlert = false;
       this.hueCustomGrid.Visibility = Visibility.Visible;
       this.hueIdleOnSilent.Visibility = Visibility.Collapsed;
+      this.SaveConfig();
     }
 
     private void HueCustomBrightness(object sender, TextChangedEventArgs e) {
@@ -260,6 +363,7 @@ namespace Spectrum {
       }
       try {
         this.config.brighten = Convert.ToInt32(this.hueCustomBrightness.Text);
+        this.SaveConfig();
       } catch (FormatException) { }
     }
 
@@ -269,6 +373,7 @@ namespace Spectrum {
       }
       try {
         this.config.sat = Convert.ToInt32(this.hueCustomBrightness.Text);
+        this.SaveConfig();
       } catch (FormatException) { }
     }
 
@@ -278,6 +383,7 @@ namespace Spectrum {
       }
       try {
         this.config.colorslide = Convert.ToInt32(this.hueCustomBrightness.Text);
+        this.SaveConfig();
       } catch (FormatException) { }
     }
 
@@ -286,6 +392,7 @@ namespace Spectrum {
         return;
       }
       this.config.hueIdleOnSilent = this.hueIdleOnSilent.IsChecked == true;
+      this.SaveConfig();
     }
 
     private void HueSeparateThreadChanged(object sender, RoutedEventArgs e) {
@@ -295,6 +402,7 @@ namespace Spectrum {
       this.config.huesOutputInSeparateThread =
         this.hueThreadCheckbox.IsChecked == true;
       this.op.Reboot();
+      this.SaveConfig();
     }
 
     private void RefreshLEDBoardPorts(object sender, RoutedEventArgs e) {
@@ -305,7 +413,6 @@ namespace Spectrum {
         this.ledBoardUSBPorts.Items.Add(portName);
       }
 
-      this.ledBoardUSBPorts.SelectedIndex = 0;
       this.LEDBoardUSBPortsChanged(null, null);
     }
 
@@ -318,6 +425,7 @@ namespace Spectrum {
       }
       this.config.teensyUSBPort = this.ledBoardUSBPorts.SelectedItem as string;
       this.op.Reboot();
+      this.SaveConfig();
     }
 
     private void LEDBoardEnabled(object sender, RoutedEventArgs e) {
@@ -325,6 +433,7 @@ namespace Spectrum {
         return;
       }
       this.config.ledBoardEnabled = this.ledBoardEnabled.IsChecked == true;
+      this.SaveConfig();
     }
 
     private void LEDBoardRowLength(object sender, TextChangedEventArgs e) {
@@ -334,6 +443,7 @@ namespace Spectrum {
       try {
         this.config.teensyRowLength =
           Convert.ToInt32(this.ledBoardRowLength.Text);
+        this.SaveConfig();
       } catch (FormatException) { }
     }
 
@@ -344,6 +454,7 @@ namespace Spectrum {
       try {
         this.config.teensyRowsPerStrip =
           Convert.ToInt32(this.ledBoardRowsPerStrip.Text);
+        this.SaveConfig();
       } catch (FormatException) { }
     }
 
@@ -354,6 +465,7 @@ namespace Spectrum {
       this.config.ledBoardOutputInSeparateThread =
         this.ledBoardThreadCheckbox.IsChecked == true;
       this.op.Reboot();
+      this.SaveConfig();
     }
 
   }

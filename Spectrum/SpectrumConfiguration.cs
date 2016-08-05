@@ -7,7 +7,8 @@ using Spectrum.Base;
 
 namespace Spectrum {
 
-  class SpectrumConfiguration : Configuration {
+  [Serializable]
+  public class SpectrumConfiguration : Configuration {
 
     public int audioDeviceIndex { get; set; } = -1;
 
@@ -28,13 +29,13 @@ namespace Spectrum {
     public int colorslide { get; set; } = 0;
     public int sat { get; set; } = 0;
 
-    public float peakC { get; set; } = .800f;
-    public float dropQ { get; set; } = .025f;
-    public float dropT { get; set; } = .075f;
-    public float kickQ { get; set; } = 1;
-    public float kickT { get; set; } = 0;
-    public float snareQ { get; set; } = 1;
-    public float snareT { get; set; } = .5f;
+    public double peakC { get; set; } = .800f;
+    public double dropQ { get; set; } = .025f;
+    public double dropT { get; set; } = .075f;
+    public double kickQ { get; set; } = 1;
+    public double kickT { get; set; } = 0;
+    public double snareQ { get; set; } = 1;
+    public double snareT { get; set; } = .5f;
 
     public string hueURL { get; set; }
       = "http://192.168.1.26/api/161d04c425fa45e293386cf241a26bf/";

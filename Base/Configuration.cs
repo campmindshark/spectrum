@@ -49,13 +49,13 @@ namespace Spectrum.Base {
     int sat { get; set; }
     // These parameters come from the sliders in the UI and affect audio
     // processing
-    float peakC { get; set; }
-    float dropQ { get; set; }
-    float dropT { get; set; }
-    float kickQ { get; set; }
-    float kickT { get; set; }
-    float snareQ { get; set; }
-    float snareT { get; set; }
+    double peakC { get; set; }
+    double dropQ { get; set; }
+    double dropT { get; set; }
+    double kickQ { get; set; }
+    double kickT { get; set; }
+    double snareQ { get; set; }
+    double snareT { get; set; }
 
     // The URL at which the Hue hub can be accessed
     string hueURL { get; set; }
