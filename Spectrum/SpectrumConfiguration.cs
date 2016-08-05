@@ -31,13 +31,13 @@ namespace Spectrum {
     public int colorslide { get; set; } = 0;
     public int sat { get; set; } = 0;
 
-    public double peakC { get; set; } = .800f;
-    public double dropQ { get; set; } = .025f;
-    public double dropT { get; set; } = .075f;
+    public double peakC { get; set; } = .800;
+    public double dropQ { get; set; } = .025;
+    public double dropT { get; set; } = .075;
     public double kickQ { get; set; } = 1;
     public double kickT { get; set; } = 0;
     public double snareQ { get; set; } = 1;
-    public double snareT { get; set; } = .5f;
+    public double snareT { get; set; } = .5;
 
     public string hueURL { get; set; }
       = "http://192.168.1.26/api/161d04c425fa45e293386cf241a26bf/";
@@ -46,6 +46,7 @@ namespace Spectrum {
     public string teensyUSBPort { get; set; } = "COM4";
     public int teensyRowLength { get; set; } = 30;
     public int teensyRowsPerStrip { get; set; } = 5;
+    public double ledBoardBrightness { get; set; } = 0.1;
 
     public int midiDeviceIndex { get; set; } = -1;
 

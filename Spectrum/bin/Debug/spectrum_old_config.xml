@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <SpectrumConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <audioDeviceIndex>11</audioDeviceIndex>
+  <audioDeviceIndex>16</audioDeviceIndex>
   <huesEnabled>true</huesEnabled>
   <ledBoardEnabled>true</ledBoardEnabled>
   <midiInputEnabled>false</midiInputEnabled>
@@ -34,5 +34,6 @@
   <teensyUSBPort>COM4</teensyUSBPort>
   <teensyRowLength>30</teensyRowLength>
   <teensyRowsPerStrip>5</teensyRowsPerStrip>
+  <ledBoardBrightness>0.55820105820105814</ledBoardBrightness>
   <midiDeviceIndex>0</midiDeviceIndex>
 </SpectrumConfiguration>

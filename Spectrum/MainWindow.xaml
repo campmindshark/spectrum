@@ -41,25 +41,25 @@
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <Label Content="Peak Detection" HorizontalAlignment="Left" Padding="0"/>
-                <Slider x:Name="peakChangeS" Value="0.8" HorizontalAlignment="Left" Margin="90,0,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="2" LargeChange="0.1" ValueChanged="HueAudioSliderChanged" />
+                <Slider x:Name="peakChangeS" Value="0.8" HorizontalAlignment="Left" Margin="90,0,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="2" LargeChange="0.1" ValueChanged="HueAudioSliderChanged" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                 <Label x:Name="peakChangeL" Content="0.800" HorizontalAlignment="Left" Margin="300,0,0,0" Padding="0"/>
                 <Label Content="Drop Quiet" HorizontalAlignment="Left" Margin="0,25,0,0" Padding="0"/>
-                <Slider x:Name="dropQuietS" Value="0.025" HorizontalAlignment="Left" Margin="90,25,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="0.1" LargeChange="0.01" ValueChanged="HueAudioSliderChanged" SmallChange="0.001" />
+                <Slider x:Name="dropQuietS" Value="0.025" HorizontalAlignment="Left" Margin="90,25,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="0.1" LargeChange="0.01" ValueChanged="HueAudioSliderChanged" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                 <Label x:Name="dropQuietL" Content="0.025" HorizontalAlignment="Left" Margin="300,25,0,0" Padding="0"/>
                 <Label Content="Drop Change" HorizontalAlignment="Left" Margin="0,50,0,0" Padding="0"/>
-                <Slider x:Name="dropChangeS" Value=".075" HorizontalAlignment="Left" Margin="90,50,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="0.1" LargeChange="0.01" SmallChange="0.001" ValueChanged="HueAudioSliderChanged" />
+                <Slider x:Name="dropChangeS" Value=".075" HorizontalAlignment="Left" Margin="90,50,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="0.1" LargeChange="0.01" SmallChange="0.001" ValueChanged="HueAudioSliderChanged" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                 <Label x:Name="dropChangeL" Content="0.075" HorizontalAlignment="Left" Margin="300,50,0,0" Padding="0"/>
                 <Label Content="Kick Quiet" HorizontalAlignment="Left" Margin="0,75,0,0" Padding="0"/>
-                <Slider x:Name="kickQuietS" Value="1" HorizontalAlignment="Left" Margin="90,75,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1" LargeChange="0.1" SmallChange="0.01" ValueChanged="HueAudioSliderChanged" />
+                <Slider x:Name="kickQuietS" Value="1" HorizontalAlignment="Left" Margin="90,75,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1" LargeChange="0.1" SmallChange="0.01" ValueChanged="HueAudioSliderChanged" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                 <Label x:Name="kickQuietL" Content="1.000" HorizontalAlignment="Left" Margin="300,75,0,0" Padding="0"/>
                 <Label Content="Kick Change" HorizontalAlignment="Left" Margin="0,100,0,0" Padding="0"/>
-                <Slider x:Name="kickChangeS" Value="0" HorizontalAlignment="Left" Margin="90,100,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="4" ValueChanged="HueAudioSliderChanged" />
+                <Slider x:Name="kickChangeS" Value="0" HorizontalAlignment="Left" Margin="90,100,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="4" ValueChanged="HueAudioSliderChanged" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                 <Label x:Name="kickChangeL" Content="0.000" HorizontalAlignment="Left" Margin="300,100,0,0" Padding="0"/>
                 <Label Content="Snare Quiet" HorizontalAlignment="Left" Margin="0,125,0,0" Padding="0"/>
-                <Slider x:Name="snareQuietS" Value="1" HorizontalAlignment="Left" Margin="90,125,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1" ValueChanged="HueAudioSliderChanged" />
+                <Slider x:Name="snareQuietS" Value="1" HorizontalAlignment="Left" Margin="90,125,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1" ValueChanged="HueAudioSliderChanged" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                 <Label x:Name="snareQuietL" Content="1.000" HorizontalAlignment="Left" Margin="300,125,0,0" Padding="0"/>
                 <Label Content="Snare Change" HorizontalAlignment="Left" Margin="0,150,0,0" Padding="0"/>
-                <Slider x:Name="snareChangeS" Value=".5" HorizontalAlignment="Left" Margin="90,150,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="4" ValueChanged="HueAudioSliderChanged" />
+                <Slider x:Name="snareChangeS" Value=".5" HorizontalAlignment="Left" Margin="90,150,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="4" ValueChanged="HueAudioSliderChanged" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                 <Label x:Name="snareChangeL" Content="0.500" HorizontalAlignment="Left" Margin="300,150,0,0" Padding="0"/>
               </Grid>
             </Border>
@@ -105,6 +105,9 @@
                 <TextBox x:Name="ledBoardRowLength" Margin="94,51,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="LEDBoardRowLength" />
                 <Label Content="Rows per strip" Margin="0,76,0,0" Padding="0" />
                 <TextBox x:Name="ledBoardRowsPerStrip" Margin="94,76,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" TextChanged="LEDBoardRowsPerStrip" />
+                <Label Content="Brightness" HorizontalAlignment="Left" Padding="0" Margin="0,101,0,0" />
+                <Slider x:Name="ledBoardBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,101,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" ValueChanged="LEDBoardBrightnessChanged" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="ledBoardBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="300,101,0,0" Padding="0"/>
               </Grid>
             </Border>
           </Grid>

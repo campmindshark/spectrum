@@ -67,11 +67,13 @@ namespace Spectrum.Base {
     // The list of IDs of Hue bulbs, from left to right
     int[] hueIndices { get; set; }
 
-    // The USB port where the Teensy is located
+    // The USB port where the Teensy is located (LED Board)
     string teensyUSBPort { get; set; }
-    // Parameters to SquareTeensyOutput
+    // Parameters to SquareTeensyOutput (LED Board)
     int teensyRowLength { get; set; }
     int teensyRowsPerStrip { get; set; }
+    // Brightness of the LED Board
+    double ledBoardBrightness { get; set; }
 
     // The index of the device representing the MIDI controller
     int midiDeviceIndex { get; set; }

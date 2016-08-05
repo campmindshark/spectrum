@@ -130,7 +130,18 @@ namespace Spectrum {
       this.ledBoardRowLength.Text = this.config.teensyRowLength.ToString();
       this.ledBoardRowsPerStrip.Text =
         this.config.teensyRowsPerStrip.ToString();
+      this.ledBoardBrightnessSlider.Value = this.config.ledBoardBrightness;
+      this.ledBoardBrightnessLabel.Content =
+        this.config.ledBoardBrightness.ToString("F3");
 
+      this.loadingConfig = false;
+    }
+
+    private void SliderStarted(object sender, DragStartedEventArgs e) {
+      this.loadingConfig = true;
+    }
+
+    private void SliderCompleted(object sender, DragCompletedEventArgs e) {
       this.loadingConfig = false;
     }
 
@@ -273,26 +284,26 @@ namespace Spectrum {
       }
       Slider slider = (Slider)sender;
       if (slider.Name == "peakChangeS") {
-        this.peakChangeL.Content = slider.Value.ToString("F3");
         this.config.peakC = slider.Value;
+        this.peakChangeL.Content = this.config.peakC.ToString("F3");
       } else if (slider.Name == "dropQuietS") {
-        this.dropQuietL.Content = slider.Value.ToString("F3");
         this.config.dropQ = slider.Value;
+        this.dropQuietL.Content = this.config.dropQ.ToString("F3");
       } else if (slider.Name == "dropChangeS") {
-        this.dropChangeL.Content = slider.Value.ToString("F3");
         this.config.dropT = slider.Value;
+        this.dropChangeL.Content = this.config.dropT.ToString("F3");
       } else if (slider.Name == "kickQuietS") {
-        this.kickQuietL.Content = slider.Value.ToString("F3");
         this.config.kickQ = slider.Value;
+        this.kickQuietL.Content = this.config.kickQ.ToString("F3");
       } else if (slider.Name == "kickChangeS") {
-        this.kickChangeL.Content = slider.Value.ToString("F3");
         this.config.kickT = slider.Value;
+        this.kickChangeL.Content = this.config.kickT.ToString("F3");
       } else if (slider.Name == "snareQuietS") {
-        this.snareQuietL.Content = slider.Value.ToString("F3");
         this.config.snareQ = slider.Value;
+        this.snareQuietL.Content = this.config.snareQ.ToString("F3");
       } else if (slider.Name == "snareChangeS") {
-        this.snareChangeL.Content = slider.Value.ToString("F3");
         this.config.snareT = slider.Value;
+        this.snareChangeL.Content = this.config.snareT.ToString("F3");
       }
       this.SaveConfig();
     }
@@ -459,6 +470,19 @@ namespace Spectrum {
           Convert.ToInt32(this.ledBoardRowsPerStrip.Text);
         this.SaveConfig();
       } catch (FormatException) { }
+    }
+
+    private void LEDBoardBrightnessChanged(
+      object sender,
+      RoutedPropertyChangedEventArgs<double> e
+    ) {
+      if (this.config == null) {
+        return;
+      }
+      this.config.ledBoardBrightness = this.ledBoardBrightnessSlider.Value;
+      this.ledBoardBrightnessLabel.Content =
+        this.config.ledBoardBrightness.ToString("F3");
+      this.SaveConfig();
     }
 
     private void LEDBoardSeparateThreadChanged(object sender, RoutedEventArgs e) {
