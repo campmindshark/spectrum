@@ -51,6 +51,15 @@ namespace Spectrum {
 
     public int midiDeviceIndex { get; set; } = -1;
 
+    public bool domeEnabled { get; set; } = false;
+    public bool domeSimulationEnabled { get; set; } = false;
+    public string domeTeensyUSBPort1 { get; set; } = null;
+    public string domeTeensyUSBPort2 { get; set; } = null;
+    public string domeTeensyUSBPort3 { get; set; } = null;
+    public string domeTeensyUSBPort4 { get; set; } = null;
+    public string domeTeensyUSBPort5 { get; set; } = null;
+    public double domeMaxBrightness { get; set; } = 0.1;
+
     // The rest is not on Configuration
     // Just convenience properties for data binding
 

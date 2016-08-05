@@ -78,39 +78,7 @@ namespace Spectrum.MIDI {
     private void InitializeMidi() {
       this.device = new InputDevice(this.config.midiDeviceIndex);
       this.device.ChannelMessageReceived += ChannelMessageReceived;
-      this.device.SysCommonMessageReceived += SysCommonMessageReceived;
-      this.device.SysExMessageReceived += SysExMessageReceived;
-      this.device.SysRealtimeMessageReceived += SysRealtimeMessageReceived;
-      this.device.RawMessageReceived += RawMessageReceived;
       this.device.StartRecording();
-    }
-
-    private void RawMessageReceived(object sender, RawMessageEventArgs e) {
-      System.Diagnostics.Debug.WriteLine("MIDI raw message");
-    }
-
-    private void SysRealtimeMessageReceived(
-      object sender,
-      SysRealtimeMessageEventArgs e
-    ) {
-      System.Diagnostics.Debug.WriteLine("MIDI sysrealtime message");
-    }
-
-    private void SysExMessageReceived(
-      object sender,
-      SysExMessageEventArgs e
-    ) {
-      System.Diagnostics.Debug.WriteLine("MIDI sysex message");
-    }
-
-    private void SysCommonMessageReceived(
-      object sender,
-      SysCommonMessageEventArgs e
-    ) {
-      System.Diagnostics.Debug.WriteLine(
-        "MIDI syscommon message with data1 " + e.Message.Data1 +
-        ", data2 " + e.Message.Data2
-      );
     }
 
     private void ChannelMessageReceived(

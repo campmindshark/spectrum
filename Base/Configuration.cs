@@ -78,6 +78,15 @@ namespace Spectrum.Base {
     // The index of the device representing the MIDI controller
     int midiDeviceIndex { get; set; }
 
+    bool domeEnabled { get; set; }
+    bool domeSimulationEnabled { get; set; }
+    string domeTeensyUSBPort1 { get; set; }
+    string domeTeensyUSBPort2 { get; set; }
+    string domeTeensyUSBPort3 { get; set; }
+    string domeTeensyUSBPort4 { get; set; }
+    string domeTeensyUSBPort5 { get; set; }
+    double domeMaxBrightness { get; set; }
+
   }
 
 }

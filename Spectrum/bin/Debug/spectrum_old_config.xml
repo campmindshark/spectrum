@@ -2,7 +2,7 @@
 <SpectrumConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <audioDeviceIndex>16</audioDeviceIndex>
   <huesEnabled>true</huesEnabled>
-  <ledBoardEnabled>true</ledBoardEnabled>
+  <ledBoardEnabled>false</ledBoardEnabled>
   <midiInputEnabled>true</midiInputEnabled>
   <audioInputInSeparateThread>false</audioInputInSeparateThread>
   <huesOutputInSeparateThread>true</huesOutputInSeparateThread>
@@ -34,8 +34,11 @@
   <teensyUSBPort>COM4</teensyUSBPort>
   <teensyRowLength>30</teensyRowLength>
   <teensyRowsPerStrip>5</teensyRowsPerStrip>
-  <ledBoardBrightness>0.10236220472440945</ledBoardBrightness>
+  <ledBoardBrightness>0.19685039370078741</ledBoardBrightness>
   <midiDeviceIndex>0</midiDeviceIndex>
+  <domeEnabled>false</domeEnabled>
+  <domeSimulationEnabled>false</domeSimulationEnabled>
+  <domeMaxBrightness>0.1</domeMaxBrightness>
   <hueOverrideIsCustom>false</hueOverrideIsCustom>
   <hueOverrideIndex>0</hueOverrideIndex>
 </SpectrumConfiguration>

@@ -131,6 +131,7 @@ namespace Spectrum {
       this.RefreshAudioDevices(null, null);
       this.RefreshLEDBoardPorts(null, null);
       this.RefreshMidiDevices(null, null);
+      this.RefreshDomePorts(null, null);
 
       this.Bind("huesEnabled", this.hueEnabled, CheckBox.IsCheckedProperty);
       this.Bind("ledBoardEnabled", this.ledBoardEnabled, CheckBox.IsCheckedProperty);
@@ -167,6 +168,10 @@ namespace Spectrum {
       this.Bind("teensyRowsPerStrip", this.ledBoardRowsPerStrip, TextBox.TextProperty);
       this.Bind("ledBoardBrightness", this.ledBoardBrightnessSlider, Slider.ValueProperty);
       this.Bind("ledBoardBrightness", this.ledBoardBrightnessLabel, Label.ContentProperty);
+      this.Bind("domeEnabled", this.domeEnabled, CheckBox.IsCheckedProperty);
+      this.Bind("domeSimulationEnabled", this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
+      this.Bind("domeMaxBrightness", this.domeBrightnessSlider, Slider.ValueProperty);
+      this.Bind("domeMaxBrightness", this.domeBrightnessLabel, Label.ContentProperty);
 
       this.loadingConfig = false;
     }
@@ -333,6 +338,52 @@ namespace Spectrum {
       }
       this.config.midiDeviceIndex =
         this.midiDeviceIndices[this.midiDevices.SelectedIndex];
+      this.op.Reboot();
+      this.SaveConfig();
+    }
+
+    private void RefreshDomePorts(object sender, RoutedEventArgs e) {
+      this.domeEnabled.IsChecked = false;
+
+      this.domeTeensy1.Items.Clear();
+      this.domeTeensy2.Items.Clear();
+      this.domeTeensy3.Items.Clear();
+      this.domeTeensy4.Items.Clear();
+      this.domeTeensy5.Items.Clear();
+      foreach (string portName in System.IO.Ports.SerialPort.GetPortNames()) {
+        this.domeTeensy1.Items.Add(portName);
+        this.domeTeensy2.Items.Add(portName);
+        this.domeTeensy3.Items.Add(portName);
+        this.domeTeensy4.Items.Add(portName);
+        this.domeTeensy5.Items.Add(portName);
+      }
+
+      this.domeTeensy1.SelectedValue = this.config.domeTeensyUSBPort1;
+      this.domeTeensy2.SelectedValue = this.config.domeTeensyUSBPort2;
+      this.domeTeensy3.SelectedValue = this.config.domeTeensyUSBPort3;
+      this.domeTeensy4.SelectedValue = this.config.domeTeensyUSBPort4;
+      this.domeTeensy5.SelectedValue = this.config.domeTeensyUSBPort5;
+    }
+
+    private void DomePortChanged(
+      object sender,
+      SelectionChangedEventArgs e
+    ) {
+      if (this.domeTeensy1.SelectedIndex != -1) {
+        this.config.domeTeensyUSBPort1 = this.domeTeensy1.SelectedItem as string;
+      }
+      if (this.domeTeensy2.SelectedIndex != -1) {
+        this.config.domeTeensyUSBPort2 = this.domeTeensy2.SelectedItem as string;
+      }
+      if (this.domeTeensy3.SelectedIndex != -1) {
+        this.config.domeTeensyUSBPort3 = this.domeTeensy3.SelectedItem as string;
+      }
+      if (this.domeTeensy4.SelectedIndex != -1) {
+        this.config.domeTeensyUSBPort4 = this.domeTeensy4.SelectedItem as string;
+      }
+      if (this.domeTeensy5.SelectedIndex != -1) {
+        this.config.domeTeensyUSBPort5 = this.domeTeensy5.SelectedItem as string;
+      }
       this.op.Reboot();
       this.SaveConfig();
     }

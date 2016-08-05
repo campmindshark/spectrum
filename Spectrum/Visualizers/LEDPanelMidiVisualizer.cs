@@ -46,7 +46,7 @@ namespace Spectrum {
         if (command.type != MidiCommandType.Note) {
           continue;
         }
-        if (command.index < 48 || command.index > 55) {
+        if (command.index < 48 || command.index > 51) {
           continue;
         }
         if (command.value == 0.0) {
@@ -72,6 +72,8 @@ namespace Spectrum {
         color = brightnessByte << 8;
       } else if (mostRecentCommand.Key == 50) {
         color = brightnessByte;
+      } else if (mostRecentCommand.Key == 51) {
+        color = brightnessByte | brightnessByte << 8 | brightnessByte << 16;
       }
 
       for (int j = 0; j < this.config.teensyRowsPerStrip * 8; j++) {
