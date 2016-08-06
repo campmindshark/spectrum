@@ -1,9 +1,0 @@
-C:\Users\Ashoat\Dropbox\src\spectrum\Hues\bin\Debug\Hues.dll
-C:\Users\Ashoat\Dropbox\src\spectrum\Hues\bin\Debug\Hues.pdb
-C:\Users\Ashoat\Dropbox\src\spectrum\Hues\bin\Debug\Base.dll
-C:\Users\Ashoat\Dropbox\src\spectrum\Hues\bin\Debug\Newtonsoft.Json.dll
-C:\Users\Ashoat\Dropbox\src\spectrum\Hues\bin\Debug\Base.pdb
-C:\Users\Ashoat\Dropbox\src\spectrum\Hues\bin\Debug\Newtonsoft.Json.xml
-C:\Users\Ashoat\Dropbox\src\spectrum\Hues\obj\Debug\Hues.csprojResolveAssemblyReference.cache
-C:\Users\Ashoat\Dropbox\src\spectrum\Hues\obj\Debug\Hues.dll
-C:\Users\Ashoat\Dropbox\src\spectrum\Hues\obj\Debug\Hues.pdb
