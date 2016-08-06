@@ -1,0 +1,5 @@
+C:\Users\Ashoat\Dropbox\src\spectrum\Base\bin\Debug\Base.dll
+C:\Users\Ashoat\Dropbox\src\spectrum\Base\bin\Debug\Base.pdb
+C:\Users\Ashoat\Dropbox\src\spectrum\Base\obj\Debug\Base.csprojResolveAssemblyReference.cache
+C:\Users\Ashoat\Dropbox\src\spectrum\Base\obj\Debug\Base.dll
+C:\Users\Ashoat\Dropbox\src\spectrum\Base\obj\Debug\Base.pdb
