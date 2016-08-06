@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,7 +12,7 @@ namespace Spectrum.Base {
    * A reference to a single shared Configuration is passed around all over
    * the Spectrum projects. It is updated by the user through the UI.
    */
-  public interface Configuration {
+  public interface Configuration : INotifyPropertyChanged {
 
     // The unique index identifying the audio device we are listening to
     int audioDeviceIndex { get; set; }
@@ -23,18 +25,10 @@ namespace Spectrum.Base {
     // the one running the visualizers. If it is false, a single thread will
     // first poll the Un4seen APIs and then run the visualizers.
     bool audioInputInSeparateThread { get; set; }
-    // If this is true, we will update the Hues in a thread separate to the one
-    // running the visualizers. If it is false, a single thread will first run
-    // the visualizers and cache output commands, and then flush them.
     bool huesOutputInSeparateThread { get; set; }
-    // If this is true, we will update the LEDs in a thread separate to the one
-    // running the visualizers. If it is false, a single thread will first run
-    // the visualizers and cache output commands, and then flush them.
     bool ledBoardOutputInSeparateThread { get; set; }
-    // If this is true, we will poll the MIDI APIs in a thread separate to the
-    // one running the visualizers. If it is false, a single thread will first
-    // poll the MIDI APIs and then run the visualizers.
     bool midiInputInSeparateThread { get; set; }
+    bool domeOutputInSeparateThread { get; set; }
 
     // This is the delay in milliseconds between consecutive commands we give
     // the Hue hub
@@ -86,6 +80,11 @@ namespace Spectrum.Base {
     string domeTeensyUSBPort4 { get; set; }
     string domeTeensyUSBPort5 { get; set; }
     double domeMaxBrightness { get; set; }
+
+    // You might look at this and be disgusted. Yes, I am kinda violating the
+    // whole organizing principle here, but the UI needs to know what's going on
+    // with LEDDomeOutput, and the config is the only reference they share.
+    ConcurrentQueue<LEDCommand> domeCommandQueue { get; }
 
   }
 

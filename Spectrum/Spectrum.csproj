@@ -63,6 +63,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="DomeSimulator.cs" />
+    <Compile Include="DomeSimulatorWindow.xaml.cs">
+      <DependentUpon>DomeSimulatorWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -71,11 +75,16 @@
     <Compile Include="Visualizers\HueSilentVisualizer.cs" />
     <Compile Include="Visualizers\HueSolidColorVisualizer.cs" />
     <Compile Include="Visualizers\LEDPanelConfigVisualizer.cs" />
+    <Compile Include="Visualizers\LEDDomeMidiTestVisualizer.cs" />
     <Compile Include="Visualizers\LEDPanelVolumeVisualizer.cs" />
     <Compile Include="Visualizers\LEDPanelMidiVisualizer.cs" />
     <Compile Include="SpectrumConfiguration.cs" />
     <Compile Include="Hotkey.cs" />
     <Compile Include="Visualizers\HueAudioVisualizer.cs" />
+    <Page Include="DomeSimulatorWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

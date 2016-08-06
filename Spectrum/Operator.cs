@@ -31,8 +31,10 @@ namespace Spectrum {
       this.outputs = new List<Output>();
       var hue = new HueOutput(config);
       this.outputs.Add(hue);
-      var teensy = new CartesianTeensyOutput(config);
-      this.outputs.Add(teensy);
+      var board = new CartesianTeensyOutput(config);
+      this.outputs.Add(board);
+      var dome = new LEDDomeOutput(config);
+      this.outputs.Add(dome);
 
       this.visualizers = new List<Visualizer>();
       this.visualizers.Add(new HueAudioVisualizer(
@@ -43,7 +45,7 @@ namespace Spectrum {
       this.visualizers.Add(new LEDPanelVolumeVisualizer(
         this.config,
         audio,
-        teensy
+        board
       ));
       this.visualizers.Add(new HueSolidColorVisualizer(
         this.config,
@@ -57,12 +59,17 @@ namespace Spectrum {
       this.visualizers.Add(new LEDPanelMidiVisualizer(
         this.config,
         midi,
-        teensy
+        board
       ));
       this.visualizers.Add(new LEDPanelConfigVisualizer(
         this.config,
         midi,
-        teensy
+        board
+      ));
+      this.visualizers.Add(new LEDDomeMidiTestVisualizer(
+        this.config,
+        midi,
+        dome
       ));
     }
 

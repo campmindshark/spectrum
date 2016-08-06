@@ -1,13 +1,14 @@
 <?xml version="1.0"?>
 <SpectrumConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <audioDeviceIndex>16</audioDeviceIndex>
-  <huesEnabled>true</huesEnabled>
-  <ledBoardEnabled>false</ledBoardEnabled>
+  <audioDeviceIndex>20</audioDeviceIndex>
+  <huesEnabled>false</huesEnabled>
+  <ledBoardEnabled>true</ledBoardEnabled>
   <midiInputEnabled>true</midiInputEnabled>
   <audioInputInSeparateThread>false</audioInputInSeparateThread>
   <huesOutputInSeparateThread>true</huesOutputInSeparateThread>
   <ledBoardOutputInSeparateThread>false</ledBoardOutputInSeparateThread>
   <midiInputInSeparateThread>false</midiInputInSeparateThread>
+  <domeOutputInSeparateThread>false</domeOutputInSeparateThread>
   <hueDelay>125</hueDelay>
   <hueIdleOnSilent>true</hueIdleOnSilent>
   <lightsOff>false</lightsOff>
@@ -37,7 +38,7 @@
   <ledBoardBrightness>0.19685039370078741</ledBoardBrightness>
   <midiDeviceIndex>0</midiDeviceIndex>
   <domeEnabled>false</domeEnabled>
-  <domeSimulationEnabled>false</domeSimulationEnabled>
+  <domeSimulationEnabled>true</domeSimulationEnabled>
   <domeMaxBrightness>0.1</domeMaxBrightness>
   <hueOverrideIsCustom>false</hueOverrideIsCustom>
   <hueOverrideIndex>0</hueOverrideIndex>

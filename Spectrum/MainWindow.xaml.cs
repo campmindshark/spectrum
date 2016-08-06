@@ -45,15 +45,15 @@ namespace Spectrum {
 
   public partial class MainWindow : Window {
 
-    Operator op;
-    SpectrumConfiguration config;
+    private Operator op;
+    private SpectrumConfiguration config;
+    private bool loadingConfig = false;
     private int[] audioDeviceIndices;
     private int[] midiDeviceIndices;
-
-    private bool loadingConfig = false;
+    private DomeSimulatorWindow domeSimulatorWindow;
 
     public MainWindow() {
-      InitializeComponent();
+      this.InitializeComponent();
 
       new HotKey(Key.Q, KeyModifier.Alt, this.OnHotKeyHandler);
       new HotKey(Key.OemTilde, KeyModifier.Alt, this.OnHotKeyHandler);
@@ -140,6 +140,7 @@ namespace Spectrum {
       this.Bind("huesOutputInSeparateThread", this.hueThreadCheckbox, CheckBox.IsCheckedProperty, true);
       this.Bind("ledBoardOutputInSeparateThread", this.ledBoardThreadCheckbox, CheckBox.IsCheckedProperty, true);
       this.Bind("midiInputInSeparateThread", this.midiThreadCheckbox, CheckBox.IsCheckedProperty, true);
+      this.Bind("domeOutputInSeparateThread", this.domeThreadCheckbox, CheckBox.IsCheckedProperty, true);
       this.Bind("hueDelay", this.hueCommandDelay, TextBox.TextProperty);
       this.Bind("hueIdleOnSilent", this.hueIdleOnSilent, CheckBox.IsCheckedProperty);
       this.Bind("hueOverrideIndex", this.hueOverride, ComboBox.SelectedIndexProperty);
@@ -386,6 +387,21 @@ namespace Spectrum {
       }
       this.op.Reboot();
       this.SaveConfig();
+    }
+
+    private void OpenDomeSimulator(object sender, RoutedEventArgs e) {
+      this.domeSimulatorWindow = new DomeSimulatorWindow(this.config);
+      this.domeSimulatorWindow.Closed += DomeSimulatorClosed;
+      this.domeSimulatorWindow.Show();
+    }
+
+    private void DomeSimulatorClosed(object sender, EventArgs e) {
+      this.config.domeSimulationEnabled = false;
+    }
+
+    private void CloseDomeSimulator(object sender, RoutedEventArgs e) {
+      this.domeSimulatorWindow.Close();
+      this.domeSimulatorWindow = null;
     }
 
   }

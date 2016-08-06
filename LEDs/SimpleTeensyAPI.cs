@@ -11,7 +11,7 @@ namespace Spectrum.LEDs {
    * conception of how many LEDs the Teensy is addressing - it just communicates
    * a given index and color to the Teensy.
    */
-  public class SimpleTeensyAPI {
+  class SimpleTeensyAPI {
 
     private SerialPort port;
     private string portName;

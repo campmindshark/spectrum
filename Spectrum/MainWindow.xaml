@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Spectrum"
         mc:Ignorable="d"
-        Title="Spectrum" Height="480" Width="600" ResizeMode="NoResize"
+        Title="Spectrum" Height="480" Width="600" ResizeMode="CanMinimize"
         Icon="pack://siteoforigin:,,,/Resources/s.PNG"
         Closing="HandleClose">
   <Grid Margin="4">
@@ -138,7 +138,7 @@
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <CheckBox x:Name="domeEnabled" Content="Enabled" VerticalAlignment="Top" IsChecked="False" FontWeight="Bold" />
-                <CheckBox x:Name="domeSimulationEnabled" Content="Simulate" VerticalAlignment="Top" Margin="170,0,0,0" IsChecked="False" />
+                <CheckBox x:Name="domeSimulationEnabled" Content="Simulate" VerticalAlignment="Top" Margin="170,0,0,0" IsChecked="False" Checked="OpenDomeSimulator" Unchecked="CloseDomeSimulator" />
                 <Label Content="Teensy USB ports" Margin="0,21,0,0" Padding="0" />
                 <ComboBox x:Name="domeTeensy1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,20,0,0" Width="120" SelectionChanged="DomePortChanged" />
                 <ComboBox x:Name="domeTeensy2" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,20,0,0" Width="120" SelectionChanged="DomePortChanged" />

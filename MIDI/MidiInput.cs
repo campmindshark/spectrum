@@ -142,6 +142,7 @@ namespace Spectrum.MIDI {
 
       int numMessages = this.buffer.Count;
       if (numMessages == 0) {
+        this.commandsSinceLastTick = new MidiCommand[0];
         return;
       }
 

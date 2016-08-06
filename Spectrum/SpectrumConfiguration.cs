@@ -5,11 +5,16 @@ using System.Text;
 using System.Threading.Tasks;
 using Spectrum.Base;
 using PropertyChanged;
+using System.ComponentModel;
+using System.Collections.Concurrent;
+using System.Xml.Serialization;
 
 namespace Spectrum {
 
-  [Serializable, ImplementPropertyChanged]
+  [Serializable]
   public class SpectrumConfiguration : Configuration {
+
+    public event PropertyChangedEventHandler PropertyChanged;
 
     public int audioDeviceIndex { get; set; } = -1;
 
@@ -21,6 +26,7 @@ namespace Spectrum {
     public bool huesOutputInSeparateThread { get; set; } = false;
     public bool ledBoardOutputInSeparateThread { get; set; } = false;
     public bool midiInputInSeparateThread { get; set; } = false;
+    public bool domeOutputInSeparateThread { get; set; } = false;
 
     public int hueDelay { get; set; } = 125;
     public bool hueIdleOnSilent { get; set; } = true;
@@ -101,6 +107,10 @@ namespace Spectrum {
         }
       }
     }
+
+    [XmlIgnore, DoNotNotify]
+    public ConcurrentQueue<LEDCommand> domeCommandQueue { get; } =
+      new ConcurrentQueue<LEDCommand>();
 
   }
 

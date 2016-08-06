@@ -34,3 +34,5 @@ C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Sanford.Multimedia.Midi.
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\MIDI.pdb
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Sanford.Multimedia.Midi.pdb
 C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\bin\Debug\Sanford.Multimedia.Midi.xml
+C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\obj\Debug\DomeSimulatorWindow.g.cs
+C:\Users\Ashoat\Dropbox\src\spectrum\Spectrum\obj\Debug\DomeSimulatorWindow.baml
