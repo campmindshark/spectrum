@@ -106,7 +106,7 @@ namespace Spectrum {
     private WriteableBitmap bitmap;
     private Int32Rect rect;
     private byte[] pixels;
-    private bool strutsMode;
+    private bool keyMode;
     private Label[] strutLabels;
 
     public DomeSimulatorWindow(Configuration config) {
@@ -155,6 +155,7 @@ namespace Spectrum {
           0,
           0
         );
+        label.MouseDown += StrutLabelClicked;
         this.strutLabels[i] = label;
         this.canvas.Children.Add(label);
       }
@@ -225,28 +226,31 @@ namespace Spectrum {
         this.SetPixelColor(this.pixels, x, y, color);
       }
 
-      if (shouldRedraw && !this.strutsMode) {
+      if (shouldRedraw && !this.keyMode) {
         this.bitmap.WritePixels(this.rect, this.pixels, this.rect.Width * 4, 0);
       }
 
       Debug.WriteLine(stopwatch.ElapsedMilliseconds + "ms to update");
     }
 
-    private void ShowStruts(object sender, RoutedEventArgs e) {
-      this.strutsMode = !this.strutsMode;
+    private void ShowKey(object sender, RoutedEventArgs e) {
+      this.keyMode = !this.keyMode;
       foreach (Label strutLabel in this.strutLabels) {
-        strutLabel.Visibility = this.strutsMode
+        strutLabel.Visibility = this.keyMode
           ? Visibility.Visible
           : Visibility.Collapsed;
       }
-      this.showStruts.Content = this.strutsMode
-        ? "Hide Strut Indices"
-        : "Show Strut Indices";
-      this.directionLabel.Visibility = this.strutsMode
+      this.showKey.Content = this.keyMode
+        ? "Hide Key"
+        : "Show Key";
+      this.directionLabel.Visibility = this.keyMode
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+      this.previewBox.Visibility = this.keyMode
         ? Visibility.Visible
         : Visibility.Collapsed;
 
-      if (!this.strutsMode) {
+      if (!this.keyMode) {
         this.bitmap.WritePixels(this.rect, this.pixels, this.rect.Width * 4, 0);
         return;
       }
@@ -273,6 +277,55 @@ namespace Spectrum {
       }
 
       this.bitmap.WritePixels(this.rect, strutPixels, this.rect.Width * 4, 0);
+    }
+
+    private void PreviewBoxLostFocus(object sender, RoutedEventArgs e) {
+      if (String.IsNullOrEmpty(this.previewBox.Text)) {
+        this.previewBox.Text = "Click some struts...";
+        this.previewBox.Foreground = new SolidColorBrush(Colors.Gray);
+        this.previewBox.FontStyle = FontStyles.Italic;
+      }
+    }
+
+    private void PreviewBoxGotFocus(object sender, RoutedEventArgs e) {
+      if (String.Equals(this.previewBox.Text, "Click some struts...")) {
+        this.previewBox.Text = "";
+        this.previewBox.Foreground = new SolidColorBrush(Colors.Black);
+        this.previewBox.FontStyle = FontStyles.Normal;
+      }
+    }
+
+    private void PreviewBoxTextChanged(object sender, TextChangedEventArgs e) {
+      if (this.previewBox.IsFocused) {
+        return;
+      }
+      if (String.IsNullOrEmpty(this.previewBox.Text)) {
+        this.previewBox.Text = "Click some struts...";
+        this.previewBox.Foreground = new SolidColorBrush(Colors.Gray);
+        this.previewBox.FontStyle = FontStyles.Italic;
+      } else if (!String.Equals(this.previewBox.Text, "Click some struts...")) {
+        this.previewBox.Foreground = new SolidColorBrush(Colors.Black);
+        this.previewBox.FontStyle = FontStyles.Normal;
+      }
+    }
+
+    private void StrutLabelClicked(object sender, MouseButtonEventArgs e) {
+      string[] listedStruts;
+      if (
+        String.IsNullOrEmpty(this.previewBox.Text) ||
+        String.Equals(this.previewBox.Text, "Click some struts...")
+      ) {
+        listedStruts = new string[0];
+      } else {
+        listedStruts = this.previewBox.Text.Split(',');
+      }
+      string[] newListedStruts = new string[listedStruts.Length + 1];
+      Array.Copy(listedStruts, newListedStruts, listedStruts.Length);
+      newListedStruts[listedStruts.Length] =
+        ((Label)e.Source).Content.ToString();
+      this.previewBox.Text = String.Join(",", newListedStruts);
+      this.previewBox.Focus();
+      this.previewBox.Select(this.previewBox.Text.Length, 0);
     }
 
   }

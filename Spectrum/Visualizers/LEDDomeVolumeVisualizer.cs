@@ -11,6 +11,44 @@ namespace Spectrum {
 
   class LEDDomeVolumeVisualizer : Visualizer {
 
+    // This determines the direction in which the LEDs light up for a strut
+    private static bool[] reverseDirection = new bool[] {
+      false, false, false, false, false, false, false, false, false, false,
+      false, false, false, false, false, false, false, false, false, false,
+      false, false, true,  false, false, false, true,  false, false, false,
+      true,  false, false, false, true,  false, false, false, true,  false,
+      false, false, false, false, false, false, false, false, false, false,
+      false, false, false, false, false, false, false, false, false, false,
+      false, false, false, false, false, false, false, false, false, false,
+      false, false, false, true,  true,  false, false, false, false, false,
+      false, true,  true,  false, false, false, false, false, false, true,
+      true,  false, false, false, false, false, false, true,  true,  false,
+      false, false, false, false, false, true,  true,  false, false, false,
+      false, false, false, false, false, false, false, false, false, false,
+      false, false, false, false, false, false, false, false, false, false,
+      false, false, false, false, false, false, false, false, false, false,
+      false, false, false, false, false, false, false, false, false, false,
+      false, false, false, false, false, false, false, false, false, false,
+      false, false, false, false, false, false, false, false, false, false,
+      false, false, false, false, false, false, false, false, false, false,
+      false, false, false, false, false, true,  true,  true,  true,  true,
+    };
+
+    // This determines which part of the volume a strut represents
+    private static byte[] partRepresented = new byte[] {
+      2, 1, 2, 9, 2, 1, 2, 9, 2, 1, 2, 9, 2, 1, 2, 9, 2, 1, 2, 9, 9, 0, 0, 9, 9,
+      0, 0, 9, 9, 0, 0, 9, 9, 0, 0, 9, 9, 0, 0, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+      9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 1, 1, 1, 1, 1, 9, 9, 1, 0, 0,
+      1, 9, 9, 9, 9, 1, 0, 0, 1, 9, 9, 9, 9, 1, 0, 0, 1, 9, 9, 9, 9, 1, 0, 0, 1,
+      9, 9, 9, 9, 1, 0, 0, 1, 9, 9, 9, 9, 1, 0, 1, 9, 9, 9, 9, 1, 0, 1, 9, 9, 9,
+      9, 1, 0, 1, 9, 9, 9, 9, 1, 0, 1, 9, 9, 9, 9, 1, 0, 1, 9, 9, 9, 9, 9, 9, 9,
+      9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+      9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 0, 0, 0, 0, 0,
+    };
+
+    // The total number of parts the volume is broken into
+    private static int numParts = 4;
+
     private Configuration config;
     private AudioInput audio;
     private LEDDomeOutput dome;
@@ -41,14 +79,39 @@ namespace Spectrum {
 
     public void Visualize() {
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
+        if (partRepresented[i] >= numParts) {
+          continue;
+        }
+
         int numLEDs = LEDDomeOutput.GetNumLEDs(i);
-        int numLEDsToLight = (int)(this.audio.Volume * numLEDs);
+        int numLEDsToLight;
+        // Odd parts are perpendicular to the volume direction
+        if (partRepresented[i] % 2 == 0) {
+          double startOfRange = (double)partRepresented[i] / numParts;
+          double endOfRange = ((double)partRepresented[i] + 2) / numParts;
+          double scaled = (this.audio.Volume - startOfRange) /
+            (endOfRange - startOfRange);
+          numLEDsToLight = (int)(numLEDs * scaled);
+        } else {
+          numLEDsToLight =
+            this.audio.Volume >= (partRepresented[i] / 2 + 1) / (numParts / 2)
+              ? numLEDs
+              : 0;
+        }
+
         int brightnessByte = (int)(0xFF * this.config.domeMaxBrightness);
         int activeColor = brightnessByte
           | brightnessByte << 8
           | brightnessByte << 16;
+
         for (int j = 0; j < numLEDs; j++) {
-          this.dome.SetPixel(i, j, numLEDsToLight > j ? activeColor : 0x000000);
+          int ledIndex = reverseDirection[i]
+            ? numLEDs - j
+            : j;
+          int color = ledIndex < numLEDsToLight
+            ? activeColor
+            : 0x000000;
+          this.dome.SetPixel(i, j, color);
         }
       }
       this.dome.Flush();

@@ -10,7 +10,8 @@
         Loaded="WindowLoaded">
   <Canvas x:Name="canvas">
     <Image x:Name="image" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top" />
-    <Button x:Name="showStruts" Content="Show Strut Indices" Canvas.Left="602" Canvas.Top="10" Width="107" Click="ShowStruts" />
+    <Button x:Name="showKey" Content="Show Key" Canvas.Left="641" Canvas.Top="10" Width="68" Click="ShowKey" />
     <Label x:Name="directionLabel" Content="First 3/4 LEDs on each strut are illuminated" FontSize="10" Foreground="White" Visibility="Hidden" />
+    <TextBox x:Name="previewBox" Height="20" Canvas.Left="589" TextWrapping="Wrap" Text="Click some struts..." Canvas.Top="35" Width="120" FontStyle="Italic" Foreground="Gray" LostFocus="PreviewBoxLostFocus" GotFocus="PreviewBoxGotFocus" TextChanged="PreviewBoxTextChanged" Visibility="Collapsed" />
   </Canvas>
 </Window>
