@@ -71,6 +71,15 @@ namespace Spectrum {
         midi,
         dome
       ));
+      this.visualizers.Add(new LEDDomeStrandTestVisualizer(
+        this.config,
+        dome
+      ));
+      this.visualizers.Add(new LEDDomeVolumeVisualizer(
+        this.config,
+        audio,
+        dome
+      ));
     }
 
     private bool enabled;

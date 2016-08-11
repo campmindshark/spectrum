@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <SpectrumConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <audioDeviceIndex>20</audioDeviceIndex>
+  <audioDeviceIndex>7</audioDeviceIndex>
   <huesEnabled>false</huesEnabled>
   <ledBoardEnabled>false</ledBoardEnabled>
-  <midiInputEnabled>true</midiInputEnabled>
+  <midiInputEnabled>false</midiInputEnabled>
   <audioInputInSeparateThread>false</audioInputInSeparateThread>
   <huesOutputInSeparateThread>true</huesOutputInSeparateThread>
   <ledBoardOutputInSeparateThread>false</ledBoardOutputInSeparateThread>
@@ -11,7 +11,7 @@
   <domeOutputInSeparateThread>false</domeOutputInSeparateThread>
   <hueDelay>125</hueDelay>
   <hueIdleOnSilent>true</hueIdleOnSilent>
-  <lightsOff>false</lightsOff>
+  <lightsOff>true</lightsOff>
   <redAlert>false</redAlert>
   <controlLights>true</controlLights>
   <brighten>0</brighten>
@@ -35,11 +35,16 @@
   <teensyUSBPort>COM4</teensyUSBPort>
   <teensyRowLength>30</teensyRowLength>
   <teensyRowsPerStrip>5</teensyRowsPerStrip>
-  <ledBoardBrightness>0.19685039370078741</ledBoardBrightness>
+  <ledBoardBrightness>0.15748031496062992</ledBoardBrightness>
   <midiDeviceIndex>0</midiDeviceIndex>
   <domeEnabled>false</domeEnabled>
   <domeSimulationEnabled>true</domeSimulationEnabled>
-  <domeMaxBrightness>0.1</domeMaxBrightness>
+  <domeTeensyUSBPort1>COM8</domeTeensyUSBPort1>
+  <domeTeensyUSBPort2>COM4</domeTeensyUSBPort2>
+  <domeTeensyUSBPort3>COM6</domeTeensyUSBPort3>
+  <domeTeensyUSBPort4>COM5</domeTeensyUSBPort4>
+  <domeTeensyUSBPort5>COM3</domeTeensyUSBPort5>
+  <domeMaxBrightness>0.11058201058201056</domeMaxBrightness>
   <hueOverrideIsCustom>false</hueOverrideIsCustom>
-  <hueOverrideIndex>0</hueOverrideIndex>
+  <hueOverrideIndex>2</hueOverrideIndex>
 </SpectrumConfiguration>

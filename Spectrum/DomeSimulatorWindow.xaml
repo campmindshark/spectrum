@@ -5,9 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Spectrum"
         mc:Ignorable="d"
-        Title="Dome Simulator" Height="600" Width="600" ResizeMode="CanMinimize"
+        Title="Dome Simulator" Height="750" Width="750" ResizeMode="CanMinimize"
         Icon="pack://siteoforigin:,,,/Resources/s.PNG"
-        Closing="HandleClose">
+        Loaded="WindowLoaded">
   <Canvas x:Name="Canvas">
+    <Image x:Name="image" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top" />
   </Canvas>
 </Window>

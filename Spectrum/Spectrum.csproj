@@ -57,16 +57,20 @@
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <Reference Include="WriteableBitmapEx.Wpf, Version=1.5.0.0, Culture=neutral, PublicKeyToken=50375ca6144f1c69, processorArchitecture=MSIL">
+      <HintPath>..\packages\WriteableBitmapEx.1.5.0.0\lib\net40\WriteableBitmapEx.Wpf.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="DomeSimulator.cs" />
     <Compile Include="DomeSimulatorWindow.xaml.cs">
       <DependentUpon>DomeSimulatorWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Visualizers\LEDDomeStrandTestVisualizer.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -76,6 +80,7 @@
     <Compile Include="Visualizers\HueSolidColorVisualizer.cs" />
     <Compile Include="Visualizers\LEDPanelConfigVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeMidiTestVisualizer.cs" />
+    <Compile Include="Visualizers\LEDDomeVolumeVisualizer.cs" />
     <Compile Include="Visualizers\LEDPanelVolumeVisualizer.cs" />
     <Compile Include="Visualizers\LEDPanelMidiVisualizer.cs" />
     <Compile Include="SpectrumConfiguration.cs" />
