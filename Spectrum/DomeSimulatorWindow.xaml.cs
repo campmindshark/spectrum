@@ -42,38 +42,38 @@ namespace Spectrum {
 
     // How could a benevolent God will this
     private static int[,] lines = new int[,] {
-      { 0, 1 }, { 1, 2, }, { 3, 2 }, { 3, 4 }, { 4, 5 }, { 5, 6 }, { 7, 6 },
-      { 7, 8 }, { 8, 9 }, { 9, 10 }, { 11, 10 }, { 11, 12 }, { 12, 13 },
-      { 13, 14 }, { 15, 14 }, { 15, 16 }, { 16, 17 }, { 17, 18 }, { 19, 18 },
-      { 19, 0 }, { 20, 21 }, { 22, 21 }, { 23, 22 }, { 24, 23 }, { 24, 25 },
-      { 26, 25 }, { 27, 26 }, { 28, 27 }, { 28, 29 }, { 30, 29 }, { 31, 30 },
-      { 32, 31 }, { 32, 33 }, { 34, 33 }, { 35, 34 }, { 36, 35 }, { 36, 37 },
-      { 38, 37 }, { 39, 38 }, { 20, 39 }, { 41, 40 }, { 42, 41 }, { 43, 42 },
-      { 44, 43 }, { 45, 44 }, { 46, 45 }, { 47, 46 }, { 48, 47 }, { 49, 48 },
-      { 50, 49 }, { 51, 50 }, { 52, 51 }, { 53, 52 }, { 54, 53 }, { 40, 54 },
-      { 56, 55 }, { 57, 56 }, { 58, 57 }, { 59, 58 }, { 60, 59 }, { 61, 60 },
-      { 62, 61 }, { 63, 62 }, { 64, 63 }, { 55, 64 }, { 65, 66 }, { 66, 67 },
-      { 67, 68 }, { 68, 69 }, { 69, 65 }, { 20, 0 }, { 0, 21 }, { 21, 1 },
-      { 1, 22 }, { 2, 22 }, { 23, 2 }, { 23, 3 }, { 24, 3 }, { 24, 4 },
-      { 4, 25 }, { 25, 5 }, { 5, 26 }, { 6, 26 }, { 27, 6 }, { 27, 7 },
-      { 28, 7 }, { 28, 8 }, { 8, 29 }, { 29, 9 }, { 9, 30 }, { 10, 30 },
-      { 31, 10 }, { 31, 11 }, { 32, 11 }, { 32, 12 }, { 12, 33 }, { 33, 13 },
-      { 13, 34 }, { 14, 34 }, { 35, 14 }, { 35, 15 }, { 36, 15 }, { 36, 16 },
-      { 16, 37 }, { 37, 17 }, { 17, 38 }, { 18, 38 }, { 39, 18 }, { 39, 19 },
-      { 20, 19 }, { 20, 40 }, { 21, 40 }, { 21, 41 }, { 22, 41 }, { 41, 23 },
-      { 42, 23 }, { 24, 42 }, { 24, 43 }, { 25, 43 }, { 25, 44 }, { 26, 44 },
-      { 44, 27 }, { 45, 27 }, { 28, 45 }, { 28, 46 }, { 29, 46 }, { 29, 47 },
-      { 30, 47 }, { 47, 31 }, { 48, 31 }, { 32, 48 }, { 32, 49 }, { 33, 49 },
-      { 33, 50 }, { 34, 50 }, { 50, 35 }, { 51, 35 }, { 36, 51 }, { 36, 52 },
-      { 37, 52 }, { 37, 53 }, { 38, 53 }, { 53, 39 }, { 54, 39 }, { 20, 54 },
-      { 40, 55 }, { 40, 56 }, { 41, 56 }, { 56, 42 }, { 42, 57 }, { 43, 57 },
-      { 43, 58 }, { 44, 58 }, { 58, 45 }, { 45, 59 }, { 46, 59 }, { 46, 60 },
-      { 47, 60 }, { 60, 48 }, { 48, 61 }, { 49, 61 }, { 49, 62 }, { 50, 62 },
-      { 62, 51 }, { 51, 63 }, { 52, 63 }, { 52, 64 }, { 53, 64 }, { 64, 54 },
-      { 54, 55 }, { 55, 65 }, { 56, 65 }, { 57, 65 }, { 57, 66 }, { 58, 66 },
-      { 59, 66 }, { 59, 67 }, { 60, 67 }, { 61, 67 }, { 61, 68 }, { 62, 68 },
-      { 63, 68 }, { 63, 69 }, { 64, 69 }, { 55, 69 }, { 65, 70 }, { 66, 70 },
-      { 67, 70 }, { 68, 70 }, { 69, 70 }
+      { 0,  1  }, { 1,  2  }, { 3,  2  }, { 3,  4  }, { 4,  5  }, { 5,  6  },
+      { 7,  6  }, { 7,  8  }, { 8,  9  }, { 9,  10 }, { 11, 10 }, { 11, 12 },
+      { 12, 13 }, { 13, 14 }, { 15, 14 }, { 15, 16 }, { 16, 17 }, { 17, 18 },
+      { 19, 18 }, { 19, 0  }, { 20, 21 }, { 22, 21 }, { 23, 22 }, { 24, 23 },
+      { 24, 25 }, { 26, 25 }, { 27, 26 }, { 28, 27 }, { 28, 29 }, { 30, 29 },
+      { 31, 30 }, { 32, 31 }, { 32, 33 }, { 34, 33 }, { 35, 34 }, { 36, 35 },
+      { 36, 37 }, { 38, 37 }, { 39, 38 }, { 20, 39 }, { 41, 40 }, { 42, 41 },
+      { 43, 42 }, { 44, 43 }, { 45, 44 }, { 46, 45 }, { 47, 46 }, { 48, 47 },
+      { 49, 48 }, { 50, 49 }, { 51, 50 }, { 52, 51 }, { 53, 52 }, { 54, 53 },
+      { 40, 54 }, { 56, 55 }, { 57, 56 }, { 58, 57 }, { 59, 58 }, { 60, 59 },
+      { 61, 60 }, { 62, 61 }, { 63, 62 }, { 64, 63 }, { 55, 64 }, { 65, 66 },
+      { 66, 67 }, { 67, 68 }, { 68, 69 }, { 69, 65 }, { 20, 0  }, { 0, 21  },
+      { 21, 1  }, { 1,  22 }, { 2,  22 }, { 23, 2  }, { 23, 3  }, { 24, 3  },
+      { 24, 4  }, { 4,  25 }, { 25, 5  }, { 5,  26 }, { 6, 26  }, { 27, 6  },
+      { 27, 7  }, { 28, 7  }, { 28, 8  }, { 8,  29 }, { 29, 9  }, { 9, 30  },
+      { 10, 30 }, { 31, 10 }, { 31, 11 }, { 32, 11 }, { 32, 12 }, { 12, 33 },
+      { 33, 13 }, { 13, 34 }, { 14, 34 }, { 35, 14 }, { 35, 15 }, { 36, 15 },
+      { 36, 16 }, { 16, 37 }, { 37, 17 }, { 17, 38 }, { 18, 38 }, { 39, 18 },
+      { 39, 19 }, { 20, 19 }, { 20, 40 }, { 21, 40 }, { 21, 41 }, { 22, 41 },
+      { 41, 23 }, { 42, 23 }, { 24, 42 }, { 24, 43 }, { 25, 43 }, { 25, 44 },
+      { 26, 44 }, { 44, 27 }, { 45, 27 }, { 28, 45 }, { 28, 46 }, { 29, 46 },
+      { 29, 47 }, { 30, 47 }, { 47, 31 }, { 48, 31 }, { 32, 48 }, { 32, 49 },
+      { 33, 49 }, { 33, 50 }, { 34, 50 }, { 50, 35 }, { 51, 35 }, { 36, 51 },
+      { 36, 52 }, { 37, 52 }, { 37, 53 }, { 38, 53 }, { 53, 39 }, { 54, 39 },
+      { 20, 54 }, { 40, 55 }, { 40, 56 }, { 41, 56 }, { 56, 42 }, { 42, 57 },
+      { 43, 57 }, { 43, 58 }, { 44, 58 }, { 58, 45 }, { 45, 59 }, { 46, 59 },
+      { 46, 60 }, { 47, 60 }, { 60, 48 }, { 48, 61 }, { 49, 61 }, { 49, 62 },
+      { 50, 62 }, { 62, 51 }, { 51, 63 }, { 52, 63 }, { 52, 64 }, { 53, 64 },
+      { 64, 54 }, { 54, 55 }, { 55, 65 }, { 56, 65 }, { 57, 65 }, { 57, 66 },
+      { 58, 66 }, { 59, 66 }, { 59, 67 }, { 60, 67 }, { 61, 67 }, { 61, 68 },
+      { 62, 68 }, { 63, 68 }, { 63, 69 }, { 64, 69 }, { 55, 69 }, { 65, 70 },
+      { 66, 70 }, { 67, 70 }, { 68, 70 }, { 69, 70 },
     };
 
     private static Tuple<int, int> GetPoint(int index) {
@@ -84,13 +84,6 @@ namespace Spectrum {
       );
     }
 
-    /**
-     * Okay, so the thing is that computers think of 0x000000 as black, but the
-     * LEDs think of it as off. That means, for instance, 0x110000 is basically
-     * black on a computer, but is clearly red on the LEDs. To make stuff appear
-     * correctly on the computer, we're gonna start by scaling the color up so
-     * its highest component is 0xFF.
-     */
     private static int GetComputerColor(int ledColor) {
       byte red = (byte)(ledColor >> 16);
       byte green = (byte)(ledColor >> 8);
@@ -113,10 +106,13 @@ namespace Spectrum {
     private WriteableBitmap bitmap;
     private Int32Rect rect;
     private byte[] pixels;
+    private bool strutsMode;
+    private Label[] strutLabels;
 
     public DomeSimulatorWindow(Configuration config) {
       this.InitializeComponent();
       this.config = config;
+
       this.bitmap = new WriteableBitmap(
         750,
         750,
@@ -129,7 +125,7 @@ namespace Spectrum {
       this.pixels = new byte[rect.Width * rect.Height * 4];
       for (int x = 0; x < rect.Width; x++) {
         for (int y = 0; y < rect.Height; y++) {
-          this.SetPixelColor(x, y, (uint)0xFF000000);
+          this.SetPixelColor(this.pixels, x, y, (uint)0xFF000000);
         }
       }
       RenderOptions.SetBitmapScalingMode(
@@ -140,6 +136,28 @@ namespace Spectrum {
         this.image,
         EdgeMode.Aliased
       );
+
+      this.strutLabels = new Label[LEDDomeOutput.GetNumStruts()];
+      var brush = new SolidColorBrush(Colors.White);
+      for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
+        var pt1 = GetPoint(lines[i, 0]);
+        var pt2 = GetPoint(lines[i, 1]);
+        var centerX = (pt1.Item1 + pt2.Item1) / 2;
+        var centerY = (pt1.Item2 + pt2.Item2) / 2;
+        Label label = new Label();
+        label.Content = i;
+        label.FontSize = 12;
+        label.Visibility = Visibility.Collapsed;
+        label.Foreground = brush;
+        label.Margin = new Thickness(
+          centerX - 10,
+          centerY - 10,
+          0,
+          0
+        );
+        this.strutLabels[i] = label;
+        this.canvas.Children.Add(label);
+      }
     }
 
     private void WindowLoaded(object sender, RoutedEventArgs e) {
@@ -151,6 +169,7 @@ namespace Spectrum {
     }
 
     private void Draw() {
+      uint color = (uint)GetComputerColor(0x000000) | (uint)0xFF000000;
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
         var pt1 = GetPoint(lines[i, 0]);
         var pt2 = GetPoint(lines[i, 1]);
@@ -160,20 +179,19 @@ namespace Spectrum {
         for (int j = 0; j < numLEDs; j++) {
           int x = pt1.Item1 - (int)(deltaX * (j + 1));
           int y = pt1.Item2 - (int)(deltaY * (j + 1));
-          uint color = (uint)GetComputerColor(0x000000) | (uint)0xFF000000;
-          this.SetPixelColor(x, y, color);
+          this.SetPixelColor(this.pixels, x, y, color);
         }
       }
       this.bitmap.WritePixels(this.rect, this.pixels, this.rect.Width * 4, 0);
       this.image.Source = this.bitmap;
     }
 
-    private void SetPixelColor(int x, int y, uint color) {
+    private void SetPixelColor(byte[] pixels, int x, int y, uint color) {
       int pos = (y * this.rect.Width + x) * 4;
-      this.pixels[pos] = (byte)color;
-      this.pixels[pos + 1] = (byte)(color >> 8);
-      this.pixels[pos + 2] = (byte)(color >> 16);
-      this.pixels[pos + 3] = (byte)(color >> 24);
+      pixels[pos] = (byte)color;
+      pixels[pos + 1] = (byte)(color >> 8);
+      pixels[pos + 2] = (byte)(color >> 16);
+      pixels[pos + 3] = (byte)(color >> 24);
     }
 
     private void Update(object sender, EventArgs e) {
@@ -204,14 +222,57 @@ namespace Spectrum {
         int x = pt1.Item1 - (int)(deltaX * (command.ledIndex + 1));
         int y = pt1.Item2 - (int)(deltaY * (command.ledIndex + 1));
         uint color = (uint)GetComputerColor(command.color) | (uint)0xFF000000;
-        this.SetPixelColor(x, y, color);
+        this.SetPixelColor(this.pixels, x, y, color);
       }
 
-      if (shouldRedraw) {
+      if (shouldRedraw && !this.strutsMode) {
         this.bitmap.WritePixels(this.rect, this.pixels, this.rect.Width * 4, 0);
       }
 
       Debug.WriteLine(stopwatch.ElapsedMilliseconds + "ms to update");
+    }
+
+    private void ShowStruts(object sender, RoutedEventArgs e) {
+      this.strutsMode = !this.strutsMode;
+      foreach (Label strutLabel in this.strutLabels) {
+        strutLabel.Visibility = this.strutsMode
+          ? Visibility.Visible
+          : Visibility.Collapsed;
+      }
+      this.showStruts.Content = this.strutsMode
+        ? "Hide Strut Indices"
+        : "Show Strut Indices";
+      this.directionLabel.Visibility = this.strutsMode
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
+      if (!this.strutsMode) {
+        this.bitmap.WritePixels(this.rect, this.pixels, this.rect.Width * 4, 0);
+        return;
+      }
+
+      var strutPixels = new byte[rect.Width * rect.Height * 4];
+      for (int x = 0; x < rect.Width; x++) {
+        for (int y = 0; y < rect.Height; y++) {
+          this.SetPixelColor(strutPixels, x, y, (uint)0xFF000000);
+        }
+      }
+
+      uint color = (uint)GetComputerColor(0xFFFFFF) | (uint)0xFF000000;
+      for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
+        var pt1 = GetPoint(lines[i, 0]);
+        var pt2 = GetPoint(lines[i, 1]);
+        int numLEDs = LEDDomeOutput.GetNumLEDs(i);
+        double deltaX = (pt1.Item1 - pt2.Item1) / (numLEDs + 2.0);
+        double deltaY = (pt1.Item2 - pt2.Item2) / (numLEDs + 2.0);
+        for (int j = 0; j < numLEDs * 3 / 4; j++) {
+          int x = pt1.Item1 - (int)(deltaX * (j + 1));
+          int y = pt1.Item2 - (int)(deltaY * (j + 1));
+          this.SetPixelColor(strutPixels, x, y, color);
+        }
+      }
+
+      this.bitmap.WritePixels(this.rect, strutPixels, this.rect.Width * 4, 0);
     }
 
   }

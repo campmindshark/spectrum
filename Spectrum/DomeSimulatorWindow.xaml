@@ -8,7 +8,9 @@
         Title="Dome Simulator" Height="750" Width="725" ResizeMode="CanMinimize"
         Icon="pack://siteoforigin:,,,/Resources/s.PNG"
         Loaded="WindowLoaded">
-  <Canvas x:Name="Canvas">
+  <Canvas x:Name="canvas">
     <Image x:Name="image" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top" />
+    <Button x:Name="showStruts" Content="Show Strut Indices" Canvas.Left="602" Canvas.Top="10" Width="107" Click="ShowStruts" />
+    <Label x:Name="directionLabel" Content="First 3/4 LEDs on each strut are illuminated" FontSize="10" Foreground="White" Visibility="Hidden" />
   </Canvas>
 </Window>

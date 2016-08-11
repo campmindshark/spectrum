@@ -28,7 +28,7 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return 0;
+        return 2;
       }
     }
 
