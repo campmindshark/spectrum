@@ -16,7 +16,7 @@ namespace Spectrum {
     private LEDDomeOutput dome;
     private Stopwatch stopwatch;
     private int lastIndex = 37;
-    private int color = 0x111111;
+    private int color = 0xFFFFFF;
 
     public LEDDomeStrandTestVisualizer(
       Configuration config,
@@ -48,22 +48,26 @@ namespace Spectrum {
       }
       this.stopwatch.Restart();
       this.lastIndex++;
+      byte brightnessByte = (byte)(0xFF * this.config.domeMaxBrightness);
+      int whiteColor = brightnessByte << 16
+        | brightnessByte << 8
+        | brightnessByte;
       if (this.lastIndex == 38) {
         this.lastIndex = 0;
-        if (this.color == 0x110000) {
-          this.color = 0x001100;
-        } else if (this.color == 0x001100) {
-          this.color = 0x000011;
-        } else if (this.color == 0x000011) {
-          this.color = 0x111111;
-        } else if (this.color == 0x111111) {
-          this.color = 0x110000;
+        if (this.color == 0xFF0000) {
+          this.color = 0x00FF00;
+        } else if (this.color == 0x00FF00) {
+          this.color = 0x0000FF;
+        } else if (this.color == 0x0000FF) {
+          this.color = 0xFFFFFF;
+        } else if (this.color == 0xFFFFFF) {
+          this.color = 0xFF0000;
         }
       }
       var strutIndex = LEDDomeOutput.FindStrutIndex(0, this.lastIndex);
       var numLEDs = LEDDomeOutput.GetNumLEDs(strutIndex);
       for (int i = 0; i < numLEDs; i++) {
-        this.dome.SetPixel(strutIndex, i, this.color);
+        this.dome.SetPixel(strutIndex, i, this.color & whiteColor);
       }
       this.dome.Flush();
     }

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <SpectrumConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <audioDeviceIndex>7</audioDeviceIndex>
+  <audioDeviceIndex>5</audioDeviceIndex>
   <huesEnabled>false</huesEnabled>
   <ledBoardEnabled>false</ledBoardEnabled>
   <midiInputEnabled>false</midiInputEnabled>
@@ -44,7 +44,7 @@
   <domeTeensyUSBPort3>COM6</domeTeensyUSBPort3>
   <domeTeensyUSBPort4>COM5</domeTeensyUSBPort4>
   <domeTeensyUSBPort5>COM3</domeTeensyUSBPort5>
-  <domeMaxBrightness>0.11058201058201056</domeMaxBrightness>
+  <domeMaxBrightness>0.10052910052910047</domeMaxBrightness>
   <hueOverrideIsCustom>false</hueOverrideIsCustom>
   <hueOverrideIndex>2</hueOverrideIndex>
 </SpectrumConfiguration>

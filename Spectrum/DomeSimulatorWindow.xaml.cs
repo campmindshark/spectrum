@@ -23,10 +23,10 @@ namespace Spectrum {
 
     // What has become of my life
     private static int[,] points = new int[,] {
-      { 395, 86 }, { 477, 107 }, { 545, 157 }, { 591, 229 }, { 623, 319 },  // 1
+      { 395, 86  }, { 477, 107 }, { 545, 157 }, { 591, 229 }, { 623, 319 }, // 1
       { 627, 404 }, { 599, 484 }, { 546, 551 }, { 471, 606 }, { 390, 637 },
-      { 304, 637 }, { 226, 605 }, { 149, 551 }, { 95, 485 }, { 70, 403 },
-      { 74, 319 }, { 103, 229 }, { 149, 157 }, { 218, 107 }, { 299, 87 },
+      { 304, 637 }, { 226, 605 }, { 149, 551 }, { 95,  485 }, { 70,  403 },
+      { 74,  319 }, { 103, 229 }, { 149, 157 }, { 218, 107 }, { 299, 87  },
       { 348, 139 }, { 425, 149 }, { 487, 165 }, { 524, 219 }, { 555, 290 }, // 2
       { 572, 366 }, { 575, 431 }, { 535, 482 }, { 477, 534 }, { 409, 574 },
       { 348, 595 }, { 286, 573 }, { 220, 536 }, { 163, 483 }, { 123, 431 },
@@ -76,26 +76,11 @@ namespace Spectrum {
       { 67, 70 }, { 68, 70 }, { 69, 70 }
     };
 
-    private static Tuple<int, int>[] smallOffsets;
-    private static Tuple<int, int>[] mediumOffsets;
-    private static Tuple<int, int>[] largeOffsets;
-    private static Tuple<int, int>[] allOffsets;
-
-    static DomeSimulatorWindow() {
-      smallOffsets = GetPixelOffsets(0);
-      mediumOffsets = GetPixelOffsets(1);
-      largeOffsets = GetPixelOffsets(2);
-      allOffsets = smallOffsets
-          .Concat(mediumOffsets)
-          .Concat(largeOffsets)
-          .ToArray();
-    }
-
     private static Tuple<int, int> GetPoint(int index) {
       var point = points[index, 0];
       return new Tuple<int, int>(
-        (int)((double)(points[index, 0] - 12) / 673 * 750),
-        (int)((double)(points[index, 1] - 21) / 673 * 750)
+        (int)((double)(points[index, 0] - 70) / 557 * 700) + 10,
+        (int)((double)(points[index, 1] - 86) / 551 * 700) + 10
       );
     }
 
@@ -106,7 +91,7 @@ namespace Spectrum {
      * correctly on the computer, we're gonna start by scaling the color up so
      * its highest component is 0xFF.
      */
-    private static uint[] GetComputerColors(int ledColor) {
+    private static int GetComputerColor(int ledColor) {
       byte red = (byte)(ledColor >> 16);
       byte green = (byte)(ledColor >> 8);
       byte blue = (byte)ledColor;
@@ -118,110 +103,35 @@ namespace Spectrum {
       } else {
         ratio = (double)0xFF / blue;
       }
-      uint smallColor = (uint)0xFF << 24 |
-        (uint)(red * ratio) << 16 |
-        (uint)(green * ratio) << 8 |
-        (uint)(blue * ratio);
-      uint mediumColor = (uint)(255.0 / ratio) << 24 |
-        (uint)(red * ratio) << 16 |
-        (uint)(green * ratio) << 8 |
-        (uint)(blue * ratio);
-      uint largeColor = (uint)(Math.Min(255.0, 510.0 / ratio)) << 24 |
-        (uint)(red * ratio) << 16 |
-        (uint)(green * ratio) << 8 |
-        (uint)(blue * ratio);
-      return new uint[] { smallColor, mediumColor, largeColor };
+      double factor = Math.Sqrt(ratio);
+      return (int)(red * factor) << 16 |
+        (int)(green * factor) << 8 |
+        (int)(blue * factor);
     }
 
-    /**
-     * Size is 0, 1, or 2
-     * It refers to the size of concentric circle we are painting
-     *
-     * This function returns the set of points that need to be painted for a
-     * given LED and a specified size of the circle we're painting.
-     */
-    private static Tuple<int, int>[] GetPixelOffsets(byte size) {
-      if (size == 0) {
-        return new Tuple<int, int>[] {
-          new Tuple<int, int>(0, 0), new Tuple<int, int>(0, 1),
-          new Tuple<int, int>(1, 0), new Tuple<int, int>(1, 1),
-        };
-      } else if (size == 1) {
-         return new Tuple<int, int>[] {
-           new Tuple<int, int>(-2, 0), new Tuple<int, int>(-2, 1),
-           new Tuple<int, int>(-1, -1), new Tuple<int, int>(-1, 0),
-           new Tuple<int, int>(-1, 1), new Tuple<int, int>(-1, 2),
-           new Tuple<int, int>(0, -2), new Tuple<int, int>(0, -1),
-           new Tuple<int, int>(0, 2), new Tuple<int, int>(0, 3),
-           new Tuple<int, int>(1, -2), new Tuple<int, int>(1, -1),
-           new Tuple<int, int>(1, 2), new Tuple<int, int>(1, 3),
-           new Tuple<int, int>(2, -1), new Tuple<int, int>(2, 0),
-           new Tuple<int, int>(2, 1), new Tuple<int, int>(2, 2),
-           new Tuple<int, int>(3, 0), new Tuple<int, int>(3, 1),
-         };
-      } else if (size == 2) {
-        return new Tuple<int, int>[] {
-          new Tuple<int, int>(-4, 0), new Tuple<int, int>(-4, 1),
-          new Tuple<int, int>(-3, -2), new Tuple<int, int>(-3, -1),
-          new Tuple<int, int>(-3, 0), new Tuple<int, int>(-3, 1),
-          new Tuple<int, int>(-3, 2), new Tuple<int, int>(-3, 3),
-          new Tuple<int, int>(-2, -3), new Tuple<int, int>(-2, -2),
-          new Tuple<int, int>(-2, -1), new Tuple<int, int>(-2, 2),
-          new Tuple<int, int>(-2, 3), new Tuple<int, int>(-2, 4),
-          new Tuple<int, int>(-1, -3), new Tuple<int, int>(-1, -2),
-          new Tuple<int, int>(-1, 3), new Tuple<int, int>(-1, 4),
-          new Tuple<int, int>(0, -4), new Tuple<int, int>(0, -3),
-          new Tuple<int, int>(0, 4), new Tuple<int, int>(0, 5),
-          new Tuple<int, int>(1, -4), new Tuple<int, int>(1, -3),
-          new Tuple<int, int>(1, 4), new Tuple<int, int>(1, 5),
-          new Tuple<int, int>(2, -3), new Tuple<int, int>(2, -2),
-          new Tuple<int, int>(2, 3), new Tuple<int, int>(2, 4),
-          new Tuple<int, int>(3, -3), new Tuple<int, int>(3, -2),
-          new Tuple<int, int>(3, -1), new Tuple<int, int>(3, 2),
-          new Tuple<int, int>(3, 3), new Tuple<int, int>(3, 4),
-          new Tuple<int, int>(4, -2), new Tuple<int, int>(4, -1),
-          new Tuple<int, int>(4, 0), new Tuple<int, int>(4, 1),
-          new Tuple<int, int>(4, 2), new Tuple<int, int>(4, 3),
-          new Tuple<int, int>(5, 0), new Tuple<int, int>(5, 1),
-        };
-      }
-      throw new Exception("Unknown size");
-    }
-
-
-    // constructed image of a single LED created in Draw()
-    private WriteableBitmap ledBitmap;
-    private WriteableBitmap bitmap;
     private Configuration config;
-    // ledColors[strutIndex][ledIndex] = color
-    private int[][] ledColors;
-    // fuck[tuple(x, y)] = list(tuple(tuple(strutIndex, ledIndex), circleSize))
-    private Dictionary<Tuple<int, int>, List<Tuple<Tuple<int, int>, byte>>>
-      fuck;
-    private List<LEDCommand> commandsSinceFlush;
-    private Stopwatch stopwatch;
-    private HashSet<Tuple<int, int>> pointsToUpdateCache;
+    private WriteableBitmap bitmap;
+    private Int32Rect rect;
+    private byte[] pixels;
 
     public DomeSimulatorWindow(Configuration config) {
       this.InitializeComponent();
       this.config = config;
-      this.fuck =
-        new Dictionary<Tuple<int, int>, List<Tuple<Tuple<int, int>, byte>>>();
-      this.commandsSinceFlush = new List<LEDCommand>();
-      this.stopwatch = new Stopwatch();
-      this.stopwatch.Start();
-
-      this.ledColors = new int[lines.GetLength(0)][];
-      for (int i = 0; i < lines.GetLength(0); i++) {
-        this.ledColors[i] = new int[LEDDomeOutput.GetNumLEDs(i)];
+      this.bitmap = new WriteableBitmap(
+        750,
+        750,
+        96,
+        96,
+        PixelFormats.Bgra32,
+        null
+      );
+      this.rect = new Int32Rect(0, 0, 750, 750);
+      this.pixels = new byte[rect.Width * rect.Height * 4];
+      for (int x = 0; x < rect.Width; x++) {
+        for (int y = 0; y < rect.Height; y++) {
+          this.SetPixelColor(x, y, (uint)0xFF000000);
+        }
       }
-
-      this.pointsToUpdateCache = new HashSet<Tuple<int, int>>();
-      for (int j = 0; j < 100000; j++) {
-        this.pointsToUpdateCache.Add(new Tuple<int, int>(j, j));
-      }
-      this.pointsToUpdateCache.Clear();
-
       RenderOptions.SetBitmapScalingMode(
         this.image,
         BitmapScalingMode.NearestNeighbor
@@ -240,240 +150,30 @@ namespace Spectrum {
       timer.Start();
     }
 
-    private void Draw2() {
-      this.ledBitmap = new WriteableBitmap(
-        9,
-        9,
-        96,
-        96,
-        PixelFormats.Bgra32,
-        null
-      );
-      //this.ledBitmap.FillEllipseCentered(4, 4, 4, 4, )
-    }
-
-    /**
-     *         + +
-     *     + + + + + +
-     *   + + + - - + + +
-     *   + + - - - - + +
-     * + + - - x x - - + +
-     * + + - - x x - - + +
-     *   + + - - - - + +
-     *   + + + - - + + +
-     *     + + + + + +
-     *         + +
-     */
     private void Draw() {
-      // okay, what we're gonna do:
-      // (1) draw a WriteableBitmap representation of a single pixel
-      // (2) draw a WriteableBitmap representation of the background grid
-      // (3) keep a mapping of 
-
-      // currently, what are we doing?
-      // - for each LED that needs to get updated, we figure out the pixels it
-      //   affects
-      // - for each of those pixels, we redraw by looking at all the constituent
-      //   parts
-
-      // what are we going to do with writeablebitmapex?
-      // - we need a way to redraw a circle on just a subset of its pixels. we
-      //   have that with "blit"
-      // - typedef LED to Tuple<strut_index, led_index>
-      // - when drawing, we make a map from LED to Tuple<LED, Point>
-      //   contains all information needed to redraw a given LED
-      // - okay, so when we're redrawing an LED we figure out its x, y and from
-      //   that and a constant pixelSize we figure out its Int32Rect
-      // - next we look update the LEDs that affect us, get their points, and
-      //   their Int32Rect
-      // - foreach bordering LED, intersect Int32Rect for that LED to draw.
-      // - "blit" all bordering LEDs, and then "blit" the main LED
-
-      // so the hard part for our new draw method is that we'll need to generate
-      // a writeablebitmap for a single LED, and a map of LEDs to LEDs that
-      // intersect with them. how do we generate that map? we can simply look at
-      // the center of the pixel, and lookup all pixels that are n away
-
-      Stopwatch stopwatch = Stopwatch.StartNew();
-
-      this.bitmap = new WriteableBitmap(
-        750,
-        750,
-        96,
-        96,
-        PixelFormats.Bgra32,
-        null
-      );
-      Int32Rect rect = new Int32Rect(0, 0, 730, 730);
-      byte[] pixels = new byte[rect.Width * rect.Height * 4];
-
-      uint[][][] colors = new uint[this.ledColors.Length][][];
-      for (int i = 0; i < this.ledColors.Length; i++) {
-        colors[i] = new uint[this.ledColors[i].Length][];
-        for (int j = 0; j < this.ledColors[i].Length; j++) {
-          colors[i][j] = GetComputerColors(this.ledColors[i][j]);
-        }
-      }
-
-      for (int i = 0; i < this.ledColors.Length; i++) {
+      for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
         var pt1 = GetPoint(lines[i, 0]);
         var pt2 = GetPoint(lines[i, 1]);
-        int numLEDs = this.ledColors[i].Length;
+        int numLEDs = LEDDomeOutput.GetNumLEDs(i);
         double deltaX = (pt1.Item1 - pt2.Item1) / (numLEDs + 2.0);
         double deltaY = (pt1.Item2 - pt2.Item2) / (numLEDs + 2.0);
         for (int j = 0; j < numLEDs; j++) {
           int x = pt1.Item1 - (int)(deltaX * (j + 1));
           int y = pt1.Item2 - (int)(deltaY * (j + 1));
-          this.DrawPixel(
-            pixels,
-            x,
-            y,
-            i,
-            j,
-            rect.Width,
-            colors[i][j][0],
-            0
-          );
+          uint color = (uint)GetComputerColor(0x000000) | (uint)0xFF000000;
+          this.SetPixelColor(x, y, color);
         }
       }
-
-      //for (int i = 0; i < this.ledColors.Length; i++) {
-      //  var pt1 = GetPoint(lines[i, 0]);
-      //  var pt2 = GetPoint(lines[i, 1]);
-      //  int numLEDs = this.ledColors[i].Length;
-      //  double deltaX = (pt1.Item1 - pt2.Item1) / (numLEDs + 2.0);
-      //  double deltaY = (pt1.Item2 - pt2.Item2) / (numLEDs + 2.0);
-      //  for (int j = 0; j < numLEDs; j++) {
-      //    int x = pt1.Item1 - (int)(deltaX * (j + 1));
-      //    int y = pt1.Item2 - (int)(deltaY * (j + 1));
-      //    foreach (var offset in smallOffsets) {
-      //      this.DrawPixel(
-      //        pixels,
-      //        x + offset.Item1,
-      //        y + offset.Item2,
-      //        i,
-      //        j,
-      //        rect.Width,
-      //        colors[i][j][0],
-      //        0
-      //      );
-      //    }
-      //  }
-      //}
-
-      //for (int i = 0; i < this.ledColors.Length; i++) {
-      //  var pt1 = GetPoint(lines[i, 0]);
-      //  var pt2 = GetPoint(lines[i, 1]);
-      //  int numLEDs = this.ledColors[i].Length;
-      //  double deltaX = (pt1.Item1 - pt2.Item1) / (numLEDs + 2.0);
-      //  double deltaY = (pt1.Item2 - pt2.Item2) / (numLEDs + 2.0);
-      //  for (int j = 0; j < numLEDs; j++) {
-      //    int x = pt1.Item1 - (int)(deltaX * (j + 1));
-      //    int y = pt1.Item2 - (int)(deltaY * (j + 1));
-      //    foreach (var offset in mediumOffsets) {
-      //      this.DrawPixel(
-      //        pixels,
-      //        x + offset.Item1,
-      //        y + offset.Item2,
-      //        i,
-      //        j,
-      //        rect.Width,
-      //        colors[i][j][1],
-      //        1
-      //      );
-      //    }
-      //  }
-      //}
-
-      //for (int i = 0; i < this.ledColors.Length; i++) {
-      //  var pt1 = GetPoint(lines[i, 0]);
-      //  var pt2 = GetPoint(lines[i, 1]);
-      //  int numLEDs = this.ledColors[i].Length;
-      //  double deltaX = (pt1.Item1 - pt2.Item1) / (numLEDs + 2.0);
-      //  double deltaY = (pt1.Item2 - pt2.Item2) / (numLEDs + 2.0);
-      //  for (int j = 0; j < numLEDs; j++) {
-      //    int x = pt1.Item1 - (int)(deltaX * (j + 1));
-      //    int y = pt1.Item2 - (int)(deltaY * (j + 1));
-      //    foreach (var offset in largeOffsets) {
-      //      this.DrawPixel(
-      //        pixels,
-      //        x + offset.Item1,
-      //        y + offset.Item2,
-      //        i,
-      //        j,
-      //        rect.Width,
-      //        colors[i][j][2],
-      //        2
-      //      );
-      //    }
-      //  }
-      //}
-
-      this.bitmap.WritePixels(rect, pixels, rect.Width * 4, 0);
-
-      Debug.WriteLine(stopwatch.ElapsedMilliseconds + "ms for initial draw");
-
+      this.bitmap.WritePixels(this.rect, this.pixels, this.rect.Width * 4, 0);
       this.image.Source = this.bitmap;
     }
 
-    /**
-     * Size is 0, 1, or 2
-     * It refers to the size of concentric circle we are painting
-     *
-     * This function fills out this.fuck, and then calls MixPixelColor
-     */
-    private void DrawPixel(
-      byte[] pixels,
-      int x,
-      int y,
-      int strutIndex,
-      int ledIndex,
-      int width,
-      uint color,
-      byte size 
-    ) {
-      var point = new Tuple<int, int>(x, y);
-      if (!this.fuck.ContainsKey(point)) {
-        this.fuck[point] = new List<Tuple<Tuple<int, int>, byte>>();
-      }
-      var led = new Tuple<int, int>(strutIndex, ledIndex);
-      var ledAndSource = new Tuple<Tuple<int, int>, byte>(led, size);
-      this.fuck[point].Add(ledAndSource);
-      this.MixPixelColor(pixels, x, y, width, color);
-    }
-
-    /**
-     * This function updates the 4 bytes for the pixel at [x, y] in the pixels
-     * array. Given an ARGB color, it applies alpha compositing to update any
-     * existing data in the pixel.
-     */
-    private void MixPixelColor(
-      byte[] pixels,
-      int x,
-      int y,
-      int width,
-      uint color
-     ) {
-      int pos = (y * width + x) * 4;
-
-      byte curBlue = pixels[pos];
-      byte curGreen = pixels[pos + 1];
-      byte curRed = pixels[pos + 2];
-      byte curAlpha = pixels[pos + 3];
-
-      byte newBlue = (byte)color;
-      byte newGreen = (byte)(color >> 8);
-      byte newRed = (byte)(color >> 16);
-      byte newAlpha = (byte)(color >> 24);
-
-      pixels[pos] = (byte)((curBlue * (curAlpha / 255.0)) +
-        ((newBlue / 255.0) * (newAlpha / 255.0) * (255.0 - curAlpha)));
-      pixels[pos + 1] = (byte)((curGreen * (curAlpha / 255.0)) +
-        ((newGreen / 255.0) * (newAlpha / 255.0) * (255.0 - curAlpha)));
-      pixels[pos + 2] = (byte)((curRed * (curAlpha / 255.0)) +
-        ((newRed / 255.0) * (newAlpha / 255.0) * (255.0 - curAlpha)));
-      pixels[pos + 3] = (byte)(curAlpha +
-        (newAlpha * (255.0 - curAlpha) / 255.0));
+    private void SetPixelColor(int x, int y, uint color) {
+      int pos = (y * this.rect.Width + x) * 4;
+      this.pixels[pos] = (byte)color;
+      this.pixels[pos + 1] = (byte)(color >> 8);
+      this.pixels[pos + 2] = (byte)(color >> 16);
+      this.pixels[pos + 3] = (byte)(color >> 24);
     }
 
     private void Update(object sender, EventArgs e) {
@@ -482,112 +182,37 @@ namespace Spectrum {
         return;
       }
 
+      Stopwatch stopwatch = Stopwatch.StartNew();
+
       bool shouldRedraw = false;
       for (int k = 0; k < queueLength; k++) {
-        LEDCommand newCommand;
+        LEDCommand command;
         bool result =
-          this.config.domeCommandQueue.TryDequeue(out newCommand);
+          this.config.domeCommandQueue.TryDequeue(out command);
         if (!result) {
           throw new Exception("Someone else is dequeueing!");
         }
-        if (newCommand.isFlush) {
+        if (command.isFlush) {
           shouldRedraw = true;
-        } else {
-          this.ledColors[newCommand.strutIndex][newCommand.ledIndex]
-            = newCommand.color;
-          this.commandsSinceFlush.Add(newCommand);
+          continue;
         }
-      }
-
-      if (!shouldRedraw) {
-        return;
-      }
-
-      Debug.WriteLine(stopwatch.ElapsedMilliseconds + "ms since last draw");
-      stopwatch.Restart();
-      Stopwatch four = new Stopwatch();
-
-      this.pointsToUpdateCache.Clear();
-      foreach (LEDCommand command in this.commandsSinceFlush) {
         var pt1 = GetPoint(lines[command.strutIndex, 0]);
         var pt2 = GetPoint(lines[command.strutIndex, 1]);
-        int numLEDs = this.ledColors[command.strutIndex].Length;
+        int numLEDs = LEDDomeOutput.GetNumLEDs(command.strutIndex);
         double deltaX = (pt1.Item1 - pt2.Item1) / (numLEDs + 2.0);
         double deltaY = (pt1.Item2 - pt2.Item2) / (numLEDs + 2.0);
         int x = pt1.Item1 - (int)(deltaX * (command.ledIndex + 1));
         int y = pt1.Item2 - (int)(deltaY * (command.ledIndex + 1));
-        four.Start();
-        foreach (var pixelOffset in allOffsets) {
-          this.pointsToUpdateCache.Add(new Tuple<int, int>(
-            x + pixelOffset.Item1,
-            y + pixelOffset.Item2
-          ));
-        }
-        four.Stop();
+        uint color = (uint)GetComputerColor(command.color) | (uint)0xFF000000;
+        this.SetPixelColor(x, y, color);
       }
 
-      long stepOne = stopwatch.ElapsedMilliseconds;
-      Debug.WriteLine(stepOne + "ms to determine pixels to redraw");
-      Debug.WriteLine(this.pointsToUpdateCache.Count + " total pixels to update");
-      Debug.WriteLine(four.ElapsedMilliseconds + "ms to add things to hashset");
-
-      Stopwatch anotherOne = new Stopwatch();
-      Stopwatch secondOne = new Stopwatch();
-
-      foreach (var pixel in this.pointsToUpdateCache) {
-        var ledsAndSizesToUpdate = this.fuck[pixel];
-        byte[] pixels = new byte[4];
-        foreach (var ledAndSize in ledsAndSizesToUpdate) {
-          var led = ledAndSize.Item1;
-          var size = ledAndSize.Item2;
-          uint[] computerColors =
-            GetComputerColors(this.ledColors[led.Item1][led.Item2]);
-          uint color = computerColors[size];
-          anotherOne.Start();
-          this.MixPixelColor(pixels, 0, 0, 1, color);
-          anotherOne.Stop();
-        }
-        Int32Rect rect = new Int32Rect(pixel.Item1, pixel.Item2, 1, 1);
-        secondOne.Start();
-        this.bitmap.WritePixels(rect, pixels, 4, 0);
-        secondOne.Stop();
+      if (shouldRedraw) {
+        this.bitmap.WritePixels(this.rect, this.pixels, this.rect.Width * 4, 0);
       }
 
-      Debug.WriteLine((stopwatch.ElapsedMilliseconds - stepOne) + "ms to redraw");
-      Debug.WriteLine(anotherOne.ElapsedMilliseconds + "ms alpha blending");
-      Debug.WriteLine(secondOne.ElapsedMilliseconds + "ms actually drawing");
-
-      this.commandsSinceFlush.Clear();
+      Debug.WriteLine(stopwatch.ElapsedMilliseconds + "ms to update");
     }
-
-    //private void UpdateProcessor() {
-    //  try {
-    //    while (true) {
-    //      this.Update();
-    //    }
-    //  } catch (ThreadAbortException) { }
-    //}
-
-    //private void Redraw(object sender, EventArgs e) {
-    //  int queueLength = this.drawQueue.Count;
-    //  if (queueLength == 0) {
-    //    return;
-    //  }
-
-    //  for (int i = 0; i < queueLength; i++) {
-    //    Tuple<Int32Rect, byte[]> drawOperation;
-    //    bool result = this.drawQueue.TryDequeue(out drawOperation);
-    //    if (!result) {
-    //      throw new Exception("Someone else is dequeueing!");
-    //    }
-    //    this.bitmap.WritePixels(
-    //      drawOperation.Item1,
-    //      drawOperation.Item2,
-    //      drawOperation.Item1.Width * 4,
-    //      0
-    //    );
-    //  }
-    //}
 
   }
 
