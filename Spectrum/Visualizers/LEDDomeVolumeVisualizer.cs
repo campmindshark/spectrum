@@ -12,39 +12,12 @@ namespace Spectrum {
   class LEDDomeVolumeVisualizer : Visualizer {
 
     // This determines the direction in which the LEDs light up for a strut
-    private static bool[] reverseDirection = new bool[] {
-      false, false, false, false, false, false, false, false, false, false,
-      false, false, false, false, false, false, false, false, false, false,
-      false, false, true,  false, false, false, true,  false, false, false,
-      true,  false, false, false, true,  false, false, false, true,  false,
-      false, false, false, false, false, false, false, false, false, false,
-      false, false, false, false, false, false, false, false, false, false,
-      false, false, false, false, false, false, false, false, false, false,
-      false, false, false, true,  true,  false, false, false, false, false,
-      false, true,  true,  false, false, false, false, false, false, true,
-      true,  false, false, false, false, false, false, true,  true,  false,
-      false, false, false, false, false, true,  true,  false, false, false,
-      false, false, false, false, false, false, false, false, false, false,
-      false, false, false, false, false, false, false, false, false, false,
-      false, false, false, false, false, false, false, false, false, false,
-      false, false, false, false, false, false, false, false, false, false,
-      false, false, false, false, false, false, false, false, false, false,
-      false, false, false, false, false, false, false, false, false, false,
-      false, false, false, false, false, false, false, false, false, false,
-      false, false, false, false, false, true,  true,  true,  true,  true,
-    };
+    private static bool[] reverseDirection = new bool[] 
+    {true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, true, true, false, true, true, true, false, true, true, true, false, true, true, true, false, true, true, false, true, false, false, true, false, false, true, false, false, true, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, true, true, false, false, false, false, true, false, true, true, false, false, false, false, true, false, true, true, false, false, false, false, true, false, true, true, false, false, false, false, true, false, true, true, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, true, false, false, false, false, false, false, true, false, false, false, false, false, false, true, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true};
 
     // This determines which part of the volume a strut represents
-    private static byte[] partRepresented = new byte[] {
-      2, 1, 2, 9, 2, 1, 2, 9, 2, 1, 2, 9, 2, 1, 2, 9, 2, 1, 2, 9, 9, 0, 0, 9, 9,
-      0, 0, 9, 9, 0, 0, 9, 9, 0, 0, 9, 9, 0, 0, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-      9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 1, 1, 1, 1, 1, 9, 9, 1, 0, 0,
-      1, 9, 9, 9, 9, 1, 0, 0, 1, 9, 9, 9, 9, 1, 0, 0, 1, 9, 9, 9, 9, 1, 0, 0, 1,
-      9, 9, 9, 9, 1, 0, 0, 1, 9, 9, 9, 9, 1, 0, 1, 9, 9, 9, 9, 1, 0, 1, 9, 9, 9,
-      9, 1, 0, 1, 9, 9, 9, 9, 1, 0, 1, 9, 9, 9, 9, 1, 0, 1, 9, 9, 9, 9, 9, 9, 9,
-      9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-      9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 0, 0, 0, 0, 0,
-    };
+    private static byte[] partRepresented = new byte[] 
+    {2, 1, 2, 9, 2, 1, 2, 9, 2, 1, 2, 9, 2, 1, 2, 9, 2, 1, 2, 9, 2, 0, 0, 2, 2, 0, 0, 2, 2, 0, 0, 2, 2, 0, 0, 2, 2, 0, 0, 2, 2, 2, 9, 2, 2, 9, 2, 2, 9, 2, 2, 9, 2, 2, 9, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1, 3, 2, 1, 0, 0, 1, 2, 3, 3, 2, 1, 0, 0, 1, 2, 3, 3, 2, 1, 0, 0, 1, 2, 3, 3, 2, 1, 0, 0, 1, 2, 3, 3, 2, 1, 0, 0, 1, 2, 3, 3, 2, 1, 0, 1, 2, 3, 3, 2, 1, 0, 1, 2, 3, 3, 2, 1, 0, 1, 2, 3, 3, 2, 1, 0, 1, 2, 3, 3, 2, 1, 0, 1, 2, 3, 9, 3, 2, 3, 9, 9, 3, 2, 3, 9, 9, 3, 2, 3, 9, 9, 3, 2, 3, 9, 9, 3, 2, 3, 9, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0 };
 
     // The total number of parts the volume is broken into
     private static int numParts = 4;
@@ -93,10 +66,9 @@ namespace Spectrum {
             (endOfRange - startOfRange);
           numLEDsToLight = (int)(numLEDs * scaled);
         } else {
-          numLEDsToLight =
-            this.audio.Volume >= (partRepresented[i] / 2 + 1) / (numParts / 2)
-              ? numLEDs
-              : 0;
+          double minVolume = (double)(partRepresented[i] / 2 + 1) /
+            (numParts / 2);
+          numLEDsToLight = this.audio.Volume >= minVolume ? numLEDs : 0;
         }
 
         int brightnessByte = (int)(0xFF * this.config.domeMaxBrightness);
