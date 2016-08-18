@@ -12,11 +12,16 @@
   public interface Input {
 
     /**
-     * If a given Input is enabled, then there is a thread running that is
+     * If a given Input is active, then there is a thread running that is
      * updating the Input object in some way.
      */
     bool Active { get; set; }
 
+    /**
+     * An AlwaysActive Input is active whenever the operator is enabled.
+     * Otherwise, an Input needs an active Visualizer using it to be active.
+     */
+    bool AlwaysActive { get; }
 
     /**
      * This property reflects whether the Output is enabled by the UI.

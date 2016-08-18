@@ -69,6 +69,12 @@ namespace Spectrum.MIDI {
       }
     }
 
+    public bool AlwaysActive {
+      get {
+        return true;
+      }
+    }
+
     public bool Enabled {
       get {
         return this.config.midiInputEnabled;

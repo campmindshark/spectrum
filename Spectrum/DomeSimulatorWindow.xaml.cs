@@ -79,8 +79,8 @@ namespace Spectrum {
     private static Tuple<int, int> GetPoint(int index) {
       var point = points[index, 0];
       return new Tuple<int, int>(
-        (int)((double)(points[index, 0] - 70) / 557 * 700) + 10,
-        (int)((double)(points[index, 1] - 86) / 551 * 700) + 10
+        (int)((double)(points[index, 0] - 70) / 557 * 690) + 10,
+        (int)((double)(points[index, 1] - 86) / 551 * 690) + 10
       );
     }
 

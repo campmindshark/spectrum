@@ -177,7 +177,8 @@ namespace Spectrum {
           visualizer.Enabled = activeVisualizers.Contains(visualizer);
         }
         foreach (var input in this.inputs) {
-          input.Active = activeInputs.Contains(input);
+          input.Active = (input.Enabled && input.AlwaysActive)
+            || activeInputs.Contains(input);
         }
 
         foreach (var input in activeInputs) {

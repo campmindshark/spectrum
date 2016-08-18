@@ -106,6 +106,12 @@ namespace Spectrum.Audio {
       }
     }
 
+    public bool AlwaysActive {
+      get {
+        return false;
+      }
+    }
+
     public bool Enabled {
       get {
         return true;

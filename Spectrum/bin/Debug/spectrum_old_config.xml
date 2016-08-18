@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <SpectrumConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <audioDeviceIndex>24</audioDeviceIndex>
+  <audioDeviceIndex>9</audioDeviceIndex>
   <huesEnabled>false</huesEnabled>
   <ledBoardEnabled>false</ledBoardEnabled>
-  <midiInputEnabled>false</midiInputEnabled>
+  <midiInputEnabled>true</midiInputEnabled>
   <audioInputInSeparateThread>false</audioInputInSeparateThread>
   <huesOutputInSeparateThread>true</huesOutputInSeparateThread>
   <ledBoardOutputInSeparateThread>false</ledBoardOutputInSeparateThread>
