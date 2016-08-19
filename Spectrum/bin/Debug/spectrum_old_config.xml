@@ -3,7 +3,7 @@
   <audioDeviceIndex>9</audioDeviceIndex>
   <huesEnabled>false</huesEnabled>
   <ledBoardEnabled>false</ledBoardEnabled>
-  <midiInputEnabled>true</midiInputEnabled>
+  <midiInputEnabled>false</midiInputEnabled>
   <audioInputInSeparateThread>false</audioInputInSeparateThread>
   <huesOutputInSeparateThread>true</huesOutputInSeparateThread>
   <ledBoardOutputInSeparateThread>false</ledBoardOutputInSeparateThread>

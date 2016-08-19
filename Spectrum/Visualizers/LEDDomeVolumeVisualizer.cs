@@ -12,18 +12,6 @@ namespace Spectrum {
 
   class LEDDomeVolumeVisualizer : Visualizer {
 
-    // The 0th part is the inner struts of a pentagon, the 1th part is the
-    // perimeter of the pentagon, and etc. in an outward direction
-    private static byte[] partRepresented = new byte[] {
-      2, 1, 2, 9, 2, 1, 2, 9, 2, 1, 2, 9, 2, 1, 2, 9, 2, 1, 2, 9, 2, 0, 0, 2,
-      2, 0, 0, 2, 2, 0, 0, 2, 2, 0, 0, 2, 2, 0, 0, 2, 2, 2, 9, 2, 2, 9, 2, 2,
-      9, 2, 2, 9, 2, 2, 9, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1, 3, 2,
-      1, 0, 0, 1, 2, 3, 3, 2, 1, 0, 0, 1, 2, 3, 3, 2, 1, 0, 0, 1, 2, 3, 3, 2,
-      1, 0, 0, 1, 2, 3, 3, 2, 1, 0, 0, 1, 2, 3, 3, 2, 1, 0, 1, 2, 3, 3, 2, 1,
-      0, 1, 2, 3, 3, 2, 1, 0, 1, 2, 3, 3, 2, 1, 0, 1, 2, 3, 3, 2, 1, 0, 1, 2,
-      3, 9, 3, 2, 3, 9, 9, 3, 2, 3, 9, 9, 3, 2, 3, 9, 9, 3, 2, 3, 9, 9, 3, 2,
-      3, 9, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0
-    };
     // This determines which of the six pentagons a strut is part of
     private static byte[] indexRepresented = new byte[] {
       0, 0, 0, 9, 1, 1, 1, 9, 2, 2, 2, 9, 3, 3, 3, 9, 4, 4, 4, 9, 0, 0, 0, 0,
@@ -46,31 +34,50 @@ namespace Spectrum {
       9, 3, 3, 3, 9, 9, 3, 3, 3, 9, 9, 3, 3, 3, 9, 9, 3, 3, 3, 9, 3, 3, 3, 3, 3,
       3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
     };
-    // We want all the struts to light up in the direction away from the center
-    // of each pentagon, so we reverse the direction of some struts
-    private static bool[] reverseDirection = new bool[] {
-      true, false, true, false, true, false, true, false, true, false, true,
-      false, true, false, true, false, true, false, true, false, true, false,
-      true, true, true, false, true, true, true, false, true, true, true, false,
-      true, true, true, false, true, true, false, true, false, false, true,
-      false, false, true, false, false, true, false, false, true, false, false,
-      false, false, false, false, false, false, false, false, false, false,
-      false, false, false, false, false, true, false, true, true, false, false,
-      false, false, true, false, true, true, false, false, false, false, true,
-      false, true, true, false, false, false, false, true, false, true, true,
-      false, false, false, false, true, false, true, true, false, false, false,
-      false, false, false, false, false, true, false, false, false, false,
-      false, false, true, false, false, false, false, false, false, true, false,
-      false, false, false, false, false, true, false, false, false, false,
-      false, false, true, false, false, false, false, false, false, false,
-      false, false, false, false, false, false, false, false, false, false,
-      false, false, false, false, false, false, false, false, false, true, true,
-      true, true, true, true, true, true, true, true, true, true, true, true,
-      true, true, true, true, true, true
-    };
 
-    // The total number of parts the volume is broken into
-    private static int numParts = 4;
+    private static AnimationLayout layout;
+    static LEDDomeVolumeVisualizer() {
+      int[][] strutsByPart = new int[][] {
+        new int[] {
+          73, 21, 113, 22, 74, 81, 25, 120, 26, 82, 29, 127, 30, 90, 89, 97, 33,
+          134, 34, 98, 106, 38, 141, 37, 105, 185, 189, 188, 187, 186,
+        },
+        new int[] {
+          1, 72, 112, 114, 75, 5, 80, 119, 121, 83, 126, 128, 91, 9, 88, 96,
+          133, 135, 99, 13, 107, 17, 104, 140, 142, 69, 68, 67, 66, 65, 
+        },
+        new int[] {
+          0, 71, 20, 111, 40, 147, 41, 115, 23, 76, 2, 4, 79, 24, 118, 43, 152,
+          44, 122, 27, 84, 6, 8, 87, 28, 125, 46, 157, 47, 129, 31, 92, 10, 12,
+          95, 32, 132, 49, 162, 50, 136, 35, 100, 14, 14, 16, 103, 36, 139, 52,
+          167, 53, 143, 39, 108, 18, 183, 184, 170, 171, 172, 173, 174, 175,
+          176, 177, 178, 179, 180, 181, 182,
+        },
+        new int[] {
+          70, 110, 146, 148, 116, 77, 78, 117, 151, 153, 123, 85, 86, 124, 156,
+          158, 130, 93, 94, 131, 161, 163, 137, 101, 102, 138, 166, 168, 144,
+          109, 64, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+        },
+      };
+      HashSet<int> reversedStruts = new HashSet<int>() {
+        71, 73, 74, 22, 81, 82, 26, 90, 30, 89, 97, 98, 34, 38, 106, 105, 185,
+        189, 188, 187, 186, 0, 20, 41, 115, 23, 2, 4, 79, 24, 44, 122, 27, 6, 8,
+        87, 28, 47, 129, 31, 10, 12, 95, 32, 50, 136, 35, 14, 16, 103, 36, 53,
+        143, 39, 18, 183, 184, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179,
+        180, 181, 182,
+      };
+      AnimationLayoutSegment[] segments = new AnimationLayoutSegment[4];
+      for (int i = 0; i < 4; i++) {
+        segments[i] = new AnimationLayoutSegment(new HashSet<Strut>(
+          strutsByPart[i].Select(
+            index => reversedStruts.Contains(index)
+              ? Strut.ReversedFromIndex(index)
+              : Strut.FromIndex(index)
+          )
+        ));
+      }
+      layout = new AnimationLayout(segments);
+    }
 
     private Configuration config;
     private AudioInput audio;
@@ -111,47 +118,41 @@ namespace Spectrum {
     }
 
     public void Visualize() {
-      for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-        if (partRepresented[i] >= numParts) {
-          continue;
+      int subdivisions = layout.NumSegments / 2;
+      for (int part = 0; part < layout.NumSegments; part += 2) {
+        var outwardSegment = layout.GetSegment(part);
+        var surroundingSegment = layout.GetSegment(part + 1);
+        double startOfRange = (double)part / layout.NumSegments;
+        double endOfRange = (double)(part + 2) / layout.NumSegments;
+        double scaled = (this.audio.Volume - startOfRange) /
+          (endOfRange - startOfRange);
+        foreach (Strut strut in outwardSegment.GetStruts()) {
+          this.UpdateStrut(strut, (int)(strut.Length * scaled));
         }
-
-        int numLEDs = LEDDomeOutput.GetNumLEDs(i);
-        int numLEDsToLight;
-        // Odd parts are perpendicular to the volume direction
-        if (partRepresented[i] % 2 == 0) {
-          double startOfRange = (double)partRepresented[i] / numParts;
-          double endOfRange = ((double)partRepresented[i] + 2) / numParts;
-          double scaled = (this.audio.Volume - startOfRange) /
-            (endOfRange - startOfRange);
-          numLEDsToLight = (int)(numLEDs * scaled);
-        } else {
-          double minVolume = (double)(partRepresented[i] / 2 + 1) /
-            (numParts / 2);
-          numLEDsToLight = this.audio.Volume >= minVolume ? numLEDs : 0;
-        }
-
-        for (int j = 0; j < numLEDs; j++) {
-          //int activeColor = this.ColorFromIndex(i);
-          //int activeColor = this.ColorFromPart(i);
-          //int activeColor = this.ColorFromRandom(i);
-          int activeColor = this.ColorFromPartAndSpoke(i);
-
-          int ledIndex = reverseDirection[i]
-            ? numLEDs - j
-            : j;
-          int color = ledIndex < numLEDsToLight
-            ? GradientColor(
-                (double)ledIndex / numLEDsToLight,
-                1.0,
-                activeColor,
-                0x000000
-              )
-            : 0x000000;
-          this.dome.SetPixel(i, j, color);
+        foreach (Strut strut in surroundingSegment.GetStruts()) {
+          this.UpdateStrut(strut, scaled >= 1.0 ? strut.Length : 0);
         }
       }
       this.dome.Flush();
+    }
+
+    private void UpdateStrut(Strut strut, int numLEDsToLight) {
+      for (int i = 0; i < strut.Length; i++) {
+        //int activeColor = this.ColorFromIndex(strut.Index);
+        //int activeColor = this.ColorFromPart(strut.Index);
+        //int activeColor = this.ColorFromRandom(strut.Index);
+        int activeColor = this.ColorFromPartAndSpoke(strut.Index);
+        int ledIndex = strut.Reversed ? strut.Length - i : i;
+        int color = ledIndex < numLEDsToLight
+          ? GradientColor(
+              (double)ledIndex / numLEDsToLight,
+              1.0,
+              activeColor,
+              0x000000
+            )
+          : 0x000000;
+        this.dome.SetPixel(strut.Index, i, color);
+      }
     }
 
     private int ColorFromIndex(int strut) {
@@ -178,13 +179,13 @@ namespace Spectrum {
 
     private int ColorFromPart(int strut) {
       int brightnessByte = (int)(0xFF * this.config.domeMaxBrightness);
-      if (partRepresented[strut] == 0) {
+      if (layout.SegmentIndexOfStrutIndex(strut) == 0) {
         return brightnessByte;
-      } else if (partRepresented[strut] == 1) {
+      } else if (layout.SegmentIndexOfStrutIndex(strut) == 1) {
         return brightnessByte << 8;
-      } else if (partRepresented[strut] == 2) {
+      } else if (layout.SegmentIndexOfStrutIndex(strut) == 2) {
         return brightnessByte << 16;
-      } else if (partRepresented[strut] == 3) {
+      } else if (layout.SegmentIndexOfStrutIndex(strut) == 3) {
         return brightnessByte
           | brightnessByte << 8
           | brightnessByte << 16;
@@ -212,9 +213,9 @@ namespace Spectrum {
 
     private int ColorFromPartAndSpoke(int strut) {
       int brightnessByte = (int)(0xFF * this.config.domeMaxBrightness);
-      if (partRepresented[strut] == 1) {
+      if (layout.SegmentIndexOfStrutIndex(strut) == 1) {
         return brightnessByte; // blue
-      } else if (partRepresented[strut] == 3) {
+      } else if (layout.SegmentIndexOfStrutIndex(strut) == 3) {
         return brightnessByte << 8; // green
       }
       if (spokeRepresented[strut] == 0) {
