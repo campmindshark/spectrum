@@ -38,13 +38,14 @@
   <ledBoardBrightness>0.15748031496062992</ledBoardBrightness>
   <midiDeviceIndex>0</midiDeviceIndex>
   <domeEnabled>false</domeEnabled>
-  <domeSimulationEnabled>false</domeSimulationEnabled>
+  <domeSimulationEnabled>true</domeSimulationEnabled>
   <domeTeensyUSBPort1>COM8</domeTeensyUSBPort1>
   <domeTeensyUSBPort2>COM4</domeTeensyUSBPort2>
   <domeTeensyUSBPort3>COM6</domeTeensyUSBPort3>
   <domeTeensyUSBPort4>COM5</domeTeensyUSBPort4>
   <domeTeensyUSBPort5>COM3</domeTeensyUSBPort5>
   <domeMaxBrightness>1</domeMaxBrightness>
+  <domeVolumeAnimationSize>0</domeVolumeAnimationSize>
   <hueOverrideIsCustom>false</hueOverrideIsCustom>
   <hueOverrideIndex>2</hueOverrideIndex>
 </SpectrumConfiguration>

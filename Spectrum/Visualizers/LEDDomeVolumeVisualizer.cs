@@ -128,6 +128,7 @@ namespace Spectrum {
     private Configuration config;
     private AudioInput audio;
     private LEDDomeOutput dome;
+    private int animationSize;
 
     // For color-from-part mode, maps each part to a color
     private int[] partColors = new int[4];
@@ -148,6 +149,7 @@ namespace Spectrum {
       this.audio = audio;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
+      this.animationSize = 0;
     }
 
     public int Priority {
@@ -164,8 +166,11 @@ namespace Spectrum {
     }
 
     public void Visualize() {
+      this.UpdateAnimationSize();
+
       int subdivisions = partLayout.NumSegments / 2;
-      for (int part = 0; part < partLayout.NumSegments; part += 2) {
+      int totalParts = this.config.domeVolumeAnimationSize * 2;
+      for (int part = 0; part < totalParts; part += 2) {
         var outwardSegment = partLayout.GetSegment(part);
         var surroundingSegment = partLayout.GetSegment(part + 1);
         double startOfRange = (double)part / partLayout.NumSegments;
@@ -180,6 +185,30 @@ namespace Spectrum {
         }
       }
       this.dome.Flush();
+    }
+
+    private void UpdateAnimationSize() {
+      int newAnimationSize = this.config.domeVolumeAnimationSize;
+      if (newAnimationSize == this.animationSize) {
+        return;
+      }
+      if (newAnimationSize > this.animationSize) {
+        for (int i = this.animationSize * 2; i < newAnimationSize * 2; i++) {
+          foreach (Strut strut in partLayout.GetSegment(i).GetStruts()) {
+            this.dome.ReserveStrut(strut.Index);
+          }
+        }
+        return;
+      }
+      for (int i = this.animationSize * 2 - 1; i >= newAnimationSize * 2; i--) {
+        foreach (Strut strut in partLayout.GetSegment(i).GetStruts()) {
+          for (int j = 0; j < strut.Length; j++) {
+            this.dome.SetPixel(strut.Index, j, 0x000000);
+          }
+          this.dome.ReleaseStrut(strut.Index);
+        }
+      }
+      this.animationSize = newAnimationSize;
     }
 
     private void UpdateStrut(Strut strut, int numLEDsToLight) {

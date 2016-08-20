@@ -142,10 +142,12 @@ namespace Spectrum.LEDs {
     private SimpleTeensyAPI[] teensies;
     private Configuration config;
     private List<Visualizer> visualizers;
+    private HashSet<int> availableStruts;
 
     public LEDDomeOutput(Configuration config) {
       this.config = config;
       this.visualizers = new List<Visualizer>();
+      this.availableStruts = new HashSet<int>();
       bool domeEnabled = this.config.domeEnabled;
       lock (this.visualizers) {
         if (domeEnabled) {
@@ -276,6 +278,24 @@ namespace Spectrum.LEDs {
         ledIndex = ledIndex,
         color = color,
       });
+    }
+
+    public void ReserveStrut(int strutIndex) {
+      if (this.availableStruts.Contains(strutIndex)) {
+        throw new Exception("User attempted to reserve unavailable strut");
+      }
+      this.availableStruts.Add(strutIndex);
+    }
+
+    public void ReleaseStrut(int strutIndex) {
+      if (!this.availableStruts.Contains(strutIndex)) {
+        throw new Exception("User attempted to release available strut");
+      }
+      this.availableStruts.Remove(strutIndex);
+    }
+
+    public HashSet<int> AvailableStruts() {
+      return this.availableStruts;
     }
 
     public static int FindStrutIndex(int teensyIndex, int teensyStrutIndex) {

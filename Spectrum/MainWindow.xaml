@@ -151,6 +151,17 @@
                 <Label x:Name="domeBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="300,93,0,0" Padding="0" ContentStringFormat="F3" />
               </Grid>
             </Border>
+            <Label Content="Volume animation" HorizontalAlignment="Left" Margin="4,146,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,166,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid>
+                <Label Content="Animation size" Padding="0" />
+                <ComboBox x:Name="domeVolumeAnimationSize" HorizontalAlignment="Left" VerticalAlignment="Top" Width="120" Margin="94,0,0,0">
+                  <ComboBoxItem Content="0" IsSelected="True" />
+                  <ComboBoxItem Content="1" />
+                  <ComboBoxItem Content="2" />
+                </ComboBox>
+              </Grid>
+            </Border>
           </Grid>
           <CheckBox x:Name="domeThreadCheckbox" Content="Call LED dome in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
         </Grid>

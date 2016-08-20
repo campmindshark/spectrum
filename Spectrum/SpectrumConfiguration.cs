@@ -65,6 +65,7 @@ namespace Spectrum {
     public string domeTeensyUSBPort4 { get; set; } = null;
     public string domeTeensyUSBPort5 { get; set; } = null;
     public double domeMaxBrightness { get; set; } = 0.1;
+    public int domeVolumeAnimationSize { get; set; } = 2;
 
     // The rest is not on Configuration
     // Just convenience properties for data binding

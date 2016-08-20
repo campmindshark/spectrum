@@ -173,6 +173,7 @@ namespace Spectrum {
       this.Bind("domeSimulationEnabled", this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
       this.Bind("domeMaxBrightness", this.domeBrightnessSlider, Slider.ValueProperty);
       this.Bind("domeMaxBrightness", this.domeBrightnessLabel, Label.ContentProperty);
+      this.Bind("domeVolumeAnimationSize", this.domeVolumeAnimationSize, ComboBox.SelectedIndexProperty);
 
       this.loadingConfig = false;
     }
