@@ -38,7 +38,7 @@
   <ledBoardBrightness>0.15748031496062992</ledBoardBrightness>
   <midiDeviceIndex>0</midiDeviceIndex>
   <domeEnabled>false</domeEnabled>
-  <domeSimulationEnabled>true</domeSimulationEnabled>
+  <domeSimulationEnabled>false</domeSimulationEnabled>
   <domeTeensyUSBPort1>COM8</domeTeensyUSBPort1>
   <domeTeensyUSBPort2>COM4</domeTeensyUSBPort2>
   <domeTeensyUSBPort3>COM6</domeTeensyUSBPort3>

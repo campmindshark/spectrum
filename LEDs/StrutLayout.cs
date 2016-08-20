@@ -55,14 +55,12 @@ namespace Spectrum.LEDs {
 
   }
 
-  public class AnimationLayoutSegment {
+  public class StrutLayoutSegment {
 
     private HashSet<Strut> struts;
-    private Strut[] strutsArray;
 
-    public AnimationLayoutSegment(HashSet<Strut> struts) {
+    public StrutLayoutSegment(HashSet<Strut> struts) {
       this.struts = struts;
-      this.strutsArray = struts.ToArray();
     }
 
     private double averageStrutLength = 0;
@@ -75,18 +73,18 @@ namespace Spectrum.LEDs {
       }
     }
 
-    public Strut[] GetStruts() {
-      return this.strutsArray;
+    public HashSet<Strut> GetStruts() {
+      return this.struts;
     }
 
   }
 
-  public class AnimationLayout {
+  public class StrutLayout {
 
-    private AnimationLayoutSegment[] segments;
+    private StrutLayoutSegment[] segments;
     private Dictionary<int, int> strutToSegment;
 
-    public AnimationLayout(AnimationLayoutSegment[] segments) {
+    public StrutLayout(StrutLayoutSegment[] segments) {
       this.segments = segments;
       this.strutToSegment = new Dictionary<int, int>();
       for (int i = 0; i < this.segments.Length; i++) {
@@ -96,7 +94,7 @@ namespace Spectrum.LEDs {
       }
     }
 
-    public AnimationLayoutSegment GetSegment(int index) {
+    public StrutLayoutSegment GetSegment(int index) {
       return segments[index];
     }
 

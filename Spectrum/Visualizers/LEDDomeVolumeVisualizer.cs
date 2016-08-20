@@ -12,30 +12,7 @@ namespace Spectrum {
 
   class LEDDomeVolumeVisualizer : Visualizer {
 
-    // This determines which of the six pentagons a strut is part of
-    private static byte[] indexRepresented = new byte[] {
-      0, 0, 0, 9, 1, 1, 1, 9, 2, 2, 2, 9, 3, 3, 3, 9, 4, 4, 4, 9, 0, 0, 0, 0,
-      1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 0, 0, 9, 1, 1, 9, 2, 2,
-      9, 3, 3, 9, 4, 4, 9, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0,
-      0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3,
-      3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
-      1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4,
-      4, 9, 0, 0, 0, 9, 9, 1, 1, 1, 9, 9, 2, 2, 2, 9, 9, 3, 3, 3, 9, 9, 4, 4,
-      4, 9, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
-    };
-    // Uhh this one is fairly complicated but it's mostly spoke-based?
-    private static byte[] spokeRepresented = new byte[] {
-      0, 9, 0, 9, 0, 9, 0, 9, 0, 9, 0, 9, 0, 9, 0, 9, 0, 9, 0, 9, 1, 1, 2, 2, 2,
-      2, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 3, 3, 9, 3, 3, 9, 3, 3, 9, 3,
-      3, 9, 3, 3, 9, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 9, 9, 9, 9, 9, 9, 1, 9, 0, 0,
-      9, 2, 9, 9, 2, 9, 0, 0, 9, 1, 9, 9, 1, 9, 0, 0, 9, 2, 9, 9, 2, 9, 0, 0, 9,
-      1, 9, 9, 1, 9, 0, 0, 9, 2, 9, 9, 1, 9, 3, 9, 2, 9, 9, 2, 9, 3, 9, 1, 9, 9,
-      1, 9, 3, 9, 2, 9, 9, 2, 9, 3, 9, 1, 9, 9, 1, 9, 3, 9, 2, 9, 9, 3, 3, 3, 9,
-      9, 3, 3, 3, 9, 9, 3, 3, 3, 9, 9, 3, 3, 3, 9, 9, 3, 3, 3, 9, 3, 3, 3, 3, 3,
-      3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
-    };
-
-    private static AnimationLayout layout;
+    private static StrutLayout partLayout, indexLayout, spokeLayout;
     static LEDDomeVolumeVisualizer() {
       int[][] strutsByPart = new int[][] {
         new int[] {
@@ -59,6 +36,53 @@ namespace Spectrum {
           109, 64, 55, 56, 57, 58, 59, 60, 61, 62, 63,
         },
       };
+      int[][] strutsByIndex = new int[][] {
+        new int[] {
+          0, 1, 2, 70, 71, 72, 73, 74, 75, 76, 77, 20, 21, 22, 23, 110, 111,
+          112, 113, 114, 115, 116, 40, 41, 146, 147, 148,
+        },
+        new int[] {
+          4, 5, 6, 78, 79, 80, 81, 82, 83, 84, 85, 24, 25, 26, 27, 117, 118,
+          119, 120, 121, 122, 123, 43, 44, 151, 152, 153,
+        },
+        new int[] {
+          8, 9, 10, 86, 87, 88, 89, 90, 91, 92, 93, 28, 29, 30, 31, 124, 125,
+          126, 127, 128, 129, 130, 46, 47, 156, 157, 158,
+        },
+        new int[] {
+          14, 13, 12, 101, 100, 99, 98, 97, 96, 95, 94, 35, 34, 33, 32, 137,
+          136, 135, 134, 133, 132, 131, 50, 49, 163, 162, 161,
+        },
+        new int[] {
+          16, 17, 18, 102, 103, 104, 105, 106, 107, 108, 109, 36, 37, 38, 39,
+          138, 139, 140, 141, 142, 143, 144, 52, 53, 166, 167, 168,
+        },
+        new int[] {
+          55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 170, 171, 172, 173, 174, 175,
+          176, 177, 178, 179, 180, 181, 182, 183, 184, 65, 66, 67, 68, 69, 185,
+          186, 187, 188, 189,
+        },
+      };
+      int[][] strutsBySpoke = new int[][] {
+        new int[] {
+          73, 81, 89, 97, 105, 74, 82, 90, 98, 106, 0, 2, 4, 6, 8, 10, 12, 14,
+          16, 18,
+        },
+        new int[] {
+          21, 26, 29, 34, 37, 71, 20, 111, 122, 27, 84, 125, 28, 87, 100, 35,
+          136, 103, 36, 139,
+        },
+        new int[] {
+          22, 25, 30, 33, 38, 76, 23, 115, 118, 24, 79, 92, 31, 129, 132, 32,
+          95, 108, 39, 143,
+        },
+        new int[] {
+          113, 120, 127, 134, 141, 185, 186, 187, 188, 189, 147, 171, 152, 174,
+          157, 177, 162, 180, 183, 167, 146, 148, 55, 56, 151, 153, 57, 58, 156,
+          158, 59, 60, 161, 163, 61, 62, 166, 168, 63, 64, 40, 41, 43, 44, 46,
+          47, 49, 50, 52, 53, 170, 172, 173, 175, 176, 178, 179, 181, 182, 184,
+        },
+      };
       HashSet<int> reversedStruts = new HashSet<int>() {
         71, 73, 74, 22, 81, 82, 26, 90, 30, 89, 97, 98, 34, 38, 106, 105, 185,
         189, 188, 187, 186, 0, 20, 41, 115, 23, 2, 4, 79, 24, 44, 122, 27, 6, 8,
@@ -66,17 +90,39 @@ namespace Spectrum {
         143, 39, 18, 183, 184, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179,
         180, 181, 182,
       };
-      AnimationLayoutSegment[] segments = new AnimationLayoutSegment[4];
-      for (int i = 0; i < 4; i++) {
-        segments[i] = new AnimationLayoutSegment(new HashSet<Strut>(
+      StrutLayoutSegment[] partSegments = new StrutLayoutSegment[4];
+      for (int i = 0; i < partSegments.Length; i++) {
+        partSegments[i] = new StrutLayoutSegment(new HashSet<Strut>(
           strutsByPart[i].Select(
-            index => reversedStruts.Contains(index)
-              ? Strut.ReversedFromIndex(index)
-              : Strut.FromIndex(index)
+            strut => reversedStruts.Contains(strut)
+              ? Strut.ReversedFromIndex(strut)
+              : Strut.FromIndex(strut)
           )
         ));
       }
-      layout = new AnimationLayout(segments);
+      partLayout = new StrutLayout(partSegments);
+      StrutLayoutSegment[] indexSegments = new StrutLayoutSegment[6];
+      for (int i = 0; i < indexSegments.Length; i++) {
+        indexSegments[i] = new StrutLayoutSegment(new HashSet<Strut>(
+          strutsByIndex[i].Select(
+            strut => reversedStruts.Contains(strut)
+              ? Strut.ReversedFromIndex(strut)
+              : Strut.FromIndex(strut)
+          )
+        ));
+      }
+      indexLayout = new StrutLayout(indexSegments);
+      StrutLayoutSegment[] spokeSegments = new StrutLayoutSegment[4];
+      for (int i = 0; i < spokeSegments.Length; i++) {
+        spokeSegments[i] = new StrutLayoutSegment(new HashSet<Strut>(
+          strutsBySpoke[i].Select(
+            strut => reversedStruts.Contains(strut)
+              ? Strut.ReversedFromIndex(strut)
+              : Strut.FromIndex(strut)
+          )
+        ));
+      }
+      spokeLayout = new StrutLayout(spokeSegments);
     }
 
     private Configuration config;
@@ -118,12 +164,12 @@ namespace Spectrum {
     }
 
     public void Visualize() {
-      int subdivisions = layout.NumSegments / 2;
-      for (int part = 0; part < layout.NumSegments; part += 2) {
-        var outwardSegment = layout.GetSegment(part);
-        var surroundingSegment = layout.GetSegment(part + 1);
-        double startOfRange = (double)part / layout.NumSegments;
-        double endOfRange = (double)(part + 2) / layout.NumSegments;
+      int subdivisions = partLayout.NumSegments / 2;
+      for (int part = 0; part < partLayout.NumSegments; part += 2) {
+        var outwardSegment = partLayout.GetSegment(part);
+        var surroundingSegment = partLayout.GetSegment(part + 1);
+        double startOfRange = (double)part / partLayout.NumSegments;
+        double endOfRange = (double)(part + 2) / partLayout.NumSegments;
         double scaled = (this.audio.Volume - startOfRange) /
           (endOfRange - startOfRange);
         foreach (Strut strut in outwardSegment.GetStruts()) {
@@ -138,8 +184,8 @@ namespace Spectrum {
 
     private void UpdateStrut(Strut strut, int numLEDsToLight) {
       for (int i = 0; i < strut.Length; i++) {
-        //int activeColor = this.ColorFromIndex(strut.Index);
         //int activeColor = this.ColorFromPart(strut.Index);
+        //int activeColor = this.ColorFromIndex(strut.Index);
         //int activeColor = this.ColorFromRandom(strut.Index);
         int activeColor = this.ColorFromPartAndSpoke(strut.Index);
         int ledIndex = strut.Reversed ? strut.Length - i : i;
@@ -157,19 +203,19 @@ namespace Spectrum {
 
     private int ColorFromIndex(int strut) {
       int brightnessByte = (int)(0xFF * this.config.domeMaxBrightness);
-      if (indexRepresented[strut] == 0) {
+      if (indexLayout.SegmentIndexOfStrutIndex(strut) == 0) {
         return brightnessByte; // blue
-      } else if (indexRepresented[strut] == 1) {
+      } else if (indexLayout.SegmentIndexOfStrutIndex(strut) == 1) {
         return brightnessByte << 8; // green
-      } else if (indexRepresented[strut] == 2) {
+      } else if (indexLayout.SegmentIndexOfStrutIndex(strut) == 2) {
         return brightnessByte << 16; // red
-      } else if (indexRepresented[strut] == 3) {
+      } else if (indexLayout.SegmentIndexOfStrutIndex(strut) == 3) {
         return brightnessByte
           | brightnessByte << 8; // teal
-      } else if (indexRepresented[strut] == 4) {
+      } else if (indexLayout.SegmentIndexOfStrutIndex(strut) == 4) {
         return brightnessByte
           | brightnessByte << 16; // purple
-      } else if (indexRepresented[strut] == 5) {
+      } else if (indexLayout.SegmentIndexOfStrutIndex(strut) == 5) {
         return brightnessByte
           | brightnessByte << 8
           | brightnessByte << 16; // white
@@ -179,13 +225,13 @@ namespace Spectrum {
 
     private int ColorFromPart(int strut) {
       int brightnessByte = (int)(0xFF * this.config.domeMaxBrightness);
-      if (layout.SegmentIndexOfStrutIndex(strut) == 0) {
+      if (partLayout.SegmentIndexOfStrutIndex(strut) == 0) {
         return brightnessByte;
-      } else if (layout.SegmentIndexOfStrutIndex(strut) == 1) {
+      } else if (partLayout.SegmentIndexOfStrutIndex(strut) == 1) {
         return brightnessByte << 8;
-      } else if (layout.SegmentIndexOfStrutIndex(strut) == 2) {
+      } else if (partLayout.SegmentIndexOfStrutIndex(strut) == 2) {
         return brightnessByte << 16;
-      } else if (layout.SegmentIndexOfStrutIndex(strut) == 3) {
+      } else if (partLayout.SegmentIndexOfStrutIndex(strut) == 3) {
         return brightnessByte
           | brightnessByte << 8
           | brightnessByte << 16;
@@ -213,20 +259,20 @@ namespace Spectrum {
 
     private int ColorFromPartAndSpoke(int strut) {
       int brightnessByte = (int)(0xFF * this.config.domeMaxBrightness);
-      if (layout.SegmentIndexOfStrutIndex(strut) == 1) {
+      if (partLayout.SegmentIndexOfStrutIndex(strut) == 1) {
         return brightnessByte; // blue
-      } else if (layout.SegmentIndexOfStrutIndex(strut) == 3) {
+      } else if (partLayout.SegmentIndexOfStrutIndex(strut) == 3) {
         return brightnessByte << 8; // green
       }
-      if (spokeRepresented[strut] == 0) {
+      if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 0) {
         return brightnessByte << 16; // red
-      } else if (spokeRepresented[strut] == 1) {
+      } else if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 1) {
         return brightnessByte
           | brightnessByte << 8; // teal
-      } else if (spokeRepresented[strut] == 2) {
+      } else if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 2) {
         return brightnessByte
           | brightnessByte << 16; // purple
-      } else if (spokeRepresented[strut] == 3) {
+      } else if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 3) {
         return brightnessByte
           | brightnessByte << 8
           | brightnessByte << 16; // white
