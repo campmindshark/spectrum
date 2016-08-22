@@ -149,7 +149,6 @@ namespace Spectrum.LEDs {
       this.config = config;
       this.visualizers = new List<Visualizer>();
       this.availableStruts = new HashSet<int>();
-      this.palette = new LEDColorPalette();
       bool domeEnabled = this.config.domeEnabled;
       lock (this.visualizers) {
         if (domeEnabled) {
@@ -321,6 +320,26 @@ namespace Spectrum.LEDs {
       var strutPosition = strutPositions[strutIndex];
       return strutLengths[teensyStrutOrder[strutPosition.Item2]];
     }
+
+    private int ScaleColor(int color) {
+      byte red = (byte)(color >> 16);
+      byte green = (byte)(color >> 8);
+      byte blue = (byte)color;
+      return (int)(red * this.config.domeMaxBrightness) << 16
+        | (int)(green * this.config.domeMaxBrightness) << 8
+        | (int)(blue * this.config.domeMaxBrightness);
+    }
+
+    public int GetSingleColor(int index) {
+      return ScaleColor(this.config.domeColorPalette.GetSingleColor(index));
+    }
+
+    public int GetGradientColor(int index, double pixelPos, double focusPos) {
+      return ScaleColor(
+        this.config.domeColorPalette.GetGradientColor(index, pixelPos, focusPos)
+      );
+    }
+
 
   }
 

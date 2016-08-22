@@ -288,7 +288,7 @@ namespace Spectrum {
       } else {
         throw new Exception("unsupported value");
       }
-      return this.config.domeColorPalette.GetGradientColor(
+      return this.dome.GetGradientColor(
         colorIndex,
         pixelPos,
         focusPos
@@ -308,7 +308,7 @@ namespace Spectrum {
       } else {
         throw new Exception("unsupported value");
       }
-      return this.config.domeColorPalette.GetGradientColor(
+      return this.dome.GetGradientColor(
         colorIndex,
         pixelPos,
         focusPos
@@ -343,8 +343,7 @@ namespace Spectrum {
         colorIndex = 1;
       } else if (partLayout.SegmentIndexOfStrutIndex(strut) == 3) {
         colorIndex = 2;
-      }
-      if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 0) {
+      } else if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 0) {
         colorIndex = 3;
       } else if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 1) {
         colorIndex = 4;
@@ -355,7 +354,7 @@ namespace Spectrum {
       } else {
         throw new Exception("unsupported value");
       }
-      return this.config.domeColorPalette.GetGradientColor(
+      return this.dome.GetGradientColor(
         colorIndex,
         pixelPos,
         focusPos

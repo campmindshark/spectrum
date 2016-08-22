@@ -11,14 +11,9 @@ using System.Xml.Serialization;
 
 namespace Spectrum {
 
-  [Serializable]
   public class SpectrumConfiguration : Configuration {
 
     public event PropertyChangedEventHandler PropertyChanged;
-
-    public SpectrumConfiguration() {
-      this.domeColorPalette = new LEDColorPalette(this);
-    }
 
     public int audioDeviceIndex { get; set; } = -1;
 
@@ -70,7 +65,8 @@ namespace Spectrum {
     public string domeTeensyUSBPort5 { get; set; } = null;
     public double domeMaxBrightness { get; set; } = 0.1;
     public int domeVolumeAnimationSize { get; set; } = 2;
-    public LEDColorPalette domeColorPalette { get; set; };
+    public LEDColorPalette domeColorPalette { get; set; } =
+      new LEDColorPalette();
 
     // The rest is not on Configuration
     // Just convenience properties for data binding

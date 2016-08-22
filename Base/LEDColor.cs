@@ -3,27 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 
 namespace Spectrum.Base {
 
-  [Serializable]
   public class LEDColorPalette {
 
-    private Configuration config;
-    private LEDColor[] colors = new LEDColor[8];
-
-    public LEDColorPalette(Configuration config) {
-      this.config = config;
-    }
+    // Public so XML serialization picks it up
+    public LEDColor[] colors = new LEDColor[8];
 
     public int GetSingleColor(int index) {
-      LEDColor color = this.colors[index];
-      return ScaleColor(color.Color1);
+      return this.colors[index].Color1;
     }
 
     public int GetGradientColor(int index, double pixelPos, double focusPos) {
-      LEDColor color = this.colors[index];
-      return ScaleColor(color.GradientColor(pixelPos, focusPos));
+      return this.colors[index].GradientColor(pixelPos, focusPos);
     }
 
     public void SetColor(int index, int color) {
@@ -34,22 +28,16 @@ namespace Spectrum.Base {
       this.colors[index] = new LEDColor(color1, color2);
     }
 
-    private int ScaleColor(int color) {
-      byte red = (byte)(color >> 16);
-      byte green = (byte)(color >> 8);
-      byte blue = (byte)color;
-      return (int)(red * this.config.domeMaxBrightness) << 16
-        | (int)(green * this.config.domeMaxBrightness) << 8
-        | (int)(blue * this.config.domeMaxBrightness);
-    }
-
   }
 
-  [Serializable]
   public class LEDColor {
 
-    private int color1;
-    private int? color2;
+    // Public so XML serialization picks them up
+    public int color1;
+    public int? color2;
+
+    // We need a parameterless constructor for XML serialization
+    public LEDColor() { }
 
     public LEDColor(int color) {
       this.color1 = color;
@@ -61,18 +49,21 @@ namespace Spectrum.Base {
       this.color2 = color2;
     }
 
+    [XmlIgnore]
     public bool IsGradient {
       get {
-        return this.color2.HasValue
+        return this.color2.HasValue;
       }
     }
 
+    [XmlIgnore]
     public int Color1 {
       get {
         return this.color1;
       }
     }
 
+    [XmlIgnore]
     public int Color2 {
       get {
         return this.color2.Value;
