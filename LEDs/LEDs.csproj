@@ -40,7 +40,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Animation.cs" />
     <Compile Include="StrutLayout.cs" />
     <Compile Include="LEDDomeOutput.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

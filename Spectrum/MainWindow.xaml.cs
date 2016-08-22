@@ -128,6 +128,14 @@ namespace Spectrum {
       }
       this.op = new Operator(this.config);
 
+      // temporary
+      this.config.domeColorPalette.SetGradientColor(0, 0xFFFFFF, 0x000000);
+      this.config.domeColorPalette.SetGradientColor(1, 0x0000FF, 0x000000);
+      this.config.domeColorPalette.SetGradientColor(2, 0x00FF00, 0x000000);
+      this.config.domeColorPalette.SetGradientColor(3, 0xFF0000, 0x000000);
+      this.config.domeColorPalette.SetGradientColor(4, 0x00FFFF, 0x000000);
+      this.config.domeColorPalette.SetGradientColor(5, 0xFF00FF, 0x000000);
+
       this.RefreshAudioDevices(null, null);
       this.RefreshLEDBoardPorts(null, null);
       this.RefreshMidiDevices(null, null);

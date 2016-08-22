@@ -143,11 +143,13 @@ namespace Spectrum.LEDs {
     private Configuration config;
     private List<Visualizer> visualizers;
     private HashSet<int> availableStruts;
+    private LEDColorPalette palette;
 
     public LEDDomeOutput(Configuration config) {
       this.config = config;
       this.visualizers = new List<Visualizer>();
       this.availableStruts = new HashSet<int>();
+      this.palette = new LEDColorPalette();
       bool domeEnabled = this.config.domeEnabled;
       lock (this.visualizers) {
         if (domeEnabled) {

@@ -12,7 +12,8 @@ namespace Spectrum {
 
   class LEDDomeVolumeVisualizer : Visualizer {
 
-    private static StrutLayout partLayout, indexLayout, spokeLayout;
+    // These names are completely arbitrary
+    private static StrutLayout partLayout, indexLayout, spokeLayout, sectionLayout;
     static LEDDomeVolumeVisualizer() {
       int[][] strutsByPart = new int[][] {
         new int[] {
@@ -20,8 +21,8 @@ namespace Spectrum {
           134, 34, 98, 106, 38, 141, 37, 105, 185, 189, 188, 187, 186,
         },
         new int[] {
-          1, 72, 112, 114, 75, 5, 80, 119, 121, 83, 126, 128, 91, 9, 88, 96,
-          133, 135, 99, 13, 107, 17, 104, 140, 142, 69, 68, 67, 66, 65, 
+          1, 72, 112, 114, 75, 5, 80, 119, 121, 83, 9, 88, 126, 128, 91, 13, 96,
+          133, 135, 99, 17, 104, 140, 142, 107, 65, 66, 67, 68, 69,
         },
         new int[] {
           0, 71, 20, 111, 40, 147, 41, 115, 23, 76, 2, 4, 79, 24, 118, 43, 152,
@@ -33,7 +34,7 @@ namespace Spectrum {
         new int[] {
           70, 110, 146, 148, 116, 77, 78, 117, 151, 153, 123, 85, 86, 124, 156,
           158, 130, 93, 94, 131, 161, 163, 137, 101, 102, 138, 166, 168, 144,
-          109, 64, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+          109, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
         },
       };
       int[][] strutsByIndex = new int[][] {
@@ -83,6 +84,20 @@ namespace Spectrum {
           47, 49, 50, 52, 53, 170, 172, 173, 175, 176, 178, 179, 181, 182, 184,
         },
       };
+      int[][] strutsBySection = new int[][] {
+        new int[] { 1, 72, 112, 114, 75 },
+        new int[] { 5, 80, 119, 121, 83 },
+        new int[] { 9, 88, 126, 128, 91 },
+        new int[] { 13, 96, 133, 135, 99 },
+        new int[] { 17, 104, 140, 142, 107 },
+        new int[] { 65, 66, 67, 68, 69 },
+        new int[] { 70, 110, 146, 148, 116, 77 },
+        new int[] { 78, 117, 151, 153, 123, 85 },
+        new int[] { 86, 124, 156, 158, 130, 93 },
+        new int[] { 94, 131, 161, 163, 137, 101 },
+        new int[] { 102, 138, 166, 168, 144, 109 },
+        new int[] { 55, 56, 57, 58, 59, 60, 61, 62, 63, 64 },
+      };
       HashSet<int> reversedStruts = new HashSet<int>() {
         71, 73, 74, 22, 81, 82, 26, 90, 30, 89, 97, 98, 34, 38, 106, 105, 185,
         189, 188, 187, 186, 0, 20, 41, 115, 23, 2, 4, 79, 24, 44, 122, 27, 6, 8,
@@ -90,39 +105,27 @@ namespace Spectrum {
         143, 39, 18, 183, 184, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179,
         180, 181, 182,
       };
-      StrutLayoutSegment[] partSegments = new StrutLayoutSegment[4];
-      for (int i = 0; i < partSegments.Length; i++) {
-        partSegments[i] = new StrutLayoutSegment(new HashSet<Strut>(
-          strutsByPart[i].Select(
+      partLayout = layoutFromArray(strutsByPart, reversedStruts);
+      indexLayout = layoutFromArray(strutsByIndex, reversedStruts);
+      spokeLayout = layoutFromArray(strutsBySpoke, reversedStruts);
+      sectionLayout = layoutFromArray(strutsBySection, reversedStruts);
+    }
+
+    private static StrutLayout layoutFromArray(
+      int[][] array,
+      HashSet<int> reversedStruts
+    ) {
+      StrutLayoutSegment[] segments = new StrutLayoutSegment[array.Length];
+      for (int i = 0; i < array.Length; i++) {
+        segments[i] = new StrutLayoutSegment(new HashSet<Strut>(
+          array[i].Select(
             strut => reversedStruts.Contains(strut)
               ? Strut.ReversedFromIndex(strut)
               : Strut.FromIndex(strut)
           )
         ));
       }
-      partLayout = new StrutLayout(partSegments);
-      StrutLayoutSegment[] indexSegments = new StrutLayoutSegment[6];
-      for (int i = 0; i < indexSegments.Length; i++) {
-        indexSegments[i] = new StrutLayoutSegment(new HashSet<Strut>(
-          strutsByIndex[i].Select(
-            strut => reversedStruts.Contains(strut)
-              ? Strut.ReversedFromIndex(strut)
-              : Strut.FromIndex(strut)
-          )
-        ));
-      }
-      indexLayout = new StrutLayout(indexSegments);
-      StrutLayoutSegment[] spokeSegments = new StrutLayoutSegment[4];
-      for (int i = 0; i < spokeSegments.Length; i++) {
-        spokeSegments[i] = new StrutLayoutSegment(new HashSet<Strut>(
-          strutsBySpoke[i].Select(
-            strut => reversedStruts.Contains(strut)
-              ? Strut.ReversedFromIndex(strut)
-              : Strut.FromIndex(strut)
-          )
-        ));
-      }
-      spokeLayout = new StrutLayout(spokeSegments);
+      return new StrutLayout(segments);
     }
 
     private Configuration config;
@@ -172,16 +175,30 @@ namespace Spectrum {
       int totalParts = this.config.domeVolumeAnimationSize * 2;
       for (int part = 0; part < totalParts; part += 2) {
         var outwardSegment = partLayout.GetSegment(part);
-        var surroundingSegment = partLayout.GetSegment(part + 1);
-        double startOfRange = (double)part / partLayout.NumSegments;
-        double endOfRange = (double)(part + 2) / partLayout.NumSegments;
-        double scaled = (this.audio.Volume - startOfRange) /
-          (endOfRange - startOfRange);
+        double startRange = (double)part / partLayout.NumSegments;
+        double endRange = (double)(part + 2) / partLayout.NumSegments;
+        double scaled = (this.audio.Volume - startRange) /
+          (endRange - startRange);
+        scaled = Math.Max(Math.Min(scaled, 1.0), 0.0);
+
         foreach (Strut strut in outwardSegment.GetStruts()) {
-          this.UpdateStrut(strut, (int)(strut.Length * scaled));
+          this.UpdateStrut(strut, scaled, startRange, endRange);
         }
-        foreach (Strut strut in surroundingSegment.GetStruts()) {
-          this.UpdateStrut(strut, scaled >= 1.0 ? strut.Length : 0);
+
+        for (int i = 0; i < 6; i++) {
+          StrutLayoutSegment segment = sectionLayout.GetSegment(i + part * 3);
+          double gradientStartPos = 0.0;
+          double gradientStep = 1.0 / segment.GetStruts().Count;
+          foreach (Strut strut in segment.GetStruts()) {
+            double gradientEndPos = gradientStartPos + gradientStep;
+            this.UpdateStrut(
+              strut,
+              scaled >= 1.0 ? 1.0 : 0.0,
+              gradientStartPos,
+              gradientEndPos
+            );
+            gradientStartPos = gradientEndPos;
+          }
         }
       }
       this.dome.Flush();
@@ -198,6 +215,7 @@ namespace Spectrum {
             this.dome.ReserveStrut(strut.Index);
           }
         }
+        this.animationSize = newAnimationSize;
         return;
       }
       for (int i = this.animationSize * 2 - 1; i >= newAnimationSize * 2; i--) {
@@ -211,61 +229,90 @@ namespace Spectrum {
       this.animationSize = newAnimationSize;
     }
 
-    private void UpdateStrut(Strut strut, int numLEDsToLight) {
+    /**
+     * percentageLit: what percentage of this strut should be lit?
+     * startLitRange,endLitRange refer to the portion of the lit range this
+     *   strut represents. if it's the first strut startLitRange is 0.0; if it's
+     *   the last lit strut, then endLitRange is 1.0. keep in mind that the lit
+     *   range is not the same as the whole range.
+     */
+    private void UpdateStrut(
+      Strut strut,
+      double percentageLit,
+      double startLitRange,
+      double endLitRange
+    ) {
+      double step = (endLitRange - startLitRange) / (strut.Length * percentageLit);
       for (int i = 0; i < strut.Length; i++) {
-        //int activeColor = this.ColorFromPart(strut.Index);
-        //int activeColor = this.ColorFromIndex(strut.Index);
-        //int activeColor = this.ColorFromRandom(strut.Index);
-        int activeColor = this.ColorFromPartAndSpoke(strut.Index);
         int ledIndex = strut.Reversed ? strut.Length - i : i;
-        int color = ledIndex < numLEDsToLight
-          ? GradientColor(
-              (double)ledIndex / numLEDsToLight,
-              1.0,
-              activeColor,
-              0x000000
-            )
-          : 0x000000;
+        double gradientPos = startLitRange + ledIndex * step;
+        //int activeColor = this.ColorFromPart(
+        //  strut.Index,
+        //  gradientPos,
+        //  1.0
+        //);
+        //int activeColor = this.ColorFromIndex(
+        //  strut.Index,
+        //  gradientPos,
+        //  1.0
+        //);
+        //int activeColor = this.ColorFromRandom(strut.Index);
+        int color;
+        if (gradientPos <= 1.0) {
+          color = this.ColorFromPartAndSpoke(
+            strut.Index,
+            gradientPos,
+            1.0
+          );
+        } else {
+          color = 0x000000;
+        }
         this.dome.SetPixel(strut.Index, i, color);
       }
     }
 
-    private int ColorFromIndex(int strut) {
-      int brightnessByte = (int)(0xFF * this.config.domeMaxBrightness);
+    private int ColorFromIndex(int strut, double pixelPos, double focusPos) {
+      int colorIndex;
       if (indexLayout.SegmentIndexOfStrutIndex(strut) == 0) {
-        return brightnessByte; // blue
+        colorIndex = 1;
       } else if (indexLayout.SegmentIndexOfStrutIndex(strut) == 1) {
-        return brightnessByte << 8; // green
+        colorIndex = 2;
       } else if (indexLayout.SegmentIndexOfStrutIndex(strut) == 2) {
-        return brightnessByte << 16; // red
+        colorIndex = 3;
       } else if (indexLayout.SegmentIndexOfStrutIndex(strut) == 3) {
-        return brightnessByte
-          | brightnessByte << 8; // teal
+        colorIndex = 4;
       } else if (indexLayout.SegmentIndexOfStrutIndex(strut) == 4) {
-        return brightnessByte
-          | brightnessByte << 16; // purple
+        colorIndex = 5;
       } else if (indexLayout.SegmentIndexOfStrutIndex(strut) == 5) {
-        return brightnessByte
-          | brightnessByte << 8
-          | brightnessByte << 16; // white
+        colorIndex = 0;
+      } else {
+        throw new Exception("unsupported value");
       }
-      throw new Exception("unsupported value");
+      return this.config.domeColorPalette.GetGradientColor(
+        colorIndex,
+        pixelPos,
+        focusPos
+      );
     }
 
-    private int ColorFromPart(int strut) {
-      int brightnessByte = (int)(0xFF * this.config.domeMaxBrightness);
+    private int ColorFromPart(int strut, double pixelPos, double focusPos) {
+      int colorIndex;
       if (partLayout.SegmentIndexOfStrutIndex(strut) == 0) {
-        return brightnessByte;
+        colorIndex = 1;
       } else if (partLayout.SegmentIndexOfStrutIndex(strut) == 1) {
-        return brightnessByte << 8;
+        colorIndex = 2;
       } else if (partLayout.SegmentIndexOfStrutIndex(strut) == 2) {
-        return brightnessByte << 16;
+        colorIndex = 3;
       } else if (partLayout.SegmentIndexOfStrutIndex(strut) == 3) {
-        return brightnessByte
-          | brightnessByte << 8
-          | brightnessByte << 16;
+        colorIndex = 0;
+      } else {
+        throw new Exception("unsupported value");
       }
-      throw new Exception("unsupported value");
+      return this.config.domeColorPalette.GetGradientColor(
+        colorIndex,
+        pixelPos,
+        focusPos
+      );
     }
 
     private int ColorFromRandom(int strut) {
@@ -286,50 +333,33 @@ namespace Spectrum {
       return color;
     }
 
-    private int ColorFromPartAndSpoke(int strut) {
-      int brightnessByte = (int)(0xFF * this.config.domeMaxBrightness);
+    private int ColorFromPartAndSpoke(
+      int strut,
+      double pixelPos,
+      double focusPos
+    ) {
+      int colorIndex;
       if (partLayout.SegmentIndexOfStrutIndex(strut) == 1) {
-        return brightnessByte; // blue
+        colorIndex = 1;
       } else if (partLayout.SegmentIndexOfStrutIndex(strut) == 3) {
-        return brightnessByte << 8; // green
+        colorIndex = 2;
       }
       if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 0) {
-        return brightnessByte << 16; // red
+        colorIndex = 3;
       } else if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 1) {
-        return brightnessByte
-          | brightnessByte << 8; // teal
+        colorIndex = 4;
       } else if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 2) {
-        return brightnessByte
-          | brightnessByte << 16; // purple
+        colorIndex = 5;
       } else if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 3) {
-        return brightnessByte
-          | brightnessByte << 8
-          | brightnessByte << 16; // white
+        colorIndex = 0;
+      } else {
+        throw new Exception("unsupported value");
       }
-      throw new Exception("unsupported value");
-    }
-
-    private static int GradientColor(
-      double pixelPos,
-      double focusPos,
-      int colorA,
-      int colorB
-    ) {
-      // Distance given that 1.0 wraps to 0.0
-      double distance = Math.Min(
-        Math.Abs(pixelPos - focusPos),
-        Math.Abs(pixelPos + 1 - focusPos)
+      return this.config.domeColorPalette.GetGradientColor(
+        colorIndex,
+        pixelPos,
+        focusPos
       );
-      byte redA = (byte)(colorA >> 16);
-      byte greenA = (byte)(colorA >> 8);
-      byte blueA = (byte)colorA;
-      byte redB = (byte)(colorB >> 16);
-      byte greenB = (byte)(colorB >> 8);
-      byte blueB = (byte)colorB;
-      byte blendedRed = (byte)((distance * redA) + (1 - distance) * redB);
-      byte blendedGreen = (byte)((distance * greenA) + (1 - distance) * greenB);
-      byte blendedBlue = (byte)((distance * blueA) + (1 - distance) * blueB);
-      return (blendedRed << 16) | (blendedGreen << 8) | blendedBlue;
     }
 
   }

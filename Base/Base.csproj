@@ -42,6 +42,7 @@
   <ItemGroup>
     <Compile Include="Configuration.cs" />
     <Compile Include="Input.cs" />
+    <Compile Include="LEDColor.cs" />
     <Compile Include="LEDCommand.cs" />
     <Compile Include="Output.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
