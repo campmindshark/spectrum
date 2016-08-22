@@ -9,3 +9,14 @@ C:\Users\Ashoat\Dropbox\src\spectrum\Audio\bin\Debug\Base.pdb
 C:\Users\Ashoat\Dropbox\src\spectrum\Audio\obj\Debug\Audio.csprojResolveAssemblyReference.cache
 C:\Users\Ashoat\Dropbox\src\spectrum\Audio\obj\Debug\Audio.dll
 C:\Users\Ashoat\Dropbox\src\spectrum\Audio\obj\Debug\Audio.pdb
+C:\Users\Scott\Source\Repos\spectrum\Audio\bin\Debug\Bass.Net.dll
+C:\Users\Scott\Source\Repos\spectrum\Audio\bin\Debug\bass.dll
+C:\Users\Scott\Source\Repos\spectrum\Audio\bin\Debug\bassmix.dll
+C:\Users\Scott\Source\Repos\spectrum\Audio\bin\Debug\basswasapi.dll
+C:\Users\Scott\Source\Repos\spectrum\Audio\bin\Debug\Audio.dll
+C:\Users\Scott\Source\Repos\spectrum\Audio\bin\Debug\Audio.pdb
+C:\Users\Scott\Source\Repos\spectrum\Audio\bin\Debug\Base.dll
+C:\Users\Scott\Source\Repos\spectrum\Audio\bin\Debug\Base.pdb
+C:\Users\Scott\Source\Repos\spectrum\Audio\obj\Debug\Audio.csprojResolveAssemblyReference.cache
+C:\Users\Scott\Source\Repos\spectrum\Audio\obj\Debug\Audio.dll
+C:\Users\Scott\Source\Repos\spectrum\Audio\obj\Debug\Audio.pdb

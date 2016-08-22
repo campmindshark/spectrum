@@ -1,25 +1,25 @@
 <?xml version="1.0"?>
 <SpectrumConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <audioDeviceIndex>22</audioDeviceIndex>
-  <huesEnabled>false</huesEnabled>
+  <audioDeviceIndex>27</audioDeviceIndex>
+  <huesEnabled>true</huesEnabled>
   <ledBoardEnabled>false</ledBoardEnabled>
   <midiInputEnabled>false</midiInputEnabled>
   <audioInputInSeparateThread>false</audioInputInSeparateThread>
-  <huesOutputInSeparateThread>true</huesOutputInSeparateThread>
+  <huesOutputInSeparateThread>false</huesOutputInSeparateThread>
   <ledBoardOutputInSeparateThread>false</ledBoardOutputInSeparateThread>
   <midiInputInSeparateThread>false</midiInputInSeparateThread>
   <domeOutputInSeparateThread>false</domeOutputInSeparateThread>
   <hueDelay>125</hueDelay>
   <hueIdleOnSilent>true</hueIdleOnSilent>
-  <lightsOff>true</lightsOff>
+  <lightsOff>false</lightsOff>
   <redAlert>false</redAlert>
   <controlLights>true</controlLights>
   <brighten>0</brighten>
   <colorslide>0</colorslide>
   <sat>0</sat>
-  <peakC>0.800000011920929</peakC>
-  <dropQ>0.02500000037252903</dropQ>
-  <dropT>0.075000002980232239</dropT>
+  <peakC>1.5761904881114055</peakC>
+  <dropQ>0</dropQ>
+  <dropT>0.1</dropT>
   <kickQ>1</kickQ>
   <kickT>0</kickT>
   <snareQ>1</snareQ>
@@ -38,7 +38,7 @@
   <ledBoardBrightness>0.15748031496062992</ledBoardBrightness>
   <midiDeviceIndex>0</midiDeviceIndex>
   <domeEnabled>false</domeEnabled>
-  <domeSimulationEnabled>true</domeSimulationEnabled>
+  <domeSimulationEnabled>false</domeSimulationEnabled>
   <domeTeensyUSBPort1>COM8</domeTeensyUSBPort1>
   <domeTeensyUSBPort2>COM4</domeTeensyUSBPort2>
   <domeTeensyUSBPort3>COM6</domeTeensyUSBPort3>
@@ -47,5 +47,5 @@
   <domeMaxBrightness>1</domeMaxBrightness>
   <domeVolumeAnimationSize>0</domeVolumeAnimationSize>
   <hueOverrideIsCustom>false</hueOverrideIsCustom>
-  <hueOverrideIndex>2</hueOverrideIndex>
+  <hueOverrideIndex>0</hueOverrideIndex>
 </SpectrumConfiguration>

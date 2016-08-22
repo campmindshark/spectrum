@@ -29,6 +29,7 @@ namespace Spectrum.Audio {
 
     // These values get continuously updated by the internal thread
     public float[] AudioData { get; private set; } = new float[8192];
+    public float[] SampleData { get; private set; } = new float[8192];
     public float Volume { get; private set; } = 0.0f;
 
     public AudioInput(Configuration config) {
@@ -160,6 +161,14 @@ namespace Spectrum.Audio {
         // type: 1/8192 of the channel sample rate
         // (here, 44100 hz; so the bin size is roughly 2.69 Hz)
         float[] tempAudioData = new float[8192];
+        int bytesAvailable = BassWasapi.BASS_WASAPI_GetData(
+            tempAudioData,
+            (int)BASSData.BASS_DATA_AVAILABLE
+        );
+        float[] tempSampleData = new float[bytesAvailable];
+        BassWasapi.BASS_WASAPI_GetData(
+            tempSampleData,
+            bytesAvailable);
         BassWasapi.BASS_WASAPI_GetData(
           tempAudioData,
           (int)BASSData.BASS_DATA_FFT16384
@@ -169,6 +178,7 @@ namespace Spectrum.Audio {
           -1
         );
         this.AudioData = tempAudioData;
+        this.SampleData = tempSampleData;
         this.Volume = tempVolume;
       }
     }
