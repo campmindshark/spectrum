@@ -36,10 +36,6 @@ namespace Spectrum {
     private int dropDuration = 0;
     private int target = 0;
 
-
-        
-    private BPMDetect.BPMDetection bpmd; //http://adionsoft.net/bpm/index.php?module=docs
-
     public HueAudioVisualizer(
       Configuration config,
       AudioInput audio,
@@ -49,7 +45,6 @@ namespace Spectrum {
       this.audio = audio;
       this.hue = hue;
       this.hue.RegisterVisualizer(this);
-      bpmd = new BPMDetect.BPMDetection();
       
       this.random = new Random();
       bins = new Dictionary<String, double[]>();
@@ -83,16 +78,6 @@ namespace Spectrum {
     }
 
     public void Visualize() {
-      float[] samples = audio.SampleData;
-      if (samples.Length == 0)
-      {
-          return;
-      }
-      for (int i = 0; i < samples.Length; i++)
-      {
-          bpmd.AddSample(samples[i]);
-      }
-      Console.WriteLine(bpmd.getParameter(BPMDetect.BPMDetection.BPMParam.BPMFOUNDBPM));
       this.process(this.audio.AudioData, this.audio.Volume);
       if (this.hue.BufferSize == 0) {
         this.updateHues();
