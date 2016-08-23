@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Spectrum"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         mc:Ignorable="d"
         Title="Spectrum" Height="480" Width="600" ResizeMode="CanMinimize"
         Icon="pack://siteoforigin:,,,/Resources/s.PNG"
@@ -160,6 +161,45 @@
                   <ComboBoxItem Content="1" />
                   <ComboBoxItem Content="2" />
                 </ComboBox>
+              </Grid>
+            </Border>
+          </Grid>
+          <Grid Width="200" HorizontalAlignment="Right" Margin="0,0,5,0">
+            <Label Content="Colors" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid>
+                <xctk:ColorPicker Name="domeColor1" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                <xctk:ColorPicker Name="domeColor2" Margin="47,0,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor3" Margin="94,0,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor4" Margin="141,0,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor5" Margin="0,25,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor6" Margin="47,25,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor7" Margin="94,25,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor8" Margin="141,25,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor9" Margin="0,50,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor10" Margin="47,50,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor11" Margin="94,50,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor12" Margin="141,50,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor13" Margin="0,75,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor14" Margin="47,75,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor15" Margin="94,75,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor16" Margin="141,75,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor17" Margin="0,100,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                <xctk:ColorPicker Name="domeColor18" Margin="47,100,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor19" Margin="94,100,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor20" Margin="141,100,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor21" Margin="0,125,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor22" Margin="47,125,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor23" Margin="94,125,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor24" Margin="141,125,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor25" Margin="0,150,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor26" Margin="47,150,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor27" Margin="94,150,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor28" Margin="141,150,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor29" Margin="0,175,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor30" Margin="47,175,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor31" Margin="94,175,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor32" Margin="141,175,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
               </Grid>
             </Border>
           </Grid>
