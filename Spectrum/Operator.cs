@@ -37,10 +37,6 @@ namespace Spectrum {
       this.outputs.Add(dome);
 
       this.visualizers = new List<Visualizer>();
-      this.visualizers.Add(new BPMDetector(
-          this.config,
-          audio
-      ));
       this.visualizers.Add(new HueAudioVisualizer(
         this.config,
         audio,

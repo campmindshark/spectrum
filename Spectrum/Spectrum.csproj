@@ -63,11 +63,9 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="BPMDetection.cs" />
     <Compile Include="DomeSimulatorWindow.xaml.cs">
       <DependentUpon>DomeSimulatorWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Visualizers\BPMDetector.cs" />
     <Compile Include="Visualizers\LEDDomeStrandTestVisualizer.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>

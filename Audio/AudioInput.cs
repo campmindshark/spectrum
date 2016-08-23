@@ -6,6 +6,7 @@ using System.Threading;
 using Spectrum.Base;
 using Un4seen.Bass;
 using Un4seen.BassWasapi;
+using BPMDetect;
 
 namespace Spectrum.Audio {
 
@@ -27,10 +28,13 @@ namespace Spectrum.Audio {
     // Needed for memory management reasons. More details in MagicIncantations()
     private WASAPIPROC process;
 
+    // http://adionsoft.net/bpm/index.php?module=docs
+    private BPMDetection bpmd = new BPMDetection();
+
     // These values get continuously updated by the internal thread
     public float[] AudioData { get; private set; } = new float[8192];
-    public float[] SampleData { get; private set; } = new float[8192];
     public float Volume { get; private set; } = 0.0f;
+    public double BPM { get; private set; } = 0.0;
 
     public AudioInput(Configuration config) {
       this.config = config;
@@ -40,7 +44,7 @@ namespace Spectrum.Audio {
       // This is being initialized here because we need to pass this variable
       // into some scary old C-style API and it doesn't get refcounted there.
       // We declare the variable as a member to avoid garbage collection.
-      this.process = new WASAPIPROC(NoOp);
+      this.process = new WASAPIPROC(this.NoOp);
     }
 
     /**
@@ -161,14 +165,6 @@ namespace Spectrum.Audio {
         // type: 1/8192 of the channel sample rate
         // (here, 44100 hz; so the bin size is roughly 2.69 Hz)
         float[] tempAudioData = new float[8192];
-        int bytesAvailable = BassWasapi.BASS_WASAPI_GetData(
-            tempAudioData,
-            (int)BASSData.BASS_DATA_AVAILABLE
-        );
-        float[] tempSampleData = new float[bytesAvailable];
-        BassWasapi.BASS_WASAPI_GetData(
-            tempSampleData,
-            bytesAvailable);
         BassWasapi.BASS_WASAPI_GetData(
           tempAudioData,
           (int)BASSData.BASS_DATA_FFT16384
@@ -178,8 +174,25 @@ namespace Spectrum.Audio {
           -1
         );
         this.AudioData = tempAudioData;
-        this.SampleData = tempSampleData;
         this.Volume = tempVolume;
+
+        int bytesAvailable = BassWasapi.BASS_WASAPI_GetData(
+          tempAudioData,
+          (int)BASSData.BASS_DATA_AVAILABLE
+        );
+        float[] tempSampleData = new float[bytesAvailable];
+        BassWasapi.BASS_WASAPI_GetData(
+          tempSampleData,
+          bytesAvailable
+        );
+        if (bytesAvailable == 0) {
+          return;
+        }
+        for (int i = 0; i < bytesAvailable; i++) {
+          bpmd.AddSample(tempSampleData[i]);
+        }
+        this.BPM = bpmd.getParameter(BPMDetection.BPMParam.BPMFOUNDBPM);
+        System.Diagnostics.Debug.WriteLine(this.BPM);
       }
     }
 
