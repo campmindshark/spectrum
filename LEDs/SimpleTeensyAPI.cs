@@ -14,7 +14,6 @@ namespace Spectrum.LEDs {
   class SimpleTeensyAPI {
 
     private SerialPort port;
-    private string portName;
     private ConcurrentQueue<byte[]> buffer;
     private bool separateThread;
 

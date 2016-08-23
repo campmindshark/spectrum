@@ -8,40 +8,9 @@ using System.Xml.Serialization;
 using System.IO;
 using Spectrum.MIDI;
 using System.Windows.Data;
+using Xceed.Wpf.Toolkit;
 
 namespace Spectrum {
-
-  class StringJoinConverter : IValueConverter {
-
-    public object Convert(
-      object value,
-      Type targetType,
-      object parameter,
-      System.Globalization.CultureInfo culture
-    ) {
-      try {
-        return String.Join(",", (int[])value);
-      } catch (FormatException) {
-        // Failing to convert will trip a validation rule
-        return value;
-      }
-    }
-
-    public object ConvertBack(
-      object value,
-      Type targetType,
-      object parameter,
-      System.Globalization.CultureInfo culture
-    ) {
-      try {
-        return Array.ConvertAll(((string)value).Split(','), int.Parse);
-      } catch (FormatException) {
-        // Failing to convert will trip a validation rule
-        return value;
-      }
-    }
-
-  }
 
   public partial class MainWindow : Window {
 
@@ -174,6 +143,39 @@ namespace Spectrum {
       this.Bind("domeMaxBrightness", this.domeBrightnessSlider, Slider.ValueProperty);
       this.Bind("domeMaxBrightness", this.domeBrightnessLabel, Label.ContentProperty);
       this.Bind("domeVolumeAnimationSize", this.domeVolumeAnimationSize, ComboBox.SelectedIndexProperty);
+      var colorConverter = new ColorConverter();
+      this.Bind("Color1_0", this.domeColor1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_0", this.domeColor2, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_1", this.domeColor3, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_1", this.domeColor4, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_2", this.domeColor5, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_2", this.domeColor6, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_3", this.domeColor7, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_3", this.domeColor8, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_4", this.domeColor9, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_4", this.domeColor10, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_5", this.domeColor11, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_5", this.domeColor12, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_6", this.domeColor13, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_6", this.domeColor14, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_7", this.domeColor15, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_7", this.domeColor16, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_8", this.domeColor17, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_8", this.domeColor18, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_9", this.domeColor19, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_9", this.domeColor20, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_10", this.domeColor21, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_10", this.domeColor22, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_11", this.domeColor23, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_11", this.domeColor24, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_12", this.domeColor25, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_12", this.domeColor26, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_13", this.domeColor27, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_13", this.domeColor28, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_14", this.domeColor29, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_14", this.domeColor30, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color1_15", this.domeColor31, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
+      this.Bind("Color2_15", this.domeColor32, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
 
       this.loadingConfig = false;
     }
@@ -184,10 +186,11 @@ namespace Spectrum {
       DependencyProperty property,
       bool rebootOnUpdate = false,
       BindingMode mode = BindingMode.TwoWay,
-      IValueConverter converter = null
+      IValueConverter converter = null,
+      object source = null
     ) {
       var binding = new Binding(configPath);
-      binding.Source = this.config;
+      binding.Source = source == null ? this.config : source;
       binding.Mode = mode;
       if (converter != null) {
         binding.Converter = converter;
