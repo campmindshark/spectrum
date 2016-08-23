@@ -6,7 +6,9 @@ using System.Threading;
 using Spectrum.Base;
 using Un4seen.Bass;
 using Un4seen.BassWasapi;
-using BPMDetect;
+using Un4seen.Bass.Misc;
+using System.Diagnostics;
+using Un4seen.Bass.AddOn.Mix;
 
 namespace Spectrum.Audio {
 
@@ -27,13 +29,18 @@ namespace Spectrum.Audio {
 
     // Needed for memory management reasons. More details in MagicIncantations()
     private WASAPIPROC process;
-
-    // http://adionsoft.net/bpm/index.php?module=docs
-    private BPMDetection bpmd = new BPMDetection();
+    private STREAMPROC StreamPoc;
 
     // These values get continuously updated by the internal thread
     public float[] AudioData { get; private set; } = new float[8192];
     public float Volume { get; private set; } = 0.0f;
+    private Timer analysisTimer;
+    private Stopwatch stopwatch = new Stopwatch();
+    private int handle;
+    private int outstr;
+    private int timeInterval = 20;
+    private BPMCounter bpmCounter;
+        private WASAPIPROC outProcess;
     public double BPM { get; private set; } = 0.0;
 
     public AudioInput(Configuration config) {
@@ -45,6 +52,8 @@ namespace Spectrum.Audio {
       // into some scary old C-style API and it doesn't get refcounted there.
       // We declare the variable as a member to avoid garbage collection.
       this.process = new WASAPIPROC(this.NoOp);
+      this.StreamPoc = this.streamproc;
+            outProcess = new WASAPIPROC(outWasapiProc);
     }
 
     /**
@@ -137,10 +146,10 @@ namespace Spectrum.Audio {
       }
       bool result = BassWasapi.BASS_WASAPI_Init(
         this.config.audioDeviceIndex,
-        0,
+        44100,
         0,
         BASSWASAPIInit.BASS_WASAPI_BUFFER,
-        1f,
+        1,
         0,
         this.process,
         IntPtr.Zero
@@ -152,6 +161,24 @@ namespace Spectrum.Audio {
         );
       }
       BassWasapi.BASS_WASAPI_Start();
+
+      handle = Bass.BASS_StreamCreate(44100, 2, BASSFlag.BASS_MUSIC_DECODE | BASSFlag.BASS_MUSIC_FLOAT, this.StreamPoc, IntPtr.Zero);
+      Bass.BASS_ChannelPlay(handle, false);
+      bpmCounter = new BPMCounter(timeInterval, 44100);
+      bpmCounter.BPMHistorySize = 50;
+      analysisTimer = new Timer(timerCallback, null, 0, timeInterval);
+            BassWasapi.BASS_WASAPI_Init(12, 44100, 0, 0, 0, 0, outProcess, IntPtr.Zero);
+            BassWasapi.BASS_WASAPI_SetDevice(12);
+            outstr = BassMix.BASS_Mixer_StreamCreate(44100, 2, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_FLOAT);
+            BassMix.BASS_Mixer_StreamAddChannel(outstr, handle, 0);
+            BassWasapi.BASS_WASAPI_Start();
+        }
+
+    private void timerCallback(object o) {
+      if (bpmCounter.ProcessAudio(handle, true)) { 
+        //System.Diagnostics.Debug.WriteLine(stopwatch.ElapsedMilliseconds);
+        stopwatch.Restart();
+      }
     }
 
     private void TerminateAudio() {
@@ -175,24 +202,8 @@ namespace Spectrum.Audio {
         );
         this.AudioData = tempAudioData;
         this.Volume = tempVolume;
-
-        int bytesAvailable = BassWasapi.BASS_WASAPI_GetData(
-          tempAudioData,
-          (int)BASSData.BASS_DATA_AVAILABLE
-        );
-        float[] tempSampleData = new float[bytesAvailable];
-        BassWasapi.BASS_WASAPI_GetData(
-          tempSampleData,
-          bytesAvailable
-        );
-        if (bytesAvailable == 0) {
-          return;
-        }
-        for (int i = 0; i < bytesAvailable; i++) {
-          bpmd.AddSample(tempSampleData[i]);
-        }
-        this.BPM = bpmd.getParameter(BPMDetection.BPMParam.BPMFOUNDBPM);
-        System.Diagnostics.Debug.WriteLine(this.BPM);
+        this.BPM = bpmCounter.BPM;
+        //System.Diagnostics.Debug.WriteLine(this.BPM);
       }
     }
 
@@ -228,7 +239,14 @@ namespace Spectrum.Audio {
       var device = BassWasapi.BASS_WASAPI_GetDeviceInfo(deviceIndex);
       return device.name;
     }
-
-  }
-
+    private int streamproc(int handle, IntPtr buffer, int length, IntPtr user) {
+      BassWasapi.BASS_WASAPI_GetData(buffer, length | (int)BASSData.BASS_DATA_FLOAT);
+      return length;
+    }
+        private int outWasapiProc(IntPtr buffer, int length, IntPtr user)
+        {
+            Debug.WriteLine(length);
+            return Bass.BASS_ChannelGetData(outstr, buffer, length);
+        }
+    }
 }
