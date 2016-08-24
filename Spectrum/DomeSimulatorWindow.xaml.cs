@@ -230,7 +230,7 @@ namespace Spectrum {
         this.bitmap.WritePixels(this.rect, this.pixels, this.rect.Width * 4, 0);
       }
 
-      Debug.WriteLine(stopwatch.ElapsedMilliseconds + "ms to update");
+      //Debug.WriteLine(stopwatch.ElapsedMilliseconds + "ms to update");
     }
 
     private void ShowKey(object sender, RoutedEventArgs e) {

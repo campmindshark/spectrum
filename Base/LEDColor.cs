@@ -44,12 +44,12 @@ namespace Spectrum.Base {
     // whichColor: 0-1, Color1 or Color2
     private void CallPropertyChanged(int index, int whichColor) {
       StringBuilder builder = new StringBuilder("Color");
-      builder.Append(index);
+      builder.Append(whichColor + 1);
       builder.Append('_');
-      builder.Append(whichColor);
-      this.PropertyChanged(
-        null,
-        new PropertyChangedEventArgs(builder.ToString()) 
+      builder.Append(index);
+      this.PropertyChanged?.Invoke(
+        this,
+        new PropertyChangedEventArgs(builder.ToString())
       );
     }
 

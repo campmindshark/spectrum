@@ -100,7 +100,6 @@
     </Compile>
     <Compile Include="Visualizers\HueSilentVisualizer.cs" />
     <Compile Include="Visualizers\HueSolidColorVisualizer.cs" />
-    <Compile Include="Visualizers\LEDPanelConfigVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeMidiTestVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeVolumeVisualizer.cs" />
     <Compile Include="Visualizers\LEDPanelVolumeVisualizer.cs" />

@@ -335,6 +335,9 @@ namespace Spectrum.LEDs {
     }
 
     public int GetGradientColor(int index, double pixelPos, double focusPos) {
+      if (!this.config.domeColorPalette.colors[index].IsGradient) {
+        return GetSingleColor(index);
+      }
       return ScaleColor(
         this.config.domeColorPalette.GetGradientColor(index, pixelPos, focusPos)
       );

@@ -61,11 +61,6 @@ namespace Spectrum {
         midi,
         board
       ));
-      this.visualizers.Add(new LEDPanelConfigVisualizer(
-        this.config,
-        midi,
-        board
-      ));
       this.visualizers.Add(new LEDDomeMidiTestVisualizer(
         this.config,
         midi,
