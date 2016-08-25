@@ -43,6 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BeatBroadcaster.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="Input.cs" />
     <Compile Include="LEDColor.cs" />

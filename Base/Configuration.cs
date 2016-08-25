@@ -82,6 +82,7 @@ namespace Spectrum.Base {
     double domeMaxBrightness { get; set; }
     int domeVolumeAnimationSize { get; set; }
     LEDColorPalette domeColorPalette { get; set; }
+    BeatBroadcaster domeBeatBroadcaster { get; set; }
 
     // You might look at this and be disgusted. Yes, I am kinda violating the
     // whole organizing principle here, but the UI needs to know what's going on

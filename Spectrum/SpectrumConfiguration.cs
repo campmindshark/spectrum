@@ -67,6 +67,15 @@ namespace Spectrum {
     public int domeVolumeAnimationSize { get; set; } = 2;
     public LEDColorPalette domeColorPalette { get; set; } =
       new LEDColorPalette();
+    // This probably should not be here...
+    [XmlIgnore, DoNotNotify]
+    public BeatBroadcaster domeBeatBroadcaster { get; set; } =
+      new BeatBroadcaster();
+
+    // Excuse in Configuration interface
+    [XmlIgnore, DoNotNotify]
+    public ConcurrentQueue<LEDCommand> domeCommandQueue { get; } =
+      new ConcurrentQueue<LEDCommand>();
 
     // The rest is not on Configuration
     // Just convenience properties for data binding
@@ -109,10 +118,6 @@ namespace Spectrum {
         }
       }
     }
-
-    [XmlIgnore, DoNotNotify]
-    public ConcurrentQueue<LEDCommand> domeCommandQueue { get; } =
-      new ConcurrentQueue<LEDCommand>();
 
   }
 

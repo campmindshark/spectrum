@@ -108,6 +108,15 @@ namespace Spectrum.MIDI {
         this.config.domeColorPalette.computerEnabledColors[colorIndex] =
           val > 0.0;
       });
+
+      // Tap tempo
+      this.AddBinding(MidiCommandType.Note, 0, val => {
+        if (val > 0.0) {
+          this.config.domeBeatBroadcaster.AddTap();
+        }
+      });
+
+      // Miscellaneous
       this.AddBinding(MidiCommandType.Knob, 1, val => this.config.domeMaxBrightness = val);
     }
 

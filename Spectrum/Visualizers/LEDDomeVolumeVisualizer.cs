@@ -232,7 +232,7 @@ namespace Spectrum {
     /**
      * percentageLit: what percentage of this strut should be lit?
      * startLitRange,endLitRange refer to the portion of the lit range this
-     *   strut represents. if it's the first strut startLitRange is 0.0; if it's
+     *   strut represents. if it's the first strut startLitRange is 0.0; f it's
      *   the last lit strut, then endLitRange is 1.0. keep in mind that the lit
      *   range is not the same as the whole range.
      */
@@ -246,24 +246,12 @@ namespace Spectrum {
       for (int i = 0; i < strut.Length; i++) {
         int ledIndex = strut.Reversed ? strut.Length - i : i;
         double gradientPos = startLitRange + ledIndex * step;
-        //int activeColor = this.ColorFromPart(
-        //  strut.Index,
-        //  gradientPos,
-        //  1.0
-        //);
-        //int activeColor = this.ColorFromIndex(
-        //  strut.Index,
-        //  gradientPos,
-        //  1.0
-        //);
+        //int activeColor = this.ColorFromPart(strut.Index, gradientPos);
+        //int activeColor = this.ColorFromIndex(strut.Index, gradientPos);
         //int activeColor = this.ColorFromRandom(strut.Index);
         int color;
         if (gradientPos <= 1.0) {
-          color = this.ColorFromPartAndSpoke(
-            strut.Index,
-            gradientPos,
-            1.0
-          );
+          color = this.ColorFromPartAndSpoke(strut.Index, gradientPos);
         } else {
           color = 0x000000;
         }
@@ -271,7 +259,7 @@ namespace Spectrum {
       }
     }
 
-    private int ColorFromIndex(int strut, double pixelPos, double focusPos) {
+    private int ColorFromIndex(int strut, double pixelPos) {
       int colorIndex;
       if (indexLayout.SegmentIndexOfStrutIndex(strut) == 0) {
         colorIndex = 1;
@@ -291,11 +279,11 @@ namespace Spectrum {
       return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
-        focusPos
+        this.config.domeBeatBroadcaster.ProgressThroughMeasure
       );
     }
 
-    private int ColorFromPart(int strut, double pixelPos, double focusPos) {
+    private int ColorFromPart(int strut, double pixelPos) {
       int colorIndex;
       if (partLayout.SegmentIndexOfStrutIndex(strut) == 0) {
         colorIndex = 1;
@@ -311,7 +299,7 @@ namespace Spectrum {
       return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
-        focusPos
+        this.config.domeBeatBroadcaster.ProgressThroughMeasure
       );
     }
 
@@ -333,11 +321,7 @@ namespace Spectrum {
       return color;
     }
 
-    private int ColorFromPartAndSpoke(
-      int strut,
-      double pixelPos,
-      double focusPos
-    ) {
+    private int ColorFromPartAndSpoke(int strut, double pixelPos) {
       int colorIndex;
       if (partLayout.SegmentIndexOfStrutIndex(strut) == 1) {
         colorIndex = 1;
@@ -357,7 +341,7 @@ namespace Spectrum {
       return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
-        focusPos
+        this.config.domeBeatBroadcaster.ProgressThroughMeasure
       );
     }
 
