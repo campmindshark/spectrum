@@ -134,22 +134,22 @@
       </TabItem>
       <TabItem Header="LED Dome">
         <Grid>
-          <Grid HorizontalAlignment="Left" Width="355">
+          <Grid HorizontalAlignment="Left" Width="315">
             <Label Content="General" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <CheckBox x:Name="domeEnabled" Content="Enabled" VerticalAlignment="Top" IsChecked="False" FontWeight="Bold" />
-                <CheckBox x:Name="domeSimulationEnabled" Content="Simulate" VerticalAlignment="Top" Margin="170,0,0,0" IsChecked="False" Checked="OpenDomeSimulator" Unchecked="CloseDomeSimulator" />
+                <CheckBox x:Name="domeSimulationEnabled" Content="Simulate" VerticalAlignment="Top" Margin="150,0,0,0" IsChecked="False" Checked="OpenDomeSimulator" Unchecked="CloseDomeSimulator" />
                 <Label Content="Teensy USB ports" Margin="0,21,0,0" Padding="0" />
-                <ComboBox x:Name="domeTeensy1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,20,0,0" Width="120" SelectionChanged="DomePortChanged" />
-                <ComboBox x:Name="domeTeensy2" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,20,0,0" Width="120" SelectionChanged="DomePortChanged" />
-                <ComboBox x:Name="domeTeensy3" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,44,0,0" Width="120" SelectionChanged="DomePortChanged" />
-                <ComboBox x:Name="domeTeensy4" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,44,0,0" Width="120" SelectionChanged="DomePortChanged" />
-                <ComboBox x:Name="domeTeensy5" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,68,0,0" Width="120" SelectionChanged="DomePortChanged" />
-                <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Right" Style="{StaticResource HyperlinkButton}" Margin="0,70,15,0" FontStyle="Italic" Click="RefreshDomePorts" />
+                <ComboBox x:Name="domeTeensy1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,20,0,0" Width="100" SelectionChanged="DomePortChanged" />
+                <ComboBox x:Name="domeTeensy2" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,20,0,0" Width="100" SelectionChanged="DomePortChanged" />
+                <ComboBox x:Name="domeTeensy3" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,44,0,0" Width="100" SelectionChanged="DomePortChanged" />
+                <ComboBox x:Name="domeTeensy4" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,44,0,0" Width="100" SelectionChanged="DomePortChanged" />
+                <ComboBox x:Name="domeTeensy5" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,68,0,0" Width="100" SelectionChanged="DomePortChanged" />
+                <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Right" Style="{StaticResource HyperlinkButton}" Margin="0,71,4,0" FontStyle="Italic" Click="RefreshDomePorts" />
                 <Label Content="Max brightness" HorizontalAlignment="Left" Padding="0" Margin="0,93,0,0" />
-                <Slider x:Name="domeBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,93,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                <Label x:Name="domeBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="300,93,0,0" Padding="0" ContentStringFormat="F3" />
+                <Slider x:Name="domeBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,93,0,0" VerticalAlignment="Top" Height="20" Width="170" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="domeBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="265,93,0,0" Padding="0" ContentStringFormat="F3" />
               </Grid>
             </Border>
             <Label Content="Volume animation" HorizontalAlignment="Left" Margin="4,146,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
@@ -164,42 +164,64 @@
               </Grid>
             </Border>
           </Grid>
-          <Grid Width="200" HorizontalAlignment="Right" Margin="0,0,5,0">
+          <Grid Width="250" HorizontalAlignment="Right" Margin="0,0,5,0">
             <Label Content="Colors" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
-                <xctk:ColorPicker Name="domeColor1" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                <xctk:ColorPicker Name="domeColor2" Margin="47,0,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor3" Margin="94,0,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor4" Margin="141,0,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor5" Margin="0,25,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor6" Margin="47,25,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor7" Margin="94,25,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor8" Margin="141,25,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor9" Margin="0,50,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor10" Margin="47,50,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor11" Margin="94,50,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor12" Margin="141,50,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor13" Margin="0,75,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor14" Margin="47,75,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor15" Margin="94,75,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor16" Margin="141,75,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor17" Margin="0,100,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                <xctk:ColorPicker Name="domeColor18" Margin="47,100,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor19" Margin="94,100,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor20" Margin="141,100,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor21" Margin="0,125,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor22" Margin="47,125,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor23" Margin="94,125,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor24" Margin="141,125,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor25" Margin="0,150,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor26" Margin="47,150,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor27" Margin="94,150,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor28" Margin="141,150,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor29" Margin="0,175,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor30" Margin="47,175,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor31" Margin="94,175,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
-                <xctk:ColorPicker Name="domeColor32" Margin="141,175,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <Label Content="Start" HorizontalAlignment="Left" Margin="-4,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+                <Label Content="End" HorizontalAlignment="Left" Margin="42,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+                <Label Content="CC" HorizontalAlignment="Left" Margin="90,-6,0,6" FontSize="10" FontFamily="Segoe UI Semilight" />
+                <Label Content="Start" HorizontalAlignment="Left" Margin="119,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+                <Label Content="End" HorizontalAlignment="Left" Margin="165,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+                <Label Content="CC" HorizontalAlignment="Left" Margin="213,-6,0,6" FontSize="10" FontFamily="Segoe UI Semilight" Width="22" />
+                <xctk:ColorPicker Name="domeColor0_0" Margin="0,15,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                <xctk:ColorPicker Name="domeColor0_1" Margin="47,15,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC0" VerticalAlignment="Top" Margin="94,18,0,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor1_0" Margin="123,15,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor1_1" Margin="170,15,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC1" VerticalAlignment="Top" Margin="217,18,-5,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor2_0" Margin="0,40,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                <xctk:ColorPicker Name="domeColor2_1" Margin="47,40,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC2" VerticalAlignment="Top" Margin="94,43,0,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor3_0" Margin="123,40,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor3_1" Margin="170,40,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC3" VerticalAlignment="Top" Margin="217,43,-5,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor4_0" Margin="0,65,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                <xctk:ColorPicker Name="domeColor4_1" Margin="47,65,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC4" VerticalAlignment="Top" Margin="94,68,0,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor5_0" Margin="123,65,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor5_1" Margin="170,65,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC5" VerticalAlignment="Top" Margin="217,68,-5,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor6_0" Margin="0,90,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                <xctk:ColorPicker Name="domeColor6_1" Margin="47,90,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC6" VerticalAlignment="Top" Margin="94,93,0,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor7_0" Margin="123,90,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor7_1" Margin="170,90,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC7" VerticalAlignment="Top" Margin="217,93,-5,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor8_0" Margin="0,115,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                <xctk:ColorPicker Name="domeColor8_1" Margin="47,115,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC8" VerticalAlignment="Top" Margin="94,118,0,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor9_0" Margin="123,115,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor9_1" Margin="170,115,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC9" VerticalAlignment="Top" Margin="217,118,-5,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor10_0" Margin="0,140,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                <xctk:ColorPicker Name="domeColor10_1" Margin="47,140,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC10" VerticalAlignment="Top" Margin="94,143,0,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor11_0" Margin="123,140,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor11_1" Margin="170,140,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC11" VerticalAlignment="Top" Margin="217,143,-5,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor12_0" Margin="0,165,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                <xctk:ColorPicker Name="domeColor12_1" Margin="47,165,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC12" VerticalAlignment="Top" Margin="94,168,0,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor13_0" Margin="123,165,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor13_1" Margin="170,165,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC13" VerticalAlignment="Top" Margin="217,168,-5,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor14_0" Margin="0,190,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                <xctk:ColorPicker Name="domeColor14_1" Margin="47,190,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC14" VerticalAlignment="Top" Margin="94,193,0,0" IsChecked="False" />
+                <xctk:ColorPicker Name="domeColor15_0" Margin="123,190,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <xctk:ColorPicker Name="domeColor15_1" Margin="170,190,0,0" Width="40" HorizontalAlignment="Left" VerticalAlignment="Top"></xctk:ColorPicker>
+                <CheckBox x:Name="domeCC15" VerticalAlignment="Top" Margin="217,193,-5,0" IsChecked="False" />
               </Grid>
             </Border>
           </Grid>

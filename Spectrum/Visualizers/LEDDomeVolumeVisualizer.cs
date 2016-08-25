@@ -288,7 +288,7 @@ namespace Spectrum {
       } else {
         throw new Exception("unsupported value");
       }
-      return this.dome.GetGradientColor(
+      return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
         focusPos
@@ -308,7 +308,7 @@ namespace Spectrum {
       } else {
         throw new Exception("unsupported value");
       }
-      return this.dome.GetGradientColor(
+      return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
         focusPos
@@ -354,7 +354,7 @@ namespace Spectrum {
       } else {
         throw new Exception("unsupported value");
       }
-      return this.dome.GetGradientColor(
+      return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
         focusPos

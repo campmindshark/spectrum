@@ -343,6 +343,44 @@ namespace Spectrum.LEDs {
       );
     }
 
+    /**
+     * This method's different from GetSingleColor is that it uses an "enabled
+     * index", ie. "the nth color that is computer-enabled". Visualizers that
+     * are algorithmically driven should use this method, so that the user is
+     * able to decide which colors they are allowed to use.
+     */
+    public int GetSingleComputerColor(int colorIndex) {
+      return ScaleColor(
+        this.config.domeColorPalette.GetSingleComputerColor(colorIndex)
+      );
+    }
+
+    /**
+     * This method's difference from GetGradientColor is that it uses an
+     * "enabled index", ie. "the nth color that is computer-enabled".
+     * Visualizers that are algorithmically driven should use this method,so
+     * that the user is able to decide which colors they are allowed to use.
+     */
+    public int GetGradientComputerColor(
+      int colorIndex,
+      double pixelPos,
+      double focusPos
+    ) {
+      int? index = this.config.domeColorPalette.GetIndexOfEnabledIndex(
+        colorIndex
+      );
+      if (!index.HasValue) {
+        return 0x000000;
+      }
+      if (!this.config.domeColorPalette.colors[index.Value].IsGradient) {
+        return this.GetSingleColor(index.Value);
+      }
+      return ScaleColor(this.config.domeColorPalette.GetGradientColor(
+        index.Value,
+        pixelPos,
+        focusPos
+      ));
+    }
 
   }
 

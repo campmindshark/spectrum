@@ -92,17 +92,22 @@ namespace Spectrum.MIDI {
             this.activeProg,
             colorFromColorIndex[colorIndex]
           );
-          System.Diagnostics.Debug.WriteLine("set color " + colorIndex);
         } else {
           this.config.domeColorPalette.SetGradientColor(
             this.activeProg,
             colorFromColorIndex[this.curFirstColorIndex],
             colorFromColorIndex[colorIndex]
           );
-          System.Diagnostics.Debug.WriteLine("set gradient color " + this.curFirstColorIndex + ", " + colorIndex);
         }
       });
-
+      this.AddBinding(MidiCommandType.Knob, (index, val) => {
+        if (index < 112 || index >= 128) {
+          return;
+        }
+        var colorIndex = index - 112;
+        this.config.domeColorPalette.computerEnabledColors[colorIndex] =
+          val > 0.0;
+      });
       this.AddBinding(MidiCommandType.Knob, 1, val => this.config.domeMaxBrightness = val);
     }
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -15,6 +16,9 @@ namespace Spectrum.Base {
     // Public so XML serialization picks it up
     // Do not set directly!!
     public LEDColor[] colors = new LEDColor[16];
+    // Don't change the collection, but feel free to set values in it
+    public ComputerEnabledColors computerEnabledColors =
+      new ComputerEnabledColors();
 
     public event PropertyChangedEventHandler PropertyChanged;
 
@@ -24,6 +28,51 @@ namespace Spectrum.Base {
 
     public int GetGradientColor(int index, double pixelPos, double focusPos) {
       return this.colors[index].GradientColor(pixelPos, focusPos);
+    }
+
+    /**
+     * This method's different from GetSingleColor is that it uses an "enabled
+     * index", ie. "the nth color that is computer-enabled". Visualizers that
+     * are algorithmically driven should use this method, so that the user is
+     * able to decide which colors they are allowed to use.
+     */
+    public int GetSingleComputerColor(int enabledIndex) {
+      int? index = this.GetIndexOfEnabledIndex(enabledIndex);
+      if (!index.HasValue) {
+        return 0x000000;
+      }
+      return this.colors[index.Value].Color1;
+    }
+
+    /**
+     * This method's difference from GetGradientColor is that it uses an
+     * "enabled index", ie. "the nth color that is computer-enabled".
+     * Visualizers that are algorithmically driven should use this method,so
+     * that the user is able to decide which colors they are allowed to use.
+     */
+    public int GetGradientComputerColor(
+      int enabledIndex,
+      double pixelPos,
+      double focusPos
+    ) {
+      int? index = this.GetIndexOfEnabledIndex(enabledIndex);
+      if (!index.HasValue) {
+        return 0x000000;
+      }
+      return this.colors[index.Value].GradientColor(pixelPos, focusPos);
+    }
+
+    public int? GetIndexOfEnabledIndex(int enabledIndex) {
+      for (int i = 0; i < 16; i++) {
+        if (!this.computerEnabledColors[i] || this.colors[i] == null) {
+          continue;
+        }
+        if (enabledIndex == 0) {
+          return i;
+        }
+        enabledIndex--;
+      }
+      return null;
     }
 
     public void SetColor(int index, int color) {
@@ -43,6 +92,7 @@ namespace Spectrum.Base {
       );
     }
 
+    // This is how the UI binds to us
     [XmlIgnore]
     public int? this[int index, int whichColor] {
       get {
