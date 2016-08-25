@@ -160,6 +160,8 @@
                   <ComboBoxItem Content="0" IsSelected="True" />
                   <ComboBoxItem Content="1" />
                   <ComboBoxItem Content="2" />
+                  <ComboBoxItem Content="3" />
+                  <ComboBoxItem Content="4" />
                 </ComboBox>
               </Grid>
             </Border>
