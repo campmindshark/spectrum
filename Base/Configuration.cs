@@ -82,6 +82,9 @@ namespace Spectrum.Base {
     double domeMaxBrightness { get; set; }
     int domeVolumeAnimationSize { get; set; }
     LEDColorPalette domeColorPalette { get; set; }
+    int domeAutoFlashDelay { get; set; }
+
+    // This probably should not be here...
     BeatBroadcaster domeBeatBroadcaster { get; set; }
 
     // You might look at this and be disgusted. Yes, I am kinda violating the

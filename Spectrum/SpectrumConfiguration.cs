@@ -67,6 +67,8 @@ namespace Spectrum {
     public int domeVolumeAnimationSize { get; set; } = 2;
     public LEDColorPalette domeColorPalette { get; set; } =
       new LEDColorPalette();
+    public int domeAutoFlashDelay { get; set; } = 100;
+
     // This probably should not be here...
     [XmlIgnore, DoNotNotify]
     public BeatBroadcaster domeBeatBroadcaster { get; set; } =

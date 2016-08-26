@@ -110,7 +110,7 @@ namespace Spectrum.MIDI {
       });
 
       // Tap tempo
-      this.AddBinding(MidiCommandType.Note, 0, val => {
+      this.AddBinding(MidiCommandType.Note, 32, val => {
         if (val > 0.0) {
           this.config.domeBeatBroadcaster.AddTap();
         }

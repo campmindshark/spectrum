@@ -9,8 +9,16 @@ using Un4seen.BassWasapi;
 using Un4seen.Bass.Misc;
 using System.Diagnostics;
 using Un4seen.Bass.AddOn.Mix;
+using System.Collections.Concurrent;
 
 namespace Spectrum.Audio {
+
+  public enum AudioDetectorType : byte { Kick, Snare }
+
+  public class AudioEvent {
+    public AudioDetectorType type;
+    public double significance;
+  }
 
   /**
    * There are two ways to use AudioInput. In one way, AudioInput will
@@ -23,7 +31,22 @@ namespace Spectrum.Audio {
    * either way, you'll need to set the Active property to true in order to get
    * updates. Setting it to false will disable any running threads.
    */
-   public class AudioInput : Input {
+  public class AudioInput : Input {
+
+    private static Dictionary<AudioDetectorType, double[]> bins =
+      new Dictionary<AudioDetectorType, double[]>() {
+        { AudioDetectorType.Kick, new double[] { 40, 50 } },
+        { AudioDetectorType.Snare, new double[] { 1500, 2500 } },
+      };
+
+    private static bool WindowContains(double[] window, int index) {
+      return (FreqToFFTBin(window[0]) <= index
+        && FreqToFFTBin(window[1]) >= index);
+    }
+
+    private static int FreqToFFTBin(double freq) {
+      return (int)(freq / 2.69);
+    }
 
     private Configuration config;
 
@@ -34,14 +57,24 @@ namespace Spectrum.Audio {
     // These values get continuously updated by the internal thread
     public float[] AudioData { get; private set; } = new float[8192];
     public float Volume { get; private set; } = 0.0f;
+
+    // We loop around the history array based on this offset
+    private int currentHistoryOffset = 0;
+
     private Timer analysisTimer;
     private Stopwatch stopwatch = new Stopwatch();
     private int handle;
     private int outstr;
     private int timeInterval = 20;
     private BPMCounter bpmCounter;
-        private WASAPIPROC outProcess;
+    private WASAPIPROC outProcess;
     public double BPM { get; private set; } = 0.0;
+
+    private static int historyLength = 16;
+    private Dictionary<AudioDetectorType, double[]> energyHistory;
+    private ConcurrentDictionary<AudioDetectorType, AudioEvent> eventBuffer;
+    private List<AudioEvent> eventsSinceLastTick;
+    private Dictionary<AudioDetectorType, int> lastEventTime;
 
     public AudioInput(Configuration config) {
       this.config = config;
@@ -53,7 +86,17 @@ namespace Spectrum.Audio {
       // We declare the variable as a member to avoid garbage collection.
       this.process = new WASAPIPROC(this.NoOp);
       this.StreamPoc = this.streamproc;
-            outProcess = new WASAPIPROC(outWasapiProc);
+      this.outProcess = new WASAPIPROC(outWasapiProc);
+
+      this.energyHistory = new Dictionary<AudioDetectorType, double[]>();
+      this.eventBuffer =
+        new ConcurrentDictionary<AudioDetectorType, AudioEvent>();
+      this.eventsSinceLastTick = new List<AudioEvent>();
+      this.lastEventTime = new Dictionary<AudioDetectorType, int>();
+      foreach (var key in bins.Keys) {
+        this.energyHistory[key] = new double[historyLength];
+        this.lastEventTime[key] = 0;
+      }
     }
 
     /**
@@ -167,16 +210,15 @@ namespace Spectrum.Audio {
       bpmCounter = new BPMCounter(timeInterval, 44100);
       bpmCounter.BPMHistorySize = 50;
       analysisTimer = new Timer(timerCallback, null, 0, timeInterval);
-            BassWasapi.BASS_WASAPI_Init(12, 44100, 0, 0, 0, 0, outProcess, IntPtr.Zero);
-            BassWasapi.BASS_WASAPI_SetDevice(12);
-            outstr = BassMix.BASS_Mixer_StreamCreate(44100, 2, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_FLOAT);
-            BassMix.BASS_Mixer_StreamAddChannel(outstr, handle, 0);
-            BassWasapi.BASS_WASAPI_Start();
-        }
+      BassWasapi.BASS_WASAPI_Init(12, 44100, 0, 0, 0, 0, outProcess, IntPtr.Zero);
+      BassWasapi.BASS_WASAPI_SetDevice(12);
+      outstr = BassMix.BASS_Mixer_StreamCreate(44100, 2, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_FLOAT);
+      BassMix.BASS_Mixer_StreamAddChannel(outstr, handle, 0);
+      BassWasapi.BASS_WASAPI_Start();
+    }
 
     private void timerCallback(object o) {
-      if (bpmCounter.ProcessAudio(handle, true)) { 
-        //System.Diagnostics.Debug.WriteLine(stopwatch.ElapsedMilliseconds);
+      if (bpmCounter.ProcessAudio(handle, true)) {
         stopwatch.Restart();
       }
     }
@@ -203,8 +245,87 @@ namespace Spectrum.Audio {
         this.AudioData = tempAudioData;
         this.Volume = tempVolume;
         this.BPM = bpmCounter.BPM;
-        //System.Diagnostics.Debug.WriteLine(this.BPM);
+        this.UpdateEnergyHistory();
       }
+    }
+
+    private void UpdateEnergyHistory() {
+      var energyLevels = new Dictionary<AudioDetectorType, double>();
+      foreach (var key in bins.Keys) {
+        energyLevels[key] = 0.0;
+      }
+      for (int i = 1; i < this.AudioData.Length / 2; i++) {
+        foreach (var pair in bins) {
+          AudioDetectorType type = pair.Key;
+          double[] window = pair.Value;
+          if (WindowContains(window, i)) {
+            energyLevels[type] += this.AudioData[i] * this.AudioData[i];
+          }
+        }
+      }
+
+      foreach (var type in bins.Keys) {
+        double current = energyLevels[type];
+        double[] history = this.energyHistory[type];
+        double previous = history[
+          (this.currentHistoryOffset + historyLength - 1) % historyLength
+        ];
+        double change = current - previous;
+        double avg = history.Average();
+        double ssd = history.Select(val => (val - avg) * (val - avg)).Sum();
+        double sd = Math.Sqrt(ssd / historyLength);
+        double stdsFromAverage = (current - avg) / sd;
+
+        if (type == AudioDetectorType.Kick) {
+          if (
+            stdsFromAverage > this.config.kickT &&
+            avg < this.config.kickQ &&
+            current > .001
+          ) {
+            double significance = Math.Atan(
+              stdsFromAverage / (this.config.kickT + 0.001)
+            ) * 2 / Math.PI;
+            this.UpdateEvent(type, significance);
+          }
+        } else if (type == AudioDetectorType.Snare) {
+          if (
+            stdsFromAverage > this.config.snareT &&
+            avg < this.config.snareQ &&
+            current > .001
+          ) {
+            double significance = Math.Atan(
+              stdsFromAverage / (this.config.snareT + 0.001)
+            ) * 2 / Math.PI;
+            this.UpdateEvent(type, significance);
+          }
+        }
+      }
+
+      foreach (var type in bins.Keys) {
+        this.energyHistory[type][this.currentHistoryOffset] =
+          energyLevels[type];
+      }
+      this.currentHistoryOffset = (this.currentHistoryOffset + 1)
+        % historyLength;
+    }
+
+    private void UpdateEvent(AudioDetectorType type, double significance) {
+      this.eventBuffer.AddOrUpdate(
+        type,
+        audioDetectorType => {
+          return new AudioEvent() {
+            type = audioDetectorType,
+            significance = significance,
+          };
+        },
+        (audioDetectorType, existingAudioEvent) => {
+          existingAudioEvent.significance = Math.Max(
+            existingAudioEvent.significance,
+            significance
+          );
+          return existingAudioEvent;
+        }
+      );
     }
 
     private void AudioProcessingThread() {
@@ -222,6 +343,20 @@ namespace Spectrum.Audio {
       if (!this.config.audioInputInSeparateThread) {
         this.Update();
       }
+
+      long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+      this.eventsSinceLastTick = new List<AudioEvent>(
+        bins.Keys.Select(type => {
+          var earliestNextEventTime =
+            this.lastEventTime[type] + this.config.domeAutoFlashDelay;
+          if (timestamp < earliestNextEventTime) {
+            return null;
+          }
+          AudioEvent audioEvent;
+          this.eventBuffer.TryRemove(type, out audioEvent);
+          return audioEvent;
+        }).Where(audioEvent => audioEvent != null)
+      );
     }
 
     public static int DeviceCount {
@@ -239,14 +374,20 @@ namespace Spectrum.Audio {
       var device = BassWasapi.BASS_WASAPI_GetDeviceInfo(deviceIndex);
       return device.name;
     }
+
     private int streamproc(int handle, IntPtr buffer, int length, IntPtr user) {
       BassWasapi.BASS_WASAPI_GetData(buffer, length | (int)BASSData.BASS_DATA_FLOAT);
       return length;
     }
-        private int outWasapiProc(IntPtr buffer, int length, IntPtr user)
-        {
-            Debug.WriteLine(length);
-            return Bass.BASS_ChannelGetData(outstr, buffer, length);
-        }
+
+    private int outWasapiProc(IntPtr buffer, int length, IntPtr user) {
+      return Bass.BASS_ChannelGetData(outstr, buffer, length);
     }
+
+    public List<AudioEvent> GetEventsSinceLastTick() {
+      return this.eventsSinceLastTick;
+    }
+
+  }
+
 }

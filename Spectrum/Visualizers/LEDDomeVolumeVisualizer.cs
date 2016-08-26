@@ -131,6 +131,8 @@ namespace Spectrum {
         double scaled = (this.audio.Volume - startRange) /
           (endRange - startRange);
         scaled = Math.Max(Math.Min(scaled, 1.0), 0.0);
+        startRange = Math.Min(startRange / this.audio.Volume, 1.0);
+        endRange = Math.Min(endRange / this.audio.Volume, 1.0);
 
         foreach (Strut strut in outwardSegment.GetStruts()) {
           this.UpdateStrut(strut, scaled, startRange, endRange);
@@ -149,7 +151,7 @@ namespace Spectrum {
             double gradientEndPos = gradientStartPos + gradientStep;
             this.UpdateStrut(
               strut,
-              scaled >= 1.0 ? 1.0 : 0.0,
+              scaled == 1.0 ? 1.0 : 0.0,
               gradientStartPos,
               gradientEndPos
             );
@@ -211,10 +213,10 @@ namespace Spectrum {
     ) {
       double step = (endLitRange - startLitRange) / (strut.Length * percentageLit);
       for (int i = 0; i < strut.Length; i++) {
-        int ledIndex = strut.Reversed ? strut.Length - i : i;
-        double gradientPos = startLitRange + ledIndex * step;
+        double gradientPos =
+          strut.GetGradientPos(percentageLit, startLitRange, endLitRange, i);
         int color;
-        if (gradientPos <= 1.0) {
+        if (gradientPos != -1.0) {
           color = this.ColorFromPart(strut.Index, gradientPos);
           //color = this.ColorFromIndex(strut.Index, gradientPos);
           //color = this.ColorFromRandom(strut.Index);
@@ -246,7 +248,8 @@ namespace Spectrum {
       return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
-        this.config.domeBeatBroadcaster.ProgressThroughMeasure
+        this.config.domeBeatBroadcaster.ProgressThroughMeasure,
+        false
       );
     }
 
@@ -266,7 +269,8 @@ namespace Spectrum {
       return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
-        this.config.domeBeatBroadcaster.ProgressThroughMeasure
+        this.config.domeBeatBroadcaster.ProgressThroughMeasure,
+        false
       );
     }
 
@@ -308,7 +312,8 @@ namespace Spectrum {
       return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
-        this.config.domeBeatBroadcaster.ProgressThroughMeasure
+        this.config.domeBeatBroadcaster.ProgressThroughMeasure,
+        false
       );
     }
 

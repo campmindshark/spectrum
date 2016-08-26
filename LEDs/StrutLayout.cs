@@ -53,6 +53,22 @@ namespace Spectrum.LEDs {
       }
     }
 
+    /**
+     * Returning -1.0 means that the pixel in question is off
+     */
+    public double GetGradientPos(
+      double percentageLit,
+      double startLitRange,
+      double endLitRange,
+      int led
+    ) {
+      int ledIndex = this.Reversed ? this.Length - led : led;
+      double step = (endLitRange - startLitRange)
+        / (this.Length * percentageLit);
+      double gradientPos = startLitRange + ledIndex * step;
+      return gradientPos <= 1.0 ? gradientPos : -1.0;
+    }
+
   }
 
   public class StrutLayoutSegment {

@@ -143,6 +143,7 @@ namespace Spectrum {
       this.Bind("domeMaxBrightness", this.domeBrightnessSlider, Slider.ValueProperty);
       this.Bind("domeMaxBrightness", this.domeBrightnessLabel, Label.ContentProperty);
       this.Bind("domeVolumeAnimationSize", this.domeVolumeAnimationSize, ComboBox.SelectedIndexProperty);
+      this.Bind("domeAutoFlashDelay", this.domeAutoFlashDelay, TextBox.TextProperty);
       var colorConverter = new ColorConverter();
       this.Bind("[0,0]", this.domeColor0_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
       this.Bind("[0,1]", this.domeColor0_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);

@@ -92,6 +92,7 @@
     <Compile Include="DomeSimulatorWindow.xaml.cs">
       <DependentUpon>DomeSimulatorWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Visualizers\LEDDomeFlashVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeStrandTestVisualizer.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>

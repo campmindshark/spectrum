@@ -23,11 +23,22 @@ namespace Spectrum.Base {
     public event PropertyChangedEventHandler PropertyChanged;
 
     public int GetSingleColor(int index) {
+      if (this.colors[index] == null) {
+        return 0x000000;
+      }
       return this.colors[index].Color1;
     }
 
-    public int GetGradientColor(int index, double pixelPos, double focusPos) {
-      return this.colors[index].GradientColor(pixelPos, focusPos);
+    public int GetGradientColor(
+      int index,
+      double pixelPos,
+      double focusPos,
+      bool wrap
+    ) {
+      if (this.colors[index] == null) {
+        return 0x000000;
+      }
+      return this.colors[index].GradientColor(pixelPos, focusPos, wrap);
     }
 
     /**
@@ -38,7 +49,7 @@ namespace Spectrum.Base {
      */
     public int GetSingleComputerColor(int enabledIndex) {
       int? index = this.GetIndexOfEnabledIndex(enabledIndex);
-      if (!index.HasValue) {
+      if (!index.HasValue || this.colors[index.Value] == null) {
         return 0x000000;
       }
       return this.colors[index.Value].Color1;
@@ -53,13 +64,14 @@ namespace Spectrum.Base {
     public int GetGradientComputerColor(
       int enabledIndex,
       double pixelPos,
-      double focusPos
+      double focusPos,
+      bool wrap
     ) {
       int? index = this.GetIndexOfEnabledIndex(enabledIndex);
-      if (!index.HasValue) {
+      if (!index.HasValue || this.colors[index.Value] == null) {
         return 0x000000;
       }
-      return this.colors[index.Value].GradientColor(pixelPos, focusPos);
+      return this.colors[index.Value].GradientColor(pixelPos, focusPos, wrap);
     }
 
     public int? GetIndexOfEnabledIndex(int enabledIndex) {
@@ -186,12 +198,16 @@ namespace Spectrum.Base {
       }
     }
 
-    public int GradientColor(double pixelPos, double focusPos) {
-      // Distance given that 1.0 wraps to 0.0
-      double distance = Math.Min(
-        Math.Abs(pixelPos - focusPos),
-        1 - Math.Abs(pixelPos - focusPos)
-      );
+    public int GradientColor(double pixelPos, double focusPos, bool wrap) {
+      double distance;
+      if (wrap) {
+        distance = Math.Min(
+          Math.Abs(pixelPos - focusPos),
+          1 - Math.Abs(pixelPos - focusPos)
+        );
+      } else {
+        distance = Math.Abs(pixelPos - focusPos);
+      }
       byte redA = (byte)(this.color1 >> 16);
       byte greenA = (byte)(this.color1 >> 8);
       byte blueA = (byte)this.color1;
@@ -202,6 +218,15 @@ namespace Spectrum.Base {
       byte blendedGreen = (byte)((distance * greenA) + (1 - distance) * greenB);
       byte blendedBlue = (byte)((distance * blueA) + (1 - distance) * blueB);
       return (blendedRed << 16) | (blendedGreen << 8) | blendedBlue;
+    }
+
+    public static int ScaleColor(int color, double scale) {
+      byte red = (byte)(color >> 16);
+      byte green = (byte)(color >> 8);
+      byte blue = (byte)color;
+      return (int)(red * scale) << 16
+        | (int)(green * scale) << 8
+        | (int)(blue * scale);
     }
 
   }

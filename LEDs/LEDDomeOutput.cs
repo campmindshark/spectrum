@@ -142,13 +142,12 @@ namespace Spectrum.LEDs {
     private SimpleTeensyAPI[] teensies;
     private Configuration config;
     private List<Visualizer> visualizers;
-    private HashSet<int> availableStruts;
-    private LEDColorPalette palette;
+    private HashSet<int> reservedStruts;
 
     public LEDDomeOutput(Configuration config) {
       this.config = config;
       this.visualizers = new List<Visualizer>();
-      this.availableStruts = new HashSet<int>();
+      this.reservedStruts = new HashSet<int>();
       bool domeEnabled = this.config.domeEnabled;
       lock (this.visualizers) {
         if (domeEnabled) {
@@ -282,21 +281,21 @@ namespace Spectrum.LEDs {
     }
 
     public void ReserveStrut(int strutIndex) {
-      if (this.availableStruts.Contains(strutIndex)) {
+      if (this.reservedStruts.Contains(strutIndex)) {
         throw new Exception("User attempted to reserve unavailable strut");
       }
-      this.availableStruts.Add(strutIndex);
+      this.reservedStruts.Add(strutIndex);
     }
 
     public void ReleaseStrut(int strutIndex) {
-      if (!this.availableStruts.Contains(strutIndex)) {
+      if (!this.reservedStruts.Contains(strutIndex)) {
         throw new Exception("User attempted to release available strut");
       }
-      this.availableStruts.Remove(strutIndex);
+      this.reservedStruts.Remove(strutIndex);
     }
 
-    public HashSet<int> AvailableStruts() {
-      return this.availableStruts;
+    public HashSet<int> ReservedStruts() {
+      return this.reservedStruts;
     }
 
     public static int FindStrutIndex(int teensyIndex, int teensyStrutIndex) {
@@ -321,25 +320,33 @@ namespace Spectrum.LEDs {
       return strutLengths[teensyStrutOrder[strutPosition.Item2]];
     }
 
-    private int ScaleColor(int color) {
-      byte red = (byte)(color >> 16);
-      byte green = (byte)(color >> 8);
-      byte blue = (byte)color;
-      return (int)(red * this.config.domeMaxBrightness) << 16
-        | (int)(green * this.config.domeMaxBrightness) << 8
-        | (int)(blue * this.config.domeMaxBrightness);
-    }
-
     public int GetSingleColor(int index) {
-      return ScaleColor(this.config.domeColorPalette.GetSingleColor(index));
+      return LEDColor.ScaleColor(
+        this.config.domeColorPalette.GetSingleColor(index),
+        this.config.domeMaxBrightness
+      );
     }
 
-    public int GetGradientColor(int index, double pixelPos, double focusPos) {
+    public int GetGradientColor(
+      int index,
+      double pixelPos,
+      double focusPos,
+      bool wrap
+    ) {
+      if (this.config.domeColorPalette.colors[index] == null) {
+        return 0x000000;
+      }
       if (!this.config.domeColorPalette.colors[index].IsGradient) {
         return GetSingleColor(index);
       }
-      return ScaleColor(
-        this.config.domeColorPalette.GetGradientColor(index, pixelPos, focusPos)
+      return LEDColor.ScaleColor(
+        this.config.domeColorPalette.GetGradientColor(
+          index,
+          pixelPos,
+          focusPos,
+          wrap
+        ),
+        this.config.domeMaxBrightness
       );
     }
 
@@ -350,8 +357,9 @@ namespace Spectrum.LEDs {
      * able to decide which colors they are allowed to use.
      */
     public int GetSingleComputerColor(int colorIndex) {
-      return ScaleColor(
-        this.config.domeColorPalette.GetSingleComputerColor(colorIndex)
+      return LEDColor.ScaleColor(
+        this.config.domeColorPalette.GetSingleComputerColor(colorIndex),
+        this.config.domeMaxBrightness
       );
     }
 
@@ -364,22 +372,30 @@ namespace Spectrum.LEDs {
     public int GetGradientComputerColor(
       int colorIndex,
       double pixelPos,
-      double focusPos
+      double focusPos,
+      bool wrap
     ) {
       int? index = this.config.domeColorPalette.GetIndexOfEnabledIndex(
         colorIndex
       );
-      if (!index.HasValue) {
+      if (
+        !index.HasValue ||
+        this.config.domeColorPalette.colors[index.Value] == null
+      ) {
         return 0x000000;
       }
       if (!this.config.domeColorPalette.colors[index.Value].IsGradient) {
         return this.GetSingleColor(index.Value);
       }
-      return ScaleColor(this.config.domeColorPalette.GetGradientColor(
-        index.Value,
-        pixelPos,
-        focusPos
-      ));
+      return LEDColor.ScaleColor(
+        this.config.domeColorPalette.GetGradientColor(
+          index.Value,
+          pixelPos,
+          focusPos,
+          wrap
+        ),
+        this.config.domeMaxBrightness
+      );
     }
 
   }

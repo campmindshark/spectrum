@@ -15,13 +15,19 @@ namespace Spectrum.Base {
 
     public double ProgressThroughMeasure {
       get {
-        if (startingTime == -1 || measureLength == -1) {
+        if (this.startingTime == -1 || this.measureLength == -1) {
           return 0.0;
         }
         long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-        int distance = (int)(timestamp - startingTime);
-        int progressThroughMeasure = distance % measureLength;
-        return (double)progressThroughMeasure / measureLength;
+        int distance = (int)(timestamp - this.startingTime);
+        int progressThroughMeasure = distance % this.measureLength;
+        return (double)progressThroughMeasure / this.measureLength;
+      }
+    }
+
+    public int MeasureLength {
+      get {
+        return this.measureLength;
       }
     }
 

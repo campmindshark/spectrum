@@ -75,6 +75,12 @@ namespace Spectrum {
         audio,
         dome
       ));
+      this.visualizers.Add(new LEDDomeFlashVisualizer(
+        this.config,
+        audio,
+        midi,
+        dome
+      ));
     }
 
     private bool enabled;
