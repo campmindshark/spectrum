@@ -174,8 +174,6 @@ namespace Spectrum {
     private List<Animation> activeAnimations;
     private Dictionary<int, Animation> padsToLastAnimation;
 
-    private MidiCommand[] commandsSinceLastTick;
-
     private Random rand;
     public long lastUserAnimationCreated;
 

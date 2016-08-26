@@ -249,7 +249,7 @@ namespace Spectrum {
         colorIndex,
         pixelPos,
         this.config.domeBeatBroadcaster.ProgressThroughMeasure,
-        false
+        true
       );
     }
 
@@ -270,7 +270,7 @@ namespace Spectrum {
         colorIndex,
         pixelPos,
         this.config.domeBeatBroadcaster.ProgressThroughMeasure,
-        false
+        true
       );
     }
 
@@ -313,7 +313,7 @@ namespace Spectrum {
         colorIndex,
         pixelPos,
         this.config.domeBeatBroadcaster.ProgressThroughMeasure,
-        false
+        true
       );
     }
 

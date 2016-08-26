@@ -70,11 +70,11 @@ namespace Spectrum.Audio {
     private WASAPIPROC outProcess;
     public double BPM { get; private set; } = 0.0;
 
-    private static int historyLength = 16;
+    private static int historyLength = 32;
     private Dictionary<AudioDetectorType, double[]> energyHistory;
     private ConcurrentDictionary<AudioDetectorType, AudioEvent> eventBuffer;
     private List<AudioEvent> eventsSinceLastTick;
-    private Dictionary<AudioDetectorType, int> lastEventTime;
+    private Dictionary<AudioDetectorType, long> lastEventTime;
 
     public AudioInput(Configuration config) {
       this.config = config;
@@ -92,7 +92,7 @@ namespace Spectrum.Audio {
       this.eventBuffer =
         new ConcurrentDictionary<AudioDetectorType, AudioEvent>();
       this.eventsSinceLastTick = new List<AudioEvent>();
-      this.lastEventTime = new Dictionary<AudioDetectorType, int>();
+      this.lastEventTime = new Dictionary<AudioDetectorType, long>();
       foreach (var key in bins.Keys) {
         this.energyHistory[key] = new double[historyLength];
         this.lastEventTime[key] = 0;
@@ -272,12 +272,14 @@ namespace Spectrum.Audio {
         ];
         double change = current - previous;
         double avg = history.Average();
+        double max = history.Max();
         double ssd = history.Select(val => (val - avg) * (val - avg)).Sum();
         double sd = Math.Sqrt(ssd / historyLength);
         double stdsFromAverage = (current - avg) / sd;
 
         if (type == AudioDetectorType.Kick) {
           if (
+            current > max &&
             stdsFromAverage > this.config.kickT &&
             avg < this.config.kickQ &&
             current > .001
@@ -289,6 +291,7 @@ namespace Spectrum.Audio {
           }
         } else if (type == AudioDetectorType.Snare) {
           if (
+            current > max &&
             stdsFromAverage > this.config.snareT &&
             avg < this.config.snareQ &&
             current > .001
@@ -354,6 +357,9 @@ namespace Spectrum.Audio {
           }
           AudioEvent audioEvent;
           this.eventBuffer.TryRemove(type, out audioEvent);
+          if (audioEvent != null) {
+            this.lastEventTime[type] = timestamp;
+          }
           return audioEvent;
         }).Where(audioEvent => audioEvent != null)
       );
