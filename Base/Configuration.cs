@@ -80,9 +80,13 @@ namespace Spectrum.Base {
     string domeTeensyUSBPort4 { get; set; }
     string domeTeensyUSBPort5 { get; set; }
     double domeMaxBrightness { get; set; }
+    double domeBrightness { get; set; }
     int domeVolumeAnimationSize { get; set; }
     LEDColorPalette domeColorPalette { get; set; }
     int domeAutoFlashDelay { get; set; }
+    double domeVolumeRotationSpeed { get; set; }
+    double domeGradientSpeed { get; set; }
+    int domeSkipLEDs { get; set; }
 
     // This probably should not be here...
     BeatBroadcaster domeBeatBroadcaster { get; set; }

@@ -140,8 +140,10 @@ namespace Spectrum {
       this.Bind("ledBoardBrightness", this.ledBoardBrightnessLabel, Label.ContentProperty);
       this.Bind("domeEnabled", this.domeEnabled, CheckBox.IsCheckedProperty);
       this.Bind("domeSimulationEnabled", this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("domeMaxBrightness", this.domeBrightnessSlider, Slider.ValueProperty);
-      this.Bind("domeMaxBrightness", this.domeBrightnessLabel, Label.ContentProperty);
+      this.Bind("domeMaxBrightness", this.domeMaxBrightnessSlider, Slider.ValueProperty);
+      this.Bind("domeMaxBrightness", this.domeMaxBrightnessLabel, Label.ContentProperty);
+      this.Bind("domeBrightness", this.domeBrightnessSlider, Slider.ValueProperty);
+      this.Bind("domeBrightness", this.domeBrightnessLabel, Label.ContentProperty);
       this.Bind("domeVolumeAnimationSize", this.domeVolumeAnimationSize, ComboBox.SelectedIndexProperty);
       this.Bind("domeAutoFlashDelay", this.domeAutoFlashDelay, TextBox.TextProperty);
       var colorConverter = new ColorConverter();

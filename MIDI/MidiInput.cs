@@ -120,8 +120,12 @@ namespace Spectrum.MIDI {
         }
       });
 
-      // Miscellaneous
-      this.AddBinding(MidiCommandType.Knob, 1, val => this.config.domeMaxBrightness = val);
+      this.AddBinding(MidiCommandType.Knob, 0, val => this.config.domeBrightness = val);
+      this.AddBinding(MidiCommandType.Knob, 1, val => this.config.domeVolumeAnimationSize = DiscretizeKnob(val, 5));
+      this.AddBinding(MidiCommandType.Knob, 2, val => this.config.domeVolumeRotationSpeed = DiscretizeLogarithmicKnob(val, 6, 0.125, true));
+      this.AddBinding(MidiCommandType.Knob, 3, val => this.config.kickT = ContinuousKnob(val, 0.0, 4.0));
+      this.AddBinding(MidiCommandType.Knob, 3, val => this.config.snareT = ContinuousKnob(val, 0.0, 4.0));
+      this.AddBinding(MidiCommandType.Knob, 4, val => this.config.domeGradientSpeed = DiscretizeLogarithmicKnob(val, 6, 0.125, true));
     }
 
     private void AddBinding(
@@ -151,6 +155,47 @@ namespace Spectrum.MIDI {
         this.bindings.Add(binding.key, new List<Binding>());
       }
       this.bindings[binding.key].Add(binding);
+    }
+
+    private static int DiscretizeKnob(double value, int numPossibleValues) {
+      // Start and end get a bit more space
+      double step = 1.0 / (numPossibleValues + 2);
+      int numSteps = (int)(value / step);
+      if (numSteps == 0) {
+        return 0;
+      }
+      numSteps--;
+      if (numSteps >= numPossibleValues) {
+        return numPossibleValues - 1;
+      }
+      return numSteps;
+    }
+ 
+    /**
+     * If includeZero is on, the first value is 0.0. numPossibleValues does not
+     * include a hypothetical zero in its count.
+     */
+    private static double DiscretizeLogarithmicKnob(
+      double value,
+      int numPossibleValues,
+      double startingValue,
+      bool includeZero
+    ) {
+      if (includeZero) {
+        numPossibleValues++;
+      }
+      int index = DiscretizeKnob(value, numPossibleValues);
+      if (includeZero) {
+        if (index == 0) {
+          return 0.0;
+        }
+        index--;
+      }
+      return Math.Pow(2.0, index) * startingValue;
+    }
+
+    private static double ContinuousKnob(double value, double from, double to) {
+      return from + (to - from) * value;
     }
 
     private bool active;

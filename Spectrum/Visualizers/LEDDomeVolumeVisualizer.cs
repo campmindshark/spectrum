@@ -187,8 +187,10 @@ namespace Spectrum {
     }
 
     private void UpdateCenter() {
-      int newCenterOffset =
-        (int)(this.config.domeBeatBroadcaster.ProgressThroughMeasure * 4);
+      int newCenterOffset = (int)(
+        this.config.domeBeatBroadcaster.ProgressThroughBeat(
+          this.config.domeVolumeRotationSpeed
+        ) * 4);
       if (newCenterOffset == this.centerOffset) {
         return;
       }
@@ -248,7 +250,9 @@ namespace Spectrum {
       return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
-        this.config.domeBeatBroadcaster.ProgressThroughMeasure,
+        this.config.domeBeatBroadcaster.ProgressThroughBeat(
+          this.config.domeGradientSpeed
+        ),
         true
       );
     }
@@ -269,7 +273,9 @@ namespace Spectrum {
       return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
-        this.config.domeBeatBroadcaster.ProgressThroughMeasure,
+        this.config.domeBeatBroadcaster.ProgressThroughBeat(
+          this.config.domeGradientSpeed
+        ),
         true
       );
     }
@@ -284,7 +290,10 @@ namespace Spectrum {
     }
 
     private int RandomColor() {
-      int brightnessByte = (int)(0xFF * this.config.domeMaxBrightness);
+      int brightnessByte = (int)(
+        0xFF * this.config.domeMaxBrightness *
+        this.config.domeBrightness
+      );
       int color = 0;
       for (int i = 0; i < 3; i++) {
         color |= (int)(random.NextDouble() * brightnessByte) << (i * 8);
@@ -312,7 +321,9 @@ namespace Spectrum {
       return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
-        this.config.domeBeatBroadcaster.ProgressThroughMeasure,
+        this.config.domeBeatBroadcaster.ProgressThroughBeat(
+          this.config.domeGradientSpeed
+        ),
         true
       );
     }

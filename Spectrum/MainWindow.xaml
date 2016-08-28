@@ -148,12 +148,15 @@
                 <ComboBox x:Name="domeTeensy5" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,68,0,0" Width="100" SelectionChanged="DomePortChanged" />
                 <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Right" Style="{StaticResource HyperlinkButton}" Margin="0,71,4,0" FontStyle="Italic" Click="RefreshDomePorts" />
                 <Label Content="Max brightness" HorizontalAlignment="Left" Padding="0" Margin="0,93,0,0" />
-                <Slider x:Name="domeBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,93,0,0" VerticalAlignment="Top" Height="20" Width="170" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                <Label x:Name="domeBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="265,93,0,0" Padding="0" ContentStringFormat="F3" />
+                <Slider x:Name="domeMaxBrightnessSlider" Value="0.5" HorizontalAlignment="Left" Margin="90,93,0,0" VerticalAlignment="Top" Height="20" Width="170" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="domeMaxBrightnessLabel" Content="0.500" HorizontalAlignment="Left" Margin="265,93,0,0" Padding="0" ContentStringFormat="F3" />
+                <Label Content="Brightness" HorizontalAlignment="Left" Padding="0" Margin="0,118,0,0" />
+                <Slider x:Name="domeBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,118,0,0" VerticalAlignment="Top" Height="20" Width="170" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="domeBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="265,118,0,0" Padding="0" ContentStringFormat="F3" />
               </Grid>
             </Border>
-            <Label Content="Volume animation" HorizontalAlignment="Left" Margin="4,146,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,166,0,0" Padding="5" VerticalAlignment="Top">
+            <Label Content="Volume animation" HorizontalAlignment="Left" Margin="4,171,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,191,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <Label Content="Animation size" Padding="0" />
                 <ComboBox x:Name="domeVolumeAnimationSize" HorizontalAlignment="Left" VerticalAlignment="Top" Width="120" Margin="94,0,0,0">
@@ -165,8 +168,8 @@
                 </ComboBox>
               </Grid>
             </Border>
-            <Label Content="Flasher" HorizontalAlignment="Left" Margin="4,201,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,221,0,0" Padding="5" VerticalAlignment="Top">
+            <Label Content="Flasher" HorizontalAlignment="Left" Margin="4,226,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,246,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <Label Content="Auto flash delay" Padding="0" />
                 <TextBox x:Name="domeAutoFlashDelay" Margin="94,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="202" />

@@ -67,8 +67,10 @@ namespace Spectrum {
         }
 
         int color = 0;
-        int brightnessByte =
-          (int)(0xFF * this.config.domeMaxBrightness * command.value);
+        int brightnessByte = (int)(
+          0xFF * this.config.domeMaxBrightness *
+          this.config.domeBrightness * command.value
+        );
         if (command.index == 48) {
           color = brightnessByte << 16;
         } else if (command.index == 49) {

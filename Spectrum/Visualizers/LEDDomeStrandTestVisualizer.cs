@@ -48,7 +48,10 @@ namespace Spectrum {
       }
       this.stopwatch.Restart();
       this.lastIndex++;
-      byte brightnessByte = (byte)(0xFF * this.config.domeMaxBrightness);
+      byte brightnessByte = (byte)(
+        0xFF * this.config.domeMaxBrightness *
+        this.config.domeBrightness
+      );
       int whiteColor = brightnessByte << 16
         | brightnessByte << 8
         | brightnessByte;

@@ -323,7 +323,7 @@ namespace Spectrum.LEDs {
     public int GetSingleColor(int index) {
       return LEDColor.ScaleColor(
         this.config.domeColorPalette.GetSingleColor(index),
-        this.config.domeMaxBrightness
+        this.config.domeMaxBrightness * this.config.domeBrightness
       );
     }
 
@@ -346,7 +346,7 @@ namespace Spectrum.LEDs {
           focusPos,
           wrap
         ),
-        this.config.domeMaxBrightness
+        this.config.domeMaxBrightness * this.config.domeBrightness
       );
     }
 
@@ -359,7 +359,7 @@ namespace Spectrum.LEDs {
     public int GetSingleComputerColor(int colorIndex) {
       return LEDColor.ScaleColor(
         this.config.domeColorPalette.GetSingleComputerColor(colorIndex),
-        this.config.domeMaxBrightness
+        this.config.domeMaxBrightness * this.config.domeBrightness
       );
     }
 
@@ -394,7 +394,7 @@ namespace Spectrum.LEDs {
           focusPos,
           wrap
         ),
-        this.config.domeMaxBrightness
+        this.config.domeMaxBrightness * this.config.domeBrightness
       );
     }
 

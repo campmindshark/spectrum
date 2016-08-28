@@ -63,11 +63,15 @@ namespace Spectrum {
     public string domeTeensyUSBPort3 { get; set; } = null;
     public string domeTeensyUSBPort4 { get; set; } = null;
     public string domeTeensyUSBPort5 { get; set; } = null;
-    public double domeMaxBrightness { get; set; } = 0.1;
+    public double domeMaxBrightness { get; set; } = 0.5;
+    public double domeBrightness { get; set; } = 0.1;
     public int domeVolumeAnimationSize { get; set; } = 2;
     public LEDColorPalette domeColorPalette { get; set; } =
       new LEDColorPalette();
     public int domeAutoFlashDelay { get; set; } = 100;
+    public double domeVolumeRotationSpeed { get; set; } = 1.0;
+    public double domeGradientSpeed { get; set; } = 1.0;
+    public int domeSkipLEDs { get; set; } = 0;
 
     // This probably should not be here...
     [XmlIgnore, DoNotNotify]
