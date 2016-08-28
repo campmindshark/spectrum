@@ -209,6 +209,7 @@ namespace Spectrum {
     private void BuildShapes() {
       for (int i = 20; i < 71; i++) {
         StrutLayout[] layouts = StrutLayoutFactory.LayoutsFromStartingPoints(
+          this.config,
           new HashSet<int>() { i },
           2
         );

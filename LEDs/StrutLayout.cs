@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Spectrum.Base;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,26 +12,28 @@ namespace Spectrum.LEDs {
     private static Dictionary<Tuple<int, bool>, Strut> struts =
       new Dictionary<Tuple<int, bool>, Strut>();
 
-    public static Strut FromIndex(int index) {
+    public static Strut FromIndex(Configuration config, int index) {
       var key = new Tuple<int, bool>(index, false);
       if (!struts.ContainsKey(key)) {
-        struts[key] = new Strut(index, false);
+        struts[key] = new Strut(config, index, false);
       }
       return struts[key];
     }
 
-    public static Strut ReversedFromIndex(int index) {
+    public static Strut ReversedFromIndex(Configuration config, int index) {
       var key = new Tuple<int, bool>(index, true);
       if (!struts.ContainsKey(key)) {
-        struts[key] = new Strut(index, true);
+        struts[key] = new Strut(config, index, true);
       }
       return struts[key];
     }
 
+    private Configuration config;
     private int index;
     private bool reversed;
 
-    private Strut(int index, bool reversed) {
+    private Strut(Configuration config, int index, bool reversed) {
+      this.config = config;
       this.index = index;
       this.reversed = reversed;
     }

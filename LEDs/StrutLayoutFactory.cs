@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Spectrum.Base;
 
 namespace Spectrum.LEDs {
-  using System.Diagnostics;
 
   // pt1 => pt2 => (strut, reversed)
   using EdgeDictionary = Dictionary<int, Dictionary<int, Tuple<int, bool>>>;
@@ -65,6 +65,7 @@ namespace Spectrum.LEDs {
     }
 
     public static StrutLayout[] LayoutsFromStartingPoints(
+      Configuration config,
       HashSet<int> startingPoints,
       int numLayers
     ) {
@@ -98,8 +99,8 @@ namespace Spectrum.LEDs {
 
               bool reversed = connected.Value.Item2;
               Strut strut = reversed
-                ? Strut.ReversedFromIndex(strutIndex)
-                : Strut.FromIndex(strutIndex);
+                ? Strut.ReversedFromIndex(config, strutIndex)
+                : Strut.FromIndex(config, strutIndex);
               layer1.Add(strut);
               strutsByGroup[i].Add(strut);
 
@@ -149,8 +150,8 @@ namespace Spectrum.LEDs {
 
               var reversed = strutInfo.Item2;
               Strut strut = reversed
-                ? Strut.ReversedFromIndex(strutIndex)
-                : Strut.FromIndex(strutIndex);
+                ? Strut.ReversedFromIndex(config, strutIndex)
+                : Strut.FromIndex(config, strutIndex);
               layer2.Add(strut);
               circleStruts.Add(strut);
               strutsByGroup[i].Add(strut);

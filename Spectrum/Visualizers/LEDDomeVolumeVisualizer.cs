@@ -12,8 +12,41 @@ namespace Spectrum {
 
   class LEDDomeVolumeVisualizer : Visualizer {
 
-    private static StrutLayout spokeLayout;
-    static LEDDomeVolumeVisualizer() {
+    private Configuration config;
+    private AudioInput audio;
+    private LEDDomeOutput dome;
+    private int animationSize;
+    private int centerOffset;
+
+    private StrutLayout partLayout, indexLayout, sectionLayout;
+
+    // For color-from-part mode, maps each part to a color
+    private int[] partColors = new int[4];
+    // For color-from-index mode, maps each index to a color
+    private int[] indexColors = new int[6];
+    // For color-from-part-and-spoke mode, maps each part/spoke to a color
+    private int[] partAndSpokeColors = new int[5];
+    // For color-from-random mode, maps each strut to a color
+    private int[] randomStrutColors = new int[190];
+    private Random random = new Random();
+
+    public LEDDomeVolumeVisualizer(
+      Configuration config,
+      AudioInput audio,
+      LEDDomeOutput dome
+    ) {
+      this.config = config;
+      this.audio = audio;
+      this.dome = dome;
+      this.dome.RegisterVisualizer(this);
+      this.animationSize = 0;
+      this.centerOffset = 0;
+      this.spokeLayout = this.BuildSpokeLayout();
+      this.UpdateLayouts();
+    }
+
+    private StrutLayout spokeLayout;
+    private StrutLayout BuildSpokeLayout() {
       int[][] strutsBySpoke = new int[][] {
         new int[] {
           73, 81, 89, 97, 105, 74, 82, 90, 98, 106, 0, 2, 4, 6, 8, 10, 12, 14,
@@ -47,44 +80,12 @@ namespace Spectrum {
         segments[i] = new StrutLayoutSegment(new HashSet<Strut>(
           strutsBySpoke[i].Select(
             strut => reversedStruts.Contains(strut)
-              ? Strut.ReversedFromIndex(strut)
-              : Strut.FromIndex(strut)
+              ? Strut.ReversedFromIndex(this.config, strut)
+              : Strut.FromIndex(this.config, strut)
           )
         ));
       }
-      spokeLayout = new StrutLayout(segments);
-    }
-
-    private Configuration config;
-    private AudioInput audio;
-    private LEDDomeOutput dome;
-    private int animationSize;
-    private int centerOffset;
-
-    private StrutLayout partLayout, indexLayout, sectionLayout;
-
-    // For color-from-part mode, maps each part to a color
-    private int[] partColors = new int[4];
-    // For color-from-index mode, maps each index to a color
-    private int[] indexColors = new int[6];
-    // For color-from-part-and-spoke mode, maps each part/spoke to a color
-    private int[] partAndSpokeColors = new int[5];
-    // For color-from-random mode, maps each strut to a color
-    private int[] randomStrutColors = new int[190];
-    private Random random = new Random();
-
-    public LEDDomeVolumeVisualizer(
-      Configuration config,
-      AudioInput audio,
-      LEDDomeOutput dome
-    ) {
-      this.config = config;
-      this.audio = audio;
-      this.dome = dome;
-      this.dome.RegisterVisualizer(this);
-      this.animationSize = 0;
-      this.centerOffset = 0;
-      this.UpdateLayouts();
+      return new StrutLayout(segments);
     }
 
     private void UpdateLayouts() {
@@ -96,6 +97,7 @@ namespace Spectrum {
         points[4] -= 20;
       }
       StrutLayout[] layouts = StrutLayoutFactory.LayoutsFromStartingPoints(
+        this.config,
         new HashSet<int>(points),
         4
       );
