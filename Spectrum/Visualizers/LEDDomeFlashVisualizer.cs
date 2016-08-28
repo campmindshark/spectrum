@@ -210,7 +210,6 @@ namespace Spectrum {
       for (int i = 20; i < 71; i++) {
         StrutLayout[] layouts = StrutLayoutFactory.LayoutsFromStartingPoints(
           this.config,
-          this.dome,
           new HashSet<int>() { i },
           2
         );
@@ -255,7 +254,7 @@ namespace Spectrum {
         var unreservedStruts =
           animation.shape.struts.Except(this.dome.ReservedStruts());
         foreach (int strutIndex in unreservedStruts) {
-          Strut strut = Strut.FromIndex(this.config, this.dome, strutIndex);
+          Strut strut = Strut.FromIndex(this.config, strutIndex);
           for (int i = 0; i < strut.Length; i++) {
             this.dome.SetPixel(strutIndex, i, 0x000000);
           }

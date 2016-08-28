@@ -66,7 +66,6 @@ namespace Spectrum.LEDs {
 
     public static StrutLayout[] LayoutsFromStartingPoints(
       Configuration config,
-      LEDDomeOutput dome,
       HashSet<int> startingPoints,
       int numLayers
     ) {
@@ -100,8 +99,8 @@ namespace Spectrum.LEDs {
 
               bool reversed = connected.Value.Item2;
               Strut strut = reversed
-                ? Strut.ReversedFromIndex(config, dome, strutIndex)
-                : Strut.FromIndex(config, dome, strutIndex);
+                ? Strut.ReversedFromIndex(config, strutIndex)
+                : Strut.FromIndex(config, strutIndex);
               layer1.Add(strut);
               strutsByGroup[i].Add(strut);
 
@@ -151,8 +150,8 @@ namespace Spectrum.LEDs {
 
               var reversed = strutInfo.Item2;
               Strut strut = reversed
-                ? Strut.ReversedFromIndex(config, dome, strutIndex)
-                : Strut.FromIndex(config, dome, strutIndex);
+                ? Strut.ReversedFromIndex(config, strutIndex)
+                : Strut.FromIndex(config, strutIndex);
               layer2.Add(strut);
               circleStruts.Add(strut);
               strutsByGroup[i].Add(strut);

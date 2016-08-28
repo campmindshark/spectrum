@@ -80,8 +80,8 @@ namespace Spectrum {
         segments[i] = new StrutLayoutSegment(new HashSet<Strut>(
           strutsBySpoke[i].Select(
             strut => reversedStruts.Contains(strut)
-              ? Strut.ReversedFromIndex(this.config, this.dome, strut)
-              : Strut.FromIndex(this.config, this.dome, strut)
+              ? Strut.ReversedFromIndex(this.config, strut)
+              : Strut.FromIndex(this.config, strut)
           )
         ));
       }
@@ -98,7 +98,6 @@ namespace Spectrum {
       }
       StrutLayout[] layouts = StrutLayoutFactory.LayoutsFromStartingPoints(
         this.config,
-        this.dome,
         new HashSet<int>(points),
         4
       );
