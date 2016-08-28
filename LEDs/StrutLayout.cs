@@ -12,18 +12,26 @@ namespace Spectrum.LEDs {
     private static Dictionary<Tuple<int, bool>, Strut> struts =
       new Dictionary<Tuple<int, bool>, Strut>();
 
-    public static Strut FromIndex(LEDDomeOutput dome, int index) {
+    public static Strut FromIndex(
+      Configuration config,
+      LEDDomeOutput dome,
+      int index
+    ) {
       var key = new Tuple<int, bool>(index, false);
       if (!struts.ContainsKey(key)) {
-        struts[key] = new Strut(dome, index, false);
+        struts[key] = new Strut(config, dome, index, false);
       }
       return struts[key];
     }
 
-    public static Strut ReversedFromIndex(LEDDomeOutput dome, int index) {
+    public static Strut ReversedFromIndex(
+      Configuration config,
+      LEDDomeOutput dome,
+      int index
+    ) {
       var key = new Tuple<int, bool>(index, true);
       if (!struts.ContainsKey(key)) {
-        struts[key] = new Strut(dome, index, true);
+        struts[key] = new Strut(config, dome, index, true);
       }
       return struts[key];
     }
@@ -32,7 +40,12 @@ namespace Spectrum.LEDs {
     private int index;
     private bool reversed;
 
-    private Strut(LEDDomeOutput dome, int index, bool reversed) {
+    private Strut(
+      Configuration config,
+      LEDDomeOutput dome,
+      int index,
+      bool reversed
+    ) {
       this.dome = dome;
       this.index = index;
       this.reversed = reversed;
@@ -52,7 +65,8 @@ namespace Spectrum.LEDs {
 
     public int Length {
       get {
-        return LEDDomeOutput.GetNumLEDs(this.index);
+        int actualLength = LEDDomeOutput.GetNumLEDs(this.index);
+        return actualLength;
       }
     }
 

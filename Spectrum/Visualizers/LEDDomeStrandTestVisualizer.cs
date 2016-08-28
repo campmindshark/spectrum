@@ -68,7 +68,7 @@ namespace Spectrum {
         }
       }
       var strutIndex = LEDDomeOutput.FindStrutIndex(0, this.lastIndex);
-      Strut strut = Strut.FromIndex(this.dome, strutIndex);
+      Strut strut = Strut.FromIndex(this.config, this.dome, strutIndex);
       for (int i = 0; i < strut.Length; i++) {
         this.dome.SetPixel(strutIndex, i, this.color & whiteColor);
       }
