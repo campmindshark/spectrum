@@ -268,6 +268,7 @@ namespace Spectrum.LEDs {
 
     public void SetPixel(int strutIndex, int ledIndex, int color) {
       Tuple<int, int> tuple = strutPositions[strutIndex];
+      ledIndex += this.config.domeSkipLEDs;
       int pixelIndex = ledIndex;
       for (int i = 0; i < tuple.Item2; i++) {
         pixelIndex += strutLengths[teensyStrutOrder[i]];
@@ -315,6 +316,10 @@ namespace Spectrum.LEDs {
       return strutPositions.Length;
     }
 
+    /**
+     * Doesn't take into account Configuration.domeSkipLEDs. Don't use this
+     * unless you are Strut. Use Strut.Length instead.
+     */
     public static int GetNumLEDs(int strutIndex) {
       var strutPosition = strutPositions[strutIndex];
       return strutLengths[teensyStrutOrder[strutPosition.Item2]];

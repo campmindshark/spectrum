@@ -153,12 +153,14 @@
                 <Label Content="Brightness" HorizontalAlignment="Left" Padding="0" Margin="0,118,0,0" />
                 <Slider x:Name="domeBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,118,0,0" VerticalAlignment="Top" Height="20" Width="170" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                 <Label x:Name="domeBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="265,118,0,0" Padding="0" ContentStringFormat="F3" />
+                <Label Content="Skip LEDs" Margin="0,145,0,0" Padding="0" />
+                <TextBox x:Name="domeSkipLEDs" Margin="94,145,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="202" />
               </Grid>
             </Border>
-            <Label Content="Volume animation" HorizontalAlignment="Left" Margin="4,171,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,191,0,0" Padding="5" VerticalAlignment="Top">
+            <Label Content="Volume animation" HorizontalAlignment="Left" Margin="4,198,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,218,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
-                <Label Content="Animation size" Padding="0" />
+                <Label Content="Animation size" Margin="0,3,0,0" Padding="0" />
                 <ComboBox x:Name="domeVolumeAnimationSize" HorizontalAlignment="Left" VerticalAlignment="Top" Width="120" Margin="94,0,0,0">
                   <ComboBoxItem Content="0" IsSelected="True" />
                   <ComboBoxItem Content="1" />
@@ -168,8 +170,8 @@
                 </ComboBox>
               </Grid>
             </Border>
-            <Label Content="Flasher" HorizontalAlignment="Left" Margin="4,226,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,246,0,0" Padding="5" VerticalAlignment="Top">
+            <Label Content="Flasher" HorizontalAlignment="Left" Margin="4,255,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,275,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <Label Content="Auto flash delay" Padding="0" />
                 <TextBox x:Name="domeAutoFlashDelay" Margin="94,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="202" />

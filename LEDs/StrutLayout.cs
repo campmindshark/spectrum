@@ -54,6 +54,9 @@ namespace Spectrum.LEDs {
       }
     }
 
+    /**
+     * Takes into account Configuration.domeSkipLEDs
+     */
     public int Length {
       get {
         int actualLength = LEDDomeOutput.GetNumLEDs(this.index);
