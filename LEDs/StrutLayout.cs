@@ -12,28 +12,28 @@ namespace Spectrum.LEDs {
     private static Dictionary<Tuple<int, bool>, Strut> struts =
       new Dictionary<Tuple<int, bool>, Strut>();
 
-    public static Strut FromIndex(Configuration config, int index) {
+    public static Strut FromIndex(LEDDomeOutput dome, int index) {
       var key = new Tuple<int, bool>(index, false);
       if (!struts.ContainsKey(key)) {
-        struts[key] = new Strut(config, index, false);
+        struts[key] = new Strut(dome, index, false);
       }
       return struts[key];
     }
 
-    public static Strut ReversedFromIndex(Configuration config, int index) {
+    public static Strut ReversedFromIndex(LEDDomeOutput dome, int index) {
       var key = new Tuple<int, bool>(index, true);
       if (!struts.ContainsKey(key)) {
-        struts[key] = new Strut(config, index, true);
+        struts[key] = new Strut(dome, index, true);
       }
       return struts[key];
     }
 
-    private Configuration config;
+    private LEDDomeOutput dome;
     private int index;
     private bool reversed;
 
-    private Strut(Configuration config, int index, bool reversed) {
-      this.config = config;
+    private Strut(LEDDomeOutput dome, int index, bool reversed) {
+      this.dome = dome;
       this.index = index;
       this.reversed = reversed;
     }

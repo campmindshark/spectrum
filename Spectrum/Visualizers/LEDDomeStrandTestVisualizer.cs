@@ -55,7 +55,7 @@ namespace Spectrum {
       int whiteColor = brightnessByte << 16
         | brightnessByte << 8
         | brightnessByte;
-      if (this.lastIndex == 38) {
+      if (this.lastIndex == 8) {
         this.lastIndex = 0;
         if (this.color == 0xFF0000) {
           this.color = 0x00FF00;
@@ -68,8 +68,8 @@ namespace Spectrum {
         }
       }
       var strutIndex = LEDDomeOutput.FindStrutIndex(0, this.lastIndex);
-      var numLEDs = LEDDomeOutput.GetNumLEDs(strutIndex);
-      for (int i = 0; i < numLEDs; i++) {
+      Strut strut = Strut.FromIndex(this.dome, strutIndex);
+      for (int i = 0; i < strut.Length; i++) {
         this.dome.SetPixel(strutIndex, i, this.color & whiteColor);
       }
       this.dome.Flush();
