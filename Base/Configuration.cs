@@ -20,6 +20,7 @@ namespace Spectrum.Base {
     bool huesEnabled { get; set; }
     bool ledBoardEnabled { get; set; }
     bool midiInputEnabled { get; set; }
+    bool whyFireEnabled { get; set; }
 
     // If this is true, we will poll the Un4seen APIs in a thread separate to
     // the one running the visualizers. If it is false, a single thread will
@@ -29,6 +30,7 @@ namespace Spectrum.Base {
     bool ledBoardOutputInSeparateThread { get; set; }
     bool midiInputInSeparateThread { get; set; }
     bool domeOutputInSeparateThread { get; set; }
+    bool whyFireOutputInSeparateThread { get; set; }
 
     // This is the delay in milliseconds between consecutive commands we give
     // the Hue hub
@@ -87,6 +89,9 @@ namespace Spectrum.Base {
     double domeVolumeRotationSpeed { get; set; }
     double domeGradientSpeed { get; set; }
     int domeSkipLEDs { get; set; }
+
+    // The URL at which the Hue hub can be accessed
+    string whyFireURL { get; set; }
 
     // This probably should not be here...
     BeatBroadcaster domeBeatBroadcaster { get; set; }

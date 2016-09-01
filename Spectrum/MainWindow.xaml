@@ -242,6 +242,22 @@
           <CheckBox x:Name="domeThreadCheckbox" Content="Call LED dome in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
         </Grid>
       </TabItem>
+      <TabItem Header="WhyFire">
+        <Grid>
+          <Grid HorizontalAlignment="Left" Width="355">
+            <Label Content="General" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid>
+                <Label Content="Enabled" FontWeight="Bold" Padding="0" />
+                <CheckBox x:Name="whyFireEnabled" VerticalAlignment="Top" Margin="94,2,0,2" IsChecked="False" />
+                <Label Content="Server address" Margin="0,22,0,0" Padding="0" />
+                <TextBox x:Name="whyFireAddress" Margin="94,22,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              </Grid>
+            </Border>
+          </Grid>
+          <CheckBox x:Name="whyFireThreadCheckbox" Content="Call WhyFire in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
+        </Grid>
+      </TabItem>
     </TabControl>
   </Grid>
 </Window>

@@ -175,8 +175,16 @@ namespace Spectrum.LEDs {
           this.teensies = this.getNewTeensies();
         }
         if (this.Active) {
-          foreach (var teensy in this.teensies) {
-            teensy.Active = domeEnabled;
+          for (int i = 0; i < this.teensies.Length; i++) {
+            var teensy = this.teensies[i];
+            if (teensy == null) {
+              continue;
+            }
+            try {
+              teensy.Active = domeEnabled;
+            } catch (Exception) {
+              this.teensies[i] = null;
+            }
           }
         }
         if (!domeEnabled) {
@@ -186,27 +194,40 @@ namespace Spectrum.LEDs {
     }
 
     private SimpleTeensyAPI[] getNewTeensies() {
-      return new SimpleTeensyAPI[] {
-        new SimpleTeensyAPI(
+      SimpleTeensyAPI api1 = null, api2 = null, api3 = null, api4 = null,
+        api5 = null;
+      try {
+        api1 = new SimpleTeensyAPI(
           this.config.domeTeensyUSBPort1,
           this.config.domeOutputInSeparateThread
-        ),
-        new SimpleTeensyAPI(
+        );
+      } catch (Exception) { }
+      try {
+        api2 = new SimpleTeensyAPI(
           this.config.domeTeensyUSBPort2,
           this.config.domeOutputInSeparateThread
-        ),
-        new SimpleTeensyAPI(
+        );
+      } catch (Exception) { }
+      try {
+        api3 = new SimpleTeensyAPI(
           this.config.domeTeensyUSBPort3,
           this.config.domeOutputInSeparateThread
-        ),
-        new SimpleTeensyAPI(
+        );
+      } catch (Exception) { }
+      try {
+        api4 = new SimpleTeensyAPI(
           this.config.domeTeensyUSBPort4,
           this.config.domeOutputInSeparateThread
-        ),
-        new SimpleTeensyAPI(
+        );
+      } catch (Exception) { }
+      try {
+        api5 = new SimpleTeensyAPI(
           this.config.domeTeensyUSBPort5,
           this.config.domeOutputInSeparateThread
-        ),
+        );
+      } catch (Exception) { }
+      return new SimpleTeensyAPI[] {
+        api1, api2, api3, api4, api5
       };
     }
 
@@ -221,8 +242,16 @@ namespace Spectrum.LEDs {
         }
         lock (this.visualizers) {
           if (this.teensies != null) {
-            foreach (var teensy in this.teensies) {
-              teensy.Active = value;
+            for (int i = 0; i < this.teensies.Length; i++) {
+              var teensy = this.teensies[i];
+              if (teensy == null) {
+                continue;
+              }
+              try {
+                teensy.Active = value;
+              } catch (Exception) {
+                this.teensies[i] = null;
+              }
             }
           }
           this.active = value;
@@ -242,6 +271,9 @@ namespace Spectrum.LEDs {
           return;
         }
         foreach (var teensy in this.teensies) {
+          if (teensy == null) {
+            continue;
+          }
           teensy.OperatorUpdate();
         }
       }
@@ -251,6 +283,9 @@ namespace Spectrum.LEDs {
       lock (this.visualizers) {
         if (this.teensies != null) {
           foreach (var teensy in this.teensies) {
+            if (teensy == null) {
+              continue;
+            }
             teensy.Flush();
           }
         }
@@ -260,7 +295,7 @@ namespace Spectrum.LEDs {
 
     private void SetTeensyPixel(int teensyIndex, int pixelIndex, int color) {
       lock (this.visualizers) {
-        if (this.teensies != null) {
+        if (this.teensies != null && this.teensies[teensyIndex] != null) {
           this.teensies[teensyIndex].SetPixel(pixelIndex, color);
         }
       }

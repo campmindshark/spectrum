@@ -12,7 +12,7 @@ using System.Collections.Concurrent;
 namespace Spectrum {
 
   enum ShapeType : byte {
-    Triangle, Triforce, Polygon, LargePolygon, Everything
+    Triangle, Triforce, Polygon, Lightning, LargePolygon, Everything
   };
 
   class Shape {
@@ -50,17 +50,17 @@ namespace Spectrum {
 
   }
 
-  class Animation {
+  abstract class Animation {
 
     public readonly Shape shape;
     public readonly int pad;
-    private readonly int animationLength;
-    private readonly double velocity;
+    protected readonly int animationLength;
+    protected readonly double velocity;
 
     public readonly long startingTime;
-    private readonly long peakTime;
-    private long endTime;
-    private bool released;
+    protected readonly long peakTime;
+    protected long endTime;
+    protected bool released;
 
     public Animation(
       Shape shape,
@@ -115,7 +115,20 @@ namespace Spectrum {
       }
     }
 
-    public void Animate(LEDDomeOutput dome) {
+    abstract public void Animate(LEDDomeOutput dome);
+
+  }
+
+  class PolygonAnimation : Animation {
+
+    public PolygonAnimation(
+      Shape shape,
+      int pad,
+      double velocity,
+      int measureLength
+    ) : base(shape, pad, velocity, measureLength) { }
+
+    public override void Animate(LEDDomeOutput dome) {
       double intensity = this.AnimationIntensity;
       double scaleColor = Math.Min(intensity * 2 * this.velocity, 1.0);
       int totalParts = this.shape.layout.NumSegments;
@@ -208,7 +221,7 @@ namespace Spectrum {
 
     private void BuildShapes() {
       for (int i = 20; i < 71; i++) {
-        StrutLayout[] layouts = StrutLayoutFactory.LayoutsFromStartingPoints(
+        StrutLayout[] layouts = StrutLayoutFactory.ConcentricFromStartingPoints(
           this.config,
           new HashSet<int>() { i },
           2
@@ -343,7 +356,7 @@ namespace Spectrum {
       }
       long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
       var measureLength = this.config.domeBeatBroadcaster.MeasureLength;
-      var animation = new Animation(
+      var animation = new PolygonAnimation(
         randomShape,
         pad,
         velocity,

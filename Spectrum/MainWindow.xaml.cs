@@ -196,6 +196,9 @@ namespace Spectrum {
       this.Bind("[15,0]", this.domeColor15_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
       this.Bind("[15,1]", this.domeColor15_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
       this.Bind("[15]", this.domeCC15, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
+      this.Bind("whyFireEnabled", this.whyFireEnabled, CheckBox.IsCheckedProperty);
+      this.Bind("whyFireOutputInSeparateThread", this.whyFireThreadCheckbox, CheckBox.IsCheckedProperty, true);
+      this.Bind("whyFireURL", this.whyFireAddress, TextBox.TextProperty);
 
       this.loadingConfig = false;
     }

@@ -20,12 +20,14 @@ namespace Spectrum {
     public bool huesEnabled { get; set; } = false;
     public bool ledBoardEnabled { get; set; } = false;
     public bool midiInputEnabled { get; set; } = false;
+    public bool whyFireEnabled { get; set; } = false;
 
     public bool audioInputInSeparateThread { get; set; } = false;
     public bool huesOutputInSeparateThread { get; set; } = false;
     public bool ledBoardOutputInSeparateThread { get; set; } = false;
     public bool midiInputInSeparateThread { get; set; } = false;
     public bool domeOutputInSeparateThread { get; set; } = false;
+    public bool whyFireOutputInSeparateThread { get; set; } = false;
 
     public int hueDelay { get; set; } = 125;
     public bool hueIdleOnSilent { get; set; } = true;
@@ -72,6 +74,8 @@ namespace Spectrum {
     public double domeVolumeRotationSpeed { get; set; } = 1.0;
     public double domeGradientSpeed { get; set; } = 1.0;
     public int domeSkipLEDs { get; set; } = 0;
+
+    public string whyFireURL { get; set; } = "http://why.fire/WhyService.svc/Effects/";
 
     // This probably should not be here...
     [XmlIgnore, DoNotNotify]

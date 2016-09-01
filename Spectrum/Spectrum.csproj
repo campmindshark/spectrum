@@ -92,6 +92,7 @@
     <Compile Include="DomeSimulatorWindow.xaml.cs">
       <DependentUpon>DomeSimulatorWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Visualizers\LEDDomeConstantColorVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeFlashVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeStrandTestVisualizer.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -108,6 +109,7 @@
     <Compile Include="SpectrumConfiguration.cs" />
     <Compile Include="Hotkey.cs" />
     <Compile Include="Visualizers\HueAudioVisualizer.cs" />
+    <Compile Include="Visualizers\WhyFireMidiVisualizer.cs" />
     <Page Include="DomeSimulatorWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -174,6 +176,10 @@
     <ProjectReference Include="..\MIDI\MIDI.csproj">
       <Project>{6360857c-0b88-4af4-b939-ba60083063f0}</Project>
       <Name>MIDI</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\WhyFIre\WhyFire.csproj">
+      <Project>{3bfb11e1-3be0-4799-9c29-d7c00c394adc}</Project>
+      <Name>WhyFire</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

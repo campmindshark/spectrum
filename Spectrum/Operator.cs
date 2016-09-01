@@ -7,6 +7,7 @@ using Spectrum.Audio;
 using Spectrum.Hues;
 using Spectrum.LEDs;
 using Spectrum.MIDI;
+using Spectrum.WhyFire;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -35,6 +36,8 @@ namespace Spectrum {
       this.outputs.Add(board);
       var dome = new LEDDomeOutput(config);
       this.outputs.Add(dome);
+      var whyFire = new WhyFireOutput(config);
+      this.outputs.Add(whyFire);
 
       this.visualizers = new List<Visualizer>();
       this.visualizers.Add(new HueAudioVisualizer(
@@ -80,6 +83,15 @@ namespace Spectrum {
         audio,
         midi,
         dome
+      ));
+      this.visualizers.Add(new LEDDomeConstantColorVisualizer(
+        this.config,
+        dome
+      ));
+      this.visualizers.Add(new WhyFireMidiVisualizer(
+        this.config,
+        midi,
+        whyFire
       ));
     }
 

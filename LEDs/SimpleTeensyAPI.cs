@@ -82,6 +82,7 @@ namespace Spectrum.LEDs {
         }
         byte[] bytes = messages.SelectMany(a => a).ToArray();
         int num_bytes = messages.Sum(a => a.Length);
+
         this.port.Write(bytes, 0, num_bytes);
       }
     }
