@@ -290,7 +290,11 @@ namespace Spectrum.LEDs {
           }
         }
       }
-      this.config.domeCommandQueue.Enqueue(new LEDCommand() { isFlush = true });
+      if (this.config.domeSimulationEnabled) {
+        this.config.domeCommandQueue.Enqueue(
+          new LEDCommand() { isFlush = true }
+        );
+      }
     }
 
     private void SetTeensyPixel(int teensyIndex, int pixelIndex, int color) {
@@ -309,11 +313,13 @@ namespace Spectrum.LEDs {
         pixelIndex += strutLengths[teensyStrutOrder[i]];
       }
       this.SetTeensyPixel(tuple.Item1, pixelIndex, color);
-      this.config.domeCommandQueue.Enqueue(new LEDCommand() {
-        strutIndex = strutIndex,
-        ledIndex = ledIndex,
-        color = color,
-      });
+      if (this.config.domeSimulationEnabled) {
+        this.config.domeCommandQueue.Enqueue(new LEDCommand() {
+          strutIndex = strutIndex,
+          ledIndex = ledIndex,
+          color = color,
+        });
+      }
     }
 
     public void ReserveStrut(int strutIndex) {
