@@ -183,47 +183,6 @@ namespace Spectrum.LEDs {
       };
     }
 
-    public static StrutLayout LightningStrikeFromStartingPoint(
-      Configuration config,
-      int point,
-      int length
-    ) {
-      List<StrutLayoutSegment> segments = new List<StrutLayoutSegment>();
-      int currentPoint = point;
-      Random random = new Random();
-      HashSet<int> usedPoints = new HashSet<int>();
-      usedPoints.Add(point);
-      for (int i = 0; i < length; i++) {
-        var connectedPoints = edgeDictionary[currentPoint].Keys;
-        var shuffled = connectedPoints.OrderBy(key => random.Next());
-        int nextPoint = -1;
-        foreach (int candidatePoint in shuffled) {
-          if (usedPoints.Contains(candidatePoint)) {
-            continue;
-          }
-          nextPoint = candidatePoint;
-          break;
-        }
-        if (nextPoint == -1) {
-          break;
-        }
-        var strutInfo = edgeDictionary[currentPoint][nextPoint];
-        int strutIndex = strutInfo.Item1;
-        bool reversed = strutInfo.Item2;
-        HashSet<Strut> struts = new HashSet<Strut>();
-        struts.Add(
-          reversed
-            ? Strut.ReversedFromIndex(config, strutIndex)
-            : Strut.FromIndex(config, strutIndex)
-        );
-        StrutLayoutSegment segment = new StrutLayoutSegment(struts);
-        segments.Add(segment);
-        currentPoint = nextPoint;
-        usedPoints.Add(currentPoint);
-      }
-      return new StrutLayout(segments.ToArray());
-    }
-
   }
 
 }

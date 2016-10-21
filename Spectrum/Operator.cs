@@ -84,10 +84,6 @@ namespace Spectrum {
         midi,
         dome
       ));
-      this.visualizers.Add(new LEDDomeConstantColorVisualizer(
-        this.config,
-        dome
-      ));
       this.visualizers.Add(new WhyFireMidiVisualizer(
         this.config,
         midi,
