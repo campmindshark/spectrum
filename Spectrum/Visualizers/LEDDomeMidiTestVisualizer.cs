@@ -33,7 +33,7 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return 1;
+        return 0;
       }
     }
 
@@ -57,8 +57,10 @@ namespace Spectrum {
 
         valueSet = true;
         if (this.strutStates.ContainsKey(command.index)) {
-          for (int i = 0; i < 30; i++) {
-            this.dome.SetPixel(this.strutStates[command.index], i, 0x000000);
+          var existingStrutIndex = this.strutStates[command.index];
+          Strut existingStrut = Strut.FromIndex(this.config, existingStrutIndex);
+          for (int i = 0; i < existingStrut.Length; i++) {
+            this.dome.SetPixel(existingStrutIndex, i, 0x000000);
           }
           this.strutStates.Remove(command.index);
           if (command.value == 0.0) {
@@ -90,7 +92,8 @@ namespace Spectrum {
           strutIndex = candidateStrutIndex;
         }
 
-        for (int i = 0; i < 30; i++) {
+        Strut strut = Strut.FromIndex(this.config, strutIndex);
+        for (int i = 0; i < strut.Length; i++) {
           this.dome.SetPixel(strutIndex, i, color);
         }
         this.strutStates[command.index] = strutIndex;
