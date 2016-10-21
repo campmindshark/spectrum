@@ -3,6 +3,7 @@ using Spectrum.Base;
 using System.Threading;
 using System.Collections.Concurrent;
 using System.Linq;
+using System;
 
 namespace Spectrum.LEDs {
 
@@ -83,7 +84,9 @@ namespace Spectrum.LEDs {
         byte[] bytes = messages.SelectMany(a => a).ToArray();
         int num_bytes = messages.Sum(a => a.Length);
 
-        this.port.Write(bytes, 0, num_bytes);
+        try {
+          this.port.Write(bytes, 0, num_bytes);
+        } catch (Exception) { }
       }
     }
 
