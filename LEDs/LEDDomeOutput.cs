@@ -340,6 +340,15 @@ namespace Spectrum.LEDs {
       return this.reservedStruts;
     }
 
+    /**
+     * This function takes as input a teensyIndex, and a special index called
+     * teensyStrutIndex. This second index goes from 0-37, and it identifies a
+     * strut uniquely for a given Teensy. (There are currently 190 struts and 5
+     * Teensies). The order is such so that the struts appear in the order they
+     * are plugged into the Teensy, eg. all of the struts plugged into the first
+     * of the eight outputs on the Teensy, and then all of the struts plugged
+     * into the second, etc. This method is primarily useful for debugging.
+     */
     public static int FindStrutIndex(int teensyIndex, int teensyStrutIndex) {
       for (int i = 0; i < strutPositions.Length; i++) {
         var strutPosition = strutPositions[i];

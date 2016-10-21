@@ -9,6 +9,13 @@ using Spectrum.MIDI;
 
 namespace Spectrum {
 
+  /**
+   * This Visualizer is used for testing the MIDI controller. Every time you hit
+   * one of the MIDI pads (notes 48 through 51), a random strut gets lit up. The
+   * strut should turn off once you release the pad. This visualizer should be
+   * able to handle "multi-touch", ie. if you hit a second pad before you
+   * release the first one.
+   */
   class LEDDomeMidiTestVisualizer : Visualizer {
 
     private Configuration config;
