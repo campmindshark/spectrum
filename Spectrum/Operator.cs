@@ -10,6 +10,7 @@ using Spectrum.MIDI;
 using Spectrum.WhyFire;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics;
 
 namespace Spectrum {
 
@@ -19,9 +20,12 @@ namespace Spectrum {
     private List<Input> inputs;
     private List<Output> outputs;
     private List<Visualizer> visualizers;
+    private Stopwatch stopwatch;
 
     public Operator(Configuration config) {
       this.config = config;
+      this.stopwatch = new Stopwatch();
+      this.stopwatch.Start();
 
       this.inputs = new List<Input>();
       var audio = new AudioInput(config);
@@ -135,6 +139,10 @@ namespace Spectrum {
 
     private void OperatorThread() {
       while (true) {
+        if (this.stopwatch.ElapsedMilliseconds < 1) {
+          Thread.Sleep(1);
+        }
+        this.stopwatch.Restart();
         // We're going to start by figuring out which Outputs consider
         // themselves enabled. For each enabled Output, we'll find what the
         // highest priority reported by any Visualizer is, and we'll consider
