@@ -118,7 +118,7 @@ namespace Spectrum.Audio {
       // Larry probably knows.
       bool result = Bass.BASS_Init(
         0,
-        96000,
+        44100,
         BASSInit.BASS_DEVICE_DEFAULT,
         IntPtr.Zero
       );
@@ -189,7 +189,7 @@ namespace Spectrum.Audio {
       }
       bool result = BassWasapi.BASS_WASAPI_Init(
         this.config.audioDeviceIndex,
-        96000,
+        44100,
         0,
         BASSWASAPIInit.BASS_WASAPI_BUFFER,
         1,
@@ -205,14 +205,14 @@ namespace Spectrum.Audio {
       }
       BassWasapi.BASS_WASAPI_Start();
 
-      handle = Bass.BASS_StreamCreate(96000, 2, BASSFlag.BASS_MUSIC_DECODE | BASSFlag.BASS_MUSIC_FLOAT, this.StreamPoc, IntPtr.Zero);
+      handle = Bass.BASS_StreamCreate(44100, 2, BASSFlag.BASS_MUSIC_DECODE | BASSFlag.BASS_MUSIC_FLOAT, this.StreamPoc, IntPtr.Zero);
       Bass.BASS_ChannelPlay(handle, false);
-//      bpmCounter = new BPMCounter(timeInterval, 96000);
+//      bpmCounter = new BPMCounter(timeInterval, 44100);
 //      bpmCounter.BPMHistorySize = 50;
 //      analysisTimer = new Timer(timerCallback, null, 0, timeInterval);
-      BassWasapi.BASS_WASAPI_Init(12, 96000, 0, 0, 0, 0, outProcess, IntPtr.Zero);
+      BassWasapi.BASS_WASAPI_Init(12, 44100, 0, 0, 0, 0, outProcess, IntPtr.Zero);
       BassWasapi.BASS_WASAPI_SetDevice(12);
-      outstr = BassMix.BASS_Mixer_StreamCreate(96000, 2, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_FLOAT);
+      outstr = BassMix.BASS_Mixer_StreamCreate(44100, 2, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_FLOAT);
       BassMix.BASS_Mixer_StreamAddChannel(outstr, handle, 0);
       BassWasapi.BASS_WASAPI_Start();
     }
@@ -232,7 +232,7 @@ namespace Spectrum.Audio {
       lock (this.process) {
         // get fft data. Return value is -1 on error
         // type: 1/8192 of the channel sample rate
-        // (here, 96000 hz; so the bin size is roughly 5.86 Hz)
+        // (here, 44100 hz; so the bin size is roughly 2.69 Hz)
         float[] tempAudioData = new float[8192];
         BassWasapi.BASS_WASAPI_GetData(
           tempAudioData,
