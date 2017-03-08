@@ -191,7 +191,7 @@ namespace Spectrum.Audio {
         this.config.audioDeviceIndex,
         44100,
         0,
-        BASSWASAPIInit.BASS_WASAPI_BUFFER,
+        BASSWASAPIInit.BASS_WASAPI_BUFFER | BASSWASAPIInit.BASS_WASAPI_AUTOFORMAT,
         1,
         0,
         this.process,

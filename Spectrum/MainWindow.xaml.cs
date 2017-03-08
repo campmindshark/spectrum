@@ -286,11 +286,12 @@ namespace Spectrum {
       this.op.Enabled = false;
       this.powerButton.Content = "Go";
 
-      this.audioDeviceIndices = new int[AudioInput.DeviceCount];
+      int deviceCount = AudioInput.DeviceCount;
+      this.audioDeviceIndices = new int[deviceCount];
 
       this.audioDevices.Items.Clear();
       int itemIndex = 0;
-      for (int i = 0; i < AudioInput.DeviceCount; i++) {
+      for (int i = 0; i < deviceCount; i++) {
         if (!AudioInput.IsEnabledInputDevice(i)) {
           continue;
         }
