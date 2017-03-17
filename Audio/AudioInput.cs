@@ -52,7 +52,6 @@ namespace Spectrum.Audio {
 
     // Needed for memory management reasons. More details in MagicIncantations()
     private WASAPIPROC process;
-    private STREAMPROC StreamPoc;
 
     // These values get continuously updated by the internal thread
     public float[] AudioData { get; private set; } = new float[8192];
@@ -60,14 +59,7 @@ namespace Spectrum.Audio {
 
     // We loop around the history array based on this offset
     private int currentHistoryOffset = 0;
-
-    private Timer analysisTimer;
-    private Stopwatch stopwatch = new Stopwatch();
-    private int handle;
-    private int outstr;
-    private int timeInterval = 20;
-    private BPMCounter bpmCounter;
-    private WASAPIPROC outProcess;
+    
     public double BPM { get; private set; } = 0.0;
 
     private static int historyLength = 32;
@@ -85,8 +77,6 @@ namespace Spectrum.Audio {
       // into some scary old C-style API and it doesn't get refcounted there.
       // We declare the variable as a member to avoid garbage collection.
       this.process = new WASAPIPROC(this.NoOp);
-      this.StreamPoc = this.streamproc;
-      this.outProcess = new WASAPIPROC(outWasapiProc);
 
       this.energyHistory = new Dictionary<AudioDetectorType, double[]>();
       this.eventBuffer =
@@ -204,24 +194,7 @@ namespace Spectrum.Audio {
         );
       }
       BassWasapi.BASS_WASAPI_Start();
-
-      handle = Bass.BASS_StreamCreate(44100, 2, BASSFlag.BASS_MUSIC_DECODE | BASSFlag.BASS_MUSIC_FLOAT, this.StreamPoc, IntPtr.Zero);
-      Bass.BASS_ChannelPlay(handle, false);
-//      bpmCounter = new BPMCounter(timeInterval, 44100);
-//      bpmCounter.BPMHistorySize = 50;
-//      analysisTimer = new Timer(timerCallback, null, 0, timeInterval);
-      BassWasapi.BASS_WASAPI_Init(12, 44100, 0, 0, 0, 0, outProcess, IntPtr.Zero);
-      BassWasapi.BASS_WASAPI_SetDevice(12);
-      outstr = BassMix.BASS_Mixer_StreamCreate(44100, 2, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_FLOAT);
-      BassMix.BASS_Mixer_StreamAddChannel(outstr, handle, 0);
-      BassWasapi.BASS_WASAPI_Start();
     }
-
-//    private void timerCallback(object o) {
-//      if (bpmCounter.ProcessAudio(handle, true)) {
-//        stopwatch.Restart();
-//      }
-//    }
 
     private void TerminateAudio() {
       BassWasapi.BASS_WASAPI_Free();
@@ -244,7 +217,6 @@ namespace Spectrum.Audio {
         );
         this.AudioData = tempAudioData;
         this.Volume = tempVolume;
-//        this.BPM = bpmCounter.BPM;
         this.UpdateEnergyHistory();
       }
     }
@@ -379,15 +351,6 @@ namespace Spectrum.Audio {
     public static string GetDeviceName(int deviceIndex) {
       var device = BassWasapi.BASS_WASAPI_GetDeviceInfo(deviceIndex);
       return device.name;
-    }
-
-    private int streamproc(int handle, IntPtr buffer, int length, IntPtr user) {
-      BassWasapi.BASS_WASAPI_GetData(buffer, length | (int)BASSData.BASS_DATA_FLOAT);
-      return length;
-    }
-
-    private int outWasapiProc(IntPtr buffer, int length, IntPtr user) {
-      return Bass.BASS_ChannelGetData(outstr, buffer, length);
     }
 
     public List<AudioEvent> GetEventsSinceLastTick() {
