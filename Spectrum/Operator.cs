@@ -20,12 +20,18 @@ namespace Spectrum {
     private List<Input> inputs;
     private List<Output> outputs;
     private List<Visualizer> visualizers;
-    private Stopwatch stopwatch;
+    private Stopwatch operatorThreadBlockingStopwatch;
+    private Stopwatch frameRateStopwatch;
+    private int framesThisSecond;
 
     public Operator(Configuration config) {
       this.config = config;
-      this.stopwatch = new Stopwatch();
-      this.stopwatch.Start();
+      this.operatorThreadBlockingStopwatch = new Stopwatch();
+      this.operatorThreadBlockingStopwatch.Start();
+
+      this.frameRateStopwatch = new Stopwatch();
+      this.frameRateStopwatch.Start();
+      this.framesThisSecond = 0;
 
       this.inputs = new List<Input>();
       var audio = new AudioInput(config);
@@ -139,10 +145,18 @@ namespace Spectrum {
 
     private void OperatorThread() {
       while (true) {
-        if (this.stopwatch.ElapsedMilliseconds < 1) {
+        if (this.operatorThreadBlockingStopwatch.ElapsedMilliseconds < 1) {
           Thread.Sleep(1);
         }
-        this.stopwatch.Restart();
+        this.operatorThreadBlockingStopwatch.Restart();
+
+        if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
+          this.frameRateStopwatch.Restart();
+          this.config.operatorFPS = this.framesThisSecond;
+          this.framesThisSecond = 0;
+        }
+        this.framesThisSecond++;
+        
         // We're going to start by figuring out which Outputs consider
         // themselves enabled. For each enabled Output, we'll find what the
         // highest priority reported by any Visualizer is, and we'll consider

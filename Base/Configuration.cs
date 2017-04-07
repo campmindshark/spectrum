@@ -32,6 +32,8 @@ namespace Spectrum.Base {
     bool domeOutputInSeparateThread { get; set; }
     bool whyFireOutputInSeparateThread { get; set; }
 
+    int operatorFPS { get; set; }
+
     // This is the delay in milliseconds between consecutive commands we give
     // the Hue hub
     int hueDelay { get; set; }

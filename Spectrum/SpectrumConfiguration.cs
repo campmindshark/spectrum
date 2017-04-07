@@ -29,6 +29,9 @@ namespace Spectrum {
     public bool domeOutputInSeparateThread { get; set; } = false;
     public bool whyFireOutputInSeparateThread { get; set; } = false;
 
+    [XmlIgnore]
+    public int operatorFPS { get; set; } = 0;
+
     public int hueDelay { get; set; } = 125;
     public bool hueIdleOnSilent { get; set; } = true;
 
