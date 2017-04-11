@@ -31,6 +31,18 @@ namespace Spectrum {
 
     [XmlIgnore]
     public int operatorFPS { get; set; } = 0;
+    [XmlIgnore]
+    public int domeTeensyFPS1 { get; set; } = 0;
+    [XmlIgnore]
+    public int domeTeensyFPS2 { get; set; } = 0;
+    [XmlIgnore]
+    public int domeTeensyFPS3 { get; set; } = 0;
+    [XmlIgnore]
+    public int domeTeensyFPS4 { get; set; } = 0;
+    [XmlIgnore]
+    public int domeTeensyFPS5 { get; set; } = 0;
+    [XmlIgnore]
+    public int boardTeensyFPS { get; set; } = 0;
 
     public int hueDelay { get; set; } = 125;
     public bool hueIdleOnSilent { get; set; } = true;

@@ -199,31 +199,36 @@ namespace Spectrum.LEDs {
       try {
         api1 = new SimpleTeensyAPI(
           this.config.domeTeensyUSBPort1,
-          this.config.domeOutputInSeparateThread
+          this.config.domeOutputInSeparateThread,
+          newFPS => this.config.domeTeensyFPS1 = newFPS
         );
       } catch (Exception) { }
       try {
         api2 = new SimpleTeensyAPI(
           this.config.domeTeensyUSBPort2,
-          this.config.domeOutputInSeparateThread
+          this.config.domeOutputInSeparateThread,
+          newFPS => this.config.domeTeensyFPS2 = newFPS
         );
       } catch (Exception) { }
       try {
         api3 = new SimpleTeensyAPI(
           this.config.domeTeensyUSBPort3,
-          this.config.domeOutputInSeparateThread
+          this.config.domeOutputInSeparateThread,
+          newFPS => this.config.domeTeensyFPS3 = newFPS
         );
       } catch (Exception) { }
       try {
         api4 = new SimpleTeensyAPI(
           this.config.domeTeensyUSBPort4,
-          this.config.domeOutputInSeparateThread
+          this.config.domeOutputInSeparateThread,
+          newFPS => this.config.domeTeensyFPS4 = newFPS
         );
       } catch (Exception) { }
       try {
         api5 = new SimpleTeensyAPI(
           this.config.domeTeensyUSBPort5,
-          this.config.domeOutputInSeparateThread
+          this.config.domeOutputInSeparateThread,
+          newFPS => this.config.domeTeensyFPS5 = newFPS
         );
       } catch (Exception) { }
       return new SimpleTeensyAPI[] {

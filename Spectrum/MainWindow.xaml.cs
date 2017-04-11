@@ -112,6 +112,18 @@ namespace Spectrum {
       this.Bind("domeOutputInSeparateThread", this.domeThreadCheckbox, CheckBox.IsCheckedProperty, true);
       this.Bind("operatorFPS", this.operatorFPSLabel, Label.ContentProperty);
       this.Bind("operatorFPS", this.operatorFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeTeensyFPS1", this.domeTeensyFPS1Label, Label.ContentProperty);
+      this.Bind("domeTeensyFPS1", this.domeTeensyFPS1Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeTeensyFPS2", this.domeTeensyFPS2Label, Label.ContentProperty);
+      this.Bind("domeTeensyFPS2", this.domeTeensyFPS2Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeTeensyFPS3", this.domeTeensyFPS3Label, Label.ContentProperty);
+      this.Bind("domeTeensyFPS3", this.domeTeensyFPS3Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeTeensyFPS4", this.domeTeensyFPS4Label, Label.ContentProperty);
+      this.Bind("domeTeensyFPS4", this.domeTeensyFPS4Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeTeensyFPS5", this.domeTeensyFPS5Label, Label.ContentProperty);
+      this.Bind("domeTeensyFPS5", this.domeTeensyFPS5Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("boardTeensyFPS", this.boardTeensyFPSLabel, Label.ContentProperty);
+      this.Bind("boardTeensyFPS", this.boardTeensyFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
       this.Bind("hueDelay", this.hueCommandDelay, TextBox.TextProperty);
       this.Bind("hueIdleOnSilent", this.hueIdleOnSilent, CheckBox.IsCheckedProperty);
       this.Bind("hueOverrideIndex", this.hueOverride, ComboBox.SelectedIndexProperty);

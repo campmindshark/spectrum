@@ -102,7 +102,8 @@
                 <CheckBox x:Name="ledBoardEnabled" VerticalAlignment="Top" Margin="94,2,0,2" IsChecked="False" />
                 <Label Content="Teensy USB port" Margin="0,23,0,0" Padding="0" />
                 <ComboBox x:Name="ledBoardUSBPorts" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,22,0,0" Width="120" SelectionChanged="LEDBoardUSBPortsChanged" />
-                <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Right" Style="{StaticResource HyperlinkButton}" Margin="0,23,5,0" FontStyle="Italic" Click="RefreshLEDBoardPorts" />
+                <Label x:Name="boardTeensyFPSLabel" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="216,22,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Right" Style="{StaticResource HyperlinkButton}" Margin="0,25,5,0" FontStyle="Italic" Click="RefreshLEDBoardPorts" />
                 <Label Content="Row length" Margin="0,49,0,0" Padding="0" />
                 <TextBox x:Name="ledBoardRowLength" Margin="94,49,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" />
                 <Label Content="Rows per strip" Margin="0,74,0,0" Padding="0" />
@@ -135,7 +136,7 @@
       </TabItem>
       <TabItem Header="LED Dome">
         <Grid>
-          <Grid HorizontalAlignment="Left" Width="315">
+          <Grid HorizontalAlignment="Left" Width="367">
             <Label Content="General" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
@@ -143,11 +144,16 @@
                 <CheckBox x:Name="domeSimulationEnabled" Content="Simulate" VerticalAlignment="Top" Margin="150,0,0,0" IsChecked="False" Checked="OpenDomeSimulator" Unchecked="CloseDomeSimulator" />
                 <Label Content="Teensy USB ports" Margin="0,21,0,0" Padding="0" />
                 <ComboBox x:Name="domeTeensy1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,20,0,0" Width="100" SelectionChanged="DomePortChanged" />
-                <ComboBox x:Name="domeTeensy2" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,20,0,0" Width="100" SelectionChanged="DomePortChanged" />
+                <Label x:Name="domeTeensyFPS1Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="196,20,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="domeTeensy2" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="222,20,0,0" Width="100" SelectionChanged="DomePortChanged" />
+                <Label x:Name="domeTeensyFPS2Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="324,20,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
                 <ComboBox x:Name="domeTeensy3" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,44,0,0" Width="100" SelectionChanged="DomePortChanged" />
-                <ComboBox x:Name="domeTeensy4" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,44,0,0" Width="100" SelectionChanged="DomePortChanged" />
+                <Label x:Name="domeTeensyFPS3Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="196,44,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="domeTeensy4" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="222,44,0,0" Width="100" SelectionChanged="DomePortChanged" />
+                <Label x:Name="domeTeensyFPS4Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="324,44,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
                 <ComboBox x:Name="domeTeensy5" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,68,0,0" Width="100" SelectionChanged="DomePortChanged" />
-                <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Right" Style="{StaticResource HyperlinkButton}" Margin="0,71,4,0" FontStyle="Italic" Click="RefreshDomePorts" />
+                <Label x:Name="domeTeensyFPS5Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="196,68,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Left" Style="{StaticResource HyperlinkButton}" Margin="227,71,0,0" FontStyle="Italic" Click="RefreshDomePorts" />
                 <Label Content="Max brightness" HorizontalAlignment="Left" Padding="0" Margin="0,93,0,0" />
                 <Slider x:Name="domeMaxBrightnessSlider" Value="0.5" HorizontalAlignment="Left" Margin="90,93,0,0" VerticalAlignment="Top" Height="20" Width="170" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                 <Label x:Name="domeMaxBrightnessLabel" Content="0.500" HorizontalAlignment="Left" Margin="265,93,0,0" Padding="0" ContentStringFormat="F3" />
@@ -179,7 +185,28 @@
               </Grid>
             </Border>
           </Grid>
-          <Grid Width="244" HorizontalAlignment="Right" Margin="0,0,5,0">
+          <CheckBox x:Name="domeThreadCheckbox" Content="Call LED dome in separate thread(s)" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
+        </Grid>
+      </TabItem>
+      <TabItem Header="WhyFire">
+        <Grid>
+          <Grid HorizontalAlignment="Left" Width="355">
+            <Label Content="General" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid>
+                <Label Content="Enabled" FontWeight="Bold" Padding="0" />
+                <CheckBox x:Name="whyFireEnabled" VerticalAlignment="Top" Margin="94,2,0,2" IsChecked="False" />
+                <Label Content="Server address" Margin="0,22,0,0" Padding="0" />
+                <TextBox x:Name="whyFireAddress" Margin="94,22,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              </Grid>
+            </Border>
+          </Grid>
+          <CheckBox x:Name="whyFireThreadCheckbox" Content="Call WhyFire in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
+        </Grid>
+      </TabItem>
+      <TabItem Header="Color Palette">
+        <Grid>
+          <Grid Width="244" HorizontalAlignment="Left">
             <Label Content="Colors" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
@@ -240,23 +267,6 @@
               </Grid>
             </Border>
           </Grid>
-          <CheckBox x:Name="domeThreadCheckbox" Content="Call LED dome in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
-        </Grid>
-      </TabItem>
-      <TabItem Header="WhyFire">
-        <Grid>
-          <Grid HorizontalAlignment="Left" Width="355">
-            <Label Content="General" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
-              <Grid>
-                <Label Content="Enabled" FontWeight="Bold" Padding="0" />
-                <CheckBox x:Name="whyFireEnabled" VerticalAlignment="Top" Margin="94,2,0,2" IsChecked="False" />
-                <Label Content="Server address" Margin="0,22,0,0" Padding="0" />
-                <TextBox x:Name="whyFireAddress" Margin="94,22,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" />
-              </Grid>
-            </Border>
-          </Grid>
-          <CheckBox x:Name="whyFireThreadCheckbox" Content="Call WhyFire in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
         </Grid>
       </TabItem>
     </TabControl>

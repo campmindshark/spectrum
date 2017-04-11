@@ -39,7 +39,8 @@ namespace Spectrum.LEDs {
         if (value) {
           this.api = new SimpleTeensyAPI(
             this.config.teensyUSBPort,
-            this.config.ledBoardOutputInSeparateThread
+            this.config.ledBoardOutputInSeparateThread,
+            newFPS => this.config.boardTeensyFPS = newFPS
           );
           this.api.Active = true;
         } else {

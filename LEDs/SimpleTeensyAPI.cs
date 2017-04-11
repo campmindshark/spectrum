@@ -2,6 +2,7 @@
 using Spectrum.Base;
 using System.Threading;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Linq;
 using System;
 
@@ -17,11 +18,23 @@ namespace Spectrum.LEDs {
     private SerialPort port;
     private ConcurrentQueue<byte[]> buffer;
     private bool separateThread;
+    private Action<int> setFPS;
+    private Stopwatch frameRateStopwatch;
+    private int framesThisSecond;
 
-    public SimpleTeensyAPI(string portName, bool separateThread) {
+    public SimpleTeensyAPI(
+      string portName,
+      bool separateThread,
+      Action<int> setFPS
+    ) {
       this.port = new SerialPort(portName);
       this.buffer = new ConcurrentQueue<byte[]>();
       this.separateThread = separateThread;
+      this.setFPS = setFPS;
+
+      this.frameRateStopwatch = new Stopwatch();
+      this.frameRateStopwatch.Start();
+      this.framesThisSecond = 0;
     }
 
     private bool active;
@@ -100,6 +113,12 @@ namespace Spectrum.LEDs {
       this.InitializeTeensies();
       try {
         while (true) {
+          if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
+            this.frameRateStopwatch.Restart();
+            this.setFPS(this.framesThisSecond);
+            this.framesThisSecond = 0;
+          }
+          this.framesThisSecond++;
           this.Update();
         }
       } catch (ThreadAbortException) {
