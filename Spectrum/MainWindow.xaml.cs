@@ -9,6 +9,7 @@ using System.IO;
 using Spectrum.MIDI;
 using System.Windows.Data;
 using Xceed.Wpf.Toolkit;
+using System.Collections.Generic;
 
 namespace Spectrum {
 
@@ -112,16 +113,35 @@ namespace Spectrum {
       this.Bind("domeOutputInSeparateThread", this.domeThreadCheckbox, CheckBox.IsCheckedProperty, true);
       this.Bind("operatorFPS", this.operatorFPSLabel, Label.ContentProperty);
       this.Bind("operatorFPS", this.operatorFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeHardwareSetup", this.domeHardwareSetup, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.fiveTeensies, [1] = this.beagleboneViaOPC, [2] = this.beagleboneViaCAMP }, true));
+      this.Bind("domeHardwareSetup", this.domeTeensies, WrapPanel.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
+      this.Bind("domeHardwareSetup", this.domeBeaglebonePanel, Grid.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Visible }));
       this.Bind("domeTeensyFPS1", this.domeTeensyFPS1Label, Label.ContentProperty);
       this.Bind("domeTeensyFPS1", this.domeTeensyFPS1Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS1Label, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensy1, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("domeTeensyFPS2", this.domeTeensyFPS2Label, Label.ContentProperty);
       this.Bind("domeTeensyFPS2", this.domeTeensyFPS2Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS2Label, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensy2, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("domeTeensyFPS3", this.domeTeensyFPS3Label, Label.ContentProperty);
       this.Bind("domeTeensyFPS3", this.domeTeensyFPS3Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS3Label, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensy3, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("domeTeensyFPS4", this.domeTeensyFPS4Label, Label.ContentProperty);
       this.Bind("domeTeensyFPS4", this.domeTeensyFPS4Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS4Label, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensy4, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("domeTeensyFPS5", this.domeTeensyFPS5Label, Label.ContentProperty);
       this.Bind("domeTeensyFPS5", this.domeTeensyFPS5Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS5Label, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensy5, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("domeBeagleboneAddress", this.domeBeagleboneHostAndPort, TextBox.TextProperty);
+      this.Bind("domeBeagleboneFPS", this.domeBeagleboneFPSLabel, Label.ContentProperty);
+      this.Bind("domeBeagleboneFPS", this.domeBeagleboneFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeBeagleboneFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeBeagleboneHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("domeTestPattern", this.domeTestPattern, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.domeTestPatternNone, [1] = this.domeTestPatternFlashColorsByStrand }, true));
       this.Bind("boardTeensyFPS", this.boardTeensyFPSLabel, Label.ContentProperty);
       this.Bind("boardTeensyFPS", this.boardTeensyFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
       this.Bind("hueDelay", this.hueCommandDelay, TextBox.TextProperty);

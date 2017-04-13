@@ -136,36 +136,24 @@
       </TabItem>
       <TabItem Header="LED Dome">
         <Grid>
-          <Grid HorizontalAlignment="Left" Width="367">
+          <Grid HorizontalAlignment="Left" Width="317">
             <Label Content="General" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
-                <CheckBox x:Name="domeEnabled" Content="Enabled" VerticalAlignment="Top" IsChecked="False" FontWeight="Bold" />
-                <CheckBox x:Name="domeSimulationEnabled" Content="Simulate" VerticalAlignment="Top" Margin="150,0,0,0" IsChecked="False" Checked="OpenDomeSimulator" Unchecked="CloseDomeSimulator" />
-                <Label Content="Teensy USB ports" Margin="0,21,0,0" Padding="0" />
-                <ComboBox x:Name="domeTeensy1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,20,0,0" Width="100" SelectionChanged="DomePortChanged" />
-                <Label x:Name="domeTeensyFPS1Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="196,20,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <ComboBox x:Name="domeTeensy2" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="222,20,0,0" Width="100" SelectionChanged="DomePortChanged" />
-                <Label x:Name="domeTeensyFPS2Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="324,20,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <ComboBox x:Name="domeTeensy3" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,44,0,0" Width="100" SelectionChanged="DomePortChanged" />
-                <Label x:Name="domeTeensyFPS3Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="196,44,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <ComboBox x:Name="domeTeensy4" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="222,44,0,0" Width="100" SelectionChanged="DomePortChanged" />
-                <Label x:Name="domeTeensyFPS4Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="324,44,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <ComboBox x:Name="domeTeensy5" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,68,0,0" Width="100" SelectionChanged="DomePortChanged" />
-                <Label x:Name="domeTeensyFPS5Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="196,68,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Left" Style="{StaticResource HyperlinkButton}" Margin="227,71,0,0" FontStyle="Italic" Click="RefreshDomePorts" />
-                <Label Content="Max brightness" HorizontalAlignment="Left" Padding="0" Margin="0,93,0,0" />
-                <Slider x:Name="domeMaxBrightnessSlider" Value="0.5" HorizontalAlignment="Left" Margin="90,93,0,0" VerticalAlignment="Top" Height="20" Width="170" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                <Label x:Name="domeMaxBrightnessLabel" Content="0.500" HorizontalAlignment="Left" Margin="265,93,0,0" Padding="0" ContentStringFormat="F3" />
-                <Label Content="Brightness" HorizontalAlignment="Left" Padding="0" Margin="0,118,0,0" />
-                <Slider x:Name="domeBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,118,0,0" VerticalAlignment="Top" Height="20" Width="170" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                <Label x:Name="domeBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="265,118,0,0" Padding="0" ContentStringFormat="F3" />
-                <Label Content="Skip LEDs" Margin="0,145,0,0" Padding="0" />
-                <TextBox x:Name="domeSkipLEDs" Margin="94,145,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="202" />
+                <CheckBox x:Name="domeEnabled" Content="Enabled" VerticalAlignment="Top" IsChecked="False" FontWeight="Bold" Margin="0,3,0,0" />
+                <CheckBox x:Name="domeSimulationEnabled" Content="Simulate" VerticalAlignment="Top" Margin="150,3,0,0" IsChecked="False" Checked="OpenDomeSimulator" Unchecked="CloseDomeSimulator" />
+                <Label Content="Max brightness" HorizontalAlignment="Left" Padding="0" Margin="0,26,0,0" />
+                <Slider x:Name="domeMaxBrightnessSlider" Value="0.5" HorizontalAlignment="Left" Margin="90,26,0,0" VerticalAlignment="Top" Height="20" Width="170" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="domeMaxBrightnessLabel" Content="0.500" HorizontalAlignment="Left" Margin="265,26,0,0" Padding="0" ContentStringFormat="F3" />
+                <Label Content="Brightness" HorizontalAlignment="Left" Padding="0" Margin="0,51,0,0" />
+                <Slider x:Name="domeBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,51,0,0" VerticalAlignment="Top" Height="20" Width="170" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="domeBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="265,51,0,0" Padding="0" ContentStringFormat="F3" />
+                <Label Content="Skip LEDs" Margin="0,78,0,0" Padding="0" />
+                <TextBox x:Name="domeSkipLEDs" Margin="94,78,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="202" />
               </Grid>
             </Border>
-            <Label Content="Volume animation" HorizontalAlignment="Left" Margin="4,198,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,218,0,0" Padding="5" VerticalAlignment="Top">
+            <Label Content="Volume animation" HorizontalAlignment="Left" Margin="4,131,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,151,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <Label Content="Animation size" Margin="0,3,0,0" Padding="0" />
                 <ComboBox x:Name="domeVolumeAnimationSize" HorizontalAlignment="Left" VerticalAlignment="Top" Width="120" Margin="94,0,0,0">
@@ -177,14 +165,66 @@
                 </ComboBox>
               </Grid>
             </Border>
-            <Label Content="Flasher" HorizontalAlignment="Left" Margin="4,255,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,275,0,0" Padding="5" VerticalAlignment="Top">
+            <Label Content="Flasher" HorizontalAlignment="Left" Margin="4,188,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,208,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <Label Content="Auto flash delay" Padding="0" />
                 <TextBox x:Name="domeAutoFlashDelay" Margin="94,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="202" />
               </Grid>
             </Border>
           </Grid>
+          <WrapPanel HorizontalAlignment="Right" Width="240" Margin="0,0,5,0">
+            <Label Content="Hardware" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid>
+                <Label Content="Setup" Margin="0,3,0,0" Padding="0" />
+                <ComboBox x:Name="domeHardwareSetup" HorizontalAlignment="Left" VerticalAlignment="Top" Width="140" Margin="80,0,0,0">
+                  <ComboBoxItem x:Name="fiveTeensies" Content="Five Teensies" IsSelected="True" />
+                  <ComboBoxItem x:Name="beagleboneViaOPC" Content="Beaglebone via OPC" />
+                  <ComboBoxItem x:Name="beagleboneViaCAMP" Content="Beaglebone via CAMP" />
+                </ComboBox>
+                <WrapPanel x:Name="domeTeensies" Margin="0,25,0,0">
+                  <Grid Height="24">
+                    <Label Content="USB ports" Margin="0,3,0,0" Padding="0" />
+                    <ComboBox x:Name="domeTeensy1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="80,0,0,0" Width="115" SelectionChanged="DomePortChanged" />
+                    <Label x:Name="domeTeensyFPS1Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="197,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                  </Grid>
+                  <Grid Height="24">
+                    <ComboBox x:Name="domeTeensy2" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="80,0,0,0" Width="115" SelectionChanged="DomePortChanged" />
+                    <Label x:Name="domeTeensyFPS2Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="197,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                  </Grid>
+                  <Grid Height="24">
+                    <ComboBox x:Name="domeTeensy3" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="80,0,0,0" Width="115" SelectionChanged="DomePortChanged" />
+                    <Label x:Name="domeTeensyFPS3Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="197,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                  </Grid>
+                  <Grid Height="24">
+                    <ComboBox x:Name="domeTeensy4" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="80,0,0,0" Width="115" SelectionChanged="DomePortChanged" />
+                    <Label x:Name="domeTeensyFPS4Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="197,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                  </Grid>
+                  <Grid Height="24">
+                    <ComboBox x:Name="domeTeensy5" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="80,0,0,0" Width="115" SelectionChanged="DomePortChanged" />
+                    <Label x:Name="domeTeensyFPS5Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="197,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                  </Grid>
+                  <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Left" Style="{StaticResource HyperlinkButton}" Margin="83,4,0,1" FontStyle="Italic" Click="RefreshDomePorts" />
+                </WrapPanel>
+                <Grid x:Name="domeBeaglebonePanel" Margin="0,28,0,2" Visibility="Collapsed">
+                  <Label Content="Host and port" Padding="0" />
+                  <TextBox x:Name="domeBeagleboneHostAndPort" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="115" />
+                  <Label x:Name="domeBeagleboneFPSLabel" Content="0" VerticalAlignment="Top" Margin="197,0,-0.6,-0.6" Padding="5,2,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                </Grid>
+              </Grid>
+            </Border>
+            <Label Content="Diagnostics" HorizontalAlignment="Left" Margin="4,1,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid>
+                <Label Content="Test pattern" Margin="0,3,0,0" Padding="0" />
+                <ComboBox x:Name="domeTestPattern" HorizontalAlignment="Left" VerticalAlignment="Top" Width="140" Margin="80,0,0,0">
+                  <ComboBoxItem x:Name="domeTestPatternNone" Content="None" IsSelected="True" />
+                  <ComboBoxItem x:Name="domeTestPatternFlashColorsByStrand" Content="Flash colors by strand" />
+                </ComboBox>
+              </Grid>
+            </Border>
+          </WrapPanel>
           <CheckBox x:Name="domeThreadCheckbox" Content="Call LED dome in separate thread(s)" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
         </Grid>
       </TabItem>

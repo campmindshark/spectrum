@@ -43,6 +43,15 @@ namespace Spectrum {
     public int domeTeensyFPS5 { get; set; } = 0;
     [XmlIgnore]
     public int boardTeensyFPS { get; set; } = 0;
+    [XmlIgnore]
+    public int domeBeagleboneFPS { get; set; } = 0;
+
+    // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
+    public int domeHardwareSetup { get; set; } = 0;
+    public string domeBeagleboneAddress { get; set; } = "";
+
+    // 0 - None, 1 - Flash colors by strand
+    public int domeTestPattern { get; set; } = 0;
 
     public int hueDelay { get; set; } = 125;
     public bool hueIdleOnSilent { get; set; } = true;

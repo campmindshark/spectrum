@@ -39,6 +39,14 @@ namespace Spectrum.Base {
     int domeTeensyFPS4 { get; set; }
     int domeTeensyFPS5 { get; set; }
     int boardTeensyFPS { get; set; }
+    int domeBeagleboneFPS { get; set; }
+
+    // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
+    int domeHardwareSetup { get; set; }
+    string domeBeagleboneAddress { get; set; }
+
+    // 0 - None, 1 - Flash colors by strand
+    int domeTestPattern { get; set; }
 
     // This is the delay in milliseconds between consecutive commands we give
     // the Hue hub
