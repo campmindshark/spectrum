@@ -207,10 +207,15 @@
                   </Grid>
                   <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Left" Style="{StaticResource HyperlinkButton}" Margin="83,4,0,1" FontStyle="Italic" Click="RefreshDomePorts" />
                 </WrapPanel>
-                <Grid x:Name="domeBeaglebonePanel" Margin="0,28,0,2" Visibility="Collapsed">
+                <Grid x:Name="domeBeagleboneOPCPanel" Margin="0,28,0,2" Visibility="Collapsed">
                   <Label Content="Host and port" Padding="0" />
-                  <TextBox x:Name="domeBeagleboneHostAndPort" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="115" />
-                  <Label x:Name="domeBeagleboneFPSLabel" Content="0" VerticalAlignment="Top" Margin="197,0,-0.6,-0.6" Padding="5,2,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                  <TextBox x:Name="domeBeagleboneOPCHostAndPort" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="115" />
+                  <Label x:Name="domeBeagleboneOPCFPSLabel" Content="0" VerticalAlignment="Top" Margin="197,0,-0.6,-0.6" Padding="5,2,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                </Grid>
+                <Grid x:Name="domeBeagleboneCAMPPanel" Margin="0,28,0,2" Visibility="Collapsed">
+                  <Label Content="Host and port" Padding="0" />
+                  <TextBox x:Name="domeBeagleboneCAMPHostAndPort" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="115" />
+                  <Label x:Name="domeBeagleboneCAMPFPSLabel" Content="0" VerticalAlignment="Top" Margin="197,0,-0.6,-0.6" Padding="5,2,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
                 </Grid>
               </Grid>
             </Border>

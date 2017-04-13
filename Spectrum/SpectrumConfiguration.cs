@@ -44,11 +44,14 @@ namespace Spectrum {
     [XmlIgnore]
     public int boardTeensyFPS { get; set; } = 0;
     [XmlIgnore]
-    public int domeBeagleboneFPS { get; set; } = 0;
+    public int domeBeagleboneOPCFPS { get; set; } = 0;
+    [XmlIgnore]
+    public int domeBeagleboneCAMPFPS { get; set; } = 0;
 
     // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     public int domeHardwareSetup { get; set; } = 0;
-    public string domeBeagleboneAddress { get; set; } = "";
+    public string domeBeagleboneOPCAddress { get; set; } = "";
+    public string domeBeagleboneCAMPAddress { get; set; } = "";
 
     // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts
     public int domeTestPattern { get; set; } = 0;
