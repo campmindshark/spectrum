@@ -17,7 +17,7 @@ namespace Spectrum {
    * the order, which means it illuminates the struts in the order they are
    * plugged in.
    */
-  class LEDDomeStrutIterationVisualizer : Visualizer {
+  class LEDDomeStrutIterationDiagnosticVisualizer : Visualizer {
 
     private Configuration config;
     private LEDDomeOutput dome;
@@ -26,7 +26,7 @@ namespace Spectrum {
     private int lastTeensy = 4;
     private int color = 0xFF0000;
 
-    public LEDDomeStrutIterationVisualizer(
+    public LEDDomeStrutIterationDiagnosticVisualizer(
       Configuration config,
       LEDDomeOutput dome
     ) {
