@@ -45,7 +45,7 @@ namespace Spectrum.Base {
     int domeHardwareSetup { get; set; }
     string domeBeagleboneAddress { get; set; }
 
-    // 0 - None, 1 - Flash colors by strand
+    // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts
     int domeTestPattern { get; set; }
 
     // This is the delay in milliseconds between consecutive commands we give

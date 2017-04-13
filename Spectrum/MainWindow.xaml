@@ -220,7 +220,8 @@
                 <Label Content="Test pattern" Margin="0,3,0,0" Padding="0" />
                 <ComboBox x:Name="domeTestPattern" HorizontalAlignment="Left" VerticalAlignment="Top" Width="140" Margin="80,0,0,0">
                   <ComboBoxItem x:Name="domeTestPatternNone" Content="None" IsSelected="True" />
-                  <ComboBoxItem x:Name="domeTestPatternFlashColorsByStrand" Content="Flash colors by strand" />
+                  <ComboBoxItem x:Name="domeTestPatternFlashColorsByStrut" Content="Flash colors by strut" />
+                  <ComboBoxItem x:Name="domeTestPatternIterateThroughStruts" Content="Iterate through struts" />
                 </ComboBox>
               </Grid>
             </Border>

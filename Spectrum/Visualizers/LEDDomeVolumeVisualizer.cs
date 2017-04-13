@@ -27,8 +27,9 @@ namespace Spectrum {
     // For color-from-part-and-spoke mode, maps each part/spoke to a color
     private int[] partAndSpokeColors = new int[5];
     // For color-from-random mode, maps each strut to a color
-    private int[] randomStrutColors = new int[190];
+    private int[] randomStrutColors = new int[LEDDomeOutput.GetNumStruts()];
     private Random random = new Random();
+    private bool wipeStrutsNextCycle = false;
 
     public LEDDomeVolumeVisualizer(
       Configuration config,
@@ -112,14 +113,37 @@ namespace Spectrum {
       }
     }
 
-    // We don't actually care about this
-    public bool Enabled { get; set; } = false;
+    private bool enabled = false;
+    public bool Enabled {
+      get {
+        return this.enabled;
+      }
+      set {
+        if (value == this.enabled) {
+          return;
+        }
+        if (value) {
+          this.wipeStrutsNextCycle = true;
+        }
+        this.enabled = value;
+      }
+    }
 
     public Input[] GetInputs() {
       return new Input[] { this.audio };
     }
 
     public void Visualize() {
+      if (this.wipeStrutsNextCycle) {
+        for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
+          Strut strut = Strut.FromIndex(this.config, i);
+          for (int j = 0; j < strut.Length; j++) {
+            this.dome.SetPixel(i, j, 0x000000);
+          }
+        }
+        this.wipeStrutsNextCycle = false;
+      }
+
       this.UpdateCenter();
       this.UpdateAnimationSize(this.config.domeVolumeAnimationSize);
 

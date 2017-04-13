@@ -92,7 +92,7 @@ namespace Spectrum {
 
         int strutIndex = -1;
         while (strutIndex == -1) {
-          int candidateStrutIndex = (int)(this.rand.NextDouble() * 190);
+          int candidateStrutIndex = (int)(this.rand.NextDouble() * LEDDomeOutput.GetNumStruts());
           if (this.strutStates.ContainsValue(candidateStrutIndex)) {
             continue;
           }

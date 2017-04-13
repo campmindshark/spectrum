@@ -17,7 +17,7 @@ namespace Spectrum {
    * the order, which means it illuminates the struts in the order they are
    * plugged in.
    */
-  class LEDDomeStrandTestVisualizer : Visualizer {
+  class LEDDomeStrutIterationVisualizer : Visualizer {
 
     private Configuration config;
     private LEDDomeOutput dome;
@@ -26,7 +26,7 @@ namespace Spectrum {
     private int lastTeensy = 4;
     private int color = 0xFF0000;
 
-    public LEDDomeStrandTestVisualizer(
+    public LEDDomeStrutIterationVisualizer(
       Configuration config,
       LEDDomeOutput dome
     ) {
@@ -39,12 +39,27 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return 0;
+        return this.config.domeTestPattern == 2 ? 1000 : 0;
       }
     }
 
-    // We don't actually care about this
-    public bool Enabled { get; set; } = false;
+    private bool enabled = false;
+    public bool Enabled {
+      get {
+        return this.enabled;
+      }
+      set {
+        if (value == this.enabled) {
+          return;
+        }
+        if (value) {
+          this.lastIndex = 37;
+          this.lastTeensy = 4;
+          this.color = 0xFF0000;
+        }
+        this.enabled = value;
+      }
+    }
 
     public Input[] GetInputs() {
       return new Input[] {};

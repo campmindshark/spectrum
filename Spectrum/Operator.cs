@@ -79,7 +79,7 @@ namespace Spectrum {
         midi,
         dome
       ));
-      this.visualizers.Add(new LEDDomeStrandTestVisualizer(
+      this.visualizers.Add(new LEDDomeStrutIterationVisualizer(
         this.config,
         dome
       ));

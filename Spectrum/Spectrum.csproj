@@ -95,7 +95,7 @@
       <DependentUpon>DomeSimulatorWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Visualizers\LEDDomeFlashVisualizer.cs" />
-    <Compile Include="Visualizers\LEDDomeStrandTestVisualizer.cs" />
+    <Compile Include="Visualizers\LEDDomeStrutIterationVisualizer.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>

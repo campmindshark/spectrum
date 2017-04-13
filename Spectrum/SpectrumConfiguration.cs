@@ -50,7 +50,7 @@ namespace Spectrum {
     public int domeHardwareSetup { get; set; } = 0;
     public string domeBeagleboneAddress { get; set; } = "";
 
-    // 0 - None, 1 - Flash colors by strand
+    // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts
     public int domeTestPattern { get; set; } = 0;
 
     public int hueDelay { get; set; } = 125;
