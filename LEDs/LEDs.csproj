@@ -43,7 +43,8 @@
     <Compile Include="StrutLayout.cs" />
     <Compile Include="LEDDomeOutput.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SimpleTeensyAPI.cs" />
+    <Compile Include="OPCAPI.cs" />
+    <Compile Include="TeensyAPI.cs" />
     <Compile Include="CartesianTeensyOutput.cs" />
     <Compile Include="StrutLayoutFactory.cs" />
   </ItemGroup>

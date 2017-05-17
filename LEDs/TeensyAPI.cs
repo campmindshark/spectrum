@@ -9,11 +9,11 @@ using System;
 namespace Spectrum.LEDs {
 
   /**
-   * SimpleTeensyOutput is an API that can handle a single Teensy. It has no
-   * conception of how many LEDs the Teensy is addressing - it just communicates
-   * a given index and color to the Teensy.
+   * TeensyAPI is an API that can handle a single Teensy. It has no conception
+   * of how many LEDs the Teensy is addressing - it just communicates a given
+   * index and color to the Teensy.
    */
-  class SimpleTeensyAPI {
+  class TeensyAPI {
 
     private SerialPort port;
     private ConcurrentQueue<byte[]> buffer;
@@ -22,7 +22,7 @@ namespace Spectrum.LEDs {
     private Stopwatch frameRateStopwatch;
     private int framesThisSecond;
 
-    public SimpleTeensyAPI(
+    public TeensyAPI(
       string portName,
       bool separateThread,
       Action<int> setFPS
@@ -56,7 +56,7 @@ namespace Spectrum.LEDs {
               this.outputThread = new Thread(OutputThread);
               this.outputThread.Start();
             } else {
-              this.InitializeTeensies();
+              this.OpenPort();
             }
           } else {
             if (this.outputThread != null) {
@@ -64,7 +64,7 @@ namespace Spectrum.LEDs {
               this.outputThread.Join();
               this.outputThread = null;
             } else {
-              this.TerminateTeensies();
+              this.ClosePort();
             }
           }
           this.active = value;
@@ -72,11 +72,11 @@ namespace Spectrum.LEDs {
       }
     }
 
-    private void InitializeTeensies() {
+    private void OpenPort() {
       this.port.Open();
     }
 
-    private void TerminateTeensies() {
+    private void ClosePort() {
       this.port.Close();
       this.buffer = new ConcurrentQueue<byte[]>();
     }
@@ -110,7 +110,7 @@ namespace Spectrum.LEDs {
     }
 
     private void OutputThread() {
-      this.InitializeTeensies();
+      this.OpenPort();
       try {
         while (true) {
           if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
@@ -122,7 +122,7 @@ namespace Spectrum.LEDs {
           this.Update();
         }
       } catch (ThreadAbortException) {
-        this.TerminateTeensies();
+        this.ClosePort();
       }
     }
 

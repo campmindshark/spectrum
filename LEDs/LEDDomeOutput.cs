@@ -139,7 +139,7 @@ namespace Spectrum.LEDs {
       new Tuple<int, int>(4, 4), new Tuple<int, int>(0, 4),
     };
 
-    private SimpleTeensyAPI[] teensies;
+    private TeensyAPI[] teensies;
     private Configuration config;
     private List<Visualizer> visualizers;
     private HashSet<int> reservedStruts;
@@ -193,45 +193,45 @@ namespace Spectrum.LEDs {
       }
     }
 
-    private SimpleTeensyAPI[] getNewTeensies() {
-      SimpleTeensyAPI api1 = null, api2 = null, api3 = null, api4 = null,
+    private TeensyAPI[] getNewTeensies() {
+      TeensyAPI api1 = null, api2 = null, api3 = null, api4 = null,
         api5 = null;
       try {
-        api1 = new SimpleTeensyAPI(
+        api1 = new TeensyAPI(
           this.config.domeTeensyUSBPort1,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS1 = newFPS
         );
       } catch (Exception) { }
       try {
-        api2 = new SimpleTeensyAPI(
+        api2 = new TeensyAPI(
           this.config.domeTeensyUSBPort2,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS2 = newFPS
         );
       } catch (Exception) { }
       try {
-        api3 = new SimpleTeensyAPI(
+        api3 = new TeensyAPI(
           this.config.domeTeensyUSBPort3,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS3 = newFPS
         );
       } catch (Exception) { }
       try {
-        api4 = new SimpleTeensyAPI(
+        api4 = new TeensyAPI(
           this.config.domeTeensyUSBPort4,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS4 = newFPS
         );
       } catch (Exception) { }
       try {
-        api5 = new SimpleTeensyAPI(
+        api5 = new TeensyAPI(
           this.config.domeTeensyUSBPort5,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS5 = newFPS
         );
       } catch (Exception) { }
-      return new SimpleTeensyAPI[] {
+      return new TeensyAPI[] {
         api1, api2, api3, api4, api5
       };
     }

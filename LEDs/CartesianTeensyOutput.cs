@@ -18,7 +18,7 @@ namespace Spectrum.LEDs {
    */
   public class CartesianTeensyOutput : Output {
 
-    private SimpleTeensyAPI api;
+    private TeensyAPI api;
     private Configuration config;
     private List<Visualizer> visualizers;
 
@@ -37,7 +37,7 @@ namespace Spectrum.LEDs {
           return;
         }
         if (value) {
-          this.api = new SimpleTeensyAPI(
+          this.api = new TeensyAPI(
             this.config.teensyUSBPort,
             this.config.ledBoardOutputInSeparateThread,
             newFPS => this.config.boardTeensyFPS = newFPS
