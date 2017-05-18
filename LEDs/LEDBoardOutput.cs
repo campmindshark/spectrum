@@ -100,6 +100,7 @@ namespace Spectrum.LEDs {
         if (value == this.active) {
           return;
         }
+        this.active = value;
         if (value) {
           if (this.config.boardHardwareSetup == 0) {
             this.initializeTeensyAPI();
@@ -114,7 +115,6 @@ namespace Spectrum.LEDs {
             this.opcAPI.Active = false;
           }
         }
-        this.active = value;
       }
     }
 
@@ -151,15 +151,6 @@ namespace Spectrum.LEDs {
     }
 
     public void SetPixel(int x, int y, int color) {
-      if (this.config.boardHardwareSetup == 0 && this.teensyAPI != null) {
-        this.SetPixelOnTeensy(x, y, color);
-      }
-      if (this.config.boardHardwareSetup == 1 && this.opcAPI != null) {
-        this.SetPixelOnBeagleboneOPC(x, y, color);
-      }
-    }
-
-    public void SetPixelOnTeensy(int x, int y, int color) {
       int pixelIndex = y * this.config.boardRowLength;
       // We need to figure out if this row is connected
       // in the forward or negative direction
@@ -169,20 +160,12 @@ namespace Spectrum.LEDs {
       } else {
         pixelIndex += x;
       }
-      this.teensyAPI.SetPixel(pixelIndex, color);
-    }
-
-    public void SetPixelOnBeagleboneOPC(int x, int y, int color) {
-      byte channelIndex = (byte)(y / this.config.boardRowsPerStrip);
-      int row = y % this.config.boardRowsPerStrip;
-      int pixelIndex = row * this.config.boardRowLength;
-      bool reverse = row % 2 == 1;
-      if (reverse) {
-        pixelIndex += this.config.boardRowLength - x - 1;
-      } else {
-        pixelIndex += x;
+      if (this.config.boardHardwareSetup == 0 && this.teensyAPI != null) {
+        this.teensyAPI.SetPixel(pixelIndex, color);
       }
-      this.opcAPI.SetPixel(channelIndex, pixelIndex, color);
+      if (this.config.boardHardwareSetup == 1 && this.opcAPI != null) {
+        this.opcAPI.SetPixel(0, pixelIndex, color);
+      }
     }
 
   }

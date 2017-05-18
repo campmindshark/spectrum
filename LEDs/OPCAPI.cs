@@ -66,7 +66,7 @@ namespace Spectrum.LEDs {
           }
           if (value) {
             if (this.separateThread) {
-              this.outputThread = new Thread(OutputThread);
+              this.outputThread = new Thread(this.OutputThread);
               this.outputThread.Start();
             } else {
               this.ConnectSocket();
@@ -111,7 +111,7 @@ namespace Spectrum.LEDs {
           List<byte> message = new List<byte>();
           message.Add(channelPixelsPair.Key);
           message.Add(0);
-          var length = channelPixelsPair.Value.Length;
+          var length = channelPixelsPair.Value.Length * 3;
           message.Add((byte)(length >> 8));
           message.Add((byte)length);
           foreach (int color in channelPixelsPair.Value) {
@@ -155,10 +155,9 @@ namespace Spectrum.LEDs {
 
     public void SetPixel(byte channelIndex, int pixelIndex, int color) {
       lock (this.lockObject) {
-        this.firstPixelNotSet[channelIndex] = Math.Max(
-          this.firstPixelNotSet[channelIndex],
-          pixelIndex + 1
-        );
+        this.firstPixelNotSet[channelIndex] = this.firstPixelNotSet.ContainsKey(channelIndex)
+          ? Math.Max(this.firstPixelNotSet[channelIndex], pixelIndex + 1)
+          : pixelIndex + 1;
         var pixelTuple = new Tuple<byte, int>(channelIndex, pixelIndex);
         this.currentPixelColors[pixelTuple] = color;
       }
