@@ -38,7 +38,7 @@ namespace Spectrum.LEDs {
         }
         if (value) {
           this.api = new TeensyAPI(
-            this.config.teensyUSBPort,
+            this.config.boardTeensyUSBPort,
             this.config.ledBoardOutputInSeparateThread,
             newFPS => this.config.boardTeensyFPS = newFPS
           );
@@ -75,10 +75,10 @@ namespace Spectrum.LEDs {
     public void SetPixel(int x, int y, int color) {
       // We need to figure out if this row is connected
       // in the forward or negative direction
-      bool reverse = (y % this.config.teensyRowsPerStrip) % 2 == 1;
-      int pixelIndex = y * this.config.teensyRowLength;
+      bool reverse = (y % this.config.boardRowsPerStrip) % 2 == 1;
+      int pixelIndex = y * this.config.boardRowLength;
       if (reverse) {
-        pixelIndex += this.config.teensyRowLength - x - 1;
+        pixelIndex += this.config.boardRowLength - x - 1;
       } else {
         pixelIndex += x;
       }

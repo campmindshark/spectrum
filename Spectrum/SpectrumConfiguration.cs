@@ -44,9 +44,22 @@ namespace Spectrum {
     [XmlIgnore]
     public int boardTeensyFPS { get; set; } = 0;
     [XmlIgnore]
+    public int boardBeagleboneOPCFPS { get; set; } = 0;
+    [XmlIgnore]
+    public int boardBeagleboneCAMPFPS { get; set; } = 0;
+    [XmlIgnore]
     public int domeBeagleboneOPCFPS { get; set; } = 0;
     [XmlIgnore]
     public int domeBeagleboneCAMPFPS { get; set; } = 0;
+
+    // 0 - Teensy, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
+    public int boardHardwareSetup { get; set; } = 0;
+    public string boardBeagleboneOPCAddress { get; set; } = "";
+    public string boardBeagleboneCAMPAddress { get; set; } = "";
+    public string boardTeensyUSBPort { get; set; } = "COM4";
+    public int boardRowLength { get; set; } = 30;
+    public int boardRowsPerStrip { get; set; } = 5;
+    public double boardBrightness { get; set; } = 0.1;
 
     // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     public int domeHardwareSetup { get; set; } = 0;
@@ -77,11 +90,6 @@ namespace Spectrum {
     public string hueURL { get; set; }
       = "http://192.168.1.26/api/161d04c425fa45e293386cf241a26bf/";
     public int[] hueIndices { get; set; } = new int[] { 2, 1, 4, 5, 6 };
-
-    public string teensyUSBPort { get; set; } = "COM4";
-    public int teensyRowLength { get; set; } = 30;
-    public int teensyRowsPerStrip { get; set; } = 5;
-    public double ledBoardBrightness { get; set; } = 0.1;
 
     public int midiDeviceIndex { get; set; } = -1;
 

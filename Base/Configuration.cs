@@ -39,8 +39,22 @@ namespace Spectrum.Base {
     int domeTeensyFPS4 { get; set; }
     int domeTeensyFPS5 { get; set; }
     int boardTeensyFPS { get; set; }
+    int boardBeagleboneOPCFPS { get; set; }
+    int boardBeagleboneCAMPFPS { get; set; }
     int domeBeagleboneOPCFPS { get; set; }
     int domeBeagleboneCAMPFPS { get; set; }
+
+    // 0 - Teensy, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
+    int boardHardwareSetup { get; set; }
+    string boardBeagleboneOPCAddress { get; set; }
+    string boardBeagleboneCAMPAddress { get; set; }
+    // The USB port where the Teensy is located (LED Board)
+    string boardTeensyUSBPort { get; set; }
+    // Parameters to SquareTeensyOutput (LED Board)
+    int boardRowLength { get; set; }
+    int boardRowsPerStrip { get; set; }
+    // Brightness of the LED Board
+    double boardBrightness { get; set; }
 
     // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     int domeHardwareSetup { get; set; }
@@ -80,14 +94,6 @@ namespace Spectrum.Base {
     string hueURL { get; set; }
     // The list of IDs of Hue bulbs, from left to right
     int[] hueIndices { get; set; }
-
-    // The USB port where the Teensy is located (LED Board)
-    string teensyUSBPort { get; set; }
-    // Parameters to SquareTeensyOutput (LED Board)
-    int teensyRowLength { get; set; }
-    int teensyRowsPerStrip { get; set; }
-    // Brightness of the LED Board
-    double ledBoardBrightness { get; set; }
 
     // The index of the device representing the MIDI controller
     int midiDeviceIndex { get; set; }

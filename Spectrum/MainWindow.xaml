@@ -94,26 +94,53 @@
       </TabItem>
       <TabItem Header="LED Board">
         <Grid>
-          <Grid HorizontalAlignment="Left" Width="355">
+          <Grid HorizontalAlignment="Left" Width="317">
             <Label Content="General" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <Label Content="Enabled" FontWeight="Bold" Padding="0" />
                 <CheckBox x:Name="ledBoardEnabled" VerticalAlignment="Top" Margin="94,2,0,2" IsChecked="False" />
-                <Label Content="Teensy USB port" Margin="0,23,0,0" Padding="0" />
-                <ComboBox x:Name="ledBoardUSBPorts" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,22,0,0" Width="120" SelectionChanged="LEDBoardUSBPortsChanged" />
-                <Label x:Name="boardTeensyFPSLabel" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="216,22,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Right" Style="{StaticResource HyperlinkButton}" Margin="0,25,5,0" FontStyle="Italic" Click="RefreshLEDBoardPorts" />
-                <Label Content="Row length" Margin="0,49,0,0" Padding="0" />
-                <TextBox x:Name="ledBoardRowLength" Margin="94,49,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                <Label Content="Rows per strip" Margin="0,74,0,0" Padding="0" />
-                <TextBox x:Name="ledBoardRowsPerStrip" Margin="94,74,0,0" Width="240" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                <Label Content="Brightness" HorizontalAlignment="Left" Padding="0" Margin="0,99,0,0" />
-                <Slider x:Name="ledBoardBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,99,0,0" VerticalAlignment="Top" Height="20" Width="200" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                <Label x:Name="ledBoardBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="300,99,0,0" Padding="0" ContentStringFormat="F3" />
+                <Label Content="Row length" Margin="0,26,0,0" Padding="0" />
+                <TextBox x:Name="ledBoardRowLength" Margin="94,26,0,0" Width="202" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                <Label Content="Rows per strip" Margin="0,51,0,0" Padding="0" />
+                <TextBox x:Name="ledBoardRowsPerStrip" Margin="94,51,0,0" Width="202" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                <Label Content="Brightness" HorizontalAlignment="Left" Padding="0" Margin="0,76,0,0" />
+                <Slider x:Name="ledBoardBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,76,0,0" VerticalAlignment="Top" Height="20" Width="170" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                <Label x:Name="ledBoardBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="265,76,0,0" Padding="0" ContentStringFormat="F3" />
               </Grid>
             </Border>
           </Grid>
+          <WrapPanel HorizontalAlignment="Right" Width="240" Margin="0,0,5,0">
+            <Label Content="Hardware" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid>
+                <Label Content="Setup" Margin="0,3,0,0" Padding="0" />
+                <ComboBox x:Name="boardHardwareSetup" HorizontalAlignment="Left" VerticalAlignment="Top" Width="140" Margin="80,0,0,0">
+                  <ComboBoxItem x:Name="boardHardwareSetupTeensy" Content="Teensy" IsSelected="True" />
+                  <ComboBoxItem x:Name="boardHardwareSetupBeagleboneViaOPC" Content="Beaglebone via OPC" />
+                  <ComboBoxItem x:Name="boardHardwareSetupBeagleboneViaCAMP" Content="Beaglebone via CAMP" />
+                </ComboBox>
+                <WrapPanel x:Name="boardTeensyPanel" Margin="0,25,0,0">
+                  <Grid Height="24">
+                    <Label Content="USB port" Margin="0,3,0,0" Padding="0" />
+                    <ComboBox x:Name="ledBoardUSBPorts" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="80,0,0,0" Width="115" SelectionChanged="LEDBoardUSBPortsChanged" />
+                    <Label x:Name="boardTeensyFPSLabel" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="197,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                  </Grid>
+                  <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Left" Style="{StaticResource HyperlinkButton}" Margin="83,4,0,1" FontStyle="Italic" Click="RefreshLEDBoardPorts" />
+                </WrapPanel>
+                <Grid x:Name="boardBeagleboneOPCPanel" Margin="0,28,0,2" Visibility="Collapsed">
+                  <Label Content="Host and port" Padding="0" />
+                  <TextBox x:Name="boardBeagleboneOPCHostAndPort" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="115" />
+                  <Label x:Name="boardBeagleboneOPCFPSLabel" Content="0" VerticalAlignment="Top" Margin="197,0,-0.6,-0.6" Padding="5,2,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                </Grid>
+                <Grid x:Name="boardBeagleboneCAMPPanel" Margin="0,28,0,2" Visibility="Collapsed">
+                  <Label Content="Host and port" Padding="0" />
+                  <TextBox x:Name="boardBeagleboneCAMPHostAndPort" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="115" />
+                  <Label x:Name="boardBeagleboneCAMPFPSLabel" Content="0" VerticalAlignment="Top" Margin="197,0,-0.6,-0.6" Padding="5,2,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                </Grid>
+              </Grid>
+            </Border>
+          </WrapPanel>
           <CheckBox x:Name="ledBoardThreadCheckbox" Content="Call LED board in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
         </Grid>
       </TabItem>

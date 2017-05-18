@@ -65,7 +65,7 @@ namespace Spectrum {
 
       int color = 0;
       int brightnessByte =
-        (int)(0xFF * this.config.ledBoardBrightness * mostRecentCommand.Value);
+        (int)(0xFF * this.config.boardBrightness * mostRecentCommand.Value);
       if (mostRecentCommand.Key == 48) {
         color = brightnessByte << 16;
       } else if (mostRecentCommand.Key == 49) {
@@ -76,8 +76,8 @@ namespace Spectrum {
         color = brightnessByte | brightnessByte << 8 | brightnessByte << 16;
       }
 
-      for (int j = 0; j < this.config.teensyRowsPerStrip * 8; j++) {
-        for (int i = 0; i < this.config.teensyRowLength; i++) {
+      for (int j = 0; j < this.config.boardRowsPerStrip * 8; j++) {
+        for (int i = 0; i < this.config.boardRowLength; i++) {
           this.teensy.SetPixel(i, j, color);
         }
       }

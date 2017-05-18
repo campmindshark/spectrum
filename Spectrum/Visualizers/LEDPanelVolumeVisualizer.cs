@@ -41,14 +41,14 @@ namespace Spectrum {
 
     public void Visualize() {
       int numColumnsToLight =
-        (int)(this.audio.Volume * this.config.teensyRowLength);
-      int brightnessByte = (int)(0xFF * this.config.ledBoardBrightness);
+        (int)(this.audio.Volume * this.config.boardRowLength);
+      int brightnessByte = (int)(0xFF * this.config.boardBrightness);
       int activeColor = brightnessByte
         | brightnessByte << 8
         | brightnessByte << 16;
 
-      for (int j = 0; j < this.config.teensyRowsPerStrip * 8; j++) {
-        for (int i = 0; i < this.config.teensyRowLength; i++) {
+      for (int j = 0; j < this.config.boardRowsPerStrip * 8; j++) {
+        for (int i = 0; i < this.config.boardRowLength; i++) {
           int color = numColumnsToLight > i ? activeColor : 0x000000;
           this.teensy.SetPixel(i, j, color);
         }

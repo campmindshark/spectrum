@@ -150,6 +150,18 @@ namespace Spectrum {
       this.Bind("domeTestPattern", this.domeTestPattern, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.domeTestPatternNone, [1] = this.domeTestPatternFlashColorsByStrut, [2] = this.domeTestPatternIterateThroughStruts }, true));
       this.Bind("boardTeensyFPS", this.boardTeensyFPSLabel, Label.ContentProperty);
       this.Bind("boardTeensyFPS", this.boardTeensyFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("ledBoardOutputInSeparateThread", this.boardTeensyFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("ledBoardOutputInSeparateThread", this.ledBoardUSBPorts, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("boardBeagleboneOPCAddress", this.boardBeagleboneOPCHostAndPort, TextBox.TextProperty);
+      this.Bind("boardBeagleboneOPCFPS", this.boardBeagleboneOPCFPSLabel, Label.ContentProperty);
+      this.Bind("boardBeagleboneOPCFPS", this.boardBeagleboneOPCFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneOPCFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneOPCHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("boardBeagleboneCAMPAddress", this.boardBeagleboneCAMPHostAndPort, TextBox.TextProperty);
+      this.Bind("boardBeagleboneCAMPFPS", this.boardBeagleboneCAMPFPSLabel, Label.ContentProperty);
+      this.Bind("boardBeagleboneCAMPFPS", this.boardBeagleboneCAMPFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneCAMPFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("hueDelay", this.hueCommandDelay, TextBox.TextProperty);
       this.Bind("hueIdleOnSilent", this.hueIdleOnSilent, CheckBox.IsCheckedProperty);
       this.Bind("hueOverrideIndex", this.hueOverride, ComboBox.SelectedIndexProperty);
@@ -174,10 +186,14 @@ namespace Spectrum {
       this.Bind("snareT", this.snareChangeL, Label.ContentProperty);
       this.Bind("hueURL", this.hueHubAddress, TextBox.TextProperty);
       this.Bind("hueIndices", this.hueLightIndices, TextBox.TextProperty, false, BindingMode.TwoWay, new StringJoinConverter());
-      this.Bind("teensyRowLength", this.ledBoardRowLength, TextBox.TextProperty);
-      this.Bind("teensyRowsPerStrip", this.ledBoardRowsPerStrip, TextBox.TextProperty);
-      this.Bind("ledBoardBrightness", this.ledBoardBrightnessSlider, Slider.ValueProperty);
-      this.Bind("ledBoardBrightness", this.ledBoardBrightnessLabel, Label.ContentProperty);
+      this.Bind("boardRowLength", this.ledBoardRowLength, TextBox.TextProperty);
+      this.Bind("boardRowsPerStrip", this.ledBoardRowsPerStrip, TextBox.TextProperty);
+      this.Bind("boardBrightness", this.ledBoardBrightnessSlider, Slider.ValueProperty);
+      this.Bind("boardBrightness", this.ledBoardBrightnessLabel, Label.ContentProperty);
+      this.Bind("boardHardwareSetup", this.boardHardwareSetup, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.boardHardwareSetupTeensy, [1] = this.boardHardwareSetupBeagleboneViaOPC, [2] = this.boardHardwareSetupBeagleboneViaCAMP }, true));
+      this.Bind("boardHardwareSetup", this.boardTeensyPanel, WrapPanel.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
+      this.Bind("boardHardwareSetup", this.boardBeagleboneOPCPanel, Grid.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Collapsed }));
+      this.Bind("boardHardwareSetup", this.boardBeagleboneCAMPPanel, Grid.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Collapsed, [2] = Visibility.Visible }));
       this.Bind("domeEnabled", this.domeEnabled, CheckBox.IsCheckedProperty);
       this.Bind("domeSimulationEnabled", this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
       this.Bind("domeMaxBrightness", this.domeMaxBrightnessSlider, Slider.ValueProperty);
@@ -366,7 +382,7 @@ namespace Spectrum {
         this.ledBoardUSBPorts.Items.Add(portName);
       }
 
-      this.ledBoardUSBPorts.SelectedValue = this.config.teensyUSBPort;
+      this.ledBoardUSBPorts.SelectedValue = this.config.boardTeensyUSBPort;
     }
 
     private void LEDBoardUSBPortsChanged(
@@ -376,7 +392,7 @@ namespace Spectrum {
       if (this.ledBoardUSBPorts.SelectedIndex == -1) {
         return;
       }
-      this.config.teensyUSBPort = this.ledBoardUSBPorts.SelectedItem as string;
+      this.config.boardTeensyUSBPort = this.ledBoardUSBPorts.SelectedItem as string;
       this.op.Reboot();
       this.SaveConfig();
     }
