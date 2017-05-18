@@ -42,7 +42,7 @@ namespace Spectrum {
       this.outputs = new List<Output>();
       var hue = new HueOutput(config);
       this.outputs.Add(hue);
-      var board = new CartesianTeensyOutput(config);
+      var board = new LEDBoardOutput(config);
       this.outputs.Add(board);
       var dome = new LEDDomeOutput(config);
       this.outputs.Add(dome);

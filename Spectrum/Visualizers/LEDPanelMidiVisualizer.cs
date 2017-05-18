@@ -13,13 +13,13 @@ namespace Spectrum {
 
     private Configuration config;
     private MidiInput midi;
-    private CartesianTeensyOutput teensy;
+    private LEDBoardOutput teensy;
     private List<KeyValuePair<int, double>> currentlyOn;
 
     public LEDPanelMidiVisualizer(
       Configuration config,
       MidiInput midi,
-      CartesianTeensyOutput teensy
+      LEDBoardOutput teensy
     ) {
       this.config = config;
       this.midi = midi;

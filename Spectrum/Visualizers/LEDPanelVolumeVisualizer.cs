@@ -13,12 +13,12 @@ namespace Spectrum {
 
     private Configuration config;
     private AudioInput audio;
-    private CartesianTeensyOutput teensy;
+    private LEDBoardOutput teensy;
 
     public LEDPanelVolumeVisualizer(
       Configuration config,
       AudioInput audio,
-      CartesianTeensyOutput teensy
+      LEDBoardOutput teensy
     ) {
       this.config = config;
       this.audio = audio;
