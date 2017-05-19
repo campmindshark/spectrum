@@ -91,9 +91,13 @@
     <Compile Include="Converter\SpecificValuesConverter.cs" />
     <Compile Include="Converter\FPSToBrushConverter.cs" />
     <Compile Include="Converter\StringJoinConverter.cs" />
-    <Compile Include="DomeSimulatorWindow.xaml.cs">
+    <Compile Include="Simulators\BarSimulatorWindow.xaml.cs">
+      <DependentUpon>BarSimulatorWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Simulators\DomeSimulatorWindow.xaml.cs">
       <DependentUpon>DomeSimulatorWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Simulators\SimulatorUtils.cs" />
     <Compile Include="Visualizers\LEDDomeFlashVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeFlashColorsDiagnosticVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeStrutIterationDiagnosticVisualizer.cs" />
@@ -112,7 +116,11 @@
     <Compile Include="Hotkey.cs" />
     <Compile Include="Visualizers\HueAudioVisualizer.cs" />
     <Compile Include="Visualizers\WhyFireMidiVisualizer.cs" />
-    <Page Include="DomeSimulatorWindow.xaml">
+    <Page Include="Simulators\BarSimulatorWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Simulators\DomeSimulatorWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

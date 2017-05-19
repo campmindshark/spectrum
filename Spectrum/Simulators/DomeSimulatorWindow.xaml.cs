@@ -48,24 +48,6 @@ namespace Spectrum {
       );
     }
 
-    private static int GetComputerColor(int ledColor) {
-      byte red = (byte)(ledColor >> 16);
-      byte green = (byte)(ledColor >> 8);
-      byte blue = (byte)ledColor;
-      double ratio;
-      if (red >= green && red >= blue) {
-        ratio = (double)0xFF / red;
-      } else if (green >= red && green >= blue) {
-        ratio = (double)0xFF / green;
-      } else {
-        ratio = (double)0xFF / blue;
-      }
-      double factor = Math.Sqrt(ratio);
-      return (int)(red * factor) << 16 |
-        (int)(green * factor) << 8 |
-        (int)(blue * factor);
-    }
-
     private Configuration config;
     private WriteableBitmap bitmap;
     private Int32Rect rect;
@@ -77,18 +59,18 @@ namespace Spectrum {
       this.InitializeComponent();
       this.config = config;
 
+      this.rect = new Int32Rect(0, 0, 750, 750);
       this.bitmap = new WriteableBitmap(
-        750,
-        750,
+        this.rect.Width,
+        this.rect.Height,
         96,
         96,
         PixelFormats.Bgra32,
         null
       );
-      this.rect = new Int32Rect(0, 0, 750, 750);
-      this.pixels = new byte[rect.Width * rect.Height * 4];
-      for (int x = 0; x < rect.Width; x++) {
-        for (int y = 0; y < rect.Height; y++) {
+      this.pixels = new byte[this.rect.Width * this.rect.Height * 4];
+      for (int x = 0; x < this.rect.Width; x++) {
+        for (int y = 0; y < this.rect.Height; y++) {
           this.SetPixelColor(this.pixels, x, y, (uint)0xFF000000);
         }
       }
@@ -134,7 +116,8 @@ namespace Spectrum {
     }
 
     private void Draw() {
-      uint color = (uint)GetComputerColor(0x000000) | (uint)0xFF000000;
+      uint color = (uint)SimulatorUtils.GetComputerColor(0x000000)
+        | (uint)0xFF000000;
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
         var pt1 = GetPoint(i, 0);
         var pt2 = GetPoint(i, 1);
@@ -186,7 +169,8 @@ namespace Spectrum {
         double deltaY = (pt1.Item2 - pt2.Item2) / (numLEDs + 2.0);
         int x = pt1.Item1 - (int)(deltaX * (command.ledIndex + 1));
         int y = pt1.Item2 - (int)(deltaY * (command.ledIndex + 1));
-        uint color = (uint)GetComputerColor(command.color) | (uint)0xFF000000;
+        uint color = (uint)SimulatorUtils.GetComputerColor(command.color)
+          | (uint)0xFF000000;
         this.SetPixelColor(this.pixels, x, y, color);
       }
 
@@ -226,7 +210,8 @@ namespace Spectrum {
         }
       }
 
-      uint color = (uint)GetComputerColor(0xFFFFFF) | (uint)0xFF000000;
+      uint color = (uint)SimulatorUtils.GetComputerColor(0xFFFFFF)
+        | (uint)0xFF000000;
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
         var pt1 = GetPoint(i, 0);
         var pt2 = GetPoint(i, 1);

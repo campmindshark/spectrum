@@ -21,6 +21,7 @@ namespace Spectrum {
     private int[] audioDeviceIndices;
     private int[] midiDeviceIndices;
     private DomeSimulatorWindow domeSimulatorWindow;
+    private BarSimulatorWindow barSimulatorWindow;
 
     public MainWindow() {
       this.InitializeComponent();
@@ -111,6 +112,7 @@ namespace Spectrum {
       this.Bind("ledBoardOutputInSeparateThread", this.ledBoardThreadCheckbox, CheckBox.IsCheckedProperty, true);
       this.Bind("midiInputInSeparateThread", this.midiThreadCheckbox, CheckBox.IsCheckedProperty, true);
       this.Bind("domeOutputInSeparateThread", this.domeThreadCheckbox, CheckBox.IsCheckedProperty, true);
+      this.Bind("whyFireOutputInSeparateThread", this.whyFireThreadCheckbox, CheckBox.IsCheckedProperty, true);
       this.Bind("barOutputInSeparateThread", this.barThreadCheckbox, CheckBox.IsCheckedProperty, true);
       this.Bind("operatorFPS", this.operatorFPSLabel, Label.ContentProperty);
       this.Bind("operatorFPS", this.operatorFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
@@ -268,8 +270,9 @@ namespace Spectrum {
       this.Bind("[15,1]", this.color15_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
       this.Bind("[15]", this.domeCC15, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
       this.Bind("whyFireEnabled", this.whyFireEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("whyFireOutputInSeparateThread", this.whyFireThreadCheckbox, CheckBox.IsCheckedProperty, true);
       this.Bind("whyFireURL", this.whyFireAddress, TextBox.TextProperty);
+      this.Bind("barEnabled", this.barEnabled, CheckBox.IsCheckedProperty);
+      this.Bind("barSimulationEnabled", this.barSimulationEnabled, CheckBox.IsCheckedProperty);
       this.Bind("barHardwareSetup", this.barHardwareSetup, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.barHardwareSetupTeensy, [1] = this.barHardwareSetupBeagleboneViaOPC, [2] = this.barHardwareSetupBeagleboneViaCAMP }, true));
       this.Bind("barHardwareSetup", this.barTeensyPanel, WrapPanel.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
       this.Bind("barHardwareSetup", this.barBeagleboneOPCPanel, Grid.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Collapsed }));
@@ -513,15 +516,14 @@ namespace Spectrum {
     }
 
     private void OpenBarSimulator(object sender, RoutedEventArgs e) {
-      // TODO this when I get to simulator work
-      //this.barSimulatorWindow = new BarSimulatorWindow(this.config);
-      //this.barSimulatorWindow.Closed += BarSimulatorClosed;
-      //this.barSimulatorWindow.Show();
+      this.barSimulatorWindow = new BarSimulatorWindow(this.config);
+      this.barSimulatorWindow.Closed += BarSimulatorClosed;
+      this.barSimulatorWindow.Show();
     }
 
     private void CloseBarSimulator(object sender, RoutedEventArgs e) {
-      //this.barSimulatorWindow.Close();
-      //this.barSimulatorWindow = null;
+      this.barSimulatorWindow.Close();
+      this.barSimulatorWindow = null;
     }
 
     private void BarSimulatorClosed(object sender, EventArgs e) {
