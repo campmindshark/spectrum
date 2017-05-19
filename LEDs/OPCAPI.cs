@@ -26,7 +26,14 @@ namespace Spectrum.LEDs {
     private Action<int> setFPS;
     private Stopwatch frameRateStopwatch;
     private int framesThisSecond;
+    private byte defaultChannel;
 
+    /**
+     * hostAndPort looks like:
+     *   192.168.1.3:5678
+     * you can optionally specify a default OPC channel at the end, like:
+     *   192.168.1.3:5678:0
+     */
     public OPCAPI(
       string hostAndPort,
       bool separateThread,
@@ -35,6 +42,9 @@ namespace Spectrum.LEDs {
       string[] parts = hostAndPort.Split(':');
       this.host = parts[0];
       this.port = Convert.ToInt32(parts[1]);
+      if (parts.Length >= 3) {
+        this.defaultChannel = Convert.ToByte(parts[2]);
+      }
       this.socket = new Socket(
         AddressFamily.InterNetwork,
         SocketType.Stream,
@@ -161,6 +171,15 @@ namespace Spectrum.LEDs {
         var pixelTuple = new Tuple<byte, int>(channelIndex, pixelIndex);
         this.currentPixelColors[pixelTuple] = color;
       }
+    }
+
+    /**
+     * If in your first param to OPCAPI you specified a default channel, you can
+     * use this method. Otherwise it will crash.
+     */
+    public void SetPixel(int pixelIndex, int color) {
+      Debug.Assert(this.defaultChannel >= 0, "defaultChannel should be set");
+      this.SetPixel(this.defaultChannel, pixelIndex, color);
     }
 
   }

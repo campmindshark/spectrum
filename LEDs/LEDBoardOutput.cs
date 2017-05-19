@@ -82,8 +82,13 @@ namespace Spectrum.LEDs {
     }
 
     private void initializeOPCAPI() {
+      var opcAddress = this.config.boardBeagleboneOPCAddress;
+      string[] parts = opcAddress.Split(':');
+      if (parts.Length < 3) {
+        opcAddress += ":0"; // default to channel 0
+      }
       this.opcAPI = new OPCAPI(
-        this.config.boardBeagleboneOPCAddress,
+        opcAddress,
         this.config.ledBoardOutputInSeparateThread,
         newFPS => this.config.boardBeagleboneOPCFPS = newFPS
       );
@@ -164,7 +169,7 @@ namespace Spectrum.LEDs {
         this.teensyAPI.SetPixel(pixelIndex, color);
       }
       if (this.config.boardHardwareSetup == 1 && this.opcAPI != null) {
-        this.opcAPI.SetPixel(0, pixelIndex, color);
+        this.opcAPI.SetPixel(pixelIndex, color);
       }
     }
 

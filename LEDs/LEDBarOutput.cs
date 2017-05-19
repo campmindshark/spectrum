@@ -70,8 +70,13 @@ namespace Spectrum.LEDs {
     }
 
     private void initializeOPCAPI() {
+      var opcAddress = this.config.barBeagleboneOPCAddress;
+      string[] parts = opcAddress.Split(':');
+      if (parts.Length < 3) {
+        opcAddress += ":0"; // default to channel 0
+      }
       this.opcAPI = new OPCAPI(
-        this.config.barBeagleboneOPCAddress,
+        opcAddress,
         this.config.barOutputInSeparateThread,
         newFPS => this.config.barBeagleboneOPCFPS = newFPS
       );
@@ -170,7 +175,7 @@ namespace Spectrum.LEDs {
         this.teensyAPI.SetPixel(pixelIndex, color);
       }
       if (this.config.barHardwareSetup == 1 && this.opcAPI != null) {
-        this.opcAPI.SetPixel(0, pixelIndex, color);
+        this.opcAPI.SetPixel(pixelIndex, color);
       }
       if (this.config.barSimulationEnabled) {
         this.config.barCommandQueue.Enqueue(new BarLEDCommand() {
