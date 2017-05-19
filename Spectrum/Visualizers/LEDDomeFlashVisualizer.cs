@@ -317,7 +317,7 @@ namespace Spectrum {
           } else {
             throw new Exception("invalid AudioDetectorType");
           }
-          int? colorIndex = this.config.domeColorPalette.GetIndexOfEnabledIndex(
+          int? colorIndex = this.config.colorPalette.GetIndexOfEnabledIndex(
             computerColorIndex
           );
           if (!colorIndex.HasValue) {
@@ -355,7 +355,7 @@ namespace Spectrum {
         return null;
       }
       long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-      var measureLength = this.config.domeBeatBroadcaster.MeasureLength;
+      var measureLength = this.config.beatBroadcaster.MeasureLength;
       var animation = new PolygonAnimation(
         randomShape,
         pad,

@@ -111,6 +111,7 @@ namespace Spectrum {
       this.Bind("ledBoardOutputInSeparateThread", this.ledBoardThreadCheckbox, CheckBox.IsCheckedProperty, true);
       this.Bind("midiInputInSeparateThread", this.midiThreadCheckbox, CheckBox.IsCheckedProperty, true);
       this.Bind("domeOutputInSeparateThread", this.domeThreadCheckbox, CheckBox.IsCheckedProperty, true);
+      this.Bind("barOutputInSeparateThread", this.barThreadCheckbox, CheckBox.IsCheckedProperty, true);
       this.Bind("operatorFPS", this.operatorFPSLabel, Label.ContentProperty);
       this.Bind("operatorFPS", this.operatorFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
       this.Bind("domeHardwareSetup", this.domeHardwareSetup, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.fiveTeensies, [1] = this.beagleboneViaOPC, [2] = this.beagleboneViaCAMP }, true));
@@ -162,6 +163,20 @@ namespace Spectrum {
       this.Bind("boardBeagleboneCAMPFPS", this.boardBeagleboneCAMPFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
       this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneCAMPFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
       this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("barTeensyFPS", this.barTeensyFPSLabel, Label.ContentProperty);
+      this.Bind("barTeensyFPS", this.barTeensyFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("barOutputInSeparateThread", this.barTeensyFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("barOutputInSeparateThread", this.barUSBPorts, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("barBeagleboneOPCAddress", this.barBeagleboneOPCHostAndPort, TextBox.TextProperty);
+      this.Bind("barBeagleboneOPCFPS", this.barBeagleboneOPCFPSLabel, Label.ContentProperty);
+      this.Bind("barBeagleboneOPCFPS", this.barBeagleboneOPCFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("barOutputInSeparateThread", this.barBeagleboneOPCFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("barOutputInSeparateThread", this.barBeagleboneOPCHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("barBeagleboneCAMPAddress", this.barBeagleboneCAMPHostAndPort, TextBox.TextProperty);
+      this.Bind("barBeagleboneCAMPFPS", this.barBeagleboneCAMPFPSLabel, Label.ContentProperty);
+      this.Bind("barBeagleboneCAMPFPS", this.barBeagleboneCAMPFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("barOutputInSeparateThread", this.barBeagleboneCAMPFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("barOutputInSeparateThread", this.barBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("hueDelay", this.hueCommandDelay, TextBox.TextProperty);
       this.Bind("hueIdleOnSilent", this.hueIdleOnSilent, CheckBox.IsCheckedProperty);
       this.Bind("hueOverrideIndex", this.hueOverride, ComboBox.SelectedIndexProperty);
@@ -204,57 +219,66 @@ namespace Spectrum {
       this.Bind("domeAutoFlashDelay", this.domeAutoFlashDelay, TextBox.TextProperty);
       this.Bind("domeSkipLEDs", this.domeSkipLEDs, TextBox.TextProperty);
       var colorConverter = new ColorConverter();
-      this.Bind("[0,0]", this.domeColor0_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[0,1]", this.domeColor0_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[0]", this.domeCC0, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[1,0]", this.domeColor1_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[1,1]", this.domeColor1_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[1]", this.domeCC1, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[2,0]", this.domeColor2_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[2,1]", this.domeColor2_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[2]", this.domeCC2, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[3,0]", this.domeColor3_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[3,1]", this.domeColor3_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[3]", this.domeCC3, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[4,0]", this.domeColor4_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[4,1]", this.domeColor4_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[4]", this.domeCC4, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[5,0]", this.domeColor5_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[5,1]", this.domeColor5_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[5]", this.domeCC5, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[6,0]", this.domeColor6_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[6,1]", this.domeColor6_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[6]", this.domeCC6, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[7,0]", this.domeColor7_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[7,1]", this.domeColor7_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[7]", this.domeCC7, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[8,0]", this.domeColor8_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[8,1]", this.domeColor8_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[8]", this.domeCC8, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[9,0]", this.domeColor9_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[9,1]", this.domeColor9_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[9]", this.domeCC9, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[10,0]", this.domeColor10_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[10,1]", this.domeColor10_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[10]", this.domeCC10, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[11,0]", this.domeColor11_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[11,1]", this.domeColor11_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[11]", this.domeCC11, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[12,0]", this.domeColor12_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[12,1]", this.domeColor12_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[12]", this.domeCC12, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[13,0]", this.domeColor13_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[13,1]", this.domeColor13_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[13]", this.domeCC13, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[14,0]", this.domeColor14_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[14,1]", this.domeColor14_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[14]", this.domeCC14, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
-      this.Bind("[15,0]", this.domeColor15_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[15,1]", this.domeColor15_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.domeColorPalette);
-      this.Bind("[15]", this.domeCC15, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.domeColorPalette.computerEnabledColors);
+      this.Bind("[0,0]", this.color0_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[0,1]", this.color0_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[0]", this.domeCC0, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[1,0]", this.color1_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[1,1]", this.color1_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[1]", this.domeCC1, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[2,0]", this.color2_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[2,1]", this.color2_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[2]", this.domeCC2, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[3,0]", this.color3_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[3,1]", this.color3_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[3]", this.domeCC3, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[4,0]", this.color4_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[4,1]", this.color4_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[4]", this.domeCC4, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[5,0]", this.color5_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[5,1]", this.color5_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[5]", this.domeCC5, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[6,0]", this.color6_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[6,1]", this.color6_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[6]", this.domeCC6, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[7,0]", this.color7_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[7,1]", this.color7_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[7]", this.domeCC7, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[8,0]", this.color8_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[8,1]", this.color8_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[8]", this.domeCC8, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[9,0]", this.color9_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[9,1]", this.color9_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[9]", this.domeCC9, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[10,0]", this.color10_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[10,1]", this.color10_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[10]", this.domeCC10, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[11,0]", this.color11_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[11,1]", this.color11_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[11]", this.domeCC11, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[12,0]", this.color12_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[12,1]", this.color12_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[12]", this.domeCC12, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[13,0]", this.color13_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[13,1]", this.color13_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[13]", this.domeCC13, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[14,0]", this.color14_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[14,1]", this.color14_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[14]", this.domeCC14, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[15,0]", this.color15_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[15,1]", this.color15_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[15]", this.domeCC15, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
       this.Bind("whyFireEnabled", this.whyFireEnabled, CheckBox.IsCheckedProperty);
       this.Bind("whyFireOutputInSeparateThread", this.whyFireThreadCheckbox, CheckBox.IsCheckedProperty, true);
       this.Bind("whyFireURL", this.whyFireAddress, TextBox.TextProperty);
+      this.Bind("barHardwareSetup", this.barHardwareSetup, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.barHardwareSetupTeensy, [1] = this.barHardwareSetupBeagleboneViaOPC, [2] = this.barHardwareSetupBeagleboneViaCAMP }, true));
+      this.Bind("barHardwareSetup", this.barTeensyPanel, WrapPanel.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
+      this.Bind("barHardwareSetup", this.barBeagleboneOPCPanel, Grid.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Collapsed }));
+      this.Bind("barHardwareSetup", this.barBeagleboneCAMPPanel, Grid.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Collapsed, [2] = Visibility.Visible }));
+      this.Bind("barInfinityLength", this.barInfinityLength, TextBox.TextProperty);
+      this.Bind("barInfinityWidth", this.barInfiniteWidth, TextBox.TextProperty);
+      this.Bind("barRunnerLength", this.barRunnerLength, TextBox.TextProperty);
+      this.Bind("barBrightness", this.barBrightnessSlider, Slider.ValueProperty);
+      this.Bind("barBrightness", this.barBrightnessLabel, Label.ContentProperty);
 
       this.loadingConfig = false;
     }
@@ -479,13 +503,52 @@ namespace Spectrum {
       this.domeSimulatorWindow.Show();
     }
 
+    private void CloseDomeSimulator(object sender, RoutedEventArgs e) {
+      this.domeSimulatorWindow.Close();
+      this.domeSimulatorWindow = null;
+    }
+
     private void DomeSimulatorClosed(object sender, EventArgs e) {
       this.config.domeSimulationEnabled = false;
     }
 
-    private void CloseDomeSimulator(object sender, RoutedEventArgs e) {
-      this.domeSimulatorWindow.Close();
-      this.domeSimulatorWindow = null;
+    private void OpenBarSimulator(object sender, RoutedEventArgs e) {
+      // TODO this when I get to simulator work
+      //this.barSimulatorWindow = new BarSimulatorWindow(this.config);
+      //this.barSimulatorWindow.Closed += BarSimulatorClosed;
+      //this.barSimulatorWindow.Show();
+    }
+
+    private void CloseBarSimulator(object sender, RoutedEventArgs e) {
+      //this.barSimulatorWindow.Close();
+      //this.barSimulatorWindow = null;
+    }
+
+    private void BarSimulatorClosed(object sender, EventArgs e) {
+      this.config.barSimulationEnabled = false;
+    }
+
+    private void RefreshBarUSBPorts(object sender, RoutedEventArgs e) {
+      this.barEnabled.IsChecked = false;
+
+      this.barUSBPorts.Items.Clear();
+      foreach (string portName in System.IO.Ports.SerialPort.GetPortNames()) {
+        this.barUSBPorts.Items.Add(portName);
+      }
+
+      this.barUSBPorts.SelectedValue = this.config.barTeensyUSBPort;
+    }
+
+    private void BarUSBPortsChanged(
+      object sender,
+      SelectionChangedEventArgs e
+    ) {
+      if (this.barUSBPorts.SelectedIndex == -1) {
+        return;
+      }
+      this.config.barTeensyUSBPort = this.barUSBPorts.SelectedItem as string;
+      this.op.Reboot();
+      this.SaveConfig();
     }
 
   }

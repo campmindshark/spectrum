@@ -19,8 +19,10 @@ namespace Spectrum {
 
     public bool huesEnabled { get; set; } = false;
     public bool ledBoardEnabled { get; set; } = false;
+    public bool domeEnabled { get; set; } = false;
     public bool midiInputEnabled { get; set; } = false;
     public bool whyFireEnabled { get; set; } = false;
+    public bool barEnabled { get; set; } = false;
 
     public bool audioInputInSeparateThread { get; set; } = false;
     public bool huesOutputInSeparateThread { get; set; } = false;
@@ -28,6 +30,7 @@ namespace Spectrum {
     public bool midiInputInSeparateThread { get; set; } = false;
     public bool domeOutputInSeparateThread { get; set; } = false;
     public bool whyFireOutputInSeparateThread { get; set; } = false;
+    public bool barOutputInSeparateThread { get; set; } = false;
 
     [XmlIgnore]
     public int operatorFPS { get; set; } = 0;
@@ -42,15 +45,21 @@ namespace Spectrum {
     [XmlIgnore]
     public int domeTeensyFPS5 { get; set; } = 0;
     [XmlIgnore]
+    public int domeBeagleboneOPCFPS { get; set; } = 0;
+    [XmlIgnore]
+    public int domeBeagleboneCAMPFPS { get; set; } = 0;
+    [XmlIgnore]
     public int boardTeensyFPS { get; set; } = 0;
     [XmlIgnore]
     public int boardBeagleboneOPCFPS { get; set; } = 0;
     [XmlIgnore]
     public int boardBeagleboneCAMPFPS { get; set; } = 0;
     [XmlIgnore]
-    public int domeBeagleboneOPCFPS { get; set; } = 0;
+    public int barTeensyFPS { get; set; } = 0;
     [XmlIgnore]
-    public int domeBeagleboneCAMPFPS { get; set; } = 0;
+    public int barBeagleboneOPCFPS { get; set; } = 0;
+    [XmlIgnore]
+    public int barBeagleboneCAMPFPS { get; set; } = 0;
 
     // 0 - Teensy, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     public int boardHardwareSetup { get; set; } = 0;
@@ -61,10 +70,34 @@ namespace Spectrum {
     public int boardRowsPerStrip { get; set; } = 5;
     public double boardBrightness { get; set; } = 0.1;
 
+    // 0 - Teensy, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
+    public int barHardwareSetup { get; set; } = 0;
+    public string barBeagleboneOPCAddress { get; set; } = "";
+    public string barBeagleboneCAMPAddress { get; set; } = "";
+    public string barTeensyUSBPort { get; set; } = "";
+    public bool barSimulationEnabled { get; set; } = false;
+    public int barInfinityWidth { get; set; } = 0;
+    public int barInfinityLength { get; set; } = 0;
+    public int barRunnerLength { get; set; } = 0;
+    public double barBrightness { get; set; } = 0.1;
+
     // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     public int domeHardwareSetup { get; set; } = 0;
+    public string domeTeensyUSBPort1 { get; set; } = null;
+    public string domeTeensyUSBPort2 { get; set; } = null;
+    public string domeTeensyUSBPort3 { get; set; } = null;
+    public string domeTeensyUSBPort4 { get; set; } = null;
+    public string domeTeensyUSBPort5 { get; set; } = null;
     public string domeBeagleboneOPCAddress { get; set; } = "";
     public string domeBeagleboneCAMPAddress { get; set; } = "";
+    public bool domeSimulationEnabled { get; set; } = false;
+    public double domeMaxBrightness { get; set; } = 0.5;
+    public double domeBrightness { get; set; } = 0.1;
+    public int domeVolumeAnimationSize { get; set; } = 2;
+    public int domeAutoFlashDelay { get; set; } = 100;
+    public double domeVolumeRotationSpeed { get; set; } = 1.0;
+    public double domeGradientSpeed { get; set; } = 1.0;
+    public int domeSkipLEDs { get; set; } = 0;
 
     // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts
     public int domeTestPattern { get; set; } = 0;
@@ -93,34 +126,20 @@ namespace Spectrum {
 
     public int midiDeviceIndex { get; set; } = -1;
 
-    public bool domeEnabled { get; set; } = false;
-    public bool domeSimulationEnabled { get; set; } = false;
-    public string domeTeensyUSBPort1 { get; set; } = null;
-    public string domeTeensyUSBPort2 { get; set; } = null;
-    public string domeTeensyUSBPort3 { get; set; } = null;
-    public string domeTeensyUSBPort4 { get; set; } = null;
-    public string domeTeensyUSBPort5 { get; set; } = null;
-    public double domeMaxBrightness { get; set; } = 0.5;
-    public double domeBrightness { get; set; } = 0.1;
-    public int domeVolumeAnimationSize { get; set; } = 2;
-    public LEDColorPalette domeColorPalette { get; set; } =
-      new LEDColorPalette();
-    public int domeAutoFlashDelay { get; set; } = 100;
-    public double domeVolumeRotationSpeed { get; set; } = 1.0;
-    public double domeGradientSpeed { get; set; } = 1.0;
-    public int domeSkipLEDs { get; set; } = 0;
-
     public string whyFireURL { get; set; } = "http://why.fire/WhyService.svc/Effects/";
 
     // This probably should not be here...
     [XmlIgnore, DoNotNotify]
-    public BeatBroadcaster domeBeatBroadcaster { get; set; } =
-      new BeatBroadcaster();
+    public BeatBroadcaster beatBroadcaster { get; set; } = new BeatBroadcaster();
+    public LEDColorPalette colorPalette { get; set; } = new LEDColorPalette();
 
     // Excuse in Configuration interface
     [XmlIgnore, DoNotNotify]
-    public ConcurrentQueue<LEDCommand> domeCommandQueue { get; } =
-      new ConcurrentQueue<LEDCommand>();
+    public ConcurrentQueue<DomeLEDCommand> domeCommandQueue { get; } =
+      new ConcurrentQueue<DomeLEDCommand>();
+    [XmlIgnore, DoNotNotify]
+    public ConcurrentQueue<BarLEDCommand> barCommandQueue { get; } =
+      new ConcurrentQueue<BarLEDCommand>();
 
     // The rest is not on Configuration
     // Just convenience properties for data binding

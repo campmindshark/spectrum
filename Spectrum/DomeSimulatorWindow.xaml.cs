@@ -169,7 +169,7 @@ namespace Spectrum {
 
       bool shouldRedraw = false;
       for (int k = 0; k < queueLength; k++) {
-        LEDCommand command;
+        DomeLEDCommand command;
         bool result =
           this.config.domeCommandQueue.TryDequeue(out command);
         if (!result) {

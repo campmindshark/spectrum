@@ -48,6 +48,8 @@ namespace Spectrum {
       this.outputs.Add(dome);
       var whyFire = new WhyFireOutput(config);
       this.outputs.Add(whyFire);
+      var bar = new LEDBarOutput(config);
+      this.outputs.Add(bar);
 
       this.visualizers = new List<Visualizer>();
       this.visualizers.Add(new HueAudioVisualizer(

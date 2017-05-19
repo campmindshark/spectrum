@@ -297,7 +297,7 @@ namespace Spectrum.LEDs {
       }
       if (this.config.domeSimulationEnabled) {
         this.config.domeCommandQueue.Enqueue(
-          new LEDCommand() { isFlush = true }
+          new DomeLEDCommand() { isFlush = true }
         );
       }
     }
@@ -319,7 +319,7 @@ namespace Spectrum.LEDs {
       }
       this.SetTeensyPixel(tuple.Item1, pixelIndex, color);
       if (this.config.domeSimulationEnabled) {
-        this.config.domeCommandQueue.Enqueue(new LEDCommand() {
+        this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
           strutIndex = strutIndex,
           ledIndex = ledIndex,
           color = color,
@@ -382,7 +382,7 @@ namespace Spectrum.LEDs {
 
     public int GetSingleColor(int index) {
       return LEDColor.ScaleColor(
-        this.config.domeColorPalette.GetSingleColor(index),
+        this.config.colorPalette.GetSingleColor(index),
         this.config.domeMaxBrightness * this.config.domeBrightness
       );
     }
@@ -393,14 +393,14 @@ namespace Spectrum.LEDs {
       double focusPos,
       bool wrap
     ) {
-      if (this.config.domeColorPalette.colors[index] == null) {
+      if (this.config.colorPalette.colors[index] == null) {
         return 0x000000;
       }
-      if (!this.config.domeColorPalette.colors[index].IsGradient) {
+      if (!this.config.colorPalette.colors[index].IsGradient) {
         return GetSingleColor(index);
       }
       return LEDColor.ScaleColor(
-        this.config.domeColorPalette.GetGradientColor(
+        this.config.colorPalette.GetGradientColor(
           index,
           pixelPos,
           focusPos,
@@ -418,7 +418,7 @@ namespace Spectrum.LEDs {
      */
     public int GetSingleComputerColor(int colorIndex) {
       return LEDColor.ScaleColor(
-        this.config.domeColorPalette.GetSingleComputerColor(colorIndex),
+        this.config.colorPalette.GetSingleComputerColor(colorIndex),
         this.config.domeMaxBrightness * this.config.domeBrightness
       );
     }
@@ -435,20 +435,20 @@ namespace Spectrum.LEDs {
       double focusPos,
       bool wrap
     ) {
-      int? index = this.config.domeColorPalette.GetIndexOfEnabledIndex(
+      int? index = this.config.colorPalette.GetIndexOfEnabledIndex(
         colorIndex
       );
       if (
         !index.HasValue ||
-        this.config.domeColorPalette.colors[index.Value] == null
+        this.config.colorPalette.colors[index.Value] == null
       ) {
         return 0x000000;
       }
-      if (!this.config.domeColorPalette.colors[index.Value].IsGradient) {
+      if (!this.config.colorPalette.colors[index.Value].IsGradient) {
         return this.GetSingleColor(index.Value);
       }
       return LEDColor.ScaleColor(
-        this.config.domeColorPalette.GetGradientColor(
+        this.config.colorPalette.GetGradientColor(
           index.Value,
           pixelPos,
           focusPos,

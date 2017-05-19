@@ -214,7 +214,7 @@ namespace Spectrum {
 
     private void UpdateCenter() {
       int newCenterOffset = (int)(
-        this.config.domeBeatBroadcaster.ProgressThroughBeat(
+        this.config.beatBroadcaster.ProgressThroughBeat(
           this.config.domeVolumeRotationSpeed
         ) * 4);
       if (newCenterOffset == this.centerOffset) {
@@ -276,7 +276,7 @@ namespace Spectrum {
       return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
-        this.config.domeBeatBroadcaster.ProgressThroughBeat(
+        this.config.beatBroadcaster.ProgressThroughBeat(
           this.config.domeGradientSpeed
         ),
         true
@@ -299,7 +299,7 @@ namespace Spectrum {
       return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
-        this.config.domeBeatBroadcaster.ProgressThroughBeat(
+        this.config.beatBroadcaster.ProgressThroughBeat(
           this.config.domeGradientSpeed
         ),
         true
@@ -347,7 +347,7 @@ namespace Spectrum {
       return this.dome.GetGradientComputerColor(
         colorIndex,
         pixelPos,
-        this.config.domeBeatBroadcaster.ProgressThroughBeat(
+        this.config.beatBroadcaster.ProgressThroughBeat(
           this.config.domeGradientSpeed
         ),
         true

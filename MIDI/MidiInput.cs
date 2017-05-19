@@ -92,12 +92,12 @@ namespace Spectrum.MIDI {
         }
         if (this.curFirstColorIndex == -1) {
           this.curFirstColorIndex = colorIndex;
-          this.config.domeColorPalette.SetColor(
+          this.config.colorPalette.SetColor(
             this.activeProg,
             colorFromColorIndex[colorIndex]
           );
         } else {
-          this.config.domeColorPalette.SetGradientColor(
+          this.config.colorPalette.SetGradientColor(
             this.activeProg,
             colorFromColorIndex[this.curFirstColorIndex],
             colorFromColorIndex[colorIndex]
@@ -109,14 +109,14 @@ namespace Spectrum.MIDI {
           return;
         }
         var colorIndex = index - 112;
-        this.config.domeColorPalette.computerEnabledColors[colorIndex] =
+        this.config.colorPalette.computerEnabledColors[colorIndex] =
           val > 0.0;
       });
 
       // Tap tempo
       this.AddBinding(MidiCommandType.Note, 32, val => {
         if (val > 0.0) {
-          this.config.domeBeatBroadcaster.AddTap();
+          this.config.beatBroadcaster.AddTap();
         }
       });
 

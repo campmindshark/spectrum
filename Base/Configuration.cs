@@ -19,8 +19,10 @@ namespace Spectrum.Base {
 
     bool huesEnabled { get; set; }
     bool ledBoardEnabled { get; set; }
+    bool domeEnabled { get; set; }
     bool midiInputEnabled { get; set; }
     bool whyFireEnabled { get; set; }
+    bool barEnabled { get; set; }
 
     // If this is true, we will poll the Un4seen APIs in a thread separate to
     // the one running the visualizers. If it is false, a single thread will
@@ -31,6 +33,7 @@ namespace Spectrum.Base {
     bool midiInputInSeparateThread { get; set; }
     bool domeOutputInSeparateThread { get; set; }
     bool whyFireOutputInSeparateThread { get; set; }
+    bool barOutputInSeparateThread { get; set; }
 
     int operatorFPS { get; set; }
     int domeTeensyFPS1 { get; set; }
@@ -38,17 +41,19 @@ namespace Spectrum.Base {
     int domeTeensyFPS3 { get; set; }
     int domeTeensyFPS4 { get; set; }
     int domeTeensyFPS5 { get; set; }
+    int domeBeagleboneOPCFPS { get; set; }
+    int domeBeagleboneCAMPFPS { get; set; }
     int boardTeensyFPS { get; set; }
     int boardBeagleboneOPCFPS { get; set; }
     int boardBeagleboneCAMPFPS { get; set; }
-    int domeBeagleboneOPCFPS { get; set; }
-    int domeBeagleboneCAMPFPS { get; set; }
+    int barTeensyFPS { get; set; }
+    int barBeagleboneOPCFPS { get; set; }
+    int barBeagleboneCAMPFPS { get; set; }
 
     // 0 - Teensy, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     int boardHardwareSetup { get; set; }
     string boardBeagleboneOPCAddress { get; set; }
     string boardBeagleboneCAMPAddress { get; set; }
-    // The USB port where the Teensy is located (LED Board)
     string boardTeensyUSBPort { get; set; }
     // Parameters to SquareTeensyOutput (LED Board)
     int boardRowLength { get; set; }
@@ -56,11 +61,37 @@ namespace Spectrum.Base {
     // Brightness of the LED Board
     double boardBrightness { get; set; }
 
+    // 0 - Teensy, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
+    int barHardwareSetup { get; set; }
+    string barBeagleboneOPCAddress { get; set; }
+    string barBeagleboneCAMPAddress { get; set; }
+    string barTeensyUSBPort { get; set; }
+    bool barSimulationEnabled { get; set; }
+    // Dimensions (in terms of pixel count)
+    int barInfinityWidth { get; set; }
+    int barInfinityLength { get; set; }
+    int barRunnerLength { get; set; }
+    // Brightness of the LED Board
+    double barBrightness { get; set; }
+
     // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     int domeHardwareSetup { get; set; }
+    string domeTeensyUSBPort1 { get; set; }
+    string domeTeensyUSBPort2 { get; set; }
+    string domeTeensyUSBPort3 { get; set; }
+    string domeTeensyUSBPort4 { get; set; }
+    string domeTeensyUSBPort5 { get; set; }
     string domeBeagleboneOPCAddress { get; set; }
     string domeBeagleboneCAMPAddress { get; set; }
-
+    // Configuration params for the dome
+    bool domeSimulationEnabled { get; set; }
+    double domeMaxBrightness { get; set; }
+    double domeBrightness { get; set; }
+    int domeVolumeAnimationSize { get; set; }
+    int domeAutoFlashDelay { get; set; }
+    double domeVolumeRotationSpeed { get; set; }
+    double domeGradientSpeed { get; set; }
+    int domeSkipLEDs { get; set; }
     // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts
     int domeTestPattern { get; set; }
 
@@ -98,32 +129,18 @@ namespace Spectrum.Base {
     // The index of the device representing the MIDI controller
     int midiDeviceIndex { get; set; }
 
-    bool domeEnabled { get; set; }
-    bool domeSimulationEnabled { get; set; }
-    string domeTeensyUSBPort1 { get; set; }
-    string domeTeensyUSBPort2 { get; set; }
-    string domeTeensyUSBPort3 { get; set; }
-    string domeTeensyUSBPort4 { get; set; }
-    string domeTeensyUSBPort5 { get; set; }
-    double domeMaxBrightness { get; set; }
-    double domeBrightness { get; set; }
-    int domeVolumeAnimationSize { get; set; }
-    LEDColorPalette domeColorPalette { get; set; }
-    int domeAutoFlashDelay { get; set; }
-    double domeVolumeRotationSpeed { get; set; }
-    double domeGradientSpeed { get; set; }
-    int domeSkipLEDs { get; set; }
-
     // The URL at which the Hue hub can be accessed
     string whyFireURL { get; set; }
 
     // This probably should not be here...
-    BeatBroadcaster domeBeatBroadcaster { get; set; }
+    BeatBroadcaster beatBroadcaster { get; set; }
+    LEDColorPalette colorPalette { get; set; }
 
     // You might look at this and be disgusted. Yes, I am kinda violating the
     // whole organizing principle here, but the UI needs to know what's going on
     // with LEDDomeOutput, and the config is the only reference they share.
-    ConcurrentQueue<LEDCommand> domeCommandQueue { get; }
+    ConcurrentQueue<DomeLEDCommand> domeCommandQueue { get; }
+    ConcurrentQueue<BarLEDCommand> barCommandQueue { get; }
 
   }
 
