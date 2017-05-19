@@ -80,6 +80,7 @@ namespace Spectrum {
     public int barInfinityLength { get; set; } = 0;
     public int barRunnerLength { get; set; } = 0;
     public double barBrightness { get; set; } = 0.1;
+    public int barTestPattern { get; set; } = 0;
 
     // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     public int domeHardwareSetup { get; set; } = 0;
@@ -98,8 +99,6 @@ namespace Spectrum {
     public double domeVolumeRotationSpeed { get; set; } = 1.0;
     public double domeGradientSpeed { get; set; } = 1.0;
     public int domeSkipLEDs { get; set; } = 0;
-
-    // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts
     public int domeTestPattern { get; set; } = 0;
 
     public int hueDelay { get; set; } = 125;

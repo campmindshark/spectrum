@@ -73,6 +73,8 @@ namespace Spectrum.Base {
     int barRunnerLength { get; set; }
     // Brightness of the LED Board
     double barBrightness { get; set; }
+    // 0 - None, 1 - Flash colors
+    int barTestPattern { get; set; }
 
     // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     int domeHardwareSetup { get; set; }

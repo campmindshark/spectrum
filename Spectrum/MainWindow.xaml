@@ -392,6 +392,16 @@
                 </Grid>
               </Grid>
             </Border>
+            <Label Content="Diagnostics" HorizontalAlignment="Left" Margin="4,1,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid>
+                <Label Content="Test pattern" Margin="0,3,0,0" Padding="0" />
+                <ComboBox x:Name="barTestPattern" HorizontalAlignment="Left" VerticalAlignment="Top" Width="140" Margin="80,0,0,0">
+                  <ComboBoxItem x:Name="barTestPatternNone" Content="None" IsSelected="True" />
+                  <ComboBoxItem x:Name="barTestPatternFlashColors" Content="Flash colors" />
+                </ComboBox>
+              </Grid>
+            </Border>
           </WrapPanel>
           <CheckBox x:Name="barThreadCheckbox" Content="Call bar in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
         </Grid>

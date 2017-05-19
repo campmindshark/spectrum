@@ -113,13 +113,13 @@ namespace Spectrum {
           | (uint)0xFF000000;
         if (command.isRunner) {
           this.SetPixelColor(this.pixels, command.ledIndex + 10, 20 + this.config.barInfinityWidth, color);
-        } else if (command.ledIndex < this.config.barInfinityWidth) {
+        } else if (command.ledIndex < this.config.barInfinityLength) {
           this.SetPixelColor(this.pixels, command.ledIndex + 10, 10, color);
         } else if (command.ledIndex < this.config.barInfinityWidth + this.config.barInfinityLength) {
-          var pixelPos = (command.ledIndex - this.config.barInfinityWidth) + 10;
+          var pixelPos = (command.ledIndex - this.config.barInfinityLength) + 10;
           this.SetPixelColor(this.pixels, 10 + this.config.barInfinityLength, pixelPos, color);
-        } else if (command.ledIndex < 2 * this.config.barInfinityWidth + this.config.barInfinityLength) {
-          var pixelPos = 2 * this.config.barInfinityWidth + this.config.barInfinityLength - command.ledIndex + 10;
+        } else if (command.ledIndex < this.config.barInfinityWidth + 2 * this.config.barInfinityLength) {
+          var pixelPos = 2 * this.config.barInfinityLength + this.config.barInfinityWidth - command.ledIndex + 10;
           this.SetPixelColor(this.pixels, pixelPos, 10 + this.config.barInfinityWidth, color);
         } else if (command.ledIndex < 2 * this.config.barInfinityWidth + 2 * this.config.barInfinityLength) {
           var pixelPos = 2 * this.config.barInfinityWidth + 2 * this.config.barInfinityLength - command.ledIndex + 10;

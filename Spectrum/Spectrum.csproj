@@ -98,6 +98,7 @@
       <DependentUpon>DomeSimulatorWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Simulators\SimulatorUtils.cs" />
+    <Compile Include="Visualizers\LEDBarFlashColorsDiagnosticVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeFlashVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeFlashColorsDiagnosticVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeStrutIterationDiagnosticVisualizer.cs" />

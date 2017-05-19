@@ -105,6 +105,10 @@ namespace Spectrum {
         midi,
         whyFire
       ));
+      this.visualizers.Add(new LEDBarFlashColorsDiagnosticVisualizer(
+        this.config,
+        bar
+      ));
     }
 
     private bool enabled;

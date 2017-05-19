@@ -179,6 +179,7 @@ namespace Spectrum {
       this.Bind("barBeagleboneCAMPFPS", this.barBeagleboneCAMPFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
       this.Bind("barOutputInSeparateThread", this.barBeagleboneCAMPFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
       this.Bind("barOutputInSeparateThread", this.barBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("barTestPattern", this.barTestPattern, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.barTestPatternNone, [1] = this.barTestPatternFlashColors }, true));
       this.Bind("hueDelay", this.hueCommandDelay, TextBox.TextProperty);
       this.Bind("hueIdleOnSilent", this.hueIdleOnSilent, CheckBox.IsCheckedProperty);
       this.Bind("hueOverrideIndex", this.hueOverride, ComboBox.SelectedIndexProperty);

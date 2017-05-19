@@ -113,7 +113,7 @@ namespace Spectrum.LEDs {
 
     public bool Enabled {
       get {
-        return this.config.barEnabled;
+        return this.config.barEnabled || this.config.barSimulationEnabled;
       }
    }
 
@@ -156,9 +156,10 @@ namespace Spectrum.LEDs {
      *   top left (facing the bar) and goes clockwise
      * color: duh the color???
      */
-    public void SetPixel(bool isRunner, int pixelIndex, int color) {
+    public void SetPixel(bool isRunner, int ledIndex, int color) {
       var totalInfinityLength = this.config.barInfinityLength * 2 +
         this.config.barInfinityWidth * 2;
+      var pixelIndex = ledIndex;
       if (isRunner) {
         Debug.Assert(
           pixelIndex < this.config.barRunnerLength,
@@ -180,7 +181,7 @@ namespace Spectrum.LEDs {
       if (this.config.barSimulationEnabled) {
         this.config.barCommandQueue.Enqueue(new BarLEDCommand() {
           isRunner = isRunner,
-          ledIndex = pixelIndex,
+          ledIndex = ledIndex,
           color = color,
         });
       }

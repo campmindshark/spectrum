@@ -38,8 +38,6 @@ namespace Spectrum {
         if (value == this.enabled) {
           return;
         }
-        if (value) {
-        }
         this.enabled = value;
       }
     }
