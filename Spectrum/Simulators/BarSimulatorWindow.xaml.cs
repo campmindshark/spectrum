@@ -24,13 +24,12 @@ namespace Spectrum {
     private Configuration config;
     private WriteableBitmap bitmap;
     private Int32Rect rect;
-    private byte[] pixels;
 
     public BarSimulatorWindow(Configuration config) {
       this.InitializeComponent();
       this.config = config;
 
-      this.rect = new Int32Rect(0, 0, 750, 750);
+      this.rect = new Int32Rect(0, 0, 760, 280);
       this.bitmap = new WriteableBitmap(
         this.rect.Width,
         this.rect.Height,
@@ -39,12 +38,17 @@ namespace Spectrum {
         PixelFormats.Bgra32,
         null
       );
-      this.pixels = new byte[this.rect.Width * this.rect.Height * 4];
+      byte[] pixels = new byte[this.rect.Width * this.rect.Height * 4];
       for (int x = 0; x < this.rect.Width; x++) {
         for (int y = 0; y < this.rect.Height; y++) {
-          this.SetPixelColor(this.pixels, x, y, (uint)0xFF000000);
+          int pos = (y * this.rect.Width + x) * 4;
+          pixels[pos] = 0x00;
+          pixels[pos + 1] = 0x00;
+          pixels[pos + 2] = 0x00;
+          pixels[pos + 3] = 0xFF;
         }
       }
+      this.bitmap.WritePixels(this.rect, pixels, this.rect.Width * 4, 0);
       RenderOptions.SetBitmapScalingMode(
         this.image,
         BitmapScalingMode.NearestNeighbor
@@ -66,27 +70,57 @@ namespace Spectrum {
     private void Draw() {
       uint color = (uint)SimulatorUtils.GetComputerColor(0x000000)
         | (uint)0xFF000000;
-      for (int i = 0; i < this.config.barInfinityLength; i++) {
-        this.SetPixelColor(this.pixels, i + 10, 10, color);
-        this.SetPixelColor(this.pixels, i + 10, 10 + this.config.barInfinityWidth, color);
-      }
-      for (int i = 0; i < this.config.barInfinityWidth; i++) {
-        this.SetPixelColor(this.pixels, 10, i + 10, color);
-        this.SetPixelColor(this.pixels, 10 + this.config.barInfinityLength, i + 10, color);
+      var max = 2 * this.config.barInfinityLength + 2 * this.config.barInfinityWidth;
+      for (int i = 0; i < max; i++) {
+        this.SetInfinityPixel(i, color);
       }
       for (int i = 0; i < this.config.barRunnerLength; i++) {
-        this.SetPixelColor(this.pixels, i + 10, 20 + this.config.barInfinityWidth, color);
+        this.SetRunnerPixel(i, color);
       }
-      this.bitmap.WritePixels(this.rect, this.pixels, this.rect.Width * 4, 0);
       this.image.Source = this.bitmap;
     }
 
-    private void SetPixelColor(byte[] pixels, int x, int y, uint color) {
-      int pos = (y * this.rect.Width + x) * 4;
-      pixels[pos] = (byte)color;
-      pixels[pos + 1] = (byte)(color >> 8);
-      pixels[pos + 2] = (byte)(color >> 16);
-      pixels[pos + 3] = (byte)(color >> 24);
+    private void SetInfinityPixel(int index, uint color) {
+      int x = -1, y = -1;
+      if (index < this.config.barInfinityLength) {
+        x = index;
+        y = 0;
+      } else if (index < this.config.barInfinityWidth + this.config.barInfinityLength) {
+        x = this.config.barInfinityLength;
+        y = index - this.config.barInfinityLength;
+      } else if (index < this.config.barInfinityWidth + 2 * this.config.barInfinityLength) {
+        x = 2 * this.config.barInfinityLength + this.config.barInfinityWidth - index;
+        y = this.config.barInfinityWidth;
+      } else if (index < 2 * this.config.barInfinityWidth + 2 * this.config.barInfinityLength) {
+        x = 0;
+        y = 2 * this.config.barInfinityWidth + 2 * this.config.barInfinityLength - index;
+      } else {
+        return;
+      }
+      x += 5;
+      y += 2;
+      this.SetPixelColor(x, y, color);
+    }
+
+    private void SetRunnerPixel(int index, uint color) {
+      int x = index + 2;
+      int y = this.config.barInfinityWidth + 4;
+      this.SetPixelColor(x, y, color);
+    }
+
+    private void SetPixelColor(int x, int y, uint color) {
+      this.bitmap.FillEllipseCentered(
+        x * 10,
+        y * 10,
+        3,
+        3,
+        Color.FromArgb(
+          (byte)(color >> 24),
+          (byte)(color >> 16),
+          (byte)(color >> 8),
+          (byte)color
+        )
+      );
     }
 
     private void Update(object sender, EventArgs e) {
@@ -95,9 +129,8 @@ namespace Spectrum {
         return;
       }
 
-      Stopwatch stopwatch = Stopwatch.StartNew();
+      //Stopwatch stopwatch = Stopwatch.StartNew();
 
-      bool shouldRedraw = false;
       for (int k = 0; k < queueLength; k++) {
         BarLEDCommand command;
         bool result =
@@ -106,30 +139,18 @@ namespace Spectrum {
           throw new Exception("Someone else is dequeueing!");
         }
         if (command.isFlush) {
-          shouldRedraw = true;
           continue;
         }
         uint color = (uint)SimulatorUtils.GetComputerColor(command.color)
           | (uint)0xFF000000;
         if (command.isRunner) {
-          this.SetPixelColor(this.pixels, command.ledIndex + 10, 20 + this.config.barInfinityWidth, color);
-        } else if (command.ledIndex < this.config.barInfinityLength) {
-          this.SetPixelColor(this.pixels, command.ledIndex + 10, 10, color);
-        } else if (command.ledIndex < this.config.barInfinityWidth + this.config.barInfinityLength) {
-          var pixelPos = (command.ledIndex - this.config.barInfinityLength) + 10;
-          this.SetPixelColor(this.pixels, 10 + this.config.barInfinityLength, pixelPos, color);
-        } else if (command.ledIndex < this.config.barInfinityWidth + 2 * this.config.barInfinityLength) {
-          var pixelPos = 2 * this.config.barInfinityLength + this.config.barInfinityWidth - command.ledIndex + 10;
-          this.SetPixelColor(this.pixels, pixelPos, 10 + this.config.barInfinityWidth, color);
-        } else if (command.ledIndex < 2 * this.config.barInfinityWidth + 2 * this.config.barInfinityLength) {
-          var pixelPos = 2 * this.config.barInfinityWidth + 2 * this.config.barInfinityLength - command.ledIndex + 10;
-          this.SetPixelColor(this.pixels, 10, pixelPos, color);
+          this.SetRunnerPixel(command.ledIndex, color);
+        } else {
+          this.SetInfinityPixel(command.ledIndex, color);
         }
       }
 
-      if (shouldRedraw) {
-        this.bitmap.WritePixels(this.rect, this.pixels, this.rect.Width * 4, 0);
-      }
+      //Debug.WriteLine("BarSimulator took " + stopwatch.ElapsedMilliseconds + "ms to update");
     }
 
   }

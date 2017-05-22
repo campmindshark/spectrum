@@ -148,7 +148,7 @@ namespace Spectrum {
         return;
       }
 
-      Stopwatch stopwatch = Stopwatch.StartNew();
+      //Stopwatch stopwatch = Stopwatch.StartNew();
 
       bool shouldRedraw = false;
       for (int k = 0; k < queueLength; k++) {
@@ -178,7 +178,7 @@ namespace Spectrum {
         this.bitmap.WritePixels(this.rect, this.pixels, this.rect.Width * 4, 0);
       }
 
-      //Debug.WriteLine(stopwatch.ElapsedMilliseconds + "ms to update");
+      //Debug.WriteLine("DomeSimulator took " + stopwatch.ElapsedMilliseconds + "ms to update");
     }
 
     private void ShowKey(object sender, RoutedEventArgs e) {

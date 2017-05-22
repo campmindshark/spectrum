@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Spectrum"
         mc:Ignorable="d"
-        Title="Bar Simulator" Height="750" Width="725" ResizeMode="CanMinimize"
+        Title="Bar Simulator" Height="280" Width="760" ResizeMode="CanMinimize"
         Icon="pack://siteoforigin:,,,/Resources/s.PNG"
         Loaded="WindowLoaded">
   <Canvas x:Name="canvas">
