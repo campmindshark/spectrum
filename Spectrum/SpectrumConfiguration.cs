@@ -23,6 +23,7 @@ namespace Spectrum {
     public bool midiInputEnabled { get; set; } = false;
     public bool whyFireEnabled { get; set; } = false;
     public bool barEnabled { get; set; } = false;
+    public bool stageEnabled { get; set; } = false;
 
     public bool audioInputInSeparateThread { get; set; } = false;
     public bool huesOutputInSeparateThread { get; set; } = false;
@@ -31,6 +32,7 @@ namespace Spectrum {
     public bool domeOutputInSeparateThread { get; set; } = false;
     public bool whyFireOutputInSeparateThread { get; set; } = false;
     public bool barOutputInSeparateThread { get; set; } = false;
+    public bool stageOutputInSeparateThread { get; set; } = false;
 
     [XmlIgnore]
     public int operatorFPS { get; set; } = 0;
@@ -60,6 +62,14 @@ namespace Spectrum {
     public int barBeagleboneOPCFPS { get; set; } = 0;
     [XmlIgnore]
     public int barBeagleboneCAMPFPS { get; set; } = 0;
+    [XmlIgnore]
+    public int stageTeensyFPS1 { get; set; } = 0;
+    [XmlIgnore]
+    public int stageTeensyFPS2 { get; set; } = 0;
+    [XmlIgnore]
+    public int stageBeagleboneOPCFPS { get; set; } = 0;
+    [XmlIgnore]
+    public int stageBeagleboneCAMPFPS { get; set; } = 0;
 
     // 0 - Teensy, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     public int boardHardwareSetup { get; set; } = 0;
@@ -81,6 +91,17 @@ namespace Spectrum {
     public int barRunnerLength { get; set; } = 0;
     public double barBrightness { get; set; } = 0.1;
     public int barTestPattern { get; set; } = 0;
+
+    // 0 - 2 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
+    public int stageHardwareSetup { get; set; } = 0;
+    public string stageBeagleboneOPCAddress { get; set; } = "";
+    public string stageBeagleboneCAMPAddress { get; set; } = "";
+    public string stageTeensyUSBPort1 { get; set; } = null;
+    public string stageTeensyUSBPort2 { get; set; } = null;
+    public bool stageSimulationEnabled { get; set; } = false;
+    public int[] stageSideLengths { get; set; } = new int[0];
+    public double stageBrightness { get; set; } = 0.1;
+    public int stageTestPattern { get; set; } = 0;
 
     // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     public int domeHardwareSetup { get; set; } = 0;
@@ -139,6 +160,9 @@ namespace Spectrum {
     [XmlIgnore, DoNotNotify]
     public ConcurrentQueue<BarLEDCommand> barCommandQueue { get; } =
       new ConcurrentQueue<BarLEDCommand>();
+    [XmlIgnore, DoNotNotify]
+    public ConcurrentQueue<StageLEDCommand> stageCommandQueue { get; } =
+      new ConcurrentQueue<StageLEDCommand>();
 
     // The rest is not on Configuration
     // Just convenience properties for data binding

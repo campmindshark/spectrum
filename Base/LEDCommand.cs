@@ -23,4 +23,12 @@ namespace Spectrum.Base {
     public int color;
   }
 
+  public struct StageLEDCommand {
+    public bool isFlush;
+    // rest doesn't matter if isFlush
+    public int sideIndex;
+    public int ledIndex;
+    public int color;
+  }
+
 }

@@ -23,6 +23,7 @@ namespace Spectrum.Base {
     bool midiInputEnabled { get; set; }
     bool whyFireEnabled { get; set; }
     bool barEnabled { get; set; }
+    bool stageEnabled { get; set; }
 
     // If this is true, we will poll the Un4seen APIs in a thread separate to
     // the one running the visualizers. If it is false, a single thread will
@@ -34,6 +35,7 @@ namespace Spectrum.Base {
     bool domeOutputInSeparateThread { get; set; }
     bool whyFireOutputInSeparateThread { get; set; }
     bool barOutputInSeparateThread { get; set; }
+    bool stageOutputInSeparateThread { get; set; }
 
     int operatorFPS { get; set; }
     int domeTeensyFPS1 { get; set; }
@@ -49,6 +51,10 @@ namespace Spectrum.Base {
     int barTeensyFPS { get; set; }
     int barBeagleboneOPCFPS { get; set; }
     int barBeagleboneCAMPFPS { get; set; }
+    int stageTeensyFPS1 { get; set; }
+    int stageTeensyFPS2 { get; set; }
+    int stageBeagleboneOPCFPS { get; set; }
+    int stageBeagleboneCAMPFPS { get; set; }
 
     // 0 - Teensy, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     int boardHardwareSetup { get; set; }
@@ -75,6 +81,20 @@ namespace Spectrum.Base {
     double barBrightness { get; set; }
     // 0 - None, 1 - Flash colors
     int barTestPattern { get; set; }
+
+    // 0 - 2 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
+    int stageHardwareSetup { get; set; }
+    string stageBeagleboneOPCAddress { get; set; }
+    string stageBeagleboneCAMPAddress { get; set; }
+    string stageTeensyUSBPort1 { get; set; }
+    string stageTeensyUSBPort2 { get; set; }
+    bool stageSimulationEnabled { get; set; }
+    // 48 individual side lengths (in LED count)
+    int[] stageSideLengths { get; set; }
+    // Brightness of the stage
+    double stageBrightness { get; set; }
+    // 0 - None, 1 - Flash colors
+    int stageTestPattern { get; set; }
 
     // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     int domeHardwareSetup { get; set; }
@@ -143,6 +163,7 @@ namespace Spectrum.Base {
     // with LEDDomeOutput, and the config is the only reference they share.
     ConcurrentQueue<DomeLEDCommand> domeCommandQueue { get; }
     ConcurrentQueue<BarLEDCommand> barCommandQueue { get; }
+    ConcurrentQueue<StageLEDCommand> stageCommandQueue { get; }
 
   }
 
