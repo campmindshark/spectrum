@@ -28,6 +28,7 @@ namespace Spectrum.Base {
     // rest doesn't matter if isFlush
     public int sideIndex;
     public int ledIndex;
+    public int layerIndex;
     public int color;
   }
 

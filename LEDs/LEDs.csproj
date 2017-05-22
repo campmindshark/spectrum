@@ -40,6 +40,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="LEDStageOutput.cs" />
     <Compile Include="LEDBarOutput.cs" />
     <Compile Include="StrutLayout.cs" />
     <Compile Include="LEDDomeOutput.cs" />
