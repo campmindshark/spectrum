@@ -111,6 +111,10 @@ namespace Spectrum {
         this.config,
         bar
       ));
+      this.visualizers.Add(new LEDStageFlashColorsDiagnosticVisualizer(
+        this.config,
+        stage
+      ));
     }
 
     private bool enabled;
