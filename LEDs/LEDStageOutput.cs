@@ -18,7 +18,6 @@ namespace Spectrum.LEDs {
       this.config = config;
       this.visualizers = new List<Visualizer>();
       this.config.PropertyChanged += this.ConfigUpdated;
-      this.calculateMaxTriangleLength();
     }
 
     private void calculateMaxTriangleLength() {
@@ -116,6 +115,7 @@ namespace Spectrum.LEDs {
       );
       this.opcAPI.Active = this.active &&
         this.config.stageHardwareSetup == 1;
+      this.calculateMaxTriangleLength();
     }
 
     private bool active = false;
