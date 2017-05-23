@@ -19,9 +19,15 @@ namespace Spectrum.LEDs {
     private int port;
     private Socket socket;
     // (channel ID, pixel ID) => RGB value
+    // these values have been realized (ie. a flush has happened)
     private ConcurrentDictionary<Tuple<byte, int>, int> currentPixelColors;
+    // these values haven't been realized (ie. flush hasn't happened yet)
+    private ConcurrentDictionary<Tuple<byte, int>, int> nextPixelColors;
     // channel ID => pixel ID
-    private ConcurrentDictionary<byte, int> firstPixelNotSet;
+    // these values have been realized (ie. a flush has happened)
+    private ConcurrentDictionary<byte, int> currentFirstPixelNotSet;
+    // these values haven't been realized (ie. flush hasn't happened yet)
+    private ConcurrentDictionary<byte, int> nextFirstPixelNotSet;
     private bool separateThread;
     private Action<int> setFPS;
     private Stopwatch frameRateStopwatch;
@@ -51,7 +57,9 @@ namespace Spectrum.LEDs {
         ProtocolType.Tcp
       );
       this.currentPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
-      this.firstPixelNotSet = new ConcurrentDictionary<byte, int>();
+      this.nextPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
+      this.currentFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
+      this.nextFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
       this.separateThread = separateThread;
       this.setFPS = setFPS;
 
@@ -102,14 +110,19 @@ namespace Spectrum.LEDs {
     private void DisconnectSocket() {
       this.socket.Disconnect(true);
       this.currentPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
-      this.firstPixelNotSet = new ConcurrentDictionary<byte, int>();
+      this.nextPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
+      this.currentFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
+      this.nextFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
     }
 
     private void Update() {
+      if (this.currentFirstPixelNotSet.Count == 0) {
+        return;
+      }
       lock (this.lockObject) {
         // channel ID => array of bits, one per color
         Dictionary<byte, int[]> colorsPerChannel = new Dictionary<byte, int[]>();
-        foreach (var pixelPair in this.firstPixelNotSet) {
+        foreach (var pixelPair in this.currentFirstPixelNotSet) {
           colorsPerChannel[pixelPair.Key] = new int[pixelPair.Value];
         }
         foreach (var pixelColorPair in this.currentPixelColors) {
@@ -135,6 +148,7 @@ namespace Spectrum.LEDs {
         try {
           this.socket.Send(bytes);
         } catch (Exception) { }
+        this.currentFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
       }
     }
 
@@ -161,15 +175,26 @@ namespace Spectrum.LEDs {
       }
     }
 
-    public void Flush() { }
+    public void Flush() {
+      lock (this.lockObject) {
+        this.currentFirstPixelNotSet = this.nextFirstPixelNotSet;
+        this.currentPixelColors = this.nextPixelColors;
+        this.nextFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
+        // there is no need to reset nextPixelColors, since that should contain
+        // the most recent state of all of the pixels
+        this.nextPixelColors =
+          new ConcurrentDictionary<Tuple<byte, int>, int>(this.nextPixelColors);
+      }
+    }
 
     public void SetPixel(byte channelIndex, int pixelIndex, int color) {
       lock (this.lockObject) {
-        this.firstPixelNotSet[channelIndex] = this.firstPixelNotSet.ContainsKey(channelIndex)
-          ? Math.Max(this.firstPixelNotSet[channelIndex], pixelIndex + 1)
-          : pixelIndex + 1;
+        this.nextFirstPixelNotSet[channelIndex] =
+          this.nextFirstPixelNotSet.ContainsKey(channelIndex)
+            ? Math.Max(this.nextFirstPixelNotSet[channelIndex], pixelIndex + 1)
+            : pixelIndex + 1;
         var pixelTuple = new Tuple<byte, int>(channelIndex, pixelIndex);
-        this.currentPixelColors[pixelTuple] = color;
+        this.nextPixelColors[pixelTuple] = color;
       }
     }
 
