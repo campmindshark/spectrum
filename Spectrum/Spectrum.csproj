@@ -98,6 +98,9 @@
     <Compile Include="Simulators\BarSimulatorWindow.xaml.cs">
       <DependentUpon>BarSimulatorWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Simulators\StageSimulatorWindow.xaml.cs">
+      <DependentUpon>StageSimulatorWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Simulators\DomeSimulatorWindow.xaml.cs">
       <DependentUpon>DomeSimulatorWindow.xaml</DependentUpon>
     </Compile>
@@ -123,6 +126,10 @@
     <Compile Include="Visualizers\HueAudioVisualizer.cs" />
     <Compile Include="Visualizers\WhyFireMidiVisualizer.cs" />
     <Page Include="Simulators\BarSimulatorWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Simulators\StageSimulatorWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

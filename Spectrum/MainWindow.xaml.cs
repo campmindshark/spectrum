@@ -22,6 +22,7 @@ namespace Spectrum {
     private int[] midiDeviceIndices;
     private DomeSimulatorWindow domeSimulatorWindow;
     private BarSimulatorWindow barSimulatorWindow;
+    private StageSimulatorWindow stageSimulatorWindow;
 
     public MainWindow() {
       this.InitializeComponent();
@@ -586,14 +587,14 @@ namespace Spectrum {
     }
 
     private void OpenStageSimulator(object sender, RoutedEventArgs e) {
-      //this.stageSimulatorWindow = new StageSimulatorWindow(this.config);
-      //this.stageSimulatorWindow.Closed += StageSimulatorClosed;
-      //this.stageSimulatorWindow.Show();
+      this.stageSimulatorWindow = new StageSimulatorWindow(this.config);
+      this.stageSimulatorWindow.Closed += StageSimulatorClosed;
+      this.stageSimulatorWindow.Show();
     }
 
     private void CloseStageSimulator(object sender, RoutedEventArgs e) {
-      //this.stageSimulatorWindow.Close();
-      //this.stageSimulatorWindow = null;
+      this.stageSimulatorWindow.Close();
+      this.stageSimulatorWindow = null;
     }
 
     private void StageSimulatorClosed(object sender, EventArgs e) {
