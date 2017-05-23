@@ -157,8 +157,9 @@ namespace Spectrum.LEDs {
      * color: duh the color???
      */
     public void SetPixel(bool isRunner, int ledIndex, int color) {
-      var totalInfinityLength = this.config.barInfinityLength * 2 +
-        this.config.barInfinityWidth * 2;
+      var infinityStripLength = this.config.barInfinityLength +
+        this.config.barInfinityWidth;
+      var totalInfinityLength = infinityStripLength * 2;
       var pixelIndex = ledIndex;
       if (isRunner) {
         Debug.Assert(
@@ -171,6 +172,10 @@ namespace Spectrum.LEDs {
           pixelIndex < totalInfinityLength,
           "pixelIndex too large"
         );
+        if (ledIndex >= infinityStripLength) {
+          // The second infinity strip is reversed
+          pixelIndex = totalInfinityLength - ledIndex + infinityStripLength - 1;
+        }
       }
       if (this.config.barHardwareSetup == 0 && this.teensyAPI != null) {
         this.teensyAPI.SetPixel(pixelIndex, color);
