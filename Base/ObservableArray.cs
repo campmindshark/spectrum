@@ -10,19 +10,21 @@ namespace Spectrum.Base {
 
   public class ComputerEnabledColors : INotifyPropertyChanged {
 
-    public bool[] array;
+    public bool[] array { get; set; }
 
     public event PropertyChangedEventHandler PropertyChanged;
 
-    public ComputerEnabledColors() {
-      this.array = Enumerable.Repeat(true, 16).ToArray();
-    }
-
     public bool this[int index] {
       get {
+        if (this.array == null) {
+          this.array = Enumerable.Repeat(true, 16).ToArray();
+        }
         return this.array[index];
       }
       set {
+        if (this.array == null) {
+          this.array = Enumerable.Repeat(true, 16).ToArray();
+        }
         this.array[index] = value;
         this.PropertyChanged?.Invoke(
           this,

@@ -41,7 +41,7 @@ namespace Spectrum.MIDI {
     };
 
     private Configuration config;
-    private InputDevice device;
+    private Dictionary<int, InputDevice> devices;
     private ConcurrentQueue<MidiCommand> buffer;
     private Dictionary<int, double> knobValues;
     private Dictionary<int, double> noteVelocities;
@@ -245,9 +245,13 @@ namespace Spectrum.MIDI {
     }
 
     private void InitializeMidi() {
-      this.device = new InputDevice(this.config.midiDeviceIndex);
-      this.device.ChannelMessageReceived += ChannelMessageReceived;
-      this.device.StartRecording();
+      this.devices = new Dictionary<int, InputDevice>();
+      foreach (var pair in this.config.midiDevices) {
+        var device = new InputDevice(pair.Key);
+        device.ChannelMessageReceived += ChannelMessageReceived;
+        device.StartRecording();
+        this.devices[pair.Key] = device;
+      }
     }
 
     private void ChannelMessageReceived(
@@ -303,9 +307,11 @@ namespace Spectrum.MIDI {
     }
 
     private void TerminateMidi() {
-      this.device.StopRecording();
-      this.device.Dispose();
-      this.device = null;
+      foreach (var pair in this.devices) {
+        pair.Value.StopRecording();
+        pair.Value.Dispose();
+      }
+      this.devices = null;
     }
 
     private void Update() {

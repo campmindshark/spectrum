@@ -15,6 +15,9 @@ namespace Spectrum {
       object parameter,
       System.Globalization.CultureInfo culture
     ) {
+      if (value == null) {
+        return "";
+      }
       try {
         return String.Join(",", (int[])value);
       } catch (FormatException) {

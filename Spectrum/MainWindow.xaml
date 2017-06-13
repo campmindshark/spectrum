@@ -146,15 +146,50 @@
       </TabItem>
       <TabItem Header="MIDI">
         <Grid>
-          <Grid HorizontalAlignment="Left" Width="355">
-            <Label Content="General" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+          <Grid HorizontalAlignment="Left" Width="317">
+            <Label Content="Device config" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
-                <Label Content="Enabled" FontWeight="Bold" Padding="0" />
-                <CheckBox x:Name="midiEnabled" VerticalAlignment="Top" Margin="94,2,0,2" IsChecked="False" />
-                <Label Content="MIDI device" Margin="0,24,0,0" Padding="0" />
-                <ComboBox x:Name="midiDevices" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,22,0,0" Width="120" SelectionChanged="MidiDeviceChanged" />
-                <Button Content="Refresh MIDI devices" VerticalAlignment="Top" HorizontalAlignment="Right" Style="{StaticResource HyperlinkButton}" Margin="0,24,5,0" FontStyle="Italic" Click="RefreshMidiDevices" />
+                <CheckBox x:Name="midiEnabled" Content="Enabled" VerticalAlignment="Top" IsChecked="False" FontWeight="Bold" Margin="0,2,0,0" />
+                <ListView x:Name="midiDeviceList" Width="298" Height="66" VerticalAlignment="Top" Margin="1,22,1,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                  <ListView.View>
+                    <GridView>
+                      <GridViewColumn Header="Preset" Width="139" DisplayMemberBinding="{Binding PresetName}" />
+                      <GridViewColumn Header="Device name" Width="139" DisplayMemberBinding="{Binding DeviceName}" />
+                    </GridView>
+                  </ListView.View>
+                </ListView>
+                <Button x:Name="midiLoadDevicePreset" Content="Load preset" HorizontalAlignment="Left" Margin="2,93,0,0" VerticalAlignment="Top" Click="MidiLoadPresetClicked" Padding="6,2"/>
+                <Button x:Name="midiDeleteDevice" Content="Delete device" HorizontalAlignment="Right" Margin="0,93,2,0" VerticalAlignment="Top" Click="MidiDeleteDeviceClicked" Padding="6,2"/>
+              </Grid>
+            </Border>
+          </Grid>
+          <WrapPanel HorizontalAlignment="Right" Width="240" Margin="0,0,5,0">
+            <Label Content="Add device" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+              <WrapPanel>
+                <Grid>
+                  <Label Content="Preset" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <ComboBox x:Name="midiNewDevicePreset" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,0,0,0" Width="140" SelectionChanged="MidiNewDeviceSelectionChanged" />
+                </Grid>
+                <Grid Margin="0,3,0,0" x:Name="midiNewDevicePresetNameGrid" Visibility="Collapsed">
+                  <TextBox x:Name="midiNewDevicePresetName" Margin="80,0,0,0" HorizontalAlignment="Left" Text="New preset name" FontStyle="Italic" Foreground="Gray" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="MidiNewDeviceNewPresetNameLostFocus" GotFocus="MidiNewDeviceNewPresetNameGotFocus" />
+                </Grid>
+                <Grid Margin="0,4,0,0">
+                  <Label Content="Device name" Padding="0" Margin="0,0,0,3" VerticalAlignment="Bottom" />
+                  <ComboBox x:Name="midiDevices" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,0,0,0" Width="140" />
+                </Grid>
+                <Grid Width="220" Margin="0,5,0,0">
+                  <Button Content="Refresh MIDI devices" VerticalAlignment="Bottom" HorizontalAlignment="Left" Style="{StaticResource HyperlinkButton}" Margin="0,0,0,3" FontStyle="Italic" Click="RefreshMidiDevices" />
+                  <Button x:Name="midiAddDevice" Content="Add device" HorizontalAlignment="Right" VerticalAlignment="Top" Click="MidiAddDeviceClicked" Padding="6,2"/>
+                </Grid>
+              </WrapPanel>
+            </Border>
+          </WrapPanel>
+          <Grid HorizontalAlignment="Left" Width="556" Margin="0,148,0,0">
+            <Label Content="Preset config" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid>
               </Grid>
             </Border>
           </Grid>

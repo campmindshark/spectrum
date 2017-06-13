@@ -148,8 +148,9 @@ namespace Spectrum.Base {
     // The list of IDs of Hue bulbs, from left to right
     int[] hueIndices { get; set; }
 
-    // The index of the device representing the MIDI controller
-    int midiDeviceIndex { get; set; }
+    // maps from device ID to preset ID
+    Dictionary<int, int> midiDevices { get; set; }
+    Dictionary<int, MidiPreset> midiPresets { get; set; }
 
     // The URL at which the Hue hub can be accessed
     string whyFireURL { get; set; }

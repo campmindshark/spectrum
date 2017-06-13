@@ -99,7 +99,7 @@ namespace Spectrum {
     public string stageTeensyUSBPort1 { get; set; } = null;
     public string stageTeensyUSBPort2 { get; set; } = null;
     public bool stageSimulationEnabled { get; set; } = false;
-    public int[] stageSideLengths { get; set; } = new int[0];
+    public int[] stageSideLengths { get; set; } = null;
     public double stageBrightness { get; set; } = 0.1;
     public int stageTestPattern { get; set; } = 0;
 
@@ -142,9 +142,11 @@ namespace Spectrum {
 
     public string hueURL { get; set; }
       = "http://192.168.1.26/api/161d04c425fa45e293386cf241a26bf/";
-    public int[] hueIndices { get; set; } = new int[] { 2, 1, 4, 5, 6 };
+    public int[] hueIndices { get; set; } = null;
 
-    public int midiDeviceIndex { get; set; } = -1;
+    // maps from device ID to preset ID
+    public Dictionary<int, int> midiDevices { get; set; } = new Dictionary<int, int>();
+    public Dictionary<int, MidiPreset> midiPresets { get; set; } = new Dictionary<int, MidiPreset>();
 
     public string whyFireURL { get; set; } = "http://why.fire/WhyService.svc/Effects/";
 

@@ -48,6 +48,7 @@
     <Compile Include="Input.cs" />
     <Compile Include="LEDColor.cs" />
     <Compile Include="LEDCommand.cs" />
+    <Compile Include="MidiPreset.cs" />
     <Compile Include="ObservableArray.cs" />
     <Compile Include="Output.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
