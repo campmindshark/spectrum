@@ -146,12 +146,12 @@
       </TabItem>
       <TabItem Header="MIDI">
         <Grid>
-          <Grid HorizontalAlignment="Left" Width="317">
+          <WrapPanel HorizontalAlignment="Left" Width="317">
             <Label Content="Device config" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <CheckBox x:Name="midiEnabled" Content="Enabled" VerticalAlignment="Top" IsChecked="False" FontWeight="Bold" Margin="0,2,0,0" />
-                <ListView x:Name="midiDeviceList" Width="298" Height="66" VerticalAlignment="Top" Margin="1,22,1,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListView x:Name="midiDeviceList" Width="298" Height="66" VerticalAlignment="Top" Margin="1,22,1,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="MidiDeviceListSelectionChanged">
                   <ListView.View>
                     <GridView>
                       <GridViewColumn Header="Preset" Width="139" DisplayMemberBinding="{Binding PresetName}" />
@@ -159,11 +159,32 @@
                     </GridView>
                   </ListView.View>
                 </ListView>
-                <Button x:Name="midiLoadDevicePreset" Content="Load preset" HorizontalAlignment="Left" Margin="2,93,0,0" VerticalAlignment="Top" Click="MidiLoadPresetClicked" Padding="6,2"/>
-                <Button x:Name="midiDeleteDevice" Content="Delete device" HorizontalAlignment="Right" Margin="0,93,2,0" VerticalAlignment="Top" Click="MidiDeleteDeviceClicked" Padding="6,2"/>
+                <Button x:Name="midiLoadDevicePreset" Content="Load preset" HorizontalAlignment="Left" Margin="2,93,0,0" VerticalAlignment="Top" Click="MidiLoadPresetClicked" Padding="6,2" IsEnabled="False" />
+                <Button x:Name="midiDeleteDevice" Content="Delete device" HorizontalAlignment="Right" Margin="0,93,2,0" VerticalAlignment="Top" Click="MidiDeleteDeviceClicked" Padding="6,2" IsEnabled="False" />
               </Grid>
             </Border>
-          </Grid>
+            <Label Content="Preset config" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid Width="300">
+                <ListBox x:Name="midiPresetList" Width="298" Height="44" VerticalAlignment="Top" Margin="1,0,1,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="MidiPresetListSelectionChanged" />
+                <Button x:Name="midiDeletePreset" Content="Delete preset" HorizontalAlignment="Right" Margin="0,49,2,0" VerticalAlignment="Top" Click="MidiDeletePresetClicked" Padding="6,2" IsEnabled="False" />
+              </Grid>
+            </Border>
+            <Label Content="Binding config" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+              <Grid Width="300">
+                <ListView x:Name="midiBindingList" Width="298" Height="66" VerticalAlignment="Top" Margin="1,0,1,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                  <ListView.View>
+                    <GridView>
+                      <GridViewColumn Header="Preset" Width="139" DisplayMemberBinding="{Binding PresetName}" />
+                      <GridViewColumn Header="Type" Width="139" DisplayMemberBinding="{Binding BindingTypeName}" />
+                    </GridView>
+                  </ListView.View>
+                </ListView>
+                <Button x:Name="midiDeleteBinding" Content="Delete binding" HorizontalAlignment="Right" Margin="0,71,2,0" VerticalAlignment="Top" Click="MidiDeleteBindingClicked" Padding="6,2" IsEnabled="False" />
+              </Grid>
+            </Border>
+          </WrapPanel>
           <WrapPanel HorizontalAlignment="Right" Width="240" Margin="0,0,5,0">
             <Label Content="Add device" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
@@ -185,14 +206,28 @@
                 </Grid>
               </WrapPanel>
             </Border>
-          </WrapPanel>
-          <Grid HorizontalAlignment="Left" Width="556" Margin="0,148,0,0">
-            <Label Content="Preset config" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
-              <Grid>
-              </Grid>
+            <Label Content="Add preset" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+              <WrapPanel>
+                <Grid Width="220">
+                  <TextBox x:Name="midiNewPresetName" Margin="0,0,0,0" HorizontalAlignment="Left" Text="New preset name" FontStyle="Italic" Foreground="Gray" VerticalAlignment="Center" Width="140" Height="20" Padding="2,1,0,0" LostFocus="MidiNewPresetNameLostFocus" GotFocus="MidiNewPresetNameGotFocus" />
+                  <Button x:Name="midiAddPreset" Content="Add preset" HorizontalAlignment="Right" VerticalAlignment="Center" Click="MidiAddPresetClicked" Padding="6,2"/>
+                </Grid>
+              </WrapPanel>
             </Border>
-          </Grid>
+            <Label Content="Add binding" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+              <WrapPanel>
+                <Grid Width="220">
+                  <Label Content="Type" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <ComboBox x:Name="midiBindingType" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,0,0,0" Width="140" SelectionChanged="MidiBindingTypeSelectionChanged" />
+                </Grid>
+                <Grid Width="220" Margin="0,5,0,0">
+                  <Button x:Name="test" Content="Add binding" HorizontalAlignment="Right" VerticalAlignment="Center" Click="MidiAddBindingClicked" Padding="6,2"/>
+                </Grid>
+              </WrapPanel>
+            </Border>
+          </WrapPanel>
           <CheckBox x:Name="midiThreadCheckbox" Content="Process MIDI input in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
         </Grid>
       </TabItem>
