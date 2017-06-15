@@ -7,9 +7,13 @@ using System.Xml.Serialization;
 
 namespace Spectrum.Base {
 
-  public class MidiPreset {
+  public class MidiPreset : ICloneable {
     public int id { get; set; }
     public string Name { get; set; }
+
+    public object Clone() {
+      return new MidiPreset() { id = this.id, Name = this.Name };
+    }
   }
 
 }

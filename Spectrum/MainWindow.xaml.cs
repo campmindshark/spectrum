@@ -43,6 +43,7 @@ namespace Spectrum {
     private DomeSimulatorWindow domeSimulatorWindow;
     private BarSimulatorWindow barSimulatorWindow;
     private StageSimulatorWindow stageSimulatorWindow;
+    private int? currentlyEditing = null;
 
     public MainWindow() {
       this.InitializeComponent();
@@ -554,39 +555,50 @@ namespace Spectrum {
       this.midiNewDevicePresetName.FontStyle = FontStyles.Italic;
     }
 
-    private Tuple<int, string> AddMidiPreset(string presetName) {
+    private string ValidateNewMidiPresetName(string presetName) {
       var newPresetName = presetName.Trim();
       if (
         String.IsNullOrEmpty(newPresetName) ||
-        String.Equals(newPresetName, "New preset name")
+        String.Equals(newPresetName, "New preset name") ||
+        this.MidiPresetNameExists(newPresetName)
       ) {
         return null;
       }
-      foreach (var pair in this.config.midiPresets) {
-        if (pair.Value.Name == newPresetName) {
-          return null;
-        }
-      }
+      return newPresetName;
+    }
 
+    private MidiPreset AddNewMidiPresetWithName(string presetName) {
+      var newPresetName = this.ValidateNewMidiPresetName(presetName);
+      if (newPresetName == null) {
+        return null;
+      }
+      int newID = this.getNextMidiPresetID();
+      var newPreset = new MidiPreset() { id = newID, Name = newPresetName };
+      this.AddMidiPreset(newPreset);
+      return newPreset;
+    }
+
+    private void AddMidiPreset(MidiPreset preset) {
+      var newMidiPresets = new Dictionary<int, MidiPreset>(this.config.midiPresets);
+      newMidiPresets[preset.id] = preset;
+      this.config.midiPresets = newMidiPresets;
+      this.midiNewDevicePreset.Items.Insert(
+        this.midiNewDevicePreset.Items.Count - 1,
+        preset.Name
+      );
+      this.midiPresetIndices.Add(preset.id);
+
+      this.midiPresetList.Items.Add(preset.Name);
+    }
+
+    private int getNextMidiPresetID() {
       int newID = -1;
       foreach (var pair in this.config.midiPresets) {
         if (pair.Key > newID) {
           newID = pair.Key;
         }
       }
-      newID++;
-
-      var newPreset = new MidiPreset() { id = newID, Name = newPresetName };
-      this.config.midiPresets[newID] = newPreset;
-      this.midiNewDevicePreset.Items.Insert(
-        this.midiNewDevicePreset.Items.Count - 1,
-        newPresetName
-      );
-      this.midiPresetIndices.Add(newID);
-
-      this.midiPresetList.Items.Add(newPresetName);
-
-      return new Tuple<int, string>(newID, newPresetName);
+      return newID + 1;
     }
 
     private void MidiAddDeviceClicked(object sender, RoutedEventArgs e) {
@@ -602,12 +614,12 @@ namespace Spectrum {
       string presetName;
       if (this.midiNewDevicePreset.SelectedIndex >= this.midiPresetIndices.Count) {
         // "New preset" was selected
-        var result = this.AddMidiPreset(this.midiNewDevicePresetName.Text);
+        var result = this.AddNewMidiPresetWithName(this.midiNewDevicePresetName.Text);
         if (result == null) {
           this.midiNewDevicePresetName.Focus();
         }
-        presetID = result.Item1;
-        presetName = result.Item2;
+        presetID = result.id;
+        presetName = result.Name;
       } else {
         presetID = this.midiPresetIndices[this.midiNewDevicePreset.SelectedIndex];
         presetName = this.config.midiPresets[presetID].Name;
@@ -662,6 +674,7 @@ namespace Spectrum {
     private void MidiLoadPresetClicked(object sender, RoutedEventArgs e) {
       MidiDeviceEntry item = (MidiDeviceEntry)this.midiDeviceList.SelectedItem;
       this.midiPresetList.SelectedItem = item.PresetName;
+      // TODO should eventually switch what's visible in the bottom panel
     }
 
     private void MidiDeviceListSelectionChanged(object sender, SelectionChangedEventArgs e) {
@@ -671,10 +684,25 @@ namespace Spectrum {
     }
 
     private void MidiAddPresetClicked(object sender, RoutedEventArgs e) {
-      var result = this.AddMidiPreset(this.midiNewPresetName.Text);
-      if (result == null) {
-        this.midiNewPresetName.Focus();
-        return;
+      if (this.currentlyEditing.HasValue) {
+        var newPresetName = this.ValidateNewMidiPresetName(this.midiNewPresetName.Text);
+        if (newPresetName == null) {
+          this.midiNewPresetName.Focus();
+          return;
+        }
+        // We don't need to reset the whole midiPresets var to trigger observers since nobody
+        // cares what presets are named
+        this.config.midiPresets[this.currentlyEditing.Value].Name = newPresetName;
+        var presetIndex = this.midiPresetIndices[this.currentlyEditing.Value];
+        this.midiPresetList.Items[presetIndex] = newPresetName;
+        this.midiNewDevicePreset.Items[presetIndex] = newPresetName;
+        this.MidiCancelEditPresetClicked(null, null);
+      } else {
+        var result = this.AddNewMidiPresetWithName(this.midiNewPresetName.Text);
+        if (result == null) {
+          this.midiNewPresetName.Focus();
+          return;
+        }
       }
       this.ClearMidiNewPresetName();
       this.SaveConfig();
@@ -694,10 +722,71 @@ namespace Spectrum {
     private void MidiPresetListSelectionChanged(object sender, SelectionChangedEventArgs e) {
       if (this.midiPresetList.SelectedIndex < 0) {
         this.midiDeletePreset.IsEnabled = false;
+        this.midiClonePreset.IsEnabled = false;
+        this.midiRenamePreset.IsEnabled = false;
         return;
       }
       var presetID = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
       this.midiDeletePreset.IsEnabled = !this.config.midiDevices.ContainsValue(presetID);
+      this.midiClonePreset.IsEnabled = true;
+      this.midiRenamePreset.IsEnabled = true;
+    }
+
+    private bool MidiPresetNameExists(string name) {
+      foreach (var pair in this.config.midiPresets) {
+        if (pair.Value.Name == name) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    private void MidiClonePresetClicked(object sender, RoutedEventArgs e) {
+      if (this.midiPresetList.SelectedIndex < 0) {
+        return;
+      }
+      var presetID = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
+      MidiPreset clonedPreset = (MidiPreset)this.config.midiPresets[presetID].Clone();
+      clonedPreset.id = this.getNextMidiPresetID();
+
+      string newName = clonedPreset.Name + " (clone)";
+      int i = 1;
+      while (true) {
+        if (!this.MidiPresetNameExists(newName)) {
+          break;
+        }
+        newName = clonedPreset.Name + " (clone " + ++i + ")";
+      }
+      clonedPreset.Name = newName;
+
+      this.AddMidiPreset(clonedPreset);
+    }
+
+    private void MidiRenamePresetClicked(object sender, RoutedEventArgs e) {
+      if (this.midiPresetList.SelectedIndex < 0) {
+        return;
+      }
+      var presetID = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
+      this.currentlyEditing = presetID;
+      this.midiPresetEditLabel.Content = "Rename preset";
+      this.midiNewPresetName.Width = 120;
+      this.midiAddPreset.Content = "Save";
+      this.midiAddPreset.Margin = new Thickness(0, 0, 55, 0);
+      this.midiCancelEditPreset.Visibility = Visibility.Visible;
+      this.midiNewPresetName.Focus();
+    }
+
+    private void MidiCancelEditPresetClicked(object sender, RoutedEventArgs e) {
+      if (!this.currentlyEditing.HasValue) {
+        return;
+      }
+      this.currentlyEditing = null;
+      this.midiPresetEditLabel.Content = "Add preset";
+      this.midiNewPresetName.Width = 140;
+      this.midiAddPreset.Content = "Add preset";
+      this.midiAddPreset.Margin = new Thickness(0, 0, 0, 0);
+      this.midiCancelEditPreset.Visibility = Visibility.Collapsed;
+      this.ClearMidiNewPresetName();
     }
 
     private void MidiNewPresetNameLostFocus(object sender, RoutedEventArgs e) {
