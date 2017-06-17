@@ -7,6 +7,7 @@ using Sanford.Multimedia.Midi;
 using Spectrum.Base;
 using System.Threading;
 using System.Collections.Concurrent;
+using System.ComponentModel;
 
 namespace Spectrum.MIDI {
 
@@ -50,7 +51,7 @@ namespace Spectrum.MIDI {
       this.config.PropertyChanged += ConfigUpdated;
     }
 
-    private void ConfigUpdated(object sender, System.ComponentModel.PropertyChangedEventArgs e) {
+    private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
       if (!this.active) {
         return;
       }

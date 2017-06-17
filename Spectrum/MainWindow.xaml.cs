@@ -12,6 +12,7 @@ using Xceed.Wpf.Toolkit;
 using System.Collections.Generic;
 using System.Windows.Media;
 using Spectrum.Base;
+using System.ComponentModel;
 
 namespace Spectrum {
 
@@ -39,6 +40,17 @@ namespace Spectrum {
       public string BindingTypeName { get; set; }
     }
 
+    private static HashSet<string> configPropertiesToRebootOn = new HashSet<string>() {
+      "audioInputInSeparateThread",
+      "huesOutputInSeparateThread",
+      "ledBoardOutputInSeparateThread",
+      "midiInputInSeparateThread",
+      "domeOutputInSeparateThread",
+      "whyFireOutputInSeparateThread",
+      "barOutputInSeparateThread",
+      "stageOutputInSeparateThread",
+    };
+
     private Operator op;
     private SpectrumConfiguration config;
     private bool loadingConfig = false;
@@ -65,6 +77,15 @@ namespace Spectrum {
       new HotKey(Key.Down, KeyModifier.Alt, this.OnHotKeyHandler);
 
       this.LoadConfig();
+      this.config.PropertyChanged += ConfigUpdated;
+      this.config.colorPalette.PropertyChanged += ConfigUpdated;
+    }
+
+    private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
+      if (configPropertiesToRebootOn.Contains(e.PropertyName)) {
+        this.op.Reboot();
+      }
+      this.SaveConfig();
     }
 
     private void HandleClose(object sender, EventArgs e) {
@@ -90,25 +111,6 @@ namespace Spectrum {
           stream,
           this.config
         );
-      }
-    }
-
-    private void UpdateConfig(
-      object sender,
-      DataTransferEventArgs eventArgs
-    ) {
-      if (this.config != null) {
-        this.SaveConfig();
-      }
-    }
-
-    private void UpdateConfigAndReboot(
-      object sender,
-      DataTransferEventArgs eventArgs
-    ) {
-      if (this.config != null) {
-        this.op.Reboot();
-        this.SaveConfig();
       }
     }
 
@@ -138,104 +140,104 @@ namespace Spectrum {
       this.Bind("huesEnabled", this.hueEnabled, CheckBox.IsCheckedProperty);
       this.Bind("ledBoardEnabled", this.ledBoardEnabled, CheckBox.IsCheckedProperty);
       this.Bind("midiInputEnabled", this.midiEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("audioInputInSeparateThread", this.audioThreadCheckbox, CheckBox.IsCheckedProperty, true);
-      this.Bind("huesOutputInSeparateThread", this.hueThreadCheckbox, CheckBox.IsCheckedProperty, true);
-      this.Bind("ledBoardOutputInSeparateThread", this.ledBoardThreadCheckbox, CheckBox.IsCheckedProperty, true);
-      this.Bind("midiInputInSeparateThread", this.midiThreadCheckbox, CheckBox.IsCheckedProperty, true);
-      this.Bind("domeOutputInSeparateThread", this.domeThreadCheckbox, CheckBox.IsCheckedProperty, true);
-      this.Bind("whyFireOutputInSeparateThread", this.whyFireThreadCheckbox, CheckBox.IsCheckedProperty, true);
-      this.Bind("barOutputInSeparateThread", this.barThreadCheckbox, CheckBox.IsCheckedProperty, true);
-      this.Bind("stageOutputInSeparateThread", this.stageThreadCheckbox, CheckBox.IsCheckedProperty, true);
+      this.Bind("audioInputInSeparateThread", this.audioThreadCheckbox, CheckBox.IsCheckedProperty);
+      this.Bind("huesOutputInSeparateThread", this.hueThreadCheckbox, CheckBox.IsCheckedProperty);
+      this.Bind("ledBoardOutputInSeparateThread", this.ledBoardThreadCheckbox, CheckBox.IsCheckedProperty);
+      this.Bind("midiInputInSeparateThread", this.midiThreadCheckbox, CheckBox.IsCheckedProperty);
+      this.Bind("domeOutputInSeparateThread", this.domeThreadCheckbox, CheckBox.IsCheckedProperty);
+      this.Bind("whyFireOutputInSeparateThread", this.whyFireThreadCheckbox, CheckBox.IsCheckedProperty);
+      this.Bind("barOutputInSeparateThread", this.barThreadCheckbox, CheckBox.IsCheckedProperty);
+      this.Bind("stageOutputInSeparateThread", this.stageThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("operatorFPS", this.operatorFPSLabel, Label.ContentProperty);
-      this.Bind("operatorFPS", this.operatorFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("domeHardwareSetup", this.domeHardwareSetup, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.fiveTeensies, [1] = this.beagleboneViaOPC, [2] = this.beagleboneViaCAMP }, true));
-      this.Bind("domeHardwareSetup", this.domeTeensies, WrapPanel.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
-      this.Bind("domeHardwareSetup", this.domeBeagleboneOPCPanel, Grid.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Collapsed }));
-      this.Bind("domeHardwareSetup", this.domeBeagleboneCAMPPanel, Grid.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Collapsed, [2] = Visibility.Visible }));
+      this.Bind("operatorFPS", this.operatorFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeHardwareSetup", this.domeHardwareSetup, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.fiveTeensies, [1] = this.beagleboneViaOPC, [2] = this.beagleboneViaCAMP }, true));
+      this.Bind("domeHardwareSetup", this.domeTeensies, WrapPanel.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
+      this.Bind("domeHardwareSetup", this.domeBeagleboneOPCPanel, Grid.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Collapsed }));
+      this.Bind("domeHardwareSetup", this.domeBeagleboneCAMPPanel, Grid.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Collapsed, [2] = Visibility.Visible }));
       this.Bind("domeTeensyFPS1", this.domeTeensyFPS1Label, Label.ContentProperty);
-      this.Bind("domeTeensyFPS1", this.domeTeensyFPS1Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS1Label, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeTeensy1, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("domeTeensyFPS1", this.domeTeensyFPS1Label, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS1Label, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensy1, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("domeTeensyFPS2", this.domeTeensyFPS2Label, Label.ContentProperty);
-      this.Bind("domeTeensyFPS2", this.domeTeensyFPS2Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS2Label, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeTeensy2, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("domeTeensyFPS2", this.domeTeensyFPS2Label, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS2Label, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensy2, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("domeTeensyFPS3", this.domeTeensyFPS3Label, Label.ContentProperty);
-      this.Bind("domeTeensyFPS3", this.domeTeensyFPS3Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS3Label, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeTeensy3, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("domeTeensyFPS3", this.domeTeensyFPS3Label, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS3Label, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensy3, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("domeTeensyFPS4", this.domeTeensyFPS4Label, Label.ContentProperty);
-      this.Bind("domeTeensyFPS4", this.domeTeensyFPS4Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS4Label, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeTeensy4, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("domeTeensyFPS4", this.domeTeensyFPS4Label, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS4Label, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensy4, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("domeTeensyFPS5", this.domeTeensyFPS5Label, Label.ContentProperty);
-      this.Bind("domeTeensyFPS5", this.domeTeensyFPS5Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS5Label, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeTeensy5, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("domeTeensyFPS5", this.domeTeensyFPS5Label, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensyFPS5Label, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeTeensy5, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("domeBeagleboneOPCAddress", this.domeBeagleboneOPCHostAndPort, TextBox.TextProperty);
       this.Bind("domeBeagleboneOPCFPS", this.domeBeagleboneOPCFPSLabel, Label.ContentProperty);
-      this.Bind("domeBeagleboneOPCFPS", this.domeBeagleboneOPCFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeBeagleboneOPCFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeBeagleboneOPCHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("domeBeagleboneOPCFPS", this.domeBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("domeBeagleboneCAMPAddress", this.domeBeagleboneCAMPHostAndPort, TextBox.TextProperty);
       this.Bind("domeBeagleboneCAMPFPS", this.domeBeagleboneCAMPFPSLabel, Label.ContentProperty);
-      this.Bind("domeBeagleboneCAMPFPS", this.domeBeagleboneCAMPFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeBeagleboneCAMPFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
-      this.Bind("domeTestPattern", this.domeTestPattern, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.domeTestPatternNone, [1] = this.domeTestPatternFlashColorsByStrut, [2] = this.domeTestPatternIterateThroughStruts }, true));
+      this.Bind("domeBeagleboneCAMPFPS", this.domeBeagleboneCAMPFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeBeagleboneCAMPFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("domeOutputInSeparateThread", this.domeBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("domeTestPattern", this.domeTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.domeTestPatternNone, [1] = this.domeTestPatternFlashColorsByStrut, [2] = this.domeTestPatternIterateThroughStruts }, true));
       this.Bind("boardTeensyFPS", this.boardTeensyFPSLabel, Label.ContentProperty);
-      this.Bind("boardTeensyFPS", this.boardTeensyFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("ledBoardOutputInSeparateThread", this.boardTeensyFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("ledBoardOutputInSeparateThread", this.ledBoardUSBPorts, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("boardTeensyFPS", this.boardTeensyFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("ledBoardOutputInSeparateThread", this.boardTeensyFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("ledBoardOutputInSeparateThread", this.ledBoardUSBPorts, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("boardBeagleboneOPCAddress", this.boardBeagleboneOPCHostAndPort, TextBox.TextProperty);
       this.Bind("boardBeagleboneOPCFPS", this.boardBeagleboneOPCFPSLabel, Label.ContentProperty);
-      this.Bind("boardBeagleboneOPCFPS", this.boardBeagleboneOPCFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneOPCFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneOPCHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("boardBeagleboneOPCFPS", this.boardBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("boardBeagleboneCAMPAddress", this.boardBeagleboneCAMPHostAndPort, TextBox.TextProperty);
       this.Bind("boardBeagleboneCAMPFPS", this.boardBeagleboneCAMPFPSLabel, Label.ContentProperty);
-      this.Bind("boardBeagleboneCAMPFPS", this.boardBeagleboneCAMPFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneCAMPFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("boardBeagleboneCAMPFPS", this.boardBeagleboneCAMPFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneCAMPFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("barTeensyFPS", this.barTeensyFPSLabel, Label.ContentProperty);
-      this.Bind("barTeensyFPS", this.barTeensyFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("barOutputInSeparateThread", this.barTeensyFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("barOutputInSeparateThread", this.barUSBPorts, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("barTeensyFPS", this.barTeensyFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("barOutputInSeparateThread", this.barTeensyFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("barOutputInSeparateThread", this.barUSBPorts, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("barBeagleboneOPCAddress", this.barBeagleboneOPCHostAndPort, TextBox.TextProperty);
       this.Bind("barBeagleboneOPCFPS", this.barBeagleboneOPCFPSLabel, Label.ContentProperty);
-      this.Bind("barBeagleboneOPCFPS", this.barBeagleboneOPCFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("barOutputInSeparateThread", this.barBeagleboneOPCFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("barOutputInSeparateThread", this.barBeagleboneOPCHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("barBeagleboneOPCFPS", this.barBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("barOutputInSeparateThread", this.barBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("barOutputInSeparateThread", this.barBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("barBeagleboneCAMPAddress", this.barBeagleboneCAMPHostAndPort, TextBox.TextProperty);
       this.Bind("barBeagleboneCAMPFPS", this.barBeagleboneCAMPFPSLabel, Label.ContentProperty);
-      this.Bind("barBeagleboneCAMPFPS", this.barBeagleboneCAMPFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("barOutputInSeparateThread", this.barBeagleboneCAMPFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("barOutputInSeparateThread", this.barBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
-      this.Bind("barTestPattern", this.barTestPattern, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.barTestPatternNone, [1] = this.barTestPatternFlashColors }, true));
+      this.Bind("barBeagleboneCAMPFPS", this.barBeagleboneCAMPFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("barOutputInSeparateThread", this.barBeagleboneCAMPFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("barOutputInSeparateThread", this.barBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("barTestPattern", this.barTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.barTestPatternNone, [1] = this.barTestPatternFlashColors }, true));
       this.Bind("stageTeensyFPS1", this.stageTeensyFPS1Label, Label.ContentProperty);
-      this.Bind("stageTeensyFPS1", this.stageTeensyFPS1Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("stageTeensyFPS1", this.stageTeensyFPS1Label, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
       this.Bind("stageTeensyFPS2", this.stageTeensyFPS2Label, Label.ContentProperty);
-      this.Bind("stageTeensyFPS2", this.stageTeensyFPS2Label, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("stageOutputInSeparateThread", this.stageTeensyFPS1Label, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("stageOutputInSeparateThread", this.stageTeensyUSBPorts1, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
-      this.Bind("stageOutputInSeparateThread", this.stageTeensyFPS2Label, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("stageOutputInSeparateThread", this.stageTeensyUSBPorts2, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("stageTeensyFPS2", this.stageTeensyFPS2Label, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("stageOutputInSeparateThread", this.stageTeensyFPS1Label, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("stageOutputInSeparateThread", this.stageTeensyUSBPorts1, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("stageOutputInSeparateThread", this.stageTeensyFPS2Label, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("stageOutputInSeparateThread", this.stageTeensyUSBPorts2, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("stageBeagleboneOPCAddress", this.stageBeagleboneOPCHostAndPort, TextBox.TextProperty);
       this.Bind("stageBeagleboneOPCFPS", this.stageBeagleboneOPCFPSLabel, Label.ContentProperty);
-      this.Bind("stageBeagleboneOPCFPS", this.stageBeagleboneOPCFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("stageOutputInSeparateThread", this.stageBeagleboneOPCFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("stageOutputInSeparateThread", this.stageBeagleboneOPCHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("stageBeagleboneOPCFPS", this.stageBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("stageOutputInSeparateThread", this.stageBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("stageOutputInSeparateThread", this.stageBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("stageBeagleboneCAMPAddress", this.stageBeagleboneCAMPHostAndPort, TextBox.TextProperty);
       this.Bind("stageBeagleboneCAMPFPS", this.stageBeagleboneCAMPFPSLabel, Label.ContentProperty);
-      this.Bind("stageBeagleboneCAMPFPS", this.stageBeagleboneCAMPFPSLabel, Label.ForegroundProperty, false, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("stageOutputInSeparateThread", this.stageBeagleboneCAMPFPSLabel, Label.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("stageOutputInSeparateThread", this.stageBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, false, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
-      this.Bind("stageTestPattern", this.stageTestPattern, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.stageTestPatternNone, [1] = this.stageTestPatternFlashColors }, true));
+      this.Bind("stageBeagleboneCAMPFPS", this.stageBeagleboneCAMPFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
+      this.Bind("stageOutputInSeparateThread", this.stageBeagleboneCAMPFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("stageOutputInSeparateThread", this.stageBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind("stageTestPattern", this.stageTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.stageTestPatternNone, [1] = this.stageTestPatternFlashColors }, true));
       this.Bind("hueDelay", this.hueCommandDelay, TextBox.TextProperty);
       this.Bind("hueIdleOnSilent", this.hueIdleOnSilent, CheckBox.IsCheckedProperty);
       this.Bind("hueOverrideIndex", this.hueOverride, ComboBox.SelectedIndexProperty);
-      this.Bind("hueOverrideIsCustom", this.hueCustomGrid, Grid.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("hueOverrideIsDisabled", this.hueIdleOnSilent, Grid.VisibilityProperty, false, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("hueOverrideIsCustom", this.hueCustomGrid, Grid.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind("hueOverrideIsDisabled", this.hueIdleOnSilent, Grid.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
       this.Bind("brighten", this.hueCustomBrightness, TextBox.TextProperty);
       this.Bind("sat", this.hueCustomSaturation, TextBox.TextProperty);
       this.Bind("colorslide", this.hueCustomHue, TextBox.TextProperty);
@@ -254,15 +256,15 @@ namespace Spectrum {
       this.Bind("snareT", this.snareChangeS, Slider.ValueProperty);
       this.Bind("snareT", this.snareChangeL, Label.ContentProperty);
       this.Bind("hueURL", this.hueHubAddress, TextBox.TextProperty);
-      this.Bind("hueIndices", this.hueLightIndices, TextBox.TextProperty, false, BindingMode.TwoWay, new StringJoinConverter());
+      this.Bind("hueIndices", this.hueLightIndices, TextBox.TextProperty, BindingMode.TwoWay, new StringJoinConverter());
       this.Bind("boardRowLength", this.ledBoardRowLength, TextBox.TextProperty);
       this.Bind("boardRowsPerStrip", this.ledBoardRowsPerStrip, TextBox.TextProperty);
       this.Bind("boardBrightness", this.ledBoardBrightnessSlider, Slider.ValueProperty);
       this.Bind("boardBrightness", this.ledBoardBrightnessLabel, Label.ContentProperty);
-      this.Bind("boardHardwareSetup", this.boardHardwareSetup, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.boardHardwareSetupTeensy, [1] = this.boardHardwareSetupBeagleboneViaOPC, [2] = this.boardHardwareSetupBeagleboneViaCAMP }, true));
-      this.Bind("boardHardwareSetup", this.boardTeensyPanel, WrapPanel.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
-      this.Bind("boardHardwareSetup", this.boardBeagleboneOPCPanel, Grid.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Collapsed }));
-      this.Bind("boardHardwareSetup", this.boardBeagleboneCAMPPanel, Grid.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Collapsed, [2] = Visibility.Visible }));
+      this.Bind("boardHardwareSetup", this.boardHardwareSetup, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.boardHardwareSetupTeensy, [1] = this.boardHardwareSetupBeagleboneViaOPC, [2] = this.boardHardwareSetupBeagleboneViaCAMP }, true));
+      this.Bind("boardHardwareSetup", this.boardTeensyPanel, WrapPanel.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
+      this.Bind("boardHardwareSetup", this.boardBeagleboneOPCPanel, Grid.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Collapsed }));
+      this.Bind("boardHardwareSetup", this.boardBeagleboneCAMPPanel, Grid.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Collapsed, [2] = Visibility.Visible }));
       this.Bind("domeEnabled", this.domeEnabled, CheckBox.IsCheckedProperty);
       this.Bind("domeSimulationEnabled", this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
       this.Bind("domeMaxBrightness", this.domeMaxBrightnessSlider, Slider.ValueProperty);
@@ -273,62 +275,62 @@ namespace Spectrum {
       this.Bind("domeAutoFlashDelay", this.domeAutoFlashDelay, TextBox.TextProperty);
       this.Bind("domeSkipLEDs", this.domeSkipLEDs, TextBox.TextProperty);
       var colorConverter = new ColorConverter();
-      this.Bind("[0,0]", this.color0_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[0,1]", this.color0_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[0]", this.domeCC0, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[1,0]", this.color1_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[1,1]", this.color1_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[1]", this.domeCC1, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[2,0]", this.color2_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[2,1]", this.color2_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[2]", this.domeCC2, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[3,0]", this.color3_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[3,1]", this.color3_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[3]", this.domeCC3, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[4,0]", this.color4_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[4,1]", this.color4_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[4]", this.domeCC4, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[5,0]", this.color5_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[5,1]", this.color5_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[5]", this.domeCC5, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[6,0]", this.color6_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[6,1]", this.color6_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[6]", this.domeCC6, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[7,0]", this.color7_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[7,1]", this.color7_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[7]", this.domeCC7, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[8,0]", this.color8_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[8,1]", this.color8_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[8]", this.domeCC8, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[9,0]", this.color9_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[9,1]", this.color9_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[9]", this.domeCC9, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[10,0]", this.color10_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[10,1]", this.color10_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[10]", this.domeCC10, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[11,0]", this.color11_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[11,1]", this.color11_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[11]", this.domeCC11, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[12,0]", this.color12_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[12,1]", this.color12_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[12]", this.domeCC12, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[13,0]", this.color13_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[13,1]", this.color13_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[13]", this.domeCC13, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[14,0]", this.color14_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[14,1]", this.color14_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[14]", this.domeCC14, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
-      this.Bind("[15,0]", this.color15_0, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[15,1]", this.color15_1, ColorPicker.SelectedColorProperty, false, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
-      this.Bind("[15]", this.domeCC15, CheckBox.IsCheckedProperty, false, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[0,0]", this.color0_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[0,1]", this.color0_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[0]", this.domeCC0, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[1,0]", this.color1_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[1,1]", this.color1_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[1]", this.domeCC1, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[2,0]", this.color2_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[2,1]", this.color2_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[2]", this.domeCC2, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[3,0]", this.color3_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[3,1]", this.color3_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[3]", this.domeCC3, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[4,0]", this.color4_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[4,1]", this.color4_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[4]", this.domeCC4, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[5,0]", this.color5_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[5,1]", this.color5_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[5]", this.domeCC5, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[6,0]", this.color6_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[6,1]", this.color6_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[6]", this.domeCC6, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[7,0]", this.color7_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[7,1]", this.color7_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[7]", this.domeCC7, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[8,0]", this.color8_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[8,1]", this.color8_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[8]", this.domeCC8, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[9,0]", this.color9_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[9,1]", this.color9_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[9]", this.domeCC9, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[10,0]", this.color10_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[10,1]", this.color10_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[10]", this.domeCC10, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[11,0]", this.color11_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[11,1]", this.color11_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[11]", this.domeCC11, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[12,0]", this.color12_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[12,1]", this.color12_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[12]", this.domeCC12, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[13,0]", this.color13_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[13,1]", this.color13_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[13]", this.domeCC13, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[14,0]", this.color14_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[14,1]", this.color14_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[14]", this.domeCC14, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
+      this.Bind("[15,0]", this.color15_0, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[15,1]", this.color15_1, ColorPicker.SelectedColorProperty, BindingMode.TwoWay, colorConverter, this.config.colorPalette);
+      this.Bind("[15]", this.domeCC15, CheckBox.IsCheckedProperty, BindingMode.TwoWay, null, this.config.colorPalette.computerEnabledColors);
       this.Bind("whyFireEnabled", this.whyFireEnabled, CheckBox.IsCheckedProperty);
       this.Bind("whyFireURL", this.whyFireAddress, TextBox.TextProperty);
       this.Bind("barEnabled", this.barEnabled, CheckBox.IsCheckedProperty);
       this.Bind("barSimulationEnabled", this.barSimulationEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("barHardwareSetup", this.barHardwareSetup, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.barHardwareSetupTeensy, [1] = this.barHardwareSetupBeagleboneViaOPC, [2] = this.barHardwareSetupBeagleboneViaCAMP }, true));
-      this.Bind("barHardwareSetup", this.barTeensyPanel, WrapPanel.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
-      this.Bind("barHardwareSetup", this.barBeagleboneOPCPanel, Grid.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Collapsed }));
-      this.Bind("barHardwareSetup", this.barBeagleboneCAMPPanel, Grid.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Collapsed, [2] = Visibility.Visible }));
+      this.Bind("barHardwareSetup", this.barHardwareSetup, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.barHardwareSetupTeensy, [1] = this.barHardwareSetupBeagleboneViaOPC, [2] = this.barHardwareSetupBeagleboneViaCAMP }, true));
+      this.Bind("barHardwareSetup", this.barTeensyPanel, WrapPanel.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
+      this.Bind("barHardwareSetup", this.barBeagleboneOPCPanel, Grid.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Collapsed }));
+      this.Bind("barHardwareSetup", this.barBeagleboneCAMPPanel, Grid.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Collapsed, [2] = Visibility.Visible }));
       this.Bind("barInfinityLength", this.barInfinityLength, TextBox.TextProperty);
       this.Bind("barInfinityWidth", this.barInfiniteWidth, TextBox.TextProperty);
       this.Bind("barRunnerLength", this.barRunnerLength, TextBox.TextProperty);
@@ -336,11 +338,11 @@ namespace Spectrum {
       this.Bind("barBrightness", this.barBrightnessLabel, Label.ContentProperty);
       this.Bind("stageEnabled", this.stageEnabled, CheckBox.IsCheckedProperty);
       this.Bind("stageSimulationEnabled", this.stageSimulationEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("stageHardwareSetup", this.stageHardwareSetup, ComboBox.SelectedItemProperty, false, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.stageHardwareSetupTwoTeensies, [1] = this.stageHardwareSetupBeagleboneViaOPC, [2] = this.stageHardwareSetupBeagleboneViaCAMP }, true));
-      this.Bind("stageHardwareSetup", this.stageTeensyPanel, WrapPanel.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
-      this.Bind("stageHardwareSetup", this.stageBeagleboneOPCPanel, Grid.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Collapsed }));
-      this.Bind("stageHardwareSetup", this.stageBeagleboneCAMPPanel, Grid.VisibilityProperty, false, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Collapsed, [2] = Visibility.Visible }));
-      this.Bind("stageSideLengths", this.stageSideLengths, TextBox.TextProperty, false, BindingMode.TwoWay, new StringJoinConverter());
+      this.Bind("stageHardwareSetup", this.stageHardwareSetup, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.stageHardwareSetupTwoTeensies, [1] = this.stageHardwareSetupBeagleboneViaOPC, [2] = this.stageHardwareSetupBeagleboneViaCAMP }, true));
+      this.Bind("stageHardwareSetup", this.stageTeensyPanel, WrapPanel.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
+      this.Bind("stageHardwareSetup", this.stageBeagleboneOPCPanel, Grid.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Collapsed }));
+      this.Bind("stageHardwareSetup", this.stageBeagleboneCAMPPanel, Grid.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Collapsed, [2] = Visibility.Visible }));
+      this.Bind("stageSideLengths", this.stageSideLengths, TextBox.TextProperty, BindingMode.TwoWay, new StringJoinConverter());
       this.Bind("stageBrightness", this.stageBrightnessSlider, Slider.ValueProperty);
       this.Bind("stageBrightness", this.stageBrightnessLabel, Label.ContentProperty);
 
@@ -351,7 +353,6 @@ namespace Spectrum {
       string configPath,
       FrameworkElement element,
       DependencyProperty property,
-      bool rebootOnUpdate = false,
       BindingMode mode = BindingMode.TwoWay,
       IValueConverter converter = null,
       object source = null
@@ -361,12 +362,6 @@ namespace Spectrum {
       binding.Mode = mode;
       if (converter != null) {
         binding.Converter = converter;
-      }
-      binding.NotifyOnSourceUpdated = true;
-      if (rebootOnUpdate) {
-        System.Windows.Data.Binding.AddSourceUpdatedHandler(element, UpdateConfigAndReboot);
-      } else {
-        System.Windows.Data.Binding.AddSourceUpdatedHandler(element, UpdateConfig);
       }
       element.SetBinding(property, binding);
     }
