@@ -6,7 +6,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Data;
 using System.Xml.Serialization;
 
 namespace Spectrum.Base {
@@ -109,7 +108,7 @@ namespace Spectrum.Base {
     private void CallPropertyChanged() {
       this.PropertyChanged?.Invoke(
         this,
-        new PropertyChangedEventArgs(Binding.IndexerName)
+        new PropertyChangedEventArgs(System.Windows.Data.Binding.IndexerName)
       );
     }
 

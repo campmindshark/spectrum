@@ -34,6 +34,11 @@ namespace Spectrum {
 
     }
 
+    private class MidiBindingEntry {
+      public string BindingName { get; set; }
+      public string BindingTypeName { get; set; }
+    }
+
     private Operator op;
     private SpectrumConfiguration config;
     private bool loadingConfig = false;
@@ -43,7 +48,8 @@ namespace Spectrum {
     private DomeSimulatorWindow domeSimulatorWindow;
     private BarSimulatorWindow barSimulatorWindow;
     private StageSimulatorWindow stageSimulatorWindow;
-    private int? currentlyEditing = null;
+    private int? currentlyEditingPreset = null;
+    private int? currentlyEditingBinding = null;
 
     public MainWindow() {
       this.InitializeComponent();
@@ -350,7 +356,7 @@ namespace Spectrum {
       IValueConverter converter = null,
       object source = null
     ) {
-      var binding = new Binding(configPath);
+      var binding = new System.Windows.Data.Binding(configPath);
       binding.Source = source != null ? source : this.config;
       binding.Mode = mode;
       if (converter != null) {
@@ -358,9 +364,9 @@ namespace Spectrum {
       }
       binding.NotifyOnSourceUpdated = true;
       if (rebootOnUpdate) {
-        Binding.AddSourceUpdatedHandler(element, UpdateConfigAndReboot);
+        System.Windows.Data.Binding.AddSourceUpdatedHandler(element, UpdateConfigAndReboot);
       } else {
-        Binding.AddSourceUpdatedHandler(element, UpdateConfig);
+        System.Windows.Data.Binding.AddSourceUpdatedHandler(element, UpdateConfig);
       }
       element.SetBinding(property, binding);
     }
@@ -541,11 +547,11 @@ namespace Spectrum {
     }
 
     private void MidiNewDeviceNewPresetNameGotFocus(object sender, RoutedEventArgs e) {
+      this.midiNewDevicePresetName.Foreground = new SolidColorBrush(Colors.Black);
+      this.midiNewDevicePresetName.FontStyle = FontStyles.Normal;
       var name = this.midiNewDevicePresetName.Text.Trim();
       if (String.Equals(name, "New preset name")) {
         this.midiNewDevicePresetName.Text = "";
-        this.midiNewDevicePresetName.Foreground = new SolidColorBrush(Colors.Black);
-        this.midiNewDevicePresetName.FontStyle = FontStyles.Normal;
       }
     }
 
@@ -674,7 +680,6 @@ namespace Spectrum {
     private void MidiLoadPresetClicked(object sender, RoutedEventArgs e) {
       MidiDeviceEntry item = (MidiDeviceEntry)this.midiDeviceList.SelectedItem;
       this.midiPresetList.SelectedItem = item.PresetName;
-      // TODO should eventually switch what's visible in the bottom panel
     }
 
     private void MidiDeviceListSelectionChanged(object sender, SelectionChangedEventArgs e) {
@@ -684,7 +689,7 @@ namespace Spectrum {
     }
 
     private void MidiAddPresetClicked(object sender, RoutedEventArgs e) {
-      if (this.currentlyEditing.HasValue) {
+      if (this.currentlyEditingPreset.HasValue) {
         var newPresetName = this.ValidateNewMidiPresetName(this.midiNewPresetName.Text);
         if (newPresetName == null) {
           this.midiNewPresetName.Focus();
@@ -692,8 +697,8 @@ namespace Spectrum {
         }
         // We don't need to reset the whole midiPresets var to trigger observers since nobody
         // cares what presets are named
-        this.config.midiPresets[this.currentlyEditing.Value].Name = newPresetName;
-        var presetIndex = this.midiPresetIndices[this.currentlyEditing.Value];
+        this.config.midiPresets[this.currentlyEditingPreset.Value].Name = newPresetName;
+        var presetIndex = this.midiPresetIndices[this.currentlyEditingPreset.Value];
         this.midiPresetList.Items[presetIndex] = newPresetName;
         this.midiNewDevicePreset.Items[presetIndex] = newPresetName;
         this.MidiCancelEditPresetClicked(null, null);
@@ -720,16 +725,32 @@ namespace Spectrum {
     }
 
     private void MidiPresetListSelectionChanged(object sender, SelectionChangedEventArgs e) {
+      this.midiBindingList.Items.Clear();
+      if (this.currentlyEditingPreset.HasValue) {
+        this.MidiCancelEditPresetClicked(null, null);
+      }
+      if (this.currentlyEditingBinding.HasValue) {
+        this.MidiCancelEditBindingClicked(null, null);
+      }
       if (this.midiPresetList.SelectedIndex < 0) {
         this.midiDeletePreset.IsEnabled = false;
         this.midiClonePreset.IsEnabled = false;
         this.midiRenamePreset.IsEnabled = false;
+        this.midiAddBinding.IsEnabled = false;
         return;
       }
       var presetID = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
       this.midiDeletePreset.IsEnabled = !this.config.midiDevices.ContainsValue(presetID);
       this.midiClonePreset.IsEnabled = true;
       this.midiRenamePreset.IsEnabled = true;
+      this.midiAddBinding.IsEnabled = true;
+      foreach (var binding in this.config.midiPresets[presetID].Bindings) {
+        ComboBoxItem item = (ComboBoxItem)this.midiBindingType.Items[binding.BindingType];
+        this.midiBindingList.Items.Add(new MidiBindingEntry() {
+          BindingName = binding.BindingName,
+          BindingTypeName = (string)(item.Content),
+        });
+      } 
     }
 
     private bool MidiPresetNameExists(string name) {
@@ -767,20 +788,22 @@ namespace Spectrum {
         return;
       }
       var presetID = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
-      this.currentlyEditing = presetID;
+      this.currentlyEditingPreset = presetID;
+
       this.midiPresetEditLabel.Content = "Rename preset";
       this.midiNewPresetName.Width = 120;
       this.midiAddPreset.Content = "Save";
       this.midiAddPreset.Margin = new Thickness(0, 0, 55, 0);
       this.midiCancelEditPreset.Visibility = Visibility.Visible;
+      this.midiNewPresetName.Text = this.config.midiPresets[presetID].Name;
       this.midiNewPresetName.Focus();
     }
 
     private void MidiCancelEditPresetClicked(object sender, RoutedEventArgs e) {
-      if (!this.currentlyEditing.HasValue) {
+      if (!this.currentlyEditingPreset.HasValue) {
         return;
       }
-      this.currentlyEditing = null;
+      this.currentlyEditingPreset = null;
       this.midiPresetEditLabel.Content = "Add preset";
       this.midiNewPresetName.Width = 140;
       this.midiAddPreset.Content = "Add preset";
@@ -797,11 +820,11 @@ namespace Spectrum {
     }
 
     private void MidiNewPresetNameGotFocus(object sender, RoutedEventArgs e) {
+      this.midiNewPresetName.Foreground = new SolidColorBrush(Colors.Black);
+      this.midiNewPresetName.FontStyle = FontStyles.Normal;
       var name = this.midiNewPresetName.Text.Trim();
       if (String.Equals(name, "New preset name")) {
         this.midiNewPresetName.Text = "";
-        this.midiNewPresetName.Foreground = new SolidColorBrush(Colors.Black);
-        this.midiNewPresetName.FontStyle = FontStyles.Normal;
       }
     }
 
@@ -812,12 +835,276 @@ namespace Spectrum {
     }
 
     private void MidiBindingTypeSelectionChanged(object sender, SelectionChangedEventArgs e) {
+      this.midiChangeColorBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 0
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+    }
+
+    private static MidiCommandType commandTypeFromIndex(int index) {
+      if (index == 0) {
+        return MidiCommandType.Knob;
+      } else if (index == 1) {
+        return MidiCommandType.Program;
+      } else if (index == 2) {
+        return MidiCommandType.Note;
+      }
+      throw new Exception("invalid CommandType index " + index);
+    }
+
+    private static int indexFromCommandType(MidiCommandType commandType) {
+      if (commandType == MidiCommandType.Knob) {
+        return 0;
+      } else if (commandType == MidiCommandType.Program) {
+        return 1;
+      } else if (commandType == MidiCommandType.Note) {
+        return 2;
+      }
+      throw new Exception("invalid CommandType " + commandType.ToString());
     }
 
     private void MidiAddBindingClicked(object sender, RoutedEventArgs e) {
+      if (this.midiPresetList.SelectedIndex == -1) {
+        this.midiPresetList.Focus();
+        return;
+      }
+      if (this.midiBindingType.SelectedIndex == -1) {
+        this.midiBindingType.Focus();
+        return;
+      }
+      var newName = this.midiNewBindingName.Text.Trim();
+      if (String.IsNullOrEmpty(newName)) {
+        this.midiNewBindingName.Text = "";
+        this.midiNewBindingName.Focus();
+        return;
+      }
+
+      bool editing = this.currentlyEditingBinding.HasValue;
+      if (this.midiBindingType.SelectedIndex == 0) {
+
+        if (this.midiChangeColorIndexRangeType.SelectedIndex == -1) {
+          this.midiChangeColorIndexRangeType.Focus();
+          return;
+        }
+        var indexRangeType = commandTypeFromIndex(this.midiChangeColorIndexRangeType.SelectedIndex);
+        if (this.midiChangeColorColorRangeType.SelectedIndex == -1) {
+          this.midiChangeColorColorRangeType.Focus();
+          return;
+        }
+        var colorRangeType = commandTypeFromIndex(this.midiChangeColorColorRangeType.SelectedIndex);
+        int indexRangeStart, indexRangeEnd, colorRangeStart, colorRangeEnd;
+        try {
+          indexRangeStart = Convert.ToInt32(this.midiChangeColorIndexRangeStart.Text.Trim());
+        } catch (Exception) {
+          this.midiChangeColorIndexRangeStart.Text = "";
+          return;
+        }
+        try {
+          indexRangeEnd = Convert.ToInt32(this.midiChangeColorIndexRangeEnd.Text.Trim());
+        } catch (Exception) {
+          this.midiChangeColorIndexRangeEnd.Text = "";
+          return;
+        }
+        try {
+          colorRangeStart = Convert.ToInt32(this.midiChangeColorColorRangeStart.Text.Trim());
+        } catch (Exception) {
+          this.midiChangeColorColorRangeStart.Text = "";
+          return;
+        }
+        try {
+          colorRangeEnd = Convert.ToInt32(this.midiChangeColorColorRangeEnd.Text.Trim());
+        } catch (Exception) {
+          this.midiChangeColorColorRangeEnd.Text = "";
+          return;
+        }
+
+        var newBinding = new ColorPaletteMidiBindingConfig() {
+          BindingName = newName,
+          indexRangeType = indexRangeType,
+          indexRangeStart = indexRangeStart,
+          indexRangeEnd = indexRangeEnd,
+          colorRangeType = colorRangeType,
+          colorRangeStart = colorRangeStart,
+          colorRangeEnd = colorRangeEnd,
+        };
+
+        var newMidiPresets = new Dictionary<int, MidiPreset>(this.config.midiPresets);
+        var midiPreset = newMidiPresets[this.midiPresetIndices[this.midiPresetList.SelectedIndex]];
+        if (editing) {
+          midiPreset.Bindings[this.currentlyEditingBinding.Value] = newBinding;
+        } else {
+          midiPreset.Bindings.Add(newBinding);
+        }
+        this.config.midiPresets = newMidiPresets;
+
+        this.midiChangeColorIndexRangeType.SelectedIndex = -1;
+        this.midiChangeColorColorRangeType.SelectedIndex = -1;
+        this.midiChangeColorIndexRangeStart.Text = "";
+        this.midiChangeColorIndexRangeEnd.Text = "";
+        this.midiChangeColorColorRangeStart.Text = "";
+        this.midiChangeColorColorRangeEnd.Text = "";
+
+      }
+
+      ComboBoxItem item = (ComboBoxItem)this.midiBindingType.SelectedItem;
+      string bindingTypeName = (string)item.Content;
+      if (editing) {
+        int bindingIndex = this.currentlyEditingBinding.Value;
+        var entry = (MidiBindingEntry)this.midiBindingList.Items[bindingIndex];
+        entry.BindingName = newName;
+      } else {
+        this.midiBindingList.Items.Add(new MidiBindingEntry() {
+          BindingName = newName,
+          BindingTypeName = bindingTypeName,
+        });
+      }
+      this.SaveConfig();
+
+      this.midiBindingType.SelectedIndex = -1;
+      this.midiNewBindingName.Text = "";
+    }
+
+    private void MidiBindingListSelectionChanged(object sender, SelectionChangedEventArgs e) {
+      var buttonsEnabled = this.midiPresetList.SelectedIndex >= 0 &&
+        this.midiBindingList.SelectedIndex >= 0;
+      this.midiDeleteBinding.IsEnabled = buttonsEnabled;
+      this.midiEditBinding.IsEnabled = buttonsEnabled;
+      if (this.currentlyEditingBinding.HasValue) {
+        this.MidiCancelEditBindingClicked(null, null);
+      }
     }
 
     private void MidiDeleteBindingClicked(object sender, RoutedEventArgs e) {
+      if (this.midiPresetList.SelectedIndex == -1) {
+        return;
+      }
+      var presetID = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
+      if (this.midiBindingList.SelectedIndex == -1) {
+        return;
+      }
+      var bindingID = this.midiBindingList.SelectedIndex;
+      var newMidiPresets = new Dictionary<int, MidiPreset>(this.config.midiPresets);
+      newMidiPresets[presetID].Bindings.RemoveAt(bindingID);
+      this.config.midiPresets = newMidiPresets;
+      this.midiBindingList.Items.RemoveAt(bindingID);
+      this.SaveConfig();
+    }
+
+    private void MidiEditBindingClicked(object sender, RoutedEventArgs e) {
+      if (
+        this.midiPresetList.SelectedIndex < 0 ||
+        this.midiBindingList.SelectedIndex < 0
+      ) {
+        return;
+      }
+      var presetID = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
+      var bindingIndex = this.midiBindingList.SelectedIndex;
+      var bindingConfig = this.config.midiPresets[presetID].Bindings[bindingIndex];
+      this.currentlyEditingBinding = bindingIndex;
+
+      this.midiBindingEditLabel.Content = "Edit binding";
+      this.midiAddBinding.Content = "Save";
+      this.midiCancelEditBinding.Visibility = Visibility.Visible;
+      this.midiNewBindingName.Text = bindingConfig.BindingName;
+      this.midiNewBindingName.Focus();
+
+      this.midiBindingType.SelectedIndex = bindingConfig.BindingType;
+      if (bindingConfig.BindingType == 0) {
+        var config = (ColorPaletteMidiBindingConfig)bindingConfig;
+        this.midiChangeColorIndexRangeType.SelectedIndex = indexFromCommandType(config.indexRangeType);
+        this.midiChangeColorColorRangeType.SelectedIndex = indexFromCommandType(config.colorRangeType);
+        this.midiChangeColorIndexRangeStart.Text = config.indexRangeStart.ToString();
+        this.midiChangeColorIndexRangeEnd.Text = config.indexRangeEnd.ToString();
+        this.midiChangeColorColorRangeStart.Text = config.colorRangeStart.ToString();
+        this.midiChangeColorColorRangeEnd.Text = config.colorRangeEnd.ToString();
+      }
+    }
+
+    private void MidiCancelEditBindingClicked(object sender, RoutedEventArgs e) {
+      if (!this.currentlyEditingBinding.HasValue) {
+        return;
+      }
+
+      this.currentlyEditingBinding = null;
+      this.midiBindingEditLabel.Content = "Add binding";
+      this.midiAddBinding.Content = "Add binding";
+      this.midiCancelEditBinding.Visibility = Visibility.Collapsed;
+      this.midiNewBindingName.Text = "";
+      this.midiBindingType.SelectedIndex = -1;
+
+      this.midiChangeColorIndexRangeType.SelectedIndex = -1;
+      this.midiChangeColorColorRangeType.SelectedIndex = -1;
+      this.midiChangeColorIndexRangeStart.Text = "";
+      this.midiChangeColorIndexRangeEnd.Text = "";
+      this.midiChangeColorColorRangeStart.Text = "";
+      this.midiChangeColorColorRangeEnd.Text = "";
+    }
+
+    private void MidiChangeColorIndexRangeStartLostFocus(object sender, RoutedEventArgs e) {
+      int startNumber;
+      try {
+        startNumber = Convert.ToInt32(this.midiChangeColorIndexRangeStart.Text.Trim());
+      } catch (Exception) {
+        this.midiChangeColorIndexRangeStart.Text = "";
+        return;
+      }
+      try {
+        int endNumber = Convert.ToInt32(this.midiChangeColorIndexRangeEnd.Text.Trim());
+        if (endNumber - startNumber < 0 || endNumber - startNumber > 15) {
+          this.midiChangeColorIndexRangeEnd.Text = (startNumber + 15).ToString();
+        }
+      } catch (Exception) {
+        this.midiChangeColorIndexRangeEnd.Text = (startNumber + 15).ToString();
+      }
+    }
+
+    private void MidiChangeColorIndexRangeEndLostFocus(object sender, RoutedEventArgs e) {
+      int endNumber;
+      try {
+        endNumber = Convert.ToInt32(this.midiChangeColorIndexRangeEnd.Text.Trim());
+      } catch (Exception) {
+        this.midiChangeColorIndexRangeEnd.Text = "";
+        return;
+      }
+      try {
+        int startNumber = Convert.ToInt32(this.midiChangeColorIndexRangeStart.Text.Trim());
+        if (endNumber - startNumber < 0 || endNumber - startNumber > 15) {
+          this.midiChangeColorIndexRangeStart.Text = (endNumber - 15).ToString();
+        }
+      } catch (Exception) { }
+    }
+
+    private void MidiChangeColorColorRangeStartLostFocus(object sender, RoutedEventArgs e) {
+      int startNumber;
+      try {
+        startNumber = Convert.ToInt32(this.midiChangeColorColorRangeStart.Text.Trim());
+      } catch (Exception) {
+        this.midiChangeColorColorRangeStart.Text = "";
+        return;
+      }
+      try {
+        int endNumber = Convert.ToInt32(this.midiChangeColorColorRangeEnd.Text.Trim());
+        if (endNumber - startNumber < 0 || endNumber - startNumber > 24) {
+          this.midiChangeColorColorRangeEnd.Text = (startNumber + 24).ToString();
+        }
+      } catch (Exception) {
+        this.midiChangeColorColorRangeEnd.Text = (startNumber + 24).ToString();
+      }
+    }
+
+    private void MidiChangeColorColorRangeEndLostFocus(object sender, RoutedEventArgs e) {
+      int endNumber;
+      try {
+        endNumber = Convert.ToInt32(this.midiChangeColorColorRangeEnd.Text.Trim());
+      } catch (Exception) {
+        this.midiChangeColorColorRangeEnd.Text = "";
+        return;
+      }
+      try {
+        int startNumber = Convert.ToInt32(this.midiChangeColorColorRangeStart.Text.Trim());
+        if (endNumber - startNumber < 0 || endNumber - startNumber > 24) {
+          this.midiChangeColorColorRangeStart.Text = (endNumber - 24).ToString();
+        }
+      } catch (Exception) { }
     }
 
     private void RefreshDomePorts(object sender, RoutedEventArgs e) {

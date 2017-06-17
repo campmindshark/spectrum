@@ -12,18 +12,10 @@ namespace Spectrum.MIDI {
 
   using BindingKey = Tuple<MidiCommandType, int>;
 
-  public enum MidiCommandType : byte { Knob, Note, Program }
-
   public struct MidiCommand {
     public MidiCommandType type;
     public int index;
     public double value;
-  }
-
-  struct Binding {
-    public BindingKey key;
-    public delegate void bindingCallback(int index, double val);
-    public bindingCallback callback;
   }
 
   public class MidiInput : Input {
@@ -45,8 +37,6 @@ namespace Spectrum.MIDI {
     private ConcurrentQueue<MidiCommand> buffer;
     private Dictionary<int, double> knobValues;
     private Dictionary<int, double> noteVelocities;
-    private int activeProg;
-    private int curFirstColorIndex;
     private MidiCommand[] commandsSinceLastTick;
     private Dictionary<BindingKey, List<Binding>> bindings;
 
@@ -55,10 +45,18 @@ namespace Spectrum.MIDI {
       this.buffer = new ConcurrentQueue<MidiCommand>();
       this.knobValues = new Dictionary<int, double>();
       this.noteVelocities = new Dictionary<int, double>();
-      this.activeProg = -1;
-      this.curFirstColorIndex = -1;
       this.commandsSinceLastTick = new MidiCommand[0];
       this.SetBindings();
+      this.config.PropertyChanged += ConfigUpdated;
+    }
+
+    private void ConfigUpdated(object sender, System.ComponentModel.PropertyChangedEventArgs e) {
+      if (!this.active) {
+        return;
+      }
+      if (e.PropertyName == "midiDevices") {
+        this.SetBindings();
+      }
     }
 
     private void SetBindings() {
@@ -68,42 +66,6 @@ namespace Spectrum.MIDI {
       this.AddBinding(MidiCommandType.Note, (index, val) => this.noteVelocities[index] = val);
       this.AddBinding(MidiCommandType.Knob, (index, val) => this.knobValues[index] = val);
 
-      // Color palette logic
-      this.AddBinding(MidiCommandType.Program, (index, val) => this.activeProg = index);
-      this.AddBinding(MidiCommandType.Knob, (index, val) => {
-        this.activeProg = -1;
-        this.curFirstColorIndex = -1;
-      });
-      this.AddBinding(MidiCommandType.Note, (index, val) => {
-        if (this.activeProg == -1) {
-          return;
-        }
-        if (index < 64 || index >= 89) {
-          this.activeProg = -1;
-          this.curFirstColorIndex = -1;
-          return;
-        }
-        int colorIndex = index - 64;
-        if (val == 0) {
-          if (colorIndex == this.curFirstColorIndex) {
-            this.curFirstColorIndex = -1;
-          }
-          return;
-        }
-        if (this.curFirstColorIndex == -1) {
-          this.curFirstColorIndex = colorIndex;
-          this.config.colorPalette.SetColor(
-            this.activeProg,
-            colorFromColorIndex[colorIndex]
-          );
-        } else {
-          this.config.colorPalette.SetGradientColor(
-            this.activeProg,
-            colorFromColorIndex[this.curFirstColorIndex],
-            colorFromColorIndex[colorIndex]
-          );
-        }
-      });
       this.AddBinding(MidiCommandType.Knob, (index, val) => {
         if (index < 112 || index >= 128) {
           return;
@@ -126,6 +88,17 @@ namespace Spectrum.MIDI {
       this.AddBinding(MidiCommandType.Knob, 3, val => this.config.kickT = ContinuousKnob(val, 0.0, 4.0));
       this.AddBinding(MidiCommandType.Knob, 3, val => this.config.snareT = ContinuousKnob(val, 0.0, 4.0));
       this.AddBinding(MidiCommandType.Knob, 4, val => this.config.domeGradientSpeed = DiscretizeLogarithmicKnob(val, 6, 0.125, true));
+
+      // Pull bindings from config
+      var activePresets = this.config.midiDevices.Select((pair) => this.config.midiPresets[pair.Value]);
+      foreach (MidiPreset item in activePresets) {
+        foreach (IMidiBindingConfig config in item.Bindings) {
+          Binding[] bindings = config.GetBindings(this.config);
+          foreach (Binding binding in bindings) {
+            this.AddRawBinding(binding);
+          }
+        }
+      }
     }
 
     private void AddBinding(
@@ -151,6 +124,10 @@ namespace Spectrum.MIDI {
       Binding binding = new Binding();
       binding.key = new BindingKey(commandType, index);
       binding.callback = callback;
+      this.AddRawBinding(binding);
+    }
+
+    private void AddRawBinding(Binding binding) {
       if (!this.bindings.ContainsKey(binding.key)) {
         this.bindings.Add(binding.key, new List<Binding>());
       }

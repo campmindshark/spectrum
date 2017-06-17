@@ -175,7 +175,7 @@
             <Label Content="Binding config" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
               <Grid Width="300">
-                <ListView x:Name="midiBindingList" Width="298" Height="66" VerticalAlignment="Top" Margin="1,0,1,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListView x:Name="midiBindingList" Width="298" Height="66" VerticalAlignment="Top" Margin="1,0,1,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="MidiBindingListSelectionChanged">
                   <ListView.View>
                     <GridView>
                       <GridViewColumn Header="Name" Width="139" DisplayMemberBinding="{Binding BindingName}" />
@@ -183,6 +183,7 @@
                     </GridView>
                   </ListView.View>
                 </ListView>
+                <Button x:Name="midiEditBinding" Content="Edit" HorizontalAlignment="Left" Margin="2,71,0,0" VerticalAlignment="Top" Click="MidiEditBindingClicked" Padding="6,2" IsEnabled="False" />
                 <Button x:Name="midiDeleteBinding" Content="Delete binding" HorizontalAlignment="Right" Margin="0,71,2,0" VerticalAlignment="Top" Click="MidiDeleteBindingClicked" Padding="6,2" IsEnabled="False" />
               </Grid>
             </Border>
@@ -218,15 +219,46 @@
                 </Grid>
               </WrapPanel>
             </Border>
-            <Label Content="Add binding" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Label x:Name="midiBindingEditLabel" Content="Add binding" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
               <WrapPanel>
-                <Grid Width="220">
-                  <Label Content="Type" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                  <ComboBox x:Name="midiBindingType" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,0,0,0" Width="140" SelectionChanged="MidiBindingTypeSelectionChanged" />
+                <Grid>
+                  <Label Content="Name" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <TextBox x:Name="midiNewBindingName" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" />
                 </Grid>
+                <Grid Margin="0,4,0,0">
+                  <Label Content="Type" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <ComboBox x:Name="midiBindingType" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,0,0,0" Width="140" SelectionChanged="MidiBindingTypeSelectionChanged">
+                    <ComboBoxItem>Change color</ComboBoxItem>
+                  </ComboBox>
+                </Grid>
+                <WrapPanel x:Name="midiChangeColorBindingPanel" Visibility="Collapsed">
+                  <Grid Margin="0,4,0,0">
+                    <Label Content="Index range" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                    <ComboBox x:Name="midiChangeColorIndexRangeType" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,0,0,0" Width="37">
+                      <ComboBoxItem>K</ComboBoxItem>
+                      <ComboBoxItem>P</ComboBoxItem>
+                      <ComboBoxItem>N</ComboBoxItem>
+                    </ComboBox>
+                    <TextBox x:Name="midiChangeColorIndexRangeStart" Margin="123,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="38" Height="20" LostFocus="MidiChangeColorIndexRangeStartLostFocus" />
+                    <Label Content="to" Margin="165,0,0,2" Padding="0" VerticalAlignment="Center" />
+                    <TextBox x:Name="midiChangeColorIndexRangeEnd" Margin="181,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="38" Height="20" LostFocus="MidiChangeColorIndexRangeEndLostFocus" />
+                  </Grid>
+                  <Grid Margin="0,4,0,0">
+                    <Label Content="Color range" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                    <ComboBox x:Name="midiChangeColorColorRangeType" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,0,0,0" Width="37">
+                      <ComboBoxItem>K</ComboBoxItem>
+                      <ComboBoxItem>P</ComboBoxItem>
+                      <ComboBoxItem>N</ComboBoxItem>
+                    </ComboBox>
+                    <TextBox x:Name="midiChangeColorColorRangeStart" Margin="123,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="38" Height="20" LostFocus="MidiChangeColorColorRangeStartLostFocus" />
+                    <Label Content="to" Margin="165,0,0,2" Padding="0" VerticalAlignment="Center" />
+                    <TextBox x:Name="midiChangeColorColorRangeEnd" Margin="181,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="38" Height="20" LostFocus="MidiChangeColorColorRangeEndLostFocus" />
+                  </Grid>
+                </WrapPanel>
                 <Grid Width="220" Margin="0,5,0,0">
-                  <Button x:Name="test" Content="Add binding" HorizontalAlignment="Right" VerticalAlignment="Center" Click="MidiAddBindingClicked" Padding="6,2"/>
+                  <Button x:Name="midiCancelEditBinding" Content="Cancel" HorizontalAlignment="Left" VerticalAlignment="Center" Click="MidiCancelEditBindingClicked" Padding="6,2" Visibility="Collapsed" />
+                  <Button x:Name="midiAddBinding" Content="Add binding" HorizontalAlignment="Right" VerticalAlignment="Center" Click="MidiAddBindingClicked" Padding="6,2" IsEnabled="false" />
                 </Grid>
               </WrapPanel>
             </Border>

@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Data;
 
 namespace Spectrum.Base {
 
@@ -28,7 +27,7 @@ namespace Spectrum.Base {
         this.array[index] = value;
         this.PropertyChanged?.Invoke(
           this,
-          new PropertyChangedEventArgs(Binding.IndexerName)
+          new PropertyChangedEventArgs(System.Windows.Data.Binding.IndexerName)
         );
       }
     }
