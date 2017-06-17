@@ -67,15 +67,6 @@ namespace Spectrum.MIDI {
       this.AddBinding(MidiCommandType.Note, (index, val) => this.noteVelocities[index] = val);
       this.AddBinding(MidiCommandType.Knob, (index, val) => this.knobValues[index] = val);
 
-      this.AddBinding(MidiCommandType.Knob, (index, val) => {
-        if (index < 112 || index >= 128) {
-          return;
-        }
-        var colorIndex = index - 112;
-        this.config.colorPalette.computerEnabledColors[colorIndex] =
-          val > 0.0;
-      });
-
       // Tap tempo
       this.AddBinding(MidiCommandType.Note, 32, val => {
         if (val > 0.0) {

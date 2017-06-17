@@ -833,6 +833,9 @@ namespace Spectrum {
       this.midiChangeColorBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 0
         ? Visibility.Visible
         : Visibility.Collapsed;
+      this.midiComputerColorsBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 1
+        ? Visibility.Visible
+        : Visibility.Collapsed;
     }
 
     private static MidiCommandType commandTypeFromIndex(int index) {
@@ -874,8 +877,8 @@ namespace Spectrum {
       }
 
       bool editing = this.currentlyEditingBinding.HasValue;
+      IMidiBindingConfig newBinding;
       if (this.midiBindingType.SelectedIndex == 0) {
-
         if (this.midiChangeColorIndexRangeType.SelectedIndex == -1) {
           this.midiChangeColorIndexRangeType.Focus();
           return;
@@ -911,8 +914,7 @@ namespace Spectrum {
           this.midiChangeColorColorRangeEnd.Text = "";
           return;
         }
-
-        var newBinding = new ColorPaletteMidiBindingConfig() {
+        newBinding = new ColorPaletteMidiBindingConfig() {
           BindingName = newName,
           indexRangeType = indexRangeType,
           indexRangeStart = indexRangeStart,
@@ -921,23 +923,55 @@ namespace Spectrum {
           colorRangeStart = colorRangeStart,
           colorRangeEnd = colorRangeEnd,
         };
-
-        var newMidiPresets = new Dictionary<int, MidiPreset>(this.config.midiPresets);
-        var midiPreset = newMidiPresets[this.midiPresetIndices[this.midiPresetList.SelectedIndex]];
-        if (editing) {
-          midiPreset.Bindings[this.currentlyEditingBinding.Value] = newBinding;
-        } else {
-          midiPreset.Bindings.Add(newBinding);
+      } else if (this.midiBindingType.SelectedIndex == 1) {
+        if (this.midiComputerColorsIndexRangeType.SelectedIndex == -1) {
+          this.midiComputerColorsIndexRangeType.Focus();
+          return;
         }
-        this.config.midiPresets = newMidiPresets;
+        var rangeType = commandTypeFromIndex(this.midiComputerColorsIndexRangeType.SelectedIndex);
+        int rangeStart, rangeEnd;
+        try {
+          rangeStart = Convert.ToInt32(this.midiComputerColorsIndexRangeStart.Text.Trim());
+        } catch (Exception) {
+          this.midiComputerColorsIndexRangeStart.Text = "";
+          return;
+        }
+        try {
+          rangeEnd = Convert.ToInt32(this.midiComputerColorsIndexRangeEnd.Text.Trim());
+        } catch (Exception) {
+          this.midiComputerColorsIndexRangeEnd.Text = "";
+          return;
+        }
+        newBinding = new ComputerColorsMidiBindingConfig() {
+          BindingName = newName,
+          rangeType = rangeType,
+          rangeStart = rangeStart,
+          rangeEnd = rangeEnd,
+        };
+      } else {
+        return;
+      }
 
+      var newMidiPresets = new Dictionary<int, MidiPreset>(this.config.midiPresets);
+      var midiPreset = newMidiPresets[this.midiPresetIndices[this.midiPresetList.SelectedIndex]];
+      if (editing) {
+        midiPreset.Bindings[this.currentlyEditingBinding.Value] = newBinding;
+      } else {
+        midiPreset.Bindings.Add(newBinding);
+      }
+      this.config.midiPresets = newMidiPresets;
+
+      if (this.midiBindingType.SelectedIndex == 0) {
         this.midiChangeColorIndexRangeType.SelectedIndex = -1;
         this.midiChangeColorColorRangeType.SelectedIndex = -1;
         this.midiChangeColorIndexRangeStart.Text = "";
         this.midiChangeColorIndexRangeEnd.Text = "";
         this.midiChangeColorColorRangeStart.Text = "";
         this.midiChangeColorColorRangeEnd.Text = "";
-
+      } else if (this.midiBindingType.SelectedIndex == 1) {
+        this.midiComputerColorsIndexRangeType.SelectedIndex = -1;
+        this.midiComputerColorsIndexRangeStart.Text = "";
+        this.midiComputerColorsIndexRangeEnd.Text = "";
       }
 
       ComboBoxItem item = (ComboBoxItem)this.midiBindingType.SelectedItem;
@@ -1011,6 +1045,11 @@ namespace Spectrum {
         this.midiChangeColorIndexRangeEnd.Text = config.indexRangeEnd.ToString();
         this.midiChangeColorColorRangeStart.Text = config.colorRangeStart.ToString();
         this.midiChangeColorColorRangeEnd.Text = config.colorRangeEnd.ToString();
+      } else if (bindingConfig.BindingType == 1) {
+        var config = (ComputerColorsMidiBindingConfig)bindingConfig;
+        this.midiComputerColorsIndexRangeType.SelectedIndex = indexFromCommandType(config.rangeType);
+        this.midiComputerColorsIndexRangeStart.Text = config.rangeStart.ToString();
+        this.midiComputerColorsIndexRangeEnd.Text = config.rangeEnd.ToString();
       }
     }
 
@@ -1032,6 +1071,10 @@ namespace Spectrum {
       this.midiChangeColorIndexRangeEnd.Text = "";
       this.midiChangeColorColorRangeStart.Text = "";
       this.midiChangeColorColorRangeEnd.Text = "";
+
+      this.midiComputerColorsIndexRangeType.SelectedIndex = -1;
+      this.midiComputerColorsIndexRangeStart.Text = "";
+      this.midiComputerColorsIndexRangeEnd.Text = "";
     }
 
     private void MidiChangeColorIndexRangeStartLostFocus(object sender, RoutedEventArgs e) {
@@ -1098,6 +1141,40 @@ namespace Spectrum {
         int startNumber = Convert.ToInt32(this.midiChangeColorColorRangeStart.Text.Trim());
         if (endNumber - startNumber < 0 || endNumber - startNumber > 24) {
           this.midiChangeColorColorRangeStart.Text = (endNumber - 24).ToString();
+        }
+      } catch (Exception) { }
+    }
+
+    private void MidiComputerColorsIndexRangeStartLostFocus(object sender, RoutedEventArgs e) {
+      int startNumber;
+      try {
+        startNumber = Convert.ToInt32(this.midiComputerColorsIndexRangeStart.Text.Trim());
+      } catch (Exception) {
+        this.midiComputerColorsIndexRangeStart.Text = "";
+        return;
+      }
+      try {
+        int endNumber = Convert.ToInt32(this.midiComputerColorsIndexRangeEnd.Text.Trim());
+        if (endNumber - startNumber < 0 || endNumber - startNumber > 15) {
+          this.midiComputerColorsIndexRangeEnd.Text = (startNumber + 15).ToString();
+        }
+      } catch (Exception) {
+        this.midiComputerColorsIndexRangeEnd.Text = (startNumber + 15).ToString();
+      }
+    }
+
+    private void MidiComputerColorsIndexRangeEndLostFocus(object sender, RoutedEventArgs e) {
+      int endNumber;
+      try {
+        endNumber = Convert.ToInt32(this.midiComputerColorsIndexRangeEnd.Text.Trim());
+      } catch (Exception) {
+        this.midiComputerColorsIndexRangeEnd.Text = "";
+        return;
+      }
+      try {
+        int startNumber = Convert.ToInt32(this.midiComputerColorsIndexRangeStart.Text.Trim());
+        if (endNumber - startNumber < 0 || endNumber - startNumber > 15) {
+          this.midiComputerColorsIndexRangeStart.Text = (endNumber - 15).ToString();
         }
       } catch (Exception) { }
     }

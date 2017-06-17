@@ -42,6 +42,7 @@ namespace Spectrum.Base {
         indexRangeType = this.indexRangeType,
         indexRangeStart = this.indexRangeStart,
         indexRangeEnd = this.indexRangeEnd,
+        colorRangeType = this.colorRangeType,
         colorRangeStart = this.colorRangeStart,
         colorRangeEnd = this.colorRangeEnd,
       };
