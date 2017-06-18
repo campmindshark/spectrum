@@ -231,6 +231,7 @@
                   <ComboBox x:Name="midiBindingType" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,0,0,0" Width="140" SelectionChanged="MidiBindingTypeSelectionChanged">
                     <ComboBoxItem>Change color</ComboBoxItem>
                     <ComboBoxItem>Computer colors</ComboBoxItem>
+                    <ComboBoxItem>Tap tempo</ComboBoxItem>
                   </ComboBox>
                 </Grid>
                 <WrapPanel x:Name="midiChangeColorBindingPanel" Visibility="Collapsed">
@@ -268,6 +269,17 @@
                     <TextBox x:Name="midiComputerColorsIndexRangeStart" Margin="123,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="38" Height="20" LostFocus="MidiComputerColorsIndexRangeStartLostFocus" />
                     <Label Content="to" Margin="165,0,0,2" Padding="0" VerticalAlignment="Center" />
                     <TextBox x:Name="midiComputerColorsIndexRangeEnd" Margin="181,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="38" Height="20" LostFocus="MidiComputerColorsIndexRangeEndLostFocus" />
+                  </Grid>
+                </WrapPanel>
+                <WrapPanel x:Name="midiTapTempoBindingPanel" Visibility="Collapsed">
+                  <Grid Margin="0,4,0,0">
+                    <Label Content="Button" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                    <ComboBox x:Name="midiTapTempoButtonType" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,0,0,0" Width="37">
+                      <ComboBoxItem>K</ComboBoxItem>
+                      <ComboBoxItem>P</ComboBoxItem>
+                      <ComboBoxItem>N</ComboBoxItem>
+                    </ComboBox>
+                    <TextBox x:Name="midiTapTempoButtonIndex" Margin="123,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="97" Height="20" />
                   </Grid>
                 </WrapPanel>
                 <Grid Width="220" Margin="0,5,0,0">

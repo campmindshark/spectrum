@@ -37,6 +37,7 @@ namespace Spectrum.Base {
 
   [XmlInclude(typeof(ColorPaletteMidiBindingConfig))]
   [XmlInclude(typeof(ComputerColorsMidiBindingConfig))]
+  [XmlInclude(typeof(TapTempoMidiBindingConfig))]
   public interface IMidiBindingConfig : ICloneable {
     
     int BindingType { get; set; }

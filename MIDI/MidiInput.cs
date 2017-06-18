@@ -64,13 +64,6 @@ namespace Spectrum.MIDI {
       this.AddBinding(MidiCommandType.Note, (index, val) => this.noteVelocities[index] = val);
       this.AddBinding(MidiCommandType.Knob, (index, val) => this.knobValues[index] = val);
 
-      // Tap tempo
-      this.AddBinding(MidiCommandType.Note, 32, val => {
-        if (val > 0.0) {
-          this.config.beatBroadcaster.AddTap();
-        }
-      });
-
       this.AddBinding(MidiCommandType.Knob, 0, val => this.config.domeBrightness = val);
       this.AddBinding(MidiCommandType.Knob, 1, val => this.config.domeVolumeAnimationSize = DiscretizeKnob(val, 5));
       this.AddBinding(MidiCommandType.Knob, 2, val => this.config.domeVolumeRotationSpeed = DiscretizeLogarithmicKnob(val, 6, 0.125, true));

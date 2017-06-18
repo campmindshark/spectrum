@@ -860,6 +860,9 @@ namespace Spectrum {
       this.midiComputerColorsBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 1
         ? Visibility.Visible
         : Visibility.Collapsed;
+      this.midiTapTempoBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 2
+        ? Visibility.Visible
+        : Visibility.Collapsed;
     }
 
     private static MidiCommandType commandTypeFromIndex(int index) {
@@ -972,6 +975,24 @@ namespace Spectrum {
           rangeStart = rangeStart,
           rangeEnd = rangeEnd,
         };
+      } else if (this.midiBindingType.SelectedIndex == 2) {
+        if (this.midiTapTempoButtonType.SelectedIndex == -1) {
+          this.midiTapTempoButtonType.Focus();
+          return;
+        }
+        var buttonType = commandTypeFromIndex(this.midiTapTempoButtonType.SelectedIndex);
+        int buttonIndex;
+        try {
+          buttonIndex = Convert.ToInt32(this.midiTapTempoButtonIndex.Text.Trim());
+        } catch (Exception) {
+          this.midiTapTempoButtonIndex.Text = "";
+          return;
+        }
+        newBinding = new TapTempoMidiBindingConfig() {
+          BindingName = newName,
+          buttonType = buttonType,
+          buttonIndex = buttonIndex,
+        };
       } else {
         return;
       }
@@ -996,6 +1017,9 @@ namespace Spectrum {
         this.midiComputerColorsIndexRangeType.SelectedIndex = -1;
         this.midiComputerColorsIndexRangeStart.Text = "";
         this.midiComputerColorsIndexRangeEnd.Text = "";
+      } else if (this.midiBindingType.SelectedIndex == 2) {
+        this.midiTapTempoButtonType.SelectedIndex = -1;
+        this.midiTapTempoButtonIndex.Text = "";
       }
 
       ComboBoxItem item = (ComboBoxItem)this.midiBindingType.SelectedItem;
@@ -1077,6 +1101,10 @@ namespace Spectrum {
         this.midiComputerColorsIndexRangeType.SelectedIndex = indexFromCommandType(config.rangeType);
         this.midiComputerColorsIndexRangeStart.Text = config.rangeStart.ToString();
         this.midiComputerColorsIndexRangeEnd.Text = config.rangeEnd.ToString();
+      } else if (this.midiBindingType.SelectedIndex == 2) {
+        var config = (TapTempoMidiBindingConfig)bindingConfig;
+        this.midiTapTempoButtonType.SelectedIndex = indexFromCommandType(config.buttonType);
+        this.midiTapTempoButtonIndex.Text = config.buttonIndex.ToString();
       }
     }
 
@@ -1102,6 +1130,9 @@ namespace Spectrum {
       this.midiComputerColorsIndexRangeType.SelectedIndex = -1;
       this.midiComputerColorsIndexRangeStart.Text = "";
       this.midiComputerColorsIndexRangeEnd.Text = "";
+
+      this.midiTapTempoButtonType.SelectedIndex = -1;
+      this.midiTapTempoButtonIndex.Text = "";
     }
 
     private void MidiChangeColorIndexRangeStartLostFocus(object sender, RoutedEventArgs e) {
