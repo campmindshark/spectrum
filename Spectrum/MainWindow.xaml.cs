@@ -50,6 +50,30 @@ namespace Spectrum {
       "barOutputInSeparateThread",
       "stageOutputInSeparateThread",
     };
+    private static HashSet<string> configPropertiesIgnored = new HashSet<string>() {
+      "operatorFPS",
+      "domeTeensyFPS1",
+      "domeTeensyFPS2",
+      "domeTeensyFPS3",
+      "domeTeensyFPS4",
+      "domeTeensyFPS5",
+      "domeBeagleboneOPCFPS",
+      "domeBeagleboneCAMPFPS",
+      "boardTeensyFPS",
+      "boardBeagleboneOPCFPS",
+      "boardBeagleboneCAMPFPS",
+      "barTeensyFPS",
+      "barBeagleboneOPCFPS",
+      "barBeagleboneCAMPFPS",
+      "stageTeensyFPS1",
+      "stageTeensyFPS2",
+      "stageBeagleboneOPCFPS",
+      "stageBeagleboneCAMPFPS",
+      "beatBroadcaster",
+      "domeCommandQueue",
+      "barCommandQueue",
+      "stageCommandQueue",
+    };
 
     private Operator op;
     private SpectrumConfiguration config;
@@ -79,13 +103,16 @@ namespace Spectrum {
       this.LoadConfig();
       this.config.PropertyChanged += ConfigUpdated;
       this.config.colorPalette.PropertyChanged += ConfigUpdated;
+      this.config.colorPalette.computerEnabledColors.PropertyChanged += ConfigUpdated;
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
       if (configPropertiesToRebootOn.Contains(e.PropertyName)) {
         this.op.Reboot();
       }
-      this.SaveConfig();
+      if (!configPropertiesIgnored.Contains(e.PropertyName)) {
+        this.SaveConfig();
+      }
     }
 
     private void HandleClose(object sender, EventArgs e) {
@@ -372,7 +399,6 @@ namespace Spectrum {
 
     private void SliderCompleted(object sender, DragCompletedEventArgs e) {
       this.loadingConfig = false;
-      this.SaveConfig();
     }
 
     private void OnHotKeyHandler(HotKey hotKey) {
@@ -454,7 +480,6 @@ namespace Spectrum {
       this.config.audioDeviceIndex =
         this.audioDeviceIndices[this.audioDevices.SelectedIndex];
       this.op.Reboot();
-      this.SaveConfig();
     }
 
     private void RefreshLEDBoardPorts(object sender, RoutedEventArgs e) {
@@ -477,7 +502,6 @@ namespace Spectrum {
       }
       this.config.boardTeensyUSBPort = this.ledBoardUSBPorts.SelectedItem as string;
       this.op.Reboot();
-      this.SaveConfig();
     }
 
     // Refresh the list of available devices for the "Add device" panel
@@ -498,6 +522,7 @@ namespace Spectrum {
 
     // Refresh the list of active/created "devices" (paired with a preset)
     private void LoadMidiDevices() {
+      this.midiDeviceList.Items.Clear();
       foreach (var pair in this.config.midiDevices) {
         this.midiDeviceList.Items.Add(new MidiDeviceEntry {
           DeviceID = pair.Key,
@@ -639,7 +664,6 @@ namespace Spectrum {
       this.midiNewDevicePreset.SelectedIndex = -1;
       this.ClearMidiNewDevicePresetName();
       this.midiNewDevicePresetNameGrid.Visibility = Visibility.Collapsed;
-      this.SaveConfig();
 
       if (this.midiPresetList.SelectedIndex >= 0) {
         var currentPresetIndex = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
@@ -658,7 +682,6 @@ namespace Spectrum {
       this.config.midiDevices = newDevices;
       this.midiDeviceList.Items.RemoveAt(this.midiDeviceList.SelectedIndex);
       this.RefreshMidiDevices(null, null);
-      this.SaveConfig();
 
       if (this.midiPresetList.SelectedIndex >= 0) {
         var currentPresetIndex = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
@@ -693,10 +716,11 @@ namespace Spectrum {
         // We don't need to reset the whole midiPresets var to trigger observers since nobody
         // cares what presets are named
         this.config.midiPresets[this.currentlyEditingPreset.Value].Name = newPresetName;
+        this.SaveConfig();
         var presetIndex = this.midiPresetIndices[this.currentlyEditingPreset.Value];
+        this.LoadMidiDevices();
         this.midiPresetList.Items[presetIndex] = newPresetName;
         this.midiNewDevicePreset.Items[presetIndex] = newPresetName;
-        this.MidiCancelEditPresetClicked(null, null);
       } else {
         var result = this.AddNewMidiPresetWithName(this.midiNewPresetName.Text);
         if (result == null) {
@@ -705,7 +729,6 @@ namespace Spectrum {
         }
       }
       this.ClearMidiNewPresetName();
-      this.SaveConfig();
     }
 
     private void MidiDeletePresetClicked(object sender, RoutedEventArgs e) {
@@ -716,7 +739,6 @@ namespace Spectrum {
       this.midiPresetIndices.RemoveAt(this.midiPresetList.SelectedIndex);
       this.midiNewDevicePreset.Items.RemoveAt(this.midiPresetList.SelectedIndex);
       this.midiPresetList.Items.RemoveAt(this.midiPresetList.SelectedIndex);
-      this.SaveConfig();
     }
 
     private void MidiPresetListSelectionChanged(object sender, SelectionChangedEventArgs e) {
@@ -792,6 +814,8 @@ namespace Spectrum {
       this.midiCancelEditPreset.Visibility = Visibility.Visible;
       this.midiNewPresetName.Text = this.config.midiPresets[presetID].Name;
       this.midiNewPresetName.Focus();
+      this.midiNewPresetName.SelectionStart = this.midiNewPresetName.Text.Length;
+      this.midiNewPresetName.SelectionLength = 0;
     }
 
     private void MidiCancelEditPresetClicked(object sender, RoutedEventArgs e) {
@@ -979,14 +1003,16 @@ namespace Spectrum {
       if (editing) {
         int bindingIndex = this.currentlyEditingBinding.Value;
         var entry = (MidiBindingEntry)this.midiBindingList.Items[bindingIndex];
-        entry.BindingName = newName;
+        this.midiBindingList.Items[bindingIndex] = new MidiBindingEntry() {
+          BindingName = newName,
+          BindingTypeName = entry.BindingTypeName,
+        };
       } else {
         this.midiBindingList.Items.Add(new MidiBindingEntry() {
           BindingName = newName,
           BindingTypeName = bindingTypeName,
         });
       }
-      this.SaveConfig();
 
       this.midiBindingType.SelectedIndex = -1;
       this.midiNewBindingName.Text = "";
@@ -1015,7 +1041,6 @@ namespace Spectrum {
       newMidiPresets[presetID].Bindings.RemoveAt(bindingID);
       this.config.midiPresets = newMidiPresets;
       this.midiBindingList.Items.RemoveAt(bindingID);
-      this.SaveConfig();
     }
 
     private void MidiEditBindingClicked(object sender, RoutedEventArgs e) {
@@ -1035,6 +1060,8 @@ namespace Spectrum {
       this.midiCancelEditBinding.Visibility = Visibility.Visible;
       this.midiNewBindingName.Text = bindingConfig.BindingName;
       this.midiNewBindingName.Focus();
+      this.midiNewBindingName.SelectionStart = this.midiNewBindingName.Text.Length;
+      this.midiNewBindingName.SelectionLength = 0;
 
       this.midiBindingType.SelectedIndex = bindingConfig.BindingType;
       if (bindingConfig.BindingType == 0) {
@@ -1222,7 +1249,6 @@ namespace Spectrum {
         this.config.domeTeensyUSBPort5 = this.domeTeensy5.SelectedItem as string;
       }
       this.op.Reboot();
-      this.SaveConfig();
     }
 
     private void OpenDomeSimulator(object sender, RoutedEventArgs e) {
@@ -1275,7 +1301,6 @@ namespace Spectrum {
       }
       this.config.barTeensyUSBPort = this.barUSBPorts.SelectedItem as string;
       this.op.Reboot();
-      this.SaveConfig();
     }
 
     private void OpenStageSimulator(object sender, RoutedEventArgs e) {
@@ -1318,7 +1343,6 @@ namespace Spectrum {
         this.config.stageTeensyUSBPort2 = this.stageTeensyUSBPorts2.SelectedItem as string;
       }
       this.op.Reboot();
-      this.SaveConfig();
     }
 
   }

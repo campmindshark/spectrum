@@ -52,10 +52,7 @@ namespace Spectrum.MIDI {
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (!this.active) {
-        return;
-      }
-      if (e.PropertyName == "midiDevices") {
+      if (e.PropertyName == "midiDevices" || e.PropertyName == "midiPresets") {
         this.SetBindings();
       }
     }

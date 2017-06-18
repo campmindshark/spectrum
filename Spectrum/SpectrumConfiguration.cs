@@ -34,6 +34,8 @@ namespace Spectrum {
     public bool barOutputInSeparateThread { get; set; } = false;
     public bool stageOutputInSeparateThread { get; set; } = false;
 
+    // Whenever adding one of these, also update MainWindow.configPropertiesIgnored
+    // to avoid wasted disk I/O whenever these properties update
     [XmlIgnore]
     public int operatorFPS { get; set; } = 0;
     [XmlIgnore]
@@ -155,7 +157,8 @@ namespace Spectrum {
     public BeatBroadcaster beatBroadcaster { get; set; } = new BeatBroadcaster();
     public LEDColorPalette colorPalette { get; set; } = new LEDColorPalette();
 
-    // Excuse in Configuration interface
+    // Whenever adding one of these, also update MainWindow.configPropertiesIgnored
+    // to avoid wasted disk I/O whenever these properties update
     [XmlIgnore, DoNotNotify]
     public ConcurrentQueue<DomeLEDCommand> domeCommandQueue { get; } =
       new ConcurrentQueue<DomeLEDCommand>();
