@@ -161,7 +161,6 @@ namespace Spectrum {
       this.RefreshBarUSBPorts(null, null);
       this.RefreshStageUSBPorts(null, null);
       this.LoadPresets();
-      this.LoadMidiDevices();
 
       this.Bind("huesEnabled", this.hueEnabled, CheckBox.IsCheckedProperty);
       this.Bind("ledBoardEnabled", this.ledBoardEnabled, CheckBox.IsCheckedProperty);
@@ -517,6 +516,10 @@ namespace Spectrum {
       }
 
       this.midiDevices.SelectedItem = currentDevice;
+
+      // This may change the name of devices with a given device ID, so we
+      // regenerate the midiDeviceList
+      this.LoadMidiDevices();
     }
 
     // Refresh the list of active/created "devices" (paired with a preset)
