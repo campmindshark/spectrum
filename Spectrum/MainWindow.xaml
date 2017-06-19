@@ -232,6 +232,9 @@
                     <ComboBoxItem>Change color</ComboBoxItem>
                     <ComboBoxItem>Computer colors</ComboBoxItem>
                     <ComboBoxItem>Tap tempo</ComboBoxItem>
+                    <ComboBoxItem>Continuous knob</ComboBoxItem>
+                    <ComboBoxItem>Discrete knob</ComboBoxItem>
+                    <ComboBoxItem>Logarithmic knob</ComboBoxItem>
                   </ComboBox>
                 </Grid>
                 <WrapPanel x:Name="midiChangeColorBindingPanel" Visibility="Collapsed">
@@ -280,6 +283,54 @@
                       <ComboBoxItem>N</ComboBoxItem>
                     </ComboBox>
                     <TextBox x:Name="midiTapTempoButtonIndex" Margin="123,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="97" Height="20" />
+                  </Grid>
+                </WrapPanel>
+                <WrapPanel x:Name="midiContinuousKnobBindingPanel" Visibility="Collapsed">
+                  <Grid Margin="0,4,0,0">
+                    <Label Content="Knob index" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="midiContinuousKnobIndex" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="MidiContinuousKnobIndexLostFocus" />
+                  </Grid>
+                  <Grid Margin="0,4,0,0">
+                    <Label Content="Property" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="midiContinuousKnobPropertyName" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="MidiContinuousKnobPropertyNameLostFocus" />
+                  </Grid>
+                  <Grid Margin="0,4,0,0">
+                    <Label Content="Range" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="midiContinuousKnobStartValue" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="57" Height="20" LostFocus="MidiContinuousKnobStartValueLostFocus" />
+                    <Label Content="to" Margin="144,0,0,2" Padding="0" VerticalAlignment="Center" />
+                    <TextBox x:Name="midiContinuousKnobEndValue" Margin="163,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="57" Height="20" LostFocus="MidiContinuousKnobEndValueLostFocus" />
+                  </Grid>
+                </WrapPanel>
+                <WrapPanel x:Name="midiDiscreteKnobBindingPanel" Visibility="Collapsed">
+                  <Grid Margin="0,4,0,0">
+                    <Label Content="Knob index" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="midiDiscreteKnobIndex" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="MidiDiscreteKnobIndexLostFocus" />
+                  </Grid>
+                  <Grid Margin="0,4,0,0">
+                    <Label Content="Property" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="midiDiscreteKnobPropertyName" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="MidiDiscreteKnobPropertyNameLostFocus" />
+                  </Grid>
+                  <Grid Margin="0,4,0,0">
+                    <Label Content="# Values" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="midiDiscreteKnobNumPossibleValues" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="MidiDiscreteKnobNumPossibleValuesLostFocus" />
+                  </Grid>
+                </WrapPanel>
+                <WrapPanel x:Name="midiLogarithmicKnobBindingPanel" Visibility="Collapsed">
+                  <Grid Margin="0,4,0,0">
+                    <Label Content="Knob index" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="midiLogarithmicKnobIndex" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="MidiLogarithmicKnobIndexLostFocus" />
+                  </Grid>
+                  <Grid Margin="0,4,0,0">
+                    <Label Content="Property" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="midiLogarithmicKnobPropertyName" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="MidiLogarithmicKnobPropertyNameLostFocus" />
+                  </Grid>
+                  <Grid Margin="0,4,0,0">
+                    <Label Content="# Values" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="midiLogarithmicKnobNumPossibleValues" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="MidiLogarithmicKnobNumPossibleValuesLostFocus" />
+                  </Grid>
+                  <Grid Margin="0,4,0,0">
+                    <Label Content="Start value" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="midiLogarithmicKnobStartValue" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="MidiLogarithmicKnobStartValueLostFocus" />
                   </Grid>
                 </WrapPanel>
                 <Grid Width="220" Margin="0,5,0,0">

@@ -38,6 +38,9 @@ namespace Spectrum.Base {
   [XmlInclude(typeof(ColorPaletteMidiBindingConfig))]
   [XmlInclude(typeof(ComputerColorsMidiBindingConfig))]
   [XmlInclude(typeof(TapTempoMidiBindingConfig))]
+  [XmlInclude(typeof(ContinuousKnobMidiBindingConfig))]
+  [XmlInclude(typeof(DiscreteKnobMidiBindingConfig))]
+  [XmlInclude(typeof(DiscreteLogarithmicKnobMidiBindingConfig))]
   public interface IMidiBindingConfig : ICloneable {
     
     int BindingType { get; set; }

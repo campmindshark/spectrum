@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Windows.Media;
 using Spectrum.Base;
 using System.ComponentModel;
+using System.Reflection;
 
 namespace Spectrum {
 
@@ -863,6 +864,15 @@ namespace Spectrum {
       this.midiTapTempoBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 2
         ? Visibility.Visible
         : Visibility.Collapsed;
+      this.midiContinuousKnobBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 3
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+      this.midiDiscreteKnobBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 4
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+      this.midiLogarithmicKnobBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 5
+        ? Visibility.Visible
+        : Visibility.Collapsed;
     }
 
     private static MidiCommandType commandTypeFromIndex(int index) {
@@ -921,24 +931,28 @@ namespace Spectrum {
           indexRangeStart = Convert.ToInt32(this.midiChangeColorIndexRangeStart.Text.Trim());
         } catch (Exception) {
           this.midiChangeColorIndexRangeStart.Text = "";
+          this.midiChangeColorIndexRangeStart.Focus();
           return;
         }
         try {
           indexRangeEnd = Convert.ToInt32(this.midiChangeColorIndexRangeEnd.Text.Trim());
         } catch (Exception) {
           this.midiChangeColorIndexRangeEnd.Text = "";
+          this.midiChangeColorIndexRangeEnd.Focus();
           return;
         }
         try {
           colorRangeStart = Convert.ToInt32(this.midiChangeColorColorRangeStart.Text.Trim());
         } catch (Exception) {
           this.midiChangeColorColorRangeStart.Text = "";
+          this.midiChangeColorColorRangeStart.Focus();
           return;
         }
         try {
           colorRangeEnd = Convert.ToInt32(this.midiChangeColorColorRangeEnd.Text.Trim());
         } catch (Exception) {
           this.midiChangeColorColorRangeEnd.Text = "";
+          this.midiChangeColorColorRangeEnd.Focus();
           return;
         }
         newBinding = new ColorPaletteMidiBindingConfig() {
@@ -961,12 +975,14 @@ namespace Spectrum {
           rangeStart = Convert.ToInt32(this.midiComputerColorsIndexRangeStart.Text.Trim());
         } catch (Exception) {
           this.midiComputerColorsIndexRangeStart.Text = "";
+          this.midiComputerColorsIndexRangeStart.Focus();
           return;
         }
         try {
           rangeEnd = Convert.ToInt32(this.midiComputerColorsIndexRangeEnd.Text.Trim());
         } catch (Exception) {
           this.midiComputerColorsIndexRangeEnd.Text = "";
+          this.midiComputerColorsIndexRangeEnd.Focus();
           return;
         }
         newBinding = new ComputerColorsMidiBindingConfig() {
@@ -986,12 +1002,120 @@ namespace Spectrum {
           buttonIndex = Convert.ToInt32(this.midiTapTempoButtonIndex.Text.Trim());
         } catch (Exception) {
           this.midiTapTempoButtonIndex.Text = "";
+          this.midiTapTempoButtonIndex.Focus();
           return;
         }
         newBinding = new TapTempoMidiBindingConfig() {
           BindingName = newName,
           buttonType = buttonType,
           buttonIndex = buttonIndex,
+        };
+      } else if (this.midiBindingType.SelectedIndex == 3) {
+        string configPropertyName = this.midiContinuousKnobPropertyName.Text.Trim();
+        if (String.IsNullOrEmpty(configPropertyName)) {
+          this.midiContinuousKnobPropertyName.Text = "";
+          this.midiContinuousKnobPropertyName.Focus();
+          return;
+        }
+        int knobIndex;
+        try {
+          knobIndex = Convert.ToInt32(this.midiContinuousKnobIndex.Text.Trim());
+        } catch (Exception) {
+          this.midiContinuousKnobIndex.Text = "";
+          this.midiContinuousKnobIndex.Focus();
+          return;
+        }
+        double startValue, endValue;
+        try {
+          startValue = Convert.ToDouble(this.midiContinuousKnobStartValue.Text.Trim());
+        } catch (Exception) {
+          this.midiContinuousKnobStartValue.Text = "";
+          this.midiContinuousKnobStartValue.Focus();
+          return;
+        }
+        try {
+          endValue = Convert.ToDouble(this.midiContinuousKnobEndValue.Text.Trim());
+        } catch (Exception) {
+          this.midiContinuousKnobEndValue.Text = "";
+          this.midiContinuousKnobEndValue.Focus();
+          return;
+        }
+        if (endValue < startValue) {
+          this.midiContinuousKnobEndValue.Text = "";
+          this.midiContinuousKnobEndValue.Focus();
+          return;
+        }
+        newBinding = new ContinuousKnobMidiBindingConfig() {
+          BindingName = newName,
+          knobIndex = knobIndex,
+          configPropertyName = configPropertyName,
+          startValue = startValue,
+          endValue = endValue,
+        };
+      } else if (this.midiBindingType.SelectedIndex == 4) {
+        string configPropertyName = this.midiDiscreteKnobPropertyName.Text.Trim();
+        if (String.IsNullOrEmpty(configPropertyName)) {
+          this.midiDiscreteKnobPropertyName.Text = "";
+          this.midiDiscreteKnobPropertyName.Focus();
+          return;
+        }
+        int knobIndex, numPossibleValues;
+        try {
+          knobIndex = Convert.ToInt32(this.midiDiscreteKnobIndex.Text.Trim());
+        } catch (Exception) {
+          this.midiDiscreteKnobIndex.Text = "";
+          this.midiDiscreteKnobIndex.Focus();
+          return;
+        }
+        try {
+          numPossibleValues = Convert.ToInt32(this.midiDiscreteKnobNumPossibleValues.Text.Trim());
+        } catch (Exception) {
+          this.midiDiscreteKnobNumPossibleValues.Text = "";
+          this.midiDiscreteKnobNumPossibleValues.Focus();
+          return;
+        }
+        newBinding = new DiscreteKnobMidiBindingConfig() {
+          BindingName = newName,
+          knobIndex = knobIndex,
+          configPropertyName = configPropertyName,
+          numPossibleValues = numPossibleValues,
+        };
+      } else if (this.midiBindingType.SelectedIndex == 5) {
+        string configPropertyName = this.midiLogarithmicKnobPropertyName.Text.Trim();
+        if (String.IsNullOrEmpty(configPropertyName)) {
+          this.midiLogarithmicKnobPropertyName.Text = "";
+          this.midiLogarithmicKnobPropertyName.Focus();
+          return;
+        }
+        int knobIndex, numPossibleValues;
+        try {
+          knobIndex = Convert.ToInt32(this.midiLogarithmicKnobIndex.Text.Trim());
+        } catch (Exception) {
+          this.midiLogarithmicKnobIndex.Text = "";
+          this.midiLogarithmicKnobIndex.Focus();
+          return;
+        }
+        try {
+          numPossibleValues = Convert.ToInt32(this.midiLogarithmicKnobNumPossibleValues.Text.Trim());
+        } catch (Exception) {
+          this.midiLogarithmicKnobNumPossibleValues.Text = "";
+          this.midiLogarithmicKnobNumPossibleValues.Focus();
+          return;
+        }
+        double startValue;
+        try {
+          startValue = Convert.ToDouble(this.midiLogarithmicKnobStartValue.Text.Trim());
+        } catch (Exception) {
+          this.midiLogarithmicKnobStartValue.Text = "";
+          this.midiLogarithmicKnobStartValue.Focus();
+          return;
+        }
+        newBinding = new DiscreteLogarithmicKnobMidiBindingConfig() {
+          BindingName = newName,
+          knobIndex = knobIndex,
+          configPropertyName = configPropertyName,
+          numPossibleValues = numPossibleValues,
+          startValue = startValue,
         };
       } else {
         return;
@@ -1020,6 +1144,20 @@ namespace Spectrum {
       } else if (this.midiBindingType.SelectedIndex == 2) {
         this.midiTapTempoButtonType.SelectedIndex = -1;
         this.midiTapTempoButtonIndex.Text = "";
+      } else if (this.midiBindingType.SelectedIndex == 3) {
+        this.midiContinuousKnobIndex.Text = "";
+        this.midiContinuousKnobPropertyName.Text = "";
+        this.midiContinuousKnobStartValue.Text = "";
+        this.midiContinuousKnobEndValue.Text = "";
+      } else if (this.midiBindingType.SelectedIndex == 4) {
+        this.midiDiscreteKnobIndex.Text = "";
+        this.midiDiscreteKnobPropertyName.Text = "";
+        this.midiDiscreteKnobNumPossibleValues.Text = "";
+      } else if (this.midiBindingType.SelectedIndex == 5) {
+        this.midiLogarithmicKnobIndex.Text = "";
+        this.midiLogarithmicKnobPropertyName.Text = "";
+        this.midiLogarithmicKnobNumPossibleValues.Text = "";
+        this.midiLogarithmicKnobStartValue.Text = "";
       }
 
       ComboBoxItem item = (ComboBoxItem)this.midiBindingType.SelectedItem;
@@ -1105,6 +1243,23 @@ namespace Spectrum {
         var config = (TapTempoMidiBindingConfig)bindingConfig;
         this.midiTapTempoButtonType.SelectedIndex = indexFromCommandType(config.buttonType);
         this.midiTapTempoButtonIndex.Text = config.buttonIndex.ToString();
+      } else if (this.midiBindingType.SelectedIndex == 3) {
+        var config = (ContinuousKnobMidiBindingConfig)bindingConfig;
+        this.midiContinuousKnobIndex.Text = config.knobIndex.ToString();
+        this.midiContinuousKnobPropertyName.Text = config.configPropertyName;
+        this.midiContinuousKnobStartValue.Text = config.startValue.ToString();
+        this.midiContinuousKnobEndValue.Text = config.endValue.ToString();
+      } else if (this.midiBindingType.SelectedIndex == 4) {
+        var config = (DiscreteKnobMidiBindingConfig)bindingConfig;
+        this.midiDiscreteKnobIndex.Text = config.knobIndex.ToString();
+        this.midiDiscreteKnobPropertyName.Text = config.configPropertyName;
+        this.midiDiscreteKnobNumPossibleValues.Text = config.numPossibleValues.ToString();
+      } else if (this.midiBindingType.SelectedIndex == 5) {
+        var config = (DiscreteLogarithmicKnobMidiBindingConfig)bindingConfig;
+        this.midiLogarithmicKnobIndex.Text = config.knobIndex.ToString();
+        this.midiLogarithmicKnobPropertyName.Text = config.configPropertyName;
+        this.midiLogarithmicKnobNumPossibleValues.Text = config.numPossibleValues.ToString();
+        this.midiLogarithmicKnobStartValue.Text = config.startValue.ToString();
       }
     }
 
@@ -1133,6 +1288,20 @@ namespace Spectrum {
 
       this.midiTapTempoButtonType.SelectedIndex = -1;
       this.midiTapTempoButtonIndex.Text = "";
+
+      this.midiContinuousKnobIndex.Text = "";
+      this.midiContinuousKnobPropertyName.Text = "";
+      this.midiContinuousKnobStartValue.Text = "";
+      this.midiContinuousKnobEndValue.Text = "";
+
+      this.midiDiscreteKnobIndex.Text = "";
+      this.midiDiscreteKnobPropertyName.Text = "";
+      this.midiDiscreteKnobNumPossibleValues.Text = "";
+
+      this.midiLogarithmicKnobIndex.Text = "";
+      this.midiLogarithmicKnobPropertyName.Text = "";
+      this.midiLogarithmicKnobNumPossibleValues.Text = "";
+      this.midiLogarithmicKnobStartValue.Text = "";
     }
 
     private void MidiChangeColorIndexRangeStartLostFocus(object sender, RoutedEventArgs e) {
@@ -1235,6 +1404,115 @@ namespace Spectrum {
           this.midiComputerColorsIndexRangeStart.Text = (endNumber - 15).ToString();
         }
       } catch (Exception) { }
+    }
+
+    private void MidiContinuousKnobIndexLostFocus(object sender, RoutedEventArgs e) {
+      try {
+        Convert.ToInt32(this.midiContinuousKnobIndex.Text.Trim());
+      } catch (Exception) {
+        this.midiContinuousKnobIndex.Text = "";
+      }
+    }
+
+    private void MidiContinuousKnobPropertyNameLostFocus(object sender, RoutedEventArgs e) {
+      var configPropertyName = this.midiContinuousKnobPropertyName.Text;
+      if (typeof(Configuration).GetProperty(configPropertyName) == null) {
+        this.midiContinuousKnobPropertyName.Text = "";
+      }
+    }
+
+    private void MidiContinuousKnobStartValueLostFocus(object sender, RoutedEventArgs e) {
+      double startNumber;
+      try {
+        startNumber = Convert.ToDouble(this.midiContinuousKnobStartValue.Text.Trim());
+      } catch (Exception) {
+        this.midiContinuousKnobStartValue.Text = "";
+        return;
+      }
+      try {
+        double endNumber = Convert.ToDouble(this.midiContinuousKnobEndValue.Text.Trim());
+        if (endNumber < startNumber) {
+          this.midiContinuousKnobEndValue.Text = "";
+          this.midiContinuousKnobEndValue.Focus();
+        }
+      } catch (Exception) {
+        this.midiContinuousKnobEndValue.Text = "";
+        this.midiContinuousKnobEndValue.Focus();
+      }
+    }
+
+    private void MidiContinuousKnobEndValueLostFocus(object sender, RoutedEventArgs e) {
+      double endNumber;
+      try {
+        endNumber = Convert.ToDouble(this.midiContinuousKnobEndValue.Text.Trim());
+      } catch (Exception) {
+        this.midiContinuousKnobEndValue.Text = "";
+        return;
+      }
+      try {
+        double startNumber = Convert.ToDouble(this.midiContinuousKnobStartValue.Text.Trim());
+        if (endNumber < startNumber) {
+          this.midiContinuousKnobStartValue.Text = "";
+          this.midiContinuousKnobStartValue.Focus();
+        }
+      } catch (Exception) {
+        this.midiContinuousKnobStartValue.Text = "";
+        this.midiContinuousKnobStartValue.Focus();
+      }
+    }
+
+    private void MidiDiscreteKnobIndexLostFocus(object sender, RoutedEventArgs e) {
+      try {
+        Convert.ToInt32(this.midiDiscreteKnobIndex.Text.Trim());
+      } catch (Exception) {
+        this.midiDiscreteKnobIndex.Text = "";
+      }
+    }
+
+    private void MidiDiscreteKnobPropertyNameLostFocus(object sender, RoutedEventArgs e) {
+      var configPropertyName = this.midiDiscreteKnobPropertyName.Text;
+      if (typeof(Configuration).GetProperty(configPropertyName) == null) {
+        this.midiDiscreteKnobPropertyName.Text = "";
+      }
+    }
+
+    private void MidiDiscreteKnobNumPossibleValuesLostFocus(object sender, RoutedEventArgs e) {
+      try {
+        Convert.ToInt32(this.midiDiscreteKnobNumPossibleValues.Text.Trim());
+      } catch (Exception) {
+        this.midiDiscreteKnobNumPossibleValues.Text = "";
+      }
+    }
+
+    private void MidiLogarithmicKnobIndexLostFocus(object sender, RoutedEventArgs e) {
+      try {
+        Convert.ToInt32(this.midiLogarithmicKnobIndex.Text.Trim());
+      } catch (Exception) {
+        this.midiLogarithmicKnobIndex.Text = "";
+      }
+    }
+
+    private void MidiLogarithmicKnobPropertyNameLostFocus(object sender, RoutedEventArgs e) {
+      var configPropertyName = this.midiLogarithmicKnobPropertyName.Text;
+      if (typeof(Configuration).GetProperty(configPropertyName) == null) {
+        this.midiLogarithmicKnobPropertyName.Text = "";
+      }
+    }
+
+    private void MidiLogarithmicKnobNumPossibleValuesLostFocus(object sender, RoutedEventArgs e) {
+      try {
+        Convert.ToInt32(this.midiLogarithmicKnobNumPossibleValues.Text.Trim());
+      } catch (Exception) {
+        this.midiLogarithmicKnobNumPossibleValues.Text = "";
+      }
+    }
+
+    private void MidiLogarithmicKnobStartValueLostFocus(object sender, RoutedEventArgs e) {
+      try {
+        Convert.ToDouble(this.midiLogarithmicKnobStartValue.Text.Trim());
+      } catch (Exception) {
+        this.midiLogarithmicKnobStartValue.Text = "";
+      }
     }
 
     private void RefreshDomePorts(object sender, RoutedEventArgs e) {
