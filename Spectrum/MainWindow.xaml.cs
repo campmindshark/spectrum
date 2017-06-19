@@ -103,8 +103,6 @@ namespace Spectrum {
 
       this.LoadConfig();
       this.config.PropertyChanged += ConfigUpdated;
-      this.config.colorPalette.PropertyChanged += ConfigUpdated;
-      this.config.colorPalette.computerEnabledColors.PropertyChanged += ConfigUpdated;
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {

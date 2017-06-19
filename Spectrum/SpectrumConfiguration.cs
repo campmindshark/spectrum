@@ -15,6 +15,16 @@ namespace Spectrum {
 
     public event PropertyChangedEventHandler PropertyChanged;
 
+    public SpectrumConfiguration() {
+      this._colorPalette.PropertyChanged += ColorPalettePropertyChanged;
+    }
+
+    private void ColorPalettePropertyChanged(object sender, PropertyChangedEventArgs e) {
+      PropertyChangedEventArgs forwardedEvent =
+        new PropertyChangedEventArgs("colorPalette." + e.PropertyName);
+      this.PropertyChanged(this, forwardedEvent);
+    }
+
     public int audioDeviceIndex { get; set; } = -1;
 
     public bool huesEnabled { get; set; } = false;
@@ -155,7 +165,17 @@ namespace Spectrum {
     // This probably should not be here...
     [XmlIgnore, DoNotNotify]
     public BeatBroadcaster beatBroadcaster { get; set; } = new BeatBroadcaster();
-    public LEDColorPalette colorPalette { get; set; } = new LEDColorPalette();
+
+    private LEDColorPalette _colorPalette = new LEDColorPalette();
+    public LEDColorPalette colorPalette {
+      get {
+        return _colorPalette;
+      }
+      set {
+        value.PropertyChanged += this.ColorPalettePropertyChanged;
+        this._colorPalette = value;
+      }
+    }
 
     // Whenever adding one of these, also update MainWindow.configPropertiesIgnored
     // to avoid wasted disk I/O whenever these properties update

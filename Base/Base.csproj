@@ -55,7 +55,6 @@
     <Compile Include="MIDI\ComputerColorsMidiBindingConfig.cs" />
     <Compile Include="MIDI\ColorPaletteMidiBindingConfig.cs" />
     <Compile Include="MIDI\MidiPreset.cs" />
-    <Compile Include="ObservableArray.cs" />
     <Compile Include="Output.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Visualizer.cs" />

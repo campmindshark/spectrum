@@ -16,10 +16,28 @@ namespace Spectrum.Base {
     // Do not set directly!!
     public LEDColor[] colors { get; set; }
     // Don't change the collection, but feel free to set values in it
-    public ComputerEnabledColors computerEnabledColors { get; set; } =
-      new ComputerEnabledColors();
+    private ComputerEnabledColors _computerEnabledColors = new ComputerEnabledColors();
+    public ComputerEnabledColors computerEnabledColors {
+      get {
+        return this._computerEnabledColors;
+      }
+      set {
+        value.PropertyChanged += ComputerEnabledColorsPropertyChanged;
+        this._computerEnabledColors = value;
+      }
+    }
 
     public event PropertyChangedEventHandler PropertyChanged;
+
+    public LEDColorPalette() {
+      this._computerEnabledColors.PropertyChanged += ComputerEnabledColorsPropertyChanged;
+    }
+
+    private void ComputerEnabledColorsPropertyChanged(object sender, PropertyChangedEventArgs e) {
+      PropertyChangedEventArgs forwardedEvent =
+        new PropertyChangedEventArgs("computerEnabledColors." + e.PropertyName);
+      this.PropertyChanged(this, forwardedEvent);
+    }
 
     public int GetSingleColor(int index) {
       if (this.colors == null || this.colors[index] == null) {
@@ -247,6 +265,32 @@ namespace Spectrum.Base {
         | (int)(blue * scale);
     }
 
+  }
+
+  public class ComputerEnabledColors : INotifyPropertyChanged {
+
+    public bool[] array { get; set; }
+
+    public event PropertyChangedEventHandler PropertyChanged;
+
+    public bool this[int index] {
+      get {
+        if (this.array == null) {
+          this.array = Enumerable.Repeat(true, 16).ToArray();
+        }
+        return this.array[index];
+      }
+      set {
+        if (this.array == null) {
+          this.array = Enumerable.Repeat(true, 16).ToArray();
+        }
+        this.array[index] = value;
+        this.PropertyChanged?.Invoke(
+          this,
+          new PropertyChangedEventArgs(System.Windows.Data.Binding.IndexerName)
+        );
+      }
+    }
   }
 
 }
