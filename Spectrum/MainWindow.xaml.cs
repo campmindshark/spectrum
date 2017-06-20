@@ -17,6 +17,8 @@ using System.Reflection;
 
 namespace Spectrum {
 
+  using Timer = System.Windows.Forms.Timer;
+
   public partial class MainWindow : Window {
 
     private class MidiDeviceEntry {
@@ -87,6 +89,7 @@ namespace Spectrum {
     private StageSimulatorWindow stageSimulatorWindow;
     private int? currentlyEditingPreset = null;
     private int? currentlyEditingBinding = null;
+    private Timer configSaveTimer = null;
 
     public MainWindow() {
       this.InitializeComponent();
@@ -110,7 +113,7 @@ namespace Spectrum {
         this.op.Reboot();
       }
       if (!configPropertiesIgnored.Contains(e.PropertyName)) {
-        this.SaveConfig();
+        this.EventuallySaveConfig();
       }
     }
 
@@ -137,6 +140,24 @@ namespace Spectrum {
           stream,
           this.config
         );
+      }
+    }
+
+    private void EventuallySaveConfig() {
+      lock (this.op) {
+        if (this.configSaveTimer == null) {
+          this.configSaveTimer = new Timer();
+          this.configSaveTimer.Interval = 100;
+          this.configSaveTimer.Tick += DelayedConfigSave;
+        }
+      }
+   }
+
+    private void DelayedConfigSave(object sender, EventArgs e) {
+      lock (this.op) {
+        this.configSaveTimer.Stop();
+        this.configSaveTimer.Dispose();
+        this.configSaveTimer = null;
       }
     }
 

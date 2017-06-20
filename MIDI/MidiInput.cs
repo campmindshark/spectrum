@@ -247,11 +247,6 @@ namespace Spectrum.MIDI {
       }
 
       int numMessages = this.buffer.Count;
-      if (numMessages == 0) {
-        this.commandsSinceLastTick = new MidiCommand[0];
-        return;
-      }
-
       var commands = new MidiCommand[numMessages];
       for (int i = 0; i < numMessages; i++) {
         bool result = this.buffer.TryDequeue(out commands[i]);
