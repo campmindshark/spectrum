@@ -1,13 +1,18 @@
-﻿<Window x:Class="Spectrum.StageSimulatorWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Spectrum"
-        mc:Ignorable="d"
-        Title="Stage Simulator" Height="600" Width="780" ResizeMode="CanMinimize"
-        Icon="pack://siteoforigin:,,,/Resources/s.PNG"
-        Loaded="WindowLoaded">
+﻿<Window
+  x:Class="Spectrum.StageSimulatorWindow"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:local="clr-namespace:Spectrum"
+  mc:Ignorable="d"
+  Title="Stage Simulator"
+  Height="600"
+  Width="780"
+  ResizeMode="CanMinimize"
+  Icon="pack://siteoforigin:,,,/Resources/s.PNG"
+  Loaded="WindowLoaded"
+>
   <Canvas x:Name="canvas">
     <Image x:Name="image" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top" />
     <Button x:Name="showKey" Content="Show Key" Canvas.Left="681" Canvas.Top="10" Width="68" Click="ShowKey" />
