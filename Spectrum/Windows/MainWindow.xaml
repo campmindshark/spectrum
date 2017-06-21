@@ -151,6 +151,7 @@
             <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
               <Grid>
                 <CheckBox x:Name="midiEnabled" Content="Enabled" VerticalAlignment="Top" IsChecked="False" FontWeight="Bold" Margin="0,2,0,0" />
+                <CheckBox x:Name="midiHUDEnabled" Content="Heads-up display" VerticalAlignment="Top" Margin="150,2,0,0" IsChecked="False" Checked="OpenMidiHUD" Unchecked="CloseMidiHUD" />
                 <ListView x:Name="midiDeviceList" Width="298" Height="66" VerticalAlignment="Top" Margin="1,22,1,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="MidiDeviceListSelectionChanged">
                   <ListView.View>
                     <GridView>

@@ -102,6 +102,9 @@
     <Compile Include="Windows\BarSimulatorWindow.xaml.cs">
       <DependentUpon>BarSimulatorWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Windows\MidiHUDWindow.xaml.cs">
+      <DependentUpon>MidiHUDWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Windows\StageSimulatorWindow.xaml.cs">
       <DependentUpon>StageSimulatorWindow.xaml</DependentUpon>
     </Compile>
@@ -132,6 +135,10 @@
     <Page Include="Windows\BarSimulatorWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Windows\MidiHUDWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Windows\StageSimulatorWindow.xaml">
       <Generator>MSBuild:Compile</Generator>

@@ -157,6 +157,7 @@ namespace Spectrum {
     public int[] hueIndices { get; set; } = null;
 
     // maps from device ID to preset ID
+    public bool midiHUDEnabled { get; set; } = false;
     public Dictionary<int, int> midiDevices { get; set; } = new Dictionary<int, int>();
     public Dictionary<int, MidiPreset> midiPresets { get; set; } = new Dictionary<int, MidiPreset>();
 

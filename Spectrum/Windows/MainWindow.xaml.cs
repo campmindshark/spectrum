@@ -87,6 +87,7 @@ namespace Spectrum {
     private DomeSimulatorWindow domeSimulatorWindow;
     private BarSimulatorWindow barSimulatorWindow;
     private StageSimulatorWindow stageSimulatorWindow;
+    private MidiHUDWindow midiHUDWindow;
     private int? currentlyEditingPreset = null;
     private int? currentlyEditingBinding = null;
     private Timer configSaveTimer = null;
@@ -391,6 +392,7 @@ namespace Spectrum {
       this.Bind("stageSideLengths", this.stageSideLengths, TextBox.TextProperty, BindingMode.TwoWay, new StringJoinConverter());
       this.Bind("stageBrightness", this.stageBrightnessSlider, Slider.ValueProperty);
       this.Bind("stageBrightness", this.stageBrightnessLabel, Label.ContentProperty);
+      this.Bind("midiHUDEnabled", this.midiHUDEnabled, CheckBox.IsCheckedProperty);
 
       this.loadingConfig = false;
     }
@@ -1535,6 +1537,21 @@ namespace Spectrum {
       } catch (Exception) {
         this.midiLogarithmicKnobStartValue.Text = "";
       }
+    }
+
+    private void OpenMidiHUD(object sender, RoutedEventArgs e) {
+      this.midiHUDWindow = new MidiHUDWindow(this.config);
+      this.midiHUDWindow.Closed += MidiHUDClosed;
+      this.midiHUDWindow.Show();
+    }
+
+    private void CloseMidiHUD(object sender, RoutedEventArgs e) {
+      this.midiHUDWindow.Close();
+      this.midiHUDWindow = null;
+    }
+
+    private void MidiHUDClosed(object sender, EventArgs e) {
+      this.config.midiHUDEnabled = false;
     }
 
     private void RefreshDomePorts(object sender, RoutedEventArgs e) {
