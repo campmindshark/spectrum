@@ -99,16 +99,16 @@
     <Compile Include="Converter\SpecificValuesConverter.cs" />
     <Compile Include="Converter\FPSToBrushConverter.cs" />
     <Compile Include="Converter\StringJoinConverter.cs" />
-    <Compile Include="Simulators\BarSimulatorWindow.xaml.cs">
+    <Compile Include="Windows\BarSimulatorWindow.xaml.cs">
       <DependentUpon>BarSimulatorWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Simulators\StageSimulatorWindow.xaml.cs">
+    <Compile Include="Windows\StageSimulatorWindow.xaml.cs">
       <DependentUpon>StageSimulatorWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Simulators\DomeSimulatorWindow.xaml.cs">
+    <Compile Include="Windows\DomeSimulatorWindow.xaml.cs">
       <DependentUpon>DomeSimulatorWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Simulators\SimulatorUtils.cs" />
+    <Compile Include="Windows\SimulatorUtils.cs" />
     <Compile Include="Visualizers\LEDStageFlashColorsDiagnosticVisualizer.cs" />
     <Compile Include="Visualizers\LEDBarFlashColorsDiagnosticVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeFlashVisualizer.cs" />
@@ -129,19 +129,19 @@
     <Compile Include="Hotkey.cs" />
     <Compile Include="Visualizers\HueAudioVisualizer.cs" />
     <Compile Include="Visualizers\WhyFireMidiVisualizer.cs" />
-    <Page Include="Simulators\BarSimulatorWindow.xaml">
+    <Page Include="Windows\BarSimulatorWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Simulators\StageSimulatorWindow.xaml">
+    <Page Include="Windows\StageSimulatorWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Simulators\DomeSimulatorWindow.xaml">
+    <Page Include="Windows\DomeSimulatorWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="MainWindow.xaml">
+    <Page Include="Windows\MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -150,7 +150,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Operator.cs" />
-    <Compile Include="MainWindow.xaml.cs">
+    <Compile Include="Windows\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
