@@ -4,18 +4,30 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Media;
+using System.ComponentModel;
+using System.Timers;
 
 namespace Spectrum.Base {
 
-  public class BeatBroadcaster {
+  public class BeatBroadcaster : INotifyPropertyChanged {
+
+    private static int tapTempoConclusionTime = 2000;
 
     private List<long> currentTaps = new List<long>();
     private long startingTime = -1;
     private int measureLength = -1;
+    private Timer tapTempoConclusionTimer = new Timer(tapTempoConclusionTime);
+
+    public event PropertyChangedEventHandler PropertyChanged;
+
+    public BeatBroadcaster() {
+      this.tapTempoConclusionTimer.Elapsed += TapTempoConcluded;
+    }
 
     public double ProgressThroughMeasure {
       get {
-        return ProgressThroughBeat(1.0);
+        return this.ProgressThroughBeat(1.0);
       }
     }
 
@@ -34,7 +46,6 @@ namespace Spectrum.Base {
       return (double)progressThroughMeasure / beatLength;
     }
 
-
     public int MeasureLength {
       get {
         return this.measureLength;
@@ -42,23 +53,42 @@ namespace Spectrum.Base {
     }
 
     public void AddTap() {
+      this.tapTempoConclusionTimer.Stop();
       long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
       if (
         this.currentTaps.Count > 0 &&
-        timestamp - this.currentTaps.Last() > 2000
+        timestamp - this.currentTaps.Last() > tapTempoConclusionTime
       ) {
         this.currentTaps = new List<long>();
       }
       this.currentTaps.Add(timestamp);
+      this.TapTempoConcluded(null, null);
+      this.tapTempoConclusionTimer.Start();
       if (this.currentTaps.Count >= 3) {
         this.UpdateBeat();
       }
+    }
+
+    private void TapTempoConcluded(object sender, ElapsedEventArgs e) {
+      this.PropertyChanged?.Invoke(
+        this,
+        new PropertyChangedEventArgs("TapCounterBrush")
+      );
+      this.PropertyChanged?.Invoke(
+        this,
+        new PropertyChangedEventArgs("TapCounterText")
+      );
     }
 
     public void Reset() {
       this.currentTaps = new List<long>();
       this.startingTime = -1;
       this.measureLength = -1;
+      this.TapTempoConcluded(null, null);
+      this.PropertyChanged?.Invoke(
+        this,
+        new PropertyChangedEventArgs("BPMString")
+      );
     }
 
     private void UpdateBeat() {
@@ -69,6 +99,45 @@ namespace Spectrum.Base {
       }
       this.measureLength = (int)(measureLengths.Average());
       this.startingTime = this.currentTaps.Last();
+      this.PropertyChanged?.Invoke(
+        this,
+        new PropertyChangedEventArgs("BPMString")
+      );
+    }
+
+    private bool TapTempoConcluded() {
+      if (this.currentTaps.Count == 0) {
+        return true;
+      }
+      long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+      return timestamp - this.currentTaps.Last() > tapTempoConclusionTime;
+    }
+
+    public Brush TapCounterBrush {
+      get {
+        if (this.TapTempoConcluded()) {
+          return new SolidColorBrush(Colors.Black);
+        }
+        return new SolidColorBrush(Colors.ForestGreen);
+      }
+    }
+
+    public string TapCounterText {
+      get {
+        if (this.TapTempoConcluded()) {
+          return "Tap tempo";
+        }
+        return this.currentTaps.Count.ToString();
+      }
+    }
+
+    public string BPMString {
+      get {
+        if (this.measureLength == -1) {
+          return "[none]";
+        }
+        return (60000 / this.measureLength).ToString();
+      }
     }
 
   }
