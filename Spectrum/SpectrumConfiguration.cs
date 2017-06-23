@@ -17,12 +17,17 @@ namespace Spectrum {
 
     public SpectrumConfiguration() {
       this._colorPalette.PropertyChanged += ColorPalettePropertyChanged;
+      this.midiLog.PropertyChanged += MidiLogPropertyChanged;
     }
 
     private void ColorPalettePropertyChanged(object sender, PropertyChangedEventArgs e) {
       PropertyChangedEventArgs forwardedEvent =
         new PropertyChangedEventArgs("colorPalette." + e.PropertyName);
       this.PropertyChanged(this, forwardedEvent);
+    }
+
+    private void MidiLogPropertyChanged(object sender, PropertyChangedEventArgs e) {
+      this.PropertyChanged(this, new PropertyChangedEventArgs("midiLog"));
     }
 
     public int audioDeviceIndex { get; set; } = -1;
@@ -160,6 +165,8 @@ namespace Spectrum {
     public bool midiHUDEnabled { get; set; } = false;
     public Dictionary<int, int> midiDevices { get; set; } = new Dictionary<int, int>();
     public Dictionary<int, MidiPreset> midiPresets { get; set; } = new Dictionary<int, MidiPreset>();
+    [XmlIgnore]
+    public ObservableMidiLog midiLog { get; set; } = new ObservableMidiLog();
 
     public string whyFireURL { get; set; } = "http://why.fire/WhyService.svc/Effects/";
 

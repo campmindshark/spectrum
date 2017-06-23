@@ -13,8 +13,9 @@ namespace Spectrum.Base {
 
   public struct Binding {
     public BindingKey key;
-    public delegate void bindingCallback(int index, double val);
+    public delegate string bindingCallback(int index, double val);
     public bindingCallback callback;
+    public IMidiBindingConfig config;
   }
 
   public class MidiPreset : ICloneable {

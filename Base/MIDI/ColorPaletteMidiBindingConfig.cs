@@ -48,25 +48,36 @@ namespace Spectrum.Base {
       };
     }
 
-    private void SetColor(Configuration config, int colorIndex) {
+    private string SetColor(Configuration config, int colorIndex) {
       if (this.currentFirstColor != -1) {
+        var firstColor = colorFromColorIndex[this.currentFirstColor];
+        var secondColor = colorFromColorIndex[colorIndex];
         config.colorPalette.SetGradientColor(
           this.currentIndex,
-          colorFromColorIndex[this.currentFirstColor],
-          colorFromColorIndex[colorIndex]
+          firstColor,
+          secondColor
         );
+        var firstColorString = String.Format("0x{0:X6}", firstColor);
+        var secondColorString = String.Format("0x{0:X6}", secondColor);
+        return "color #" + this.currentIndex.ToString() + " updated to gradient"
+          + " from " + firstColorString + " to " + secondColorString;
       } else {
         this.currentFirstColor = colorIndex;
+        var color = colorFromColorIndex[colorIndex];
         config.colorPalette.SetColor(
           this.currentIndex,
           colorFromColorIndex[colorIndex]
         );
+        var colorString = String.Format("0x{0:X8}", color);
+        return "color #" + this.currentIndex.ToString() +
+          " updated to " + colorString;
       }
     }
 
     public override Binding[] GetBindings(Configuration config) {
       Binding programBinding = new Binding();
       programBinding.key = new BindingKey(MidiCommandType.Program, -1);
+      programBinding.config = this;
       programBinding.callback = (index, val) => {
         if (
           this.colorRangeType == MidiCommandType.Program &&
@@ -75,11 +86,11 @@ namespace Spectrum.Base {
         ) {
           var colorIndex = index - this.colorRangeStart;
           if (val > 0) {
-            this.SetColor(config, colorIndex);
+            return this.SetColor(config, colorIndex);
           } else if (colorIndex == this.currentFirstColor) {
             this.currentFirstColor = -1;
           }
-          return;
+          return null;
         } else {
           this.currentFirstColor = -1;
         }
@@ -91,10 +102,12 @@ namespace Spectrum.Base {
         } else {
           this.currentIndex = -1;
         }
+        return null;
       };
 
       Binding knobBinding = new Binding();
       knobBinding.key = new BindingKey(MidiCommandType.Knob, -1);
+      knobBinding.config = this;
       knobBinding.callback = (index, val) => {
         if (
           this.colorRangeType == MidiCommandType.Knob &&
@@ -103,11 +116,11 @@ namespace Spectrum.Base {
         ) {
           var colorIndex = index - this.colorRangeStart;
           if (val > 0) {
-            this.SetColor(config, colorIndex);
+            return this.SetColor(config, colorIndex);
           } else if (colorIndex == this.currentFirstColor) {
             this.currentFirstColor = -1;
           }
-          return;
+          return null;
         } else {
           this.currentFirstColor = -1;
         }
@@ -119,10 +132,12 @@ namespace Spectrum.Base {
         } else {
           this.currentIndex = -1;
         }
+        return null;
       };
 
       Binding noteBinding = new Binding();
       noteBinding.key = new BindingKey(MidiCommandType.Note, -1);
+      noteBinding.config = this;
       noteBinding.callback = (index, val) => {
         if (
           this.colorRangeType == MidiCommandType.Note &&
@@ -131,11 +146,11 @@ namespace Spectrum.Base {
         ) {
           var colorIndex = index - this.colorRangeStart;
           if (val > 0) {
-            this.SetColor(config, colorIndex);
+            return this.SetColor(config, colorIndex);
           } else if (colorIndex == this.currentFirstColor) {
             this.currentFirstColor = -1;
           }
-          return;
+          return null;
         } else {
           this.currentFirstColor = -1;
         }
@@ -147,6 +162,7 @@ namespace Spectrum.Base {
         } else {
           this.currentIndex = -1;
         }
+        return null;
       };
 
       return new Binding[] { programBinding, knobBinding, noteBinding };

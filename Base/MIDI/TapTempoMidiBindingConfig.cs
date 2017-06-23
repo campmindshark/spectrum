@@ -28,10 +28,13 @@ namespace Spectrum.Base {
     public override Binding[] GetBindings(Configuration config) {
       Binding binding = new Binding();
       binding.key = new BindingKey(this.buttonType, this.buttonIndex);
+      binding.config = this;
       binding.callback = (index, val) => {
-        if (val > 0.0) {
-          config.beatBroadcaster.AddTap();
+        if (val == 0.0) {
+          return null;
         }
+        config.beatBroadcaster.AddTap();
+        return "tap registered!";
       };
       return new Binding[] { binding };
     }

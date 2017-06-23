@@ -152,6 +152,7 @@ namespace Spectrum.Base {
     bool midiHUDEnabled { get; set; }
     Dictionary<int, int> midiDevices { get; set; }
     Dictionary<int, MidiPreset> midiPresets { get; set; }
+    ObservableMidiLog midiLog { get; set; }
 
     // The URL at which the Hue hub can be accessed
     string whyFireURL { get; set; }

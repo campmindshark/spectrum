@@ -150,12 +150,14 @@ namespace Spectrum {
           this.configSaveTimer = new Timer();
           this.configSaveTimer.Interval = 100;
           this.configSaveTimer.Tick += DelayedConfigSave;
+          this.configSaveTimer.Start();
         }
       }
    }
 
     private void DelayedConfigSave(object sender, EventArgs e) {
       lock (this.op) {
+        this.SaveConfig();
         this.configSaveTimer.Stop();
         this.configSaveTimer.Dispose();
         this.configSaveTimer = null;

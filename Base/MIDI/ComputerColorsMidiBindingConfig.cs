@@ -30,12 +30,16 @@ namespace Spectrum.Base {
     public override Binding[] GetBindings(Configuration config) {
       Binding binding = new Binding();
       binding.key = new BindingKey(this.rangeType, -1);
+      binding.config = this;
       binding.callback = (index, val) => {
         if (index < this.rangeStart || index > this.rangeEnd) {
-          return;
+          return null;
         }
         var colorIndex = index - this.rangeStart;
-        config.colorPalette.computerEnabledColors[colorIndex] = val > 0.0;
+        bool enabled = val > 0.0;
+        config.colorPalette.computerEnabledColors[colorIndex] = enabled;
+        string enabledString = enabled ? " ENABLED" : " DISABLED";
+        return "color #" + colorIndex.ToString() + enabledString + " for computer use";
       };
       return new Binding[] { binding };
     }

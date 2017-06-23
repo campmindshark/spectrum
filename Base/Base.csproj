@@ -51,6 +51,7 @@
     <Compile Include="MIDI\ContinuousKnobMidiBindingConfig.cs" />
     <Compile Include="MIDI\DiscreteKnobMidiBindingConfig.cs" />
     <Compile Include="MIDI\DiscreteLogarithmicKnobMidiBindingConfig.cs" />
+    <Compile Include="MIDI\ObservableMidiLog.cs" />
     <Compile Include="MIDI\TapTempoMidiBindingConfig.cs" />
     <Compile Include="MIDI\ComputerColorsMidiBindingConfig.cs" />
     <Compile Include="MIDI\ColorPaletteMidiBindingConfig.cs" />

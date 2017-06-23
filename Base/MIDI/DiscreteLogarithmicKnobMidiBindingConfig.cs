@@ -29,6 +29,7 @@ namespace Spectrum.Base {
     public override Binding[] GetBindings(Configuration config) {
       Binding binding = new Binding();
       binding.key = new BindingKey(MidiCommandType.Knob, this.knobIndex);
+      binding.config = this;
       binding.callback = (index, val) => {
         double transformedValue = DiscretizeLogarithmicKnob(
           val,
@@ -39,6 +40,8 @@ namespace Spectrum.Base {
         Type configType = typeof(Configuration);
         PropertyInfo myPropInfo = configType.GetProperty(this.configPropertyName);
         myPropInfo.SetValue(config, transformedValue, null);
+        return "config property \"" + this.configPropertyName +
+          "\" updated to " + transformedValue.ToString();
       };
       return new Binding[] { binding };
     }

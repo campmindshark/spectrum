@@ -72,14 +72,20 @@ namespace Spectrum.MIDI {
         this.AddBinding(
           new Binding() {
             key = new BindingKey(MidiCommandType.Note, -1),
-            callback = (index, val) => this.noteVelocities[deviceIndex][index] = val,
+            callback = (index, val) => {
+              this.noteVelocities[deviceIndex][index] = val;
+              return null;
+            },
           },
           deviceIndex
         );
         this.AddBinding(
           new Binding() {
             key = new BindingKey(MidiCommandType.Knob, -1),
-            callback = (index, val) => this.knobValues[deviceIndex][index] = val,
+            callback = (index, val) => {
+              this.knobValues[deviceIndex][index] = val;
+              return null;
+            },
           },
           deviceIndex
         );
@@ -173,12 +179,6 @@ namespace Spectrum.MIDI {
       object sender,
       ChannelMessageEventArgs e
     ) {
-      //System.Diagnostics.Debug.WriteLine(
-      //  "MIDI channel message on channel " + e.Message.MidiChannel +
-      //  " with command " + e.Message.Command +
-      //  ", data1 " + e.Message.Data1 +
-      //  ", data2 " + e.Message.Data2
-      //);
       MidiCommand command;
       if (e.Message.Command == ChannelCommand.Controller) {
         double value = (double)e.Message.Data2 / 127;
@@ -188,6 +188,12 @@ namespace Spectrum.MIDI {
           index = e.Message.Data1,
           value = value,
         };
+        this.config.midiLog.Append(
+          "MIDI message on " + MidiInput.GetDeviceName(deviceIndex) +
+          " channel " + e.Message.MidiChannel +
+          " updating knob #" + e.Message.Data1 +
+          " to value " + value
+        );
       } else if (
         e.Message.Command == ChannelCommand.NoteOn ||
         e.Message.Command == ChannelCommand.NoteOff
@@ -199,12 +205,25 @@ namespace Spectrum.MIDI {
           index = e.Message.Data1,
           value = value,
         };
+        var onOrOff = e.Message.Command == ChannelCommand.NoteOn ? "ON" : "OFF";
+        this.config.midiLog.Append(
+          "MIDI message on " + MidiInput.GetDeviceName(deviceIndex) +
+          " channel " + e.Message.MidiChannel +
+          " updating note #" + e.Message.Data1 +
+          " to " + onOrOff +
+          " with value " + value
+        );
       } else if (e.Message.Command == ChannelCommand.ProgramChange) {
         command = new MidiCommand() {
           deviceIndex = deviceIndex,
           type = MidiCommandType.Program,
           index = e.Message.Data1,
         };
+        this.config.midiLog.Append(
+          "MIDI message on " + MidiInput.GetDeviceName(deviceIndex) +
+          " channel " + e.Message.MidiChannel +
+          " updating program to #" + e.Message.Data1
+        );
       } else {
         return;
       }
@@ -220,7 +239,13 @@ namespace Spectrum.MIDI {
         triggered.AddRange(this.bindings[key]);
       }
       foreach (Binding binding in triggered) {
-        binding.callback(command.index, command.value);
+        string message = binding.callback(command.index, command.value);
+        if (message != null) {
+          this.config.midiLog.Append(
+            "Binding \"" + binding.config.BindingName +
+            "\" triggered: " + message
+          );
+        }
       }
     }
 

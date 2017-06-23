@@ -6,11 +6,13 @@
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:local="clr-namespace:Spectrum"
   mc:Ignorable="d"
-  Title="MidiHUDWindow"
+  Title="MIDI Heads-Up Display"
+  Icon="pack://siteoforigin:,,,/Resources/s.PNG"
   Height="300"
   Width="300"
   WindowState="Maximized"
 >
-  <Grid>
-  </Grid>
+  <DockPanel>
+    <RichTextBox x:Name="logBox" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Black" Foreground="White" FontFamily="Consolas" VerticalScrollBarVisibility="Visible" IsReadOnly="True" />
+  </DockPanel>
 </Window>
