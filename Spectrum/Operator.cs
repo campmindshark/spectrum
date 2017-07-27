@@ -115,6 +115,10 @@ namespace Spectrum {
         this.config,
         stage
       ));
+      this.visualizers.Add(new LEDStageTracerVisualizer(
+        this.config,
+        stage
+      ));
     }
 
     private bool enabled;
