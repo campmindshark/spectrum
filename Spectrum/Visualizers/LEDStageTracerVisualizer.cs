@@ -79,7 +79,7 @@ namespace Spectrum {
           for (
             int k = 0;
             k < this.config.stageSideLengths[i * 3 + j];
-            k++, triggangleCounter++
+            k++, triangleCounter++
           ) {
             int color = triangleCounter == blackLEDIndex ? 0x000000 : 0xFF0000;
             for (int l = 0; l < 3; l++) {
