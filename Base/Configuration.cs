@@ -95,6 +95,8 @@ namespace Spectrum.Base {
     double stageBrightness { get; set; }
     // 0 - None, 1 - Flash colors
     int stageTestPattern { get; set; }
+    // Config params for animations
+    double stageTracerSpeed { get; set; }
 
     // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     int domeHardwareSetup { get; set; }

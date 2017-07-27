@@ -46,8 +46,9 @@ namespace Spectrum {
     }
 
     private int tracerLEDIndex(int sideIndex) {
+      double beatFactor = this.config.stageTracerSpeed / 3;
       double progress =
-        this.config.beatBroadcaster.ProgressThroughBeat(1.0 / 3) * 3;
+        this.config.beatBroadcaster.ProgressThroughBeat(beatFactor) * 3;
       int tracerLEDIndex;
       if (progress < 1.0) {
         tracerLEDIndex = (int)(

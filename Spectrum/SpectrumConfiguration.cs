@@ -119,6 +119,7 @@ namespace Spectrum {
     public int[] stageSideLengths { get; set; } = null;
     public double stageBrightness { get; set; } = 0.1;
     public int stageTestPattern { get; set; } = 0;
+    public double stageTracerSpeed { get; set; } = 1.0;
 
     // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     public int domeHardwareSetup { get; set; } = 0;
