@@ -12,25 +12,46 @@ namespace Spectrum.LEDs {
 
   public class LEDDomeOutput : Output {
 
-    private static LEDDomeStrutTypes[] teensyStrutOrder =
-      new LEDDomeStrutTypes[] {
-        LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Blue,
-        LEDDomeStrutTypes.Orange, LEDDomeStrutTypes.Orange,
-        LEDDomeStrutTypes.Yellow, LEDDomeStrutTypes.Orange,
-        LEDDomeStrutTypes.Blue, LEDDomeStrutTypes.Purple,
-        LEDDomeStrutTypes.Blue, LEDDomeStrutTypes.Red, LEDDomeStrutTypes.Red,
-        LEDDomeStrutTypes.Blue, LEDDomeStrutTypes.Green,
-        LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Blue,
-        LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Blue, LEDDomeStrutTypes.Red,
-        LEDDomeStrutTypes.Yellow, LEDDomeStrutTypes.Yellow,
-        LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Purple,
-        LEDDomeStrutTypes.Blue, LEDDomeStrutTypes.Red, LEDDomeStrutTypes.Green,
-        LEDDomeStrutTypes.Purple, LEDDomeStrutTypes.Purple,
-        LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Green,
-        LEDDomeStrutTypes.Orange, LEDDomeStrutTypes.Yellow,
-        LEDDomeStrutTypes.Yellow, LEDDomeStrutTypes.Red, LEDDomeStrutTypes.Red,
-        LEDDomeStrutTypes.Blue, LEDDomeStrutTypes.Blue, LEDDomeStrutTypes.Blue,
-        LEDDomeStrutTypes.Yellow,
+    private static LEDDomeStrutTypes[][] teensyStrutOrder =
+      new LEDDomeStrutTypes[][] {
+        new LEDDomeStrutTypes[] {
+          LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Blue,
+          LEDDomeStrutTypes.Orange, LEDDomeStrutTypes.Orange,
+          LEDDomeStrutTypes.Yellow,
+        },
+        new LEDDomeStrutTypes[] {
+          LEDDomeStrutTypes.Orange, LEDDomeStrutTypes.Blue,
+          LEDDomeStrutTypes.Purple, LEDDomeStrutTypes.Blue,
+          LEDDomeStrutTypes.Red,
+        },
+        new LEDDomeStrutTypes[] {
+          LEDDomeStrutTypes.Red, LEDDomeStrutTypes.Blue,
+          LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Green,
+          LEDDomeStrutTypes.Blue,
+        },
+        new LEDDomeStrutTypes[] {
+          LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Blue,
+          LEDDomeStrutTypes.Red, LEDDomeStrutTypes.Yellow,
+          LEDDomeStrutTypes.Yellow,
+        },
+        new LEDDomeStrutTypes[] {
+          LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Purple,
+          LEDDomeStrutTypes.Blue, LEDDomeStrutTypes.Red,
+        },
+        new LEDDomeStrutTypes[] {
+          LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Purple,
+          LEDDomeStrutTypes.Purple, LEDDomeStrutTypes.Green,
+          LEDDomeStrutTypes.Green,
+        },
+        new LEDDomeStrutTypes[] {
+          LEDDomeStrutTypes.Orange, LEDDomeStrutTypes.Yellow,
+          LEDDomeStrutTypes.Yellow, LEDDomeStrutTypes.Red,
+          LEDDomeStrutTypes.Red,
+        },
+        new LEDDomeStrutTypes[] {
+          LEDDomeStrutTypes.Blue, LEDDomeStrutTypes.Blue,
+          LEDDomeStrutTypes.Blue, LEDDomeStrutTypes.Yellow,
+        },
       };
     private static Dictionary<LEDDomeStrutTypes, int> strutLengths =
       new Dictionary<LEDDomeStrutTypes, int> {
@@ -140,20 +161,34 @@ namespace Spectrum.LEDs {
     };
 
     private TeensyAPI[] teensies;
+    private OPCAPI opcAPI;
     private Configuration config;
     private List<Visualizer> visualizers;
     private HashSet<int> reservedStruts;
+    private static int maxStripLength;
+
+    private static int calculateMaxStripLength() {
+      int maxLength = 0;
+      foreach (LEDDomeStrutTypes[] struts in teensyStrutOrder) {
+        int length = 0;
+        foreach (LEDDomeStrutTypes type in struts) {
+          length += strutLengths[type];
+        }
+        if (length > maxLength) {
+          maxLength = length;
+        }
+      }
+      return maxLength;
+    }
+
+    static LEDDomeOutput() {
+      maxStripLength = calculateMaxStripLength();
+    }
 
     public LEDDomeOutput(Configuration config) {
       this.config = config;
       this.visualizers = new List<Visualizer>();
       this.reservedStruts = new HashSet<int>();
-      bool domeEnabled = this.config.domeEnabled;
-      lock (this.visualizers) {
-        if (domeEnabled) {
-          this.teensies = this.getNewTeensies();
-        }
-      }
       this.config.PropertyChanged += ConfigUpdated;
     }
 
@@ -166,74 +201,110 @@ namespace Spectrum.LEDs {
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (e.PropertyName != "domeEnabled") {
+      if (!this.active) {
         return;
       }
-      bool domeEnabled = this.config.domeEnabled;
-      lock (this.visualizers) {
-        if (domeEnabled) {
-          this.teensies = this.getNewTeensies();
-        }
-        if (this.Active) {
-          for (int i = 0; i < this.teensies.Length; i++) {
-            var teensy = this.teensies[i];
-            if (teensy == null) {
-              continue;
-            }
-            try {
-              teensy.Active = domeEnabled;
-            } catch (Exception) {
-              this.teensies[i] = null;
+      if (e.PropertyName == "domeHardwareSetup") {
+        if (this.config.domeHardwareSetup == 0) {
+          if (this.opcAPI != null) {
+            this.opcAPI.Active = false;
+          }
+          this.initializeTeensies();
+        } else if (this.config.domeHardwareSetup == 1) {
+          if (this.teensies != null) {
+            foreach (var teensy in this.teensies) {
+              teensy.Active = false;
             }
           }
+          this.initializeOPCAPI();
         }
-        if (!domeEnabled) {
-          this.teensies = null;
+      } else if (
+        e.PropertyName == "domeTeensyUSBPort1" ||
+          e.PropertyName == "domeTeensyUSBPort2" ||
+          e.PropertyName == "domeTeensyUSBPort3" ||
+          e.PropertyName == "domeTeensyUSBPort4" ||
+          e.PropertyName == "domeTeensyUSBPort5"
+      ) {
+        if (this.config.domeHardwareSetup == 0) {
+          foreach (var teensy in this.teensies) {
+            teensy.Active = false;
+          }
+          this.initializeTeensies();
+        }
+      } else if (e.PropertyName == "domeBeagleboneOPCAddress") {
+        if (this.config.domeHardwareSetup == 1) {
+          this.opcAPI.Active = false;
+          this.initializeOPCAPI();
+        }
+      } else if (e.PropertyName == "domeOutputInSeparateThread") {
+        if (this.config.domeHardwareSetup == 0) {
+          if (this.teensies != null) {
+            foreach (var teensy in this.teensies) {
+              teensy.Active = false;
+            }
+          }
+          this.initializeTeensies();
+        } else if (this.config.domeHardwareSetup == 1) {
+          if (this.opcAPI != null) {
+            this.opcAPI.Active = false;
+          }
+          this.initializeOPCAPI();
         }
       }
     }
 
-    private TeensyAPI[] getNewTeensies() {
-      TeensyAPI api1 = null, api2 = null, api3 = null, api4 = null,
-        api5 = null;
+    private void initializeTeensies() {
       try {
-        api1 = new TeensyAPI(
+        TeensyAPI api1 = new TeensyAPI(
           this.config.domeTeensyUSBPort1,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS1 = newFPS
         );
-      } catch (Exception) { }
-      try {
-        api2 = new TeensyAPI(
+        TeensyAPI api2 = new TeensyAPI(
           this.config.domeTeensyUSBPort2,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS2 = newFPS
         );
-      } catch (Exception) { }
-      try {
-        api3 = new TeensyAPI(
+        TeensyAPI api3 = new TeensyAPI(
           this.config.domeTeensyUSBPort3,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS3 = newFPS
         );
-      } catch (Exception) { }
-      try {
-        api4 = new TeensyAPI(
+        TeensyAPI api4 = new TeensyAPI(
           this.config.domeTeensyUSBPort4,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS4 = newFPS
         );
-      } catch (Exception) { }
-      try {
-        api5 = new TeensyAPI(
+        TeensyAPI api5 = new TeensyAPI(
           this.config.domeTeensyUSBPort5,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS5 = newFPS
         );
-      } catch (Exception) { }
-      return new TeensyAPI[] {
-        api1, api2, api3, api4, api5
-      };
+        bool active = this.active && this.config.domeHardwareSetup == 0;
+        api1.Active = active;
+        api2.Active = active;
+        api3.Active = active;
+        api4.Active = active;
+        api5.Active = active;
+        this.teensies = new TeensyAPI[] { api1, api2, api3, api4, api5 };
+      } catch (Exception) {
+        this.teensies = null;
+      }
+    }
+
+    private void initializeOPCAPI() {
+      var opcAddress = this.config.domeBeagleboneOPCAddress;
+      string[] parts = opcAddress.Split(':');
+      if (parts.Length < 3) {
+        opcAddress += ":0"; // default to channel 0
+      }
+      this.opcAPI = new OPCAPI(
+        opcAddress,
+        this.config.domeOutputInSeparateThread,
+        newFPS => this.config.domeBeagleboneOPCFPS = newFPS
+      );
+      this.opcAPI.Active = this.active &&
+        this.config.domeHardwareSetup == 1;
     }
 
     private bool active = false;
@@ -245,21 +316,22 @@ namespace Spectrum.LEDs {
         if (value == this.active) {
           return;
         }
-        lock (this.visualizers) {
+        this.active = value;
+        if (value) {
+          if (this.config.domeHardwareSetup == 0) {
+            this.initializeTeensies();
+          } else if (this.config.domeHardwareSetup == 1) {
+            this.initializeOPCAPI();
+          }
+        } else {
           if (this.teensies != null) {
-            for (int i = 0; i < this.teensies.Length; i++) {
-              var teensy = this.teensies[i];
-              if (teensy == null) {
-                continue;
-              }
-              try {
-                teensy.Active = value;
-              } catch (Exception) {
-                this.teensies[i] = null;
-              }
+            foreach (var teensy in this.teensies) {
+              teensy.Active = false;
             }
           }
-          this.active = value;
+          if (this.opcAPI != null) {
+            this.opcAPI.Active = false;
+          }
         }
       }
     }
@@ -271,29 +343,24 @@ namespace Spectrum.LEDs {
     }
 
     public void OperatorUpdate() {
-      lock (this.visualizers) {
-        if (this.teensies == null) {
-          return;
-        }
+      if (this.config.domeHardwareSetup == 0 && this.teensies != null) {
         foreach (var teensy in this.teensies) {
-          if (teensy == null) {
-            continue;
-          }
           teensy.OperatorUpdate();
         }
+      }
+      if (this.config.domeHardwareSetup == 1 && this.opcAPI != null) {
+        this.opcAPI.OperatorUpdate();
       }
     }
 
     public void Flush() {
-      lock (this.visualizers) {
-        if (this.teensies != null) {
-          foreach (var teensy in this.teensies) {
-            if (teensy == null) {
-              continue;
-            }
-            teensy.Flush();
-          }
+      if (this.config.domeHardwareSetup == 0 && this.teensies != null) {
+        foreach (var teensy in this.teensies) {
+          teensy.Flush();
         }
+      }
+      if (this.config.domeHardwareSetup == 1 && this.opcAPI != null) {
+        this.opcAPI.Flush();
       }
       if (this.config.domeSimulationEnabled) {
         this.config.domeCommandQueue.Enqueue(
@@ -311,13 +378,26 @@ namespace Spectrum.LEDs {
     }
 
     public void SetPixel(int strutIndex, int ledIndex, int color) {
-      Tuple<int, int> tuple = strutPositions[strutIndex];
       ledIndex += this.config.domeSkipLEDs;
       int pixelIndex = ledIndex;
-      for (int i = 0; i < tuple.Item2; i++) {
-        pixelIndex += strutLengths[teensyStrutOrder[i]];
+      Tuple<int, int> strutPosition = strutPositions[strutIndex];
+      int strutsLeft = strutPosition.Item2;
+      int i = 0;
+      while (teensyStrutOrder[i].Length <= strutsLeft) {
+        strutsLeft -= teensyStrutOrder[i].Length;
+        i++;
+        if (this.config.domeHardwareSetup == 0) {
+          foreach (LEDDomeStrutTypes type in teensyStrutOrder[i]) {
+            pixelIndex += strutLengths[type];
+          }
+        } else {
+          pixelIndex += maxStripLength;
+        }
       }
-      this.SetTeensyPixel(tuple.Item1, pixelIndex, color);
+      for (int j = 0; j < strutsLeft; j++) {
+        pixelIndex += strutLengths[teensyStrutOrder[i][j]];
+      }
+      this.SetTeensyPixel(strutPosition.Item1, pixelIndex, color);
       if (this.config.domeSimulationEnabled) {
         this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
           strutIndex = strutIndex,
@@ -377,7 +457,13 @@ namespace Spectrum.LEDs {
      */
     public static int GetNumLEDs(int strutIndex) {
       var strutPosition = strutPositions[strutIndex];
-      return strutLengths[teensyStrutOrder[strutPosition.Item2]];
+      int strutsLeft = strutPosition.Item2;
+      int i = 0;
+      while (teensyStrutOrder[i].Length <= strutsLeft) {
+        strutsLeft -= teensyStrutOrder[i].Length;
+        i++;
+      }
+      return strutLengths[teensyStrutOrder[i][strutsLeft]];
     }
 
     public int GetSingleColor(int index) {
