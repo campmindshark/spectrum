@@ -45,6 +45,29 @@ namespace Spectrum {
       return new Input[] {};
     }
 
+    private int tracerLEDIndex(int sideIndex) {
+      double progress =
+        this.config.beatBroadcaster.ProgressThroughBeat(1.0 / 3) * 3;
+      int tracerLEDIndex;
+      if (progress < 1.0) {
+        tracerLEDIndex = (int)(
+          progress * this.config.stageSideLengths[sideIndex * 3]
+        );
+      } else if (progress < 2.0) {
+        tracerLEDIndex = (int)(
+          this.config.stageSideLengths[sideIndex * 3] +
+          (progress - 1.0) * this.config.stageSideLengths[sideIndex * 3 + 1]
+        );
+      } else {
+        tracerLEDIndex = (int)(
+          this.config.stageSideLengths[sideIndex * 3] +
+          this.config.stageSideLengths[sideIndex * 3 + 1] +
+          (progress - 2.0) * this.config.stageSideLengths[sideIndex * 3 + 2]
+        );
+      }
+      return tracerLEDIndex;
+    }
+
     public void Visualize() {
       if (this.stopwatch.ElapsedMilliseconds <= 10) {
         return;
@@ -57,11 +80,7 @@ namespace Spectrum {
 
       int triangles = this.config.stageSideLengths.Length / 3;
       for (int i = 0; i < triangles; i++) {
-        int triangleLength = this.config.stageSideLengths[i * 3] +
-          this.config.stageSideLengths[i * 3 + 1] +
-          this.config.stageSideLengths[i * 3 + 2];
-        int blackLEDIndex =
-          (int)(this.config.beatBroadcaster.ProgressThroughBeat(0.33333333333333333333333333333) * triangleLength);
+        int tracerIndex = this.tracerLEDIndex(i);
         int triangleCounter = 0;
         for (int j = 0; j < 3; j++) {
           for (
@@ -69,7 +88,7 @@ namespace Spectrum {
             k < this.config.stageSideLengths[i * 3 + j];
             k++, triangleCounter++
           ) {
-            int color = triangleCounter == blackLEDIndex ? 0x000000 : 0xFF0000;
+            int color = triangleCounter == tracerIndex ? 0x000000 : 0xFF0000;
             for (int l = 0; l < 3; l++) {
               this.stage.SetPixel(i * 3 + j, k, l, color);
             }
