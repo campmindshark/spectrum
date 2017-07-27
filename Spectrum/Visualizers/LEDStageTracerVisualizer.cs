@@ -45,16 +45,6 @@ namespace Spectrum {
       return new Input[] {};
     }
 
-    private void setAtAllIndices(int color) {
-      for (int i = 0; i < this.config.stageSideLengths.Length; i++) {
-        for (int j = 0; j < this.config.stageSideLengths[i]; j++) {
-          for (int k = 0; k < 3; k++) {
-            this.stage.SetPixel(i, j, k, color);
-          }
-        }
-      }
-    }
-
     public void Visualize() {
       if (this.stopwatch.ElapsedMilliseconds <= 10) {
         return;
@@ -64,8 +54,6 @@ namespace Spectrum {
       byte brightnessByte = (byte)(
         0xFF * this.config.stageBrightness
       );
-
-      this.setAtAllIndices(0x0000FF);
 
       int triangles = this.config.stageSideLengths.Length / 3;
       for (int i = 0; i < triangles; i++) {
