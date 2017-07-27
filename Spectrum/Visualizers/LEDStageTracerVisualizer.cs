@@ -74,10 +74,6 @@ namespace Spectrum {
       }
       this.stopwatch.Restart();
 
-      byte brightnessByte = (byte)(
-        0xFF * this.config.stageBrightness
-      );
-
       int triangles = this.config.stageSideLengths.Length / 3;
       for (int i = 0; i < triangles; i++) {
         int tracerIndex = this.tracerLEDIndex(i);
@@ -88,7 +84,9 @@ namespace Spectrum {
             k < this.config.stageSideLengths[i * 3 + j];
             k++, triangleCounter++
           ) {
-            int color = triangleCounter == tracerIndex ? 0x000000 : 0xFF0000;
+            int color = triangleCounter == tracerIndex
+              ? this.stage.GetSingleComputerColor(0)
+              : this.stage.GetSingleComputerColor(1);
             for (int l = 0; l < 3; l++) {
               this.stage.SetPixel(i * 3 + j, k, l, color);
             }

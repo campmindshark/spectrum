@@ -92,7 +92,7 @@ namespace Spectrum.LEDs {
         TeensyAPI api2 = new TeensyAPI(
           this.config.stageTeensyUSBPort2,
           this.config.stageOutputInSeparateThread,
-          newFPS => this.config.domeTeensyFPS2 = newFPS
+          newFPS => this.config.stageTeensyFPS2 = newFPS
         );
         api1.Active = this.active && this.config.stageHardwareSetup == 0;
         api2.Active = this.active && this.config.stageHardwareSetup == 0;
@@ -250,6 +250,84 @@ namespace Spectrum.LEDs {
           color = color,
         });
       }
+    }
+
+    public int GetSingleColor(int index) {
+      return LEDColor.ScaleColor(
+        this.config.colorPalette.GetSingleColor(index),
+        this.config.stageBrightness
+      );
+    }
+
+    public int GetGradientColor(
+      int index,
+      double pixelPos,
+      double focusPos,
+      bool wrap
+    ) {
+      if (this.config.colorPalette.colors[index] == null) {
+        return 0x000000;
+      }
+      if (!this.config.colorPalette.colors[index].IsGradient) {
+        return this.GetSingleColor(index);
+      }
+      return LEDColor.ScaleColor(
+        this.config.colorPalette.GetGradientColor(
+          index,
+          pixelPos,
+          focusPos,
+          wrap
+        ),
+        this.config.stageBrightness
+      );
+    }
+
+    /**
+     * This method's different from GetSingleColor is that it uses an "enabled
+     * index", ie. "the nth color that is computer-enabled". Visualizers that
+     * are algorithmically driven should use this method, so that the user is
+     * able to decide which colors they are allowed to use.
+     */
+    public int GetSingleComputerColor(int colorIndex) {
+      return LEDColor.ScaleColor(
+        this.config.colorPalette.GetSingleComputerColor(colorIndex),
+        this.config.stageBrightness
+      );
+    }
+
+    /**
+     * This method's difference from GetGradientColor is that it uses an
+     * "enabled index", ie. "the nth color that is computer-enabled".
+     * Visualizers that are algorithmically driven should use this method,so
+     * that the user is able to decide which colors they are allowed to use.
+     */
+    public int GetGradientComputerColor(
+      int colorIndex,
+      double pixelPos,
+      double focusPos,
+      bool wrap
+    ) {
+      int? index = this.config.colorPalette.GetIndexOfEnabledIndex(
+        colorIndex
+      );
+      if (
+        !index.HasValue ||
+        this.config.colorPalette.colors[index.Value] == null
+      ) {
+        return 0x000000;
+      }
+      if (!this.config.colorPalette.colors[index.Value].IsGradient) {
+        return this.GetSingleColor(index.Value);
+      }
+      return LEDColor.ScaleColor(
+        this.config.colorPalette.GetGradientColor(
+          index.Value,
+          pixelPos,
+          focusPos,
+          wrap
+        ),
+        this.config.stageBrightness
+      );
     }
 
   }

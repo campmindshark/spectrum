@@ -483,7 +483,7 @@ namespace Spectrum.LEDs {
         return 0x000000;
       }
       if (!this.config.colorPalette.colors[index].IsGradient) {
-        return GetSingleColor(index);
+        return this.GetSingleColor(index);
       }
       return LEDColor.ScaleColor(
         this.config.colorPalette.GetGradientColor(
