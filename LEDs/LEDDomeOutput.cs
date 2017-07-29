@@ -369,10 +369,14 @@ namespace Spectrum.LEDs {
       }
     }
 
-    private void SetTeensyPixel(int teensyIndex, int pixelIndex, int color) {
+    private void SetDevicePixel(int teensyIndex, int pixelIndex, int color) {
       lock (this.visualizers) {
         if (this.teensies != null && this.teensies[teensyIndex] != null) {
           this.teensies[teensyIndex].SetPixel(pixelIndex, color);
+        }
+        if (this.opcAPI != null) {
+          var totalPixelIndex = teensyIndex * (maxStripLength * 8) + pixelIndex;
+          this.opcAPI.SetPixel(totalPixelIndex, color);
         }
       }
     }
@@ -397,7 +401,7 @@ namespace Spectrum.LEDs {
       for (int j = 0; j < strutsLeft; j++) {
         pixelIndex += strutLengths[teensyStrutOrder[i][j]];
       }
-      this.SetTeensyPixel(strutPosition.Item1, pixelIndex, color);
+      this.SetDevicePixel(strutPosition.Item1, pixelIndex, color);
       if (this.config.domeSimulationEnabled) {
         this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
           strutIndex = strutIndex,
