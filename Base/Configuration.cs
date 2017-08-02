@@ -156,7 +156,7 @@ namespace Spectrum.Base {
     Dictionary<int, MidiPreset> midiPresets { get; set; }
     ObservableMidiLog midiLog { get; set; }
 
-    // The URL at which the Hue hub can be accessed
+    // The URL at which the fire services can be accessed
     string whyFireURL { get; set; }
 
     // This probably should not be here...

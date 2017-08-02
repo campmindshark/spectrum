@@ -161,7 +161,7 @@ namespace Spectrum.LEDs {
     };
 
     private TeensyAPI[] teensies;
-    private OPCAPI opcAPI;
+    private OPCAPI[] opcAPIs;
     private Configuration config;
     private List<Visualizer> visualizers;
     private HashSet<int> reservedStruts;
@@ -206,14 +206,20 @@ namespace Spectrum.LEDs {
       }
       if (e.PropertyName == "domeHardwareSetup") {
         if (this.config.domeHardwareSetup == 0) {
-          if (this.opcAPI != null) {
-            this.opcAPI.Active = false;
+          if (this.opcAPIs != null) {
+            foreach (var opcAPI in this.opcAPIs) {
+              if (opcAPI != null) {
+                opcAPI.Active = false;
+              }
+            }
           }
           this.initializeTeensies();
         } else if (this.config.domeHardwareSetup == 1) {
           if (this.teensies != null) {
             foreach (var teensy in this.teensies) {
-              teensy.Active = false;
+              if (teensy != null) {
+                teensy.Active = false;
+              }
             }
           }
           this.initializeOPCAPI();
@@ -227,26 +233,38 @@ namespace Spectrum.LEDs {
       ) {
         if (this.config.domeHardwareSetup == 0) {
           foreach (var teensy in this.teensies) {
-            teensy.Active = false;
+            if (teensy != null) {
+              teensy.Active = false;
+            }
           }
           this.initializeTeensies();
         }
       } else if (e.PropertyName == "domeBeagleboneOPCAddress") {
         if (this.config.domeHardwareSetup == 1) {
-          this.opcAPI.Active = false;
+          foreach (var opcAPI in this.opcAPIs) {
+            if (opcAPI != null) {
+              opcAPI.Active = false;
+            }
+          }
           this.initializeOPCAPI();
         }
       } else if (e.PropertyName == "domeOutputInSeparateThread") {
         if (this.config.domeHardwareSetup == 0) {
           if (this.teensies != null) {
             foreach (var teensy in this.teensies) {
-              teensy.Active = false;
+              if (teensy != null) {
+                teensy.Active = false;
+              }
             }
           }
           this.initializeTeensies();
         } else if (this.config.domeHardwareSetup == 1) {
-          if (this.opcAPI != null) {
-            this.opcAPI.Active = false;
+          if (this.opcAPIs != null) {
+            foreach (var opcAPI in this.opcAPIs) {
+              if (opcAPI != null) {
+                opcAPI.Active = false;
+              }
+            }
           }
           this.initializeOPCAPI();
         }
@@ -254,42 +272,59 @@ namespace Spectrum.LEDs {
     }
 
     private void initializeTeensies() {
+      bool active = this.active && this.config.domeHardwareSetup == 0;
+      TeensyAPI api1, api2, api3, api4, api5;
       try {
-        TeensyAPI api1 = new TeensyAPI(
+        api1 = new TeensyAPI(
           this.config.domeTeensyUSBPort1,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS1 = newFPS
         );
-        TeensyAPI api2 = new TeensyAPI(
+        api1.Active = active;
+      } catch (Exception) {
+        api1 = null;
+      }
+      try {
+        api2 = new TeensyAPI(
           this.config.domeTeensyUSBPort2,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS2 = newFPS
         );
-        TeensyAPI api3 = new TeensyAPI(
+        api2.Active = active;
+      } catch (Exception) {
+        api2 = null;
+      }
+      try {
+        api3 = new TeensyAPI(
           this.config.domeTeensyUSBPort3,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS3 = newFPS
         );
-        TeensyAPI api4 = new TeensyAPI(
+        api3.Active = active;
+      } catch (Exception) {
+        api3 = null;
+      }
+      try {
+        api4 = new TeensyAPI(
           this.config.domeTeensyUSBPort4,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS4 = newFPS
         );
-        TeensyAPI api5 = new TeensyAPI(
+        api4.Active = active;
+      } catch (Exception) {
+        api4 = null;
+      }
+      try {
+        api5 = new TeensyAPI(
           this.config.domeTeensyUSBPort5,
           this.config.domeOutputInSeparateThread,
           newFPS => this.config.domeTeensyFPS5 = newFPS
         );
-        bool active = this.active && this.config.domeHardwareSetup == 0;
-        api1.Active = active;
-        api2.Active = active;
-        api3.Active = active;
-        api4.Active = active;
         api5.Active = active;
-        this.teensies = new TeensyAPI[] { api1, api2, api3, api4, api5 };
       } catch (Exception) {
-        this.teensies = null;
+        api5 = null;
       }
+      this.teensies = new TeensyAPI[] { api1, api2, api3, api4, api5 };
     }
 
     private void initializeOPCAPI() {
@@ -298,13 +333,18 @@ namespace Spectrum.LEDs {
       if (parts.Length < 3) {
         opcAddress += ":0"; // default to channel 0
       }
-      this.opcAPI = new OPCAPI(
-        opcAddress,
-        this.config.domeOutputInSeparateThread,
-        newFPS => this.config.domeBeagleboneOPCFPS = newFPS
-      );
-      this.opcAPI.Active = this.active &&
-        this.config.domeHardwareSetup == 1;
+      this.opcAPIs = new OPCAPI[] {
+        new OPCAPI(
+          opcAddress,
+          this.config.domeOutputInSeparateThread,
+          newFPS => this.config.domeBeagleboneOPCFPS = newFPS
+        ),
+      };
+      foreach (var opcAPI in this.opcAPIs) {
+        if (opcAPI != null) {
+          opcAPI.Active = this.active && this.config.domeHardwareSetup == 1;
+        }
+      }
     }
 
     private bool active = false;
@@ -326,11 +366,17 @@ namespace Spectrum.LEDs {
         } else {
           if (this.teensies != null) {
             foreach (var teensy in this.teensies) {
-              teensy.Active = false;
+              if (teensy != null) {
+                teensy.Active = false;
+              }
             }
           }
-          if (this.opcAPI != null) {
-            this.opcAPI.Active = false;
+          if (this.opcAPIs != null) {
+            foreach (var opcAPI in this.opcAPIs) {
+              if (opcAPI != null) {
+                opcAPI.Active = false;
+              }
+            }
           }
         }
       }
@@ -345,22 +391,34 @@ namespace Spectrum.LEDs {
     public void OperatorUpdate() {
       if (this.config.domeHardwareSetup == 0 && this.teensies != null) {
         foreach (var teensy in this.teensies) {
-          teensy.OperatorUpdate();
+          if (teensy != null) {
+            teensy.OperatorUpdate();
+          }
         }
       }
-      if (this.config.domeHardwareSetup == 1 && this.opcAPI != null) {
-        this.opcAPI.OperatorUpdate();
+      if (this.config.domeHardwareSetup == 1 && this.opcAPIs != null) {
+        foreach (var opcAPI in this.opcAPIs) {
+          if (opcAPI != null) {
+            opcAPI.OperatorUpdate();
+          }
+        }
       }
     }
 
     public void Flush() {
       if (this.config.domeHardwareSetup == 0 && this.teensies != null) {
         foreach (var teensy in this.teensies) {
-          teensy.Flush();
+          if (teensy != null) {
+            teensy.Flush();
+          }
         }
       }
-      if (this.config.domeHardwareSetup == 1 && this.opcAPI != null) {
-        this.opcAPI.Flush();
+      if (this.config.domeHardwareSetup == 1 && this.opcAPIs != null) {
+        foreach (var opcAPI in this.opcAPIs) {
+          if (opcAPI != null) {
+            opcAPI.Flush();
+          }
+        }
       }
       if (this.config.domeSimulationEnabled) {
         this.config.domeCommandQueue.Enqueue(
@@ -374,9 +432,9 @@ namespace Spectrum.LEDs {
         if (this.teensies != null && this.teensies[teensyIndex] != null) {
           this.teensies[teensyIndex].SetPixel(pixelIndex, color);
         }
-        if (this.opcAPI != null) {
+        if (this.opcAPIs != null && this.opcAPIs[0] != null) {
           var totalPixelIndex = teensyIndex * (maxStripLength * 8) + pixelIndex;
-          this.opcAPI.SetPixel(totalPixelIndex, color);
+          this.opcAPIs[0].SetPixel(totalPixelIndex, color);
         }
       }
     }
