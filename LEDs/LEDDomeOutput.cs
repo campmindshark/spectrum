@@ -534,6 +534,9 @@ namespace Spectrum.LEDs {
     }
 
     public int GetSingleColor(int index) {
+      if (this.config.beatBroadcaster.CurrentlyFlashedOff) {
+        return 0x000000;
+      }
       return LEDColor.ScaleColor(
         this.config.colorPalette.GetSingleColor(index),
         this.config.domeMaxBrightness * this.config.domeBrightness
@@ -546,7 +549,10 @@ namespace Spectrum.LEDs {
       double focusPos,
       bool wrap
     ) {
-      if (this.config.colorPalette.colors[index] == null) {
+      if (
+        this.config.beatBroadcaster.CurrentlyFlashedOff ||
+        this.config.colorPalette.colors[index] == null
+      ) {
         return 0x000000;
       }
       if (!this.config.colorPalette.colors[index].IsGradient) {
@@ -570,6 +576,9 @@ namespace Spectrum.LEDs {
      * able to decide which colors they are allowed to use.
      */
     public int GetSingleComputerColor(int colorIndex) {
+      if (this.config.beatBroadcaster.CurrentlyFlashedOff) {
+        return 0x000000;
+      }
       return LEDColor.ScaleColor(
         this.config.colorPalette.GetSingleComputerColor(colorIndex),
         this.config.domeMaxBrightness * this.config.domeBrightness
@@ -588,6 +597,9 @@ namespace Spectrum.LEDs {
       double focusPos,
       bool wrap
     ) {
+      if (this.config.beatBroadcaster.CurrentlyFlashedOff) {
+        return 0x000000;
+      }
       int? index = this.config.colorPalette.GetIndexOfEnabledIndex(
         colorIndex
       );

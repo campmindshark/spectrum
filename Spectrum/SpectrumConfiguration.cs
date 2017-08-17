@@ -18,6 +18,7 @@ namespace Spectrum {
     public SpectrumConfiguration() {
       this._colorPalette.PropertyChanged += ColorPalettePropertyChanged;
       this.midiLog.PropertyChanged += MidiLogPropertyChanged;
+      this.beatBroadcaster = new BeatBroadcaster(this);
     }
 
     private void ColorPalettePropertyChanged(object sender, PropertyChangedEventArgs e) {
@@ -173,7 +174,7 @@ namespace Spectrum {
 
     // This probably should not be here...
     [XmlIgnore, DoNotNotify]
-    public BeatBroadcaster beatBroadcaster { get; set; } = new BeatBroadcaster();
+    public BeatBroadcaster beatBroadcaster { get; set; }
 
     private LEDColorPalette _colorPalette = new LEDColorPalette();
     public LEDColorPalette colorPalette {
@@ -185,6 +186,7 @@ namespace Spectrum {
         this._colorPalette = value;
       }
     }
+    public double flashSpeed { get; set; } = 0.0;
 
     // Whenever adding one of these, also update MainWindow.configPropertiesIgnored
     // to avoid wasted disk I/O whenever these properties update

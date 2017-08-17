@@ -162,6 +162,7 @@ namespace Spectrum.Base {
     // This probably should not be here...
     BeatBroadcaster beatBroadcaster { get; set; }
     LEDColorPalette colorPalette { get; set; }
+    double flashSpeed { get; set; }
 
     // You might look at this and be disgusted. Yes, I am kinda violating the
     // whole organizing principle here, but the UI needs to know what's going on

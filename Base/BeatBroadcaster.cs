@@ -14,6 +14,7 @@ namespace Spectrum.Base {
 
     private static int tapTempoConclusionTime = 2000;
 
+    private Configuration config;
     private List<long> currentTaps = new List<long>();
     private long startingTime = -1;
     private int measureLength = -1;
@@ -21,7 +22,8 @@ namespace Spectrum.Base {
 
     public event PropertyChangedEventHandler PropertyChanged;
 
-    public BeatBroadcaster() {
+    public BeatBroadcaster(Configuration config) {
+      this.config = config;
       this.tapTempoConclusionTimer.Elapsed += TapTempoConcluded;
     }
 
@@ -137,6 +139,13 @@ namespace Spectrum.Base {
           return "[none]";
         }
         return (60000 / this.measureLength).ToString();
+      }
+    }
+
+    public bool CurrentlyFlashedOff {
+      get {
+        return this.config.flashSpeed != 0.0 &&
+          this.ProgressThroughBeat(1.0 / this.config.flashSpeed) >= 0.5;
       }
     }
 
