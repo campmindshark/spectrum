@@ -38,7 +38,8 @@ namespace Spectrum.LEDs {
         return;
       }
       if (e.PropertyName == "stageHardwareSetup") {
-        if (this.config.stageHardwareSetup == 0) {
+        if (!this.config.stageEnabled) {
+        } else if (this.config.stageHardwareSetup == 0) {
           if (this.opcAPI != null) {
             this.opcAPI.Active = false;
           }
@@ -54,18 +55,19 @@ namespace Spectrum.LEDs {
         e.PropertyName == "stageTeensyUSBPort1" ||
           e.PropertyName == "stageTeensyUSBPort2"
       ) {
-        if (this.config.stageHardwareSetup == 0) {
+        if (this.config.stageHardwareSetup == 0 && this.config.stageEnabled) {
           this.teensies[0].Active = false;
           this.teensies[1].Active = false;
           this.initializeTeensies();
         }
       } else if (e.PropertyName == "stageBeagleboneOPCAddress") {
-        if (this.config.stageHardwareSetup == 1) {
+        if (this.config.stageHardwareSetup == 1 && this.config.stageEnabled) {
           this.opcAPI.Active = false;
           this.initializeOPCAPI();
         }
       } else if (e.PropertyName == "stageOutputInSeparateThread") {
-        if (this.config.stageHardwareSetup == 0) {
+        if (!this.config.stageEnabled) {
+        } else if (this.config.stageHardwareSetup == 0) {
           if (this.teensies != null) {
             this.teensies[0].Active = false;
             this.teensies[1].Active = false;
@@ -128,6 +130,9 @@ namespace Spectrum.LEDs {
           return;
         }
         this.active = value;
+        if (!this.config.stageEnabled) {
+          return;
+        }
         if (value) {
           if (this.config.stageHardwareSetup == 0) {
             this.initializeTeensies();

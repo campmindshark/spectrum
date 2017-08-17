@@ -205,7 +205,8 @@ namespace Spectrum.LEDs {
         return;
       }
       if (e.PropertyName == "domeHardwareSetup") {
-        if (this.config.domeHardwareSetup == 0) {
+        if (!this.config.domeEnabled) {
+        } else if (this.config.domeHardwareSetup == 0) {
           if (this.opcAPIs != null) {
             foreach (var opcAPI in this.opcAPIs) {
               if (opcAPI != null) {
@@ -231,7 +232,7 @@ namespace Spectrum.LEDs {
           e.PropertyName == "domeTeensyUSBPort4" ||
           e.PropertyName == "domeTeensyUSBPort5"
       ) {
-        if (this.config.domeHardwareSetup == 0) {
+        if (this.config.domeHardwareSetup == 0 && this.config.domeEnabled) {
           foreach (var teensy in this.teensies) {
             if (teensy != null) {
               teensy.Active = false;
@@ -240,7 +241,7 @@ namespace Spectrum.LEDs {
           this.initializeTeensies();
         }
       } else if (e.PropertyName == "domeBeagleboneOPCAddress") {
-        if (this.config.domeHardwareSetup == 1) {
+        if (this.config.domeHardwareSetup == 1 && this.config.domeEnabled) {
           foreach (var opcAPI in this.opcAPIs) {
             if (opcAPI != null) {
               opcAPI.Active = false;
@@ -249,7 +250,8 @@ namespace Spectrum.LEDs {
           this.initializeOPCAPI();
         }
       } else if (e.PropertyName == "domeOutputInSeparateThread") {
-        if (this.config.domeHardwareSetup == 0) {
+        if (!this.config.domeEnabled) {
+        } else if (this.config.domeHardwareSetup == 0) {
           if (this.teensies != null) {
             foreach (var teensy in this.teensies) {
               if (teensy != null) {
@@ -357,6 +359,9 @@ namespace Spectrum.LEDs {
           return;
         }
         this.active = value;
+        if (!this.config.domeEnabled) {
+          return;
+        }
         if (value) {
           if (this.config.domeHardwareSetup == 0) {
             this.initializeTeensies();
