@@ -38,7 +38,7 @@ namespace Spectrum.Base {
 
     public void SetColor(int index, int color) {
       if (this.colors == null) {
-        this.colors = new LEDColor[16];
+        this.colors = new LEDColor[64];
       }
       this.colors[index] = new LEDColor(color);
       this.CallPropertyChanged();
@@ -46,7 +46,7 @@ namespace Spectrum.Base {
 
     public void SetGradientColor(int index, int color1, int color2) {
       if (this.colors == null) {
-        this.colors = new LEDColor[16];
+        this.colors = new LEDColor[64];
       }
       this.colors[index] = new LEDColor(color1, color2);
       this.CallPropertyChanged();
@@ -92,7 +92,7 @@ namespace Spectrum.Base {
 
     private void SetColor0(int index, int? value) {
       if (this.colors == null) {
-        this.colors = new LEDColor[16];
+        this.colors = new LEDColor[64];
       }
       if (!value.HasValue) {
         this.colors[index] = null;
@@ -105,7 +105,7 @@ namespace Spectrum.Base {
 
     private void SetColor1(int index, int? value) {
       if (this.colors == null) {
-        this.colors = new LEDColor[16];
+        this.colors = new LEDColor[64];
       }
       int color1 = this.colors[index] == null
         ? 0x000000
@@ -192,6 +192,13 @@ namespace Spectrum.Base {
       return (int)(red * scale) << 16
         | (int)(green * scale) << 8
         | (int)(blue * scale);
+    }
+
+    public static int GetAbsoluteColorIndex(
+      int relativeColorIndex,
+      int colorPaletteIndex
+    ) {
+      return relativeColorIndex + colorPaletteIndex * 8;
     }
 
   }

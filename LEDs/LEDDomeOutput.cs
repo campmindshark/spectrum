@@ -537,8 +537,12 @@ namespace Spectrum.LEDs {
       if (this.config.beatBroadcaster.CurrentlyFlashedOff) {
         return 0x000000;
       }
+      int absoluteIndex = LEDColor.GetAbsoluteColorIndex(
+        index,
+        this.config.colorPaletteIndex
+      );
       return LEDColor.ScaleColor(
-        this.config.colorPalette.GetSingleColor(index),
+        this.config.colorPalette.GetSingleColor(absoluteIndex),
         this.config.domeMaxBrightness * this.config.domeBrightness
       );
     }
@@ -549,18 +553,22 @@ namespace Spectrum.LEDs {
       double focusPos,
       bool wrap
     ) {
-      if (
-        this.config.beatBroadcaster.CurrentlyFlashedOff ||
-        this.config.colorPalette.colors[index] == null
-      ) {
+      if (this.config.beatBroadcaster.CurrentlyFlashedOff) {
         return 0x000000;
       }
-      if (!this.config.colorPalette.colors[index].IsGradient) {
-        return this.GetSingleColor(index);
+      int absoluteIndex = LEDColor.GetAbsoluteColorIndex(
+        index,
+        this.config.colorPaletteIndex
+      );
+      if (this.config.colorPalette.colors[absoluteIndex] == null) {
+        return 0x000000;
+      }
+      if (!this.config.colorPalette.colors[absoluteIndex].IsGradient) {
+        return this.GetSingleColor(absoluteIndex);
       }
       return LEDColor.ScaleColor(
         this.config.colorPalette.GetGradientColor(
-          index,
+          absoluteIndex,
           pixelPos,
           focusPos,
           wrap

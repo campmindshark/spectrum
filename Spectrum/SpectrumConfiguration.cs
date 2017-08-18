@@ -186,6 +186,7 @@ namespace Spectrum {
         this._colorPalette = value;
       }
     }
+    public int colorPaletteIndex { get; set; } = 0;
     public double flashSpeed { get; set; } = 0.0;
 
     // Whenever adding one of these, also update MainWindow.configPropertiesIgnored

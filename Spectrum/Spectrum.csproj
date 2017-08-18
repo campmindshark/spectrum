@@ -96,6 +96,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Converter\ColorConverter.cs" />
+    <Compile Include="Converter\TrueIfValueConverter.cs" />
     <Compile Include="Converter\SpecificValuesConverter.cs" />
     <Compile Include="Converter\FPSToBrushConverter.cs" />
     <Compile Include="Converter\StringJoinConverter.cs" />
