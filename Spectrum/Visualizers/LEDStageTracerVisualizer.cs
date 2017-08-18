@@ -86,8 +86,8 @@ namespace Spectrum {
             k++, triangleCounter++
           ) {
             int color = triangleCounter == tracerIndex
-              ? this.stage.GetSingleComputerColor(0)
-              : this.stage.GetSingleComputerColor(1);
+              ? this.stage.GetSingleColor(0)
+              : this.stage.GetSingleColor(1);
             for (int l = 0; l < 3; l++) {
               this.stage.SetPixel(i * 3 + j, k, l, color);
             }

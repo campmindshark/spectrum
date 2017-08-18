@@ -309,23 +309,17 @@ namespace Spectrum {
       long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
       if (timestamp > this.lastUserAnimationCreated + 2000) {
         foreach (AudioEvent audioEvent in this.audio.GetEventsSinceLastTick()) {
-          int computerColorIndex;
+          int colorIndex;
           if (audioEvent.type == AudioDetectorType.Kick) {
-            computerColorIndex = 0;
+            colorIndex = 4;
           } else if (audioEvent.type == AudioDetectorType.Snare) {
-            computerColorIndex = 1;
+            colorIndex = 5;
           } else {
             throw new Exception("invalid AudioDetectorType");
           }
-          int? colorIndex = this.config.colorPalette.GetIndexOfEnabledIndex(
-            computerColorIndex
-          );
-          if (!colorIndex.HasValue) {
-            continue;
-          }
           Animation animation = this.NewRandomAnimation(
             ShapeType.Polygon,
-            colorIndex.Value,
+            colorIndex,
             audioEvent.significance
           );
           if (animation == null) {

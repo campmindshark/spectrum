@@ -293,60 +293,6 @@ namespace Spectrum.LEDs {
       );
     }
 
-    /**
-     * This method's different from GetSingleColor is that it uses an "enabled
-     * index", ie. "the nth color that is computer-enabled". Visualizers that
-     * are algorithmically driven should use this method, so that the user is
-     * able to decide which colors they are allowed to use.
-     */
-    public int GetSingleComputerColor(int colorIndex) {
-      if (this.config.beatBroadcaster.CurrentlyFlashedOff) {
-        return 0x000000;
-      }
-      return LEDColor.ScaleColor(
-        this.config.colorPalette.GetSingleComputerColor(colorIndex),
-        this.config.stageBrightness
-      );
-    }
-
-    /**
-     * This method's difference from GetGradientColor is that it uses an
-     * "enabled index", ie. "the nth color that is computer-enabled".
-     * Visualizers that are algorithmically driven should use this method,so
-     * that the user is able to decide which colors they are allowed to use.
-     */
-    public int GetGradientComputerColor(
-      int colorIndex,
-      double pixelPos,
-      double focusPos,
-      bool wrap
-    ) {
-      if (this.config.beatBroadcaster.CurrentlyFlashedOff) {
-        return 0x000000;
-      }
-      int? index = this.config.colorPalette.GetIndexOfEnabledIndex(
-        colorIndex
-      );
-      if (
-        !index.HasValue ||
-        this.config.colorPalette.colors[index.Value] == null
-      ) {
-        return 0x000000;
-      }
-      if (!this.config.colorPalette.colors[index.Value].IsGradient) {
-        return this.GetSingleColor(index.Value);
-      }
-      return LEDColor.ScaleColor(
-        this.config.colorPalette.GetGradientColor(
-          index.Value,
-          pixelPos,
-          focusPos,
-          wrap
-        ),
-        this.config.stageBrightness
-      );
-    }
-
   }
 
 }

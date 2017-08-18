@@ -15,29 +15,7 @@ namespace Spectrum.Base {
     // Public so XML serialization picks it up
     // Do not set directly!!
     public LEDColor[] colors { get; set; }
-    // Don't change the collection, but feel free to set values in it
-    private ComputerEnabledColors _computerEnabledColors = new ComputerEnabledColors();
-    public ComputerEnabledColors computerEnabledColors {
-      get {
-        return this._computerEnabledColors;
-      }
-      set {
-        value.PropertyChanged += ComputerEnabledColorsPropertyChanged;
-        this._computerEnabledColors = value;
-      }
-    }
-
     public event PropertyChangedEventHandler PropertyChanged;
-
-    public LEDColorPalette() {
-      this._computerEnabledColors.PropertyChanged += ComputerEnabledColorsPropertyChanged;
-    }
-
-    private void ComputerEnabledColorsPropertyChanged(object sender, PropertyChangedEventArgs e) {
-      PropertyChangedEventArgs forwardedEvent =
-        new PropertyChangedEventArgs("computerEnabledColors." + e.PropertyName);
-      this.PropertyChanged(this, forwardedEvent);
-    }
 
     public int GetSingleColor(int index) {
       if (this.colors == null || this.colors[index] == null) {
@@ -56,55 +34,6 @@ namespace Spectrum.Base {
         return 0x000000;
       }
       return this.colors[index].GradientColor(pixelPos, focusPos, wrap);
-    }
-
-    /**
-     * This method's different from GetSingleColor is that it uses an "enabled
-     * index", ie. "the nth color that is computer-enabled". Visualizers that
-     * are algorithmically driven should use this method, so that the user is
-     * able to decide which colors they are allowed to use.
-     */
-    public int GetSingleComputerColor(int enabledIndex) {
-      int? index = this.GetIndexOfEnabledIndex(enabledIndex);
-      if (!index.HasValue || this.colors[index.Value] == null) {
-        return 0x000000;
-      }
-      return this.colors[index.Value].Color1;
-    }
-
-    /**
-     * This method's difference from GetGradientColor is that it uses an
-     * "enabled index", ie. "the nth color that is computer-enabled".
-     * Visualizers that are algorithmically driven should use this method,so
-     * that the user is able to decide which colors they are allowed to use.
-     */
-    public int GetGradientComputerColor(
-      int enabledIndex,
-      double pixelPos,
-      double focusPos,
-      bool wrap
-    ) {
-      int? index = this.GetIndexOfEnabledIndex(enabledIndex);
-      if (!index.HasValue || this.colors[index.Value] == null) {
-        return 0x000000;
-      }
-      return this.colors[index.Value].GradientColor(pixelPos, focusPos, wrap);
-    }
-
-    public int? GetIndexOfEnabledIndex(int enabledIndex) {
-      if (this.colors == null) {
-        return null;
-      }
-      for (int i = 0; i < 16; i++) {
-        if (!this.computerEnabledColors[i] || this.colors[i] == null) {
-          continue;
-        }
-        if (enabledIndex == 0) {
-          return i;
-        }
-        enabledIndex--;
-      }
-      return null;
     }
 
     public void SetColor(int index, int color) {
@@ -265,32 +194,6 @@ namespace Spectrum.Base {
         | (int)(blue * scale);
     }
 
-  }
-
-  public class ComputerEnabledColors : INotifyPropertyChanged {
-
-    public bool[] array { get; set; }
-
-    public event PropertyChangedEventHandler PropertyChanged;
-
-    public bool this[int index] {
-      get {
-        if (this.array == null) {
-          this.array = Enumerable.Repeat(true, 16).ToArray();
-        }
-        return this.array[index];
-      }
-      set {
-        if (this.array == null) {
-          this.array = Enumerable.Repeat(true, 16).ToArray();
-        }
-        this.array[index] = value;
-        this.PropertyChanged?.Invoke(
-          this,
-          new PropertyChangedEventArgs(System.Windows.Data.Binding.IndexerName)
-        );
-      }
-    }
   }
 
 }

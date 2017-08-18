@@ -273,7 +273,7 @@ namespace Spectrum {
       } else {
         throw new Exception("unsupported value");
       }
-      return this.dome.GetGradientComputerColor(
+      return this.dome.GetGradientColor(
         colorIndex,
         pixelPos,
         this.config.beatBroadcaster.ProgressThroughBeat(
@@ -296,7 +296,7 @@ namespace Spectrum {
       } else {
         throw new Exception("unsupported value");
       }
-      return this.dome.GetGradientComputerColor(
+      return this.dome.GetGradientColor(
         colorIndex,
         pixelPos,
         this.config.beatBroadcaster.ProgressThroughBeat(
@@ -344,7 +344,7 @@ namespace Spectrum {
       } else {
         throw new Exception("unsupported value");
       }
-      return this.dome.GetGradientComputerColor(
+      return this.dome.GetGradientColor(
         colorIndex,
         pixelPos,
         this.config.beatBroadcaster.ProgressThroughBeat(
