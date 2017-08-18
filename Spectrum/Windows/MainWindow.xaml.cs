@@ -890,17 +890,7 @@ namespace Spectrum {
       bool editing = this.currentlyEditingBinding.HasValue;
       IMidiBindingConfig newBinding;
       if (this.midiBindingType.SelectedIndex == 0) {
-        if (this.midiChangeColorIndexRangeType.SelectedIndex == -1) {
-          this.midiChangeColorIndexRangeType.Focus();
-          return;
-        }
-        var indexRangeType = commandTypeFromIndex(this.midiChangeColorIndexRangeType.SelectedIndex);
-        if (this.midiChangeColorColorRangeType.SelectedIndex == -1) {
-          this.midiChangeColorColorRangeType.Focus();
-          return;
-        }
-        var colorRangeType = commandTypeFromIndex(this.midiChangeColorColorRangeType.SelectedIndex);
-        int indexRangeStart, indexRangeEnd, colorRangeStart, colorRangeEnd;
+        int indexRangeStart;
         try {
           indexRangeStart = Convert.ToInt32(this.midiChangeColorIndexRangeStart.Text.Trim());
         } catch (Exception) {
@@ -908,35 +898,9 @@ namespace Spectrum {
           this.midiChangeColorIndexRangeStart.Focus();
           return;
         }
-        try {
-          indexRangeEnd = Convert.ToInt32(this.midiChangeColorIndexRangeEnd.Text.Trim());
-        } catch (Exception) {
-          this.midiChangeColorIndexRangeEnd.Text = "";
-          this.midiChangeColorIndexRangeEnd.Focus();
-          return;
-        }
-        try {
-          colorRangeStart = Convert.ToInt32(this.midiChangeColorColorRangeStart.Text.Trim());
-        } catch (Exception) {
-          this.midiChangeColorColorRangeStart.Text = "";
-          this.midiChangeColorColorRangeStart.Focus();
-          return;
-        }
-        try {
-          colorRangeEnd = Convert.ToInt32(this.midiChangeColorColorRangeEnd.Text.Trim());
-        } catch (Exception) {
-          this.midiChangeColorColorRangeEnd.Text = "";
-          this.midiChangeColorColorRangeEnd.Focus();
-          return;
-        }
         newBinding = new ColorPaletteMidiBindingConfig() {
           BindingName = newName,
-          indexRangeType = indexRangeType,
           indexRangeStart = indexRangeStart,
-          indexRangeEnd = indexRangeEnd,
-          colorRangeType = colorRangeType,
-          colorRangeStart = colorRangeStart,
-          colorRangeEnd = colorRangeEnd,
         };
       } else if (this.midiBindingType.SelectedIndex == 1) {
         if (this.midiTapTempoButtonType.SelectedIndex == -1) {
@@ -1078,12 +1042,7 @@ namespace Spectrum {
       this.config.midiPresets = newMidiPresets;
 
       if (this.midiBindingType.SelectedIndex == 0) {
-        this.midiChangeColorIndexRangeType.SelectedIndex = -1;
-        this.midiChangeColorColorRangeType.SelectedIndex = -1;
         this.midiChangeColorIndexRangeStart.Text = "";
-        this.midiChangeColorIndexRangeEnd.Text = "";
-        this.midiChangeColorColorRangeStart.Text = "";
-        this.midiChangeColorColorRangeEnd.Text = "";
       } else if (this.midiBindingType.SelectedIndex == 1) {
         this.midiTapTempoButtonType.SelectedIndex = -1;
         this.midiTapTempoButtonIndex.Text = "";
@@ -1171,12 +1130,7 @@ namespace Spectrum {
       this.midiBindingType.SelectedIndex = bindingConfig.BindingType;
       if (bindingConfig.BindingType == 0) {
         var config = (ColorPaletteMidiBindingConfig)bindingConfig;
-        this.midiChangeColorIndexRangeType.SelectedIndex = indexFromCommandType(config.indexRangeType);
-        this.midiChangeColorColorRangeType.SelectedIndex = indexFromCommandType(config.colorRangeType);
         this.midiChangeColorIndexRangeStart.Text = config.indexRangeStart.ToString();
-        this.midiChangeColorIndexRangeEnd.Text = config.indexRangeEnd.ToString();
-        this.midiChangeColorColorRangeStart.Text = config.colorRangeStart.ToString();
-        this.midiChangeColorColorRangeEnd.Text = config.colorRangeEnd.ToString();
       } else if (this.midiBindingType.SelectedIndex == 1) {
         var config = (TapTempoMidiBindingConfig)bindingConfig;
         this.midiTapTempoButtonType.SelectedIndex = indexFromCommandType(config.buttonType);
@@ -1213,12 +1167,7 @@ namespace Spectrum {
       this.midiNewBindingName.Text = "";
       this.midiBindingType.SelectedIndex = -1;
 
-      this.midiChangeColorIndexRangeType.SelectedIndex = -1;
-      this.midiChangeColorColorRangeType.SelectedIndex = -1;
       this.midiChangeColorIndexRangeStart.Text = "";
-      this.midiChangeColorIndexRangeEnd.Text = "";
-      this.midiChangeColorColorRangeStart.Text = "";
-      this.midiChangeColorColorRangeEnd.Text = "";
 
       this.midiTapTempoButtonType.SelectedIndex = -1;
       this.midiTapTempoButtonIndex.Text = "";
@@ -1239,71 +1188,12 @@ namespace Spectrum {
     }
 
     private void MidiChangeColorIndexRangeStartLostFocus(object sender, RoutedEventArgs e) {
-      int startNumber;
       try {
-        startNumber = Convert.ToInt32(this.midiChangeColorIndexRangeStart.Text.Trim());
+        Convert.ToInt32(this.midiChangeColorIndexRangeStart.Text.Trim());
       } catch (Exception) {
         this.midiChangeColorIndexRangeStart.Text = "";
         return;
       }
-      try {
-        int endNumber = Convert.ToInt32(this.midiChangeColorIndexRangeEnd.Text.Trim());
-        if (endNumber - startNumber < 0 || endNumber - startNumber > 15) {
-          this.midiChangeColorIndexRangeEnd.Text = (startNumber + 15).ToString();
-        }
-      } catch (Exception) {
-        this.midiChangeColorIndexRangeEnd.Text = (startNumber + 15).ToString();
-      }
-    }
-
-    private void MidiChangeColorIndexRangeEndLostFocus(object sender, RoutedEventArgs e) {
-      int endNumber;
-      try {
-        endNumber = Convert.ToInt32(this.midiChangeColorIndexRangeEnd.Text.Trim());
-      } catch (Exception) {
-        this.midiChangeColorIndexRangeEnd.Text = "";
-        return;
-      }
-      try {
-        int startNumber = Convert.ToInt32(this.midiChangeColorIndexRangeStart.Text.Trim());
-        if (endNumber - startNumber < 0 || endNumber - startNumber > 15) {
-          this.midiChangeColorIndexRangeStart.Text = (endNumber - 15).ToString();
-        }
-      } catch (Exception) { }
-    }
-
-    private void MidiChangeColorColorRangeStartLostFocus(object sender, RoutedEventArgs e) {
-      int startNumber;
-      try {
-        startNumber = Convert.ToInt32(this.midiChangeColorColorRangeStart.Text.Trim());
-      } catch (Exception) {
-        this.midiChangeColorColorRangeStart.Text = "";
-        return;
-      }
-      try {
-        int endNumber = Convert.ToInt32(this.midiChangeColorColorRangeEnd.Text.Trim());
-        if (endNumber - startNumber < 0 || endNumber - startNumber > 24) {
-          this.midiChangeColorColorRangeEnd.Text = (startNumber + 24).ToString();
-        }
-      } catch (Exception) {
-        this.midiChangeColorColorRangeEnd.Text = (startNumber + 24).ToString();
-      }
-    }
-
-    private void MidiChangeColorColorRangeEndLostFocus(object sender, RoutedEventArgs e) {
-      int endNumber;
-      try {
-        endNumber = Convert.ToInt32(this.midiChangeColorColorRangeEnd.Text.Trim());
-      } catch (Exception) {
-        this.midiChangeColorColorRangeEnd.Text = "";
-        return;
-      }
-      try {
-        int startNumber = Convert.ToInt32(this.midiChangeColorColorRangeStart.Text.Trim());
-        if (endNumber - startNumber < 0 || endNumber - startNumber > 24) {
-          this.midiChangeColorColorRangeStart.Text = (endNumber - 24).ToString();
-        }
-      } catch (Exception) { }
     }
 
     private void MidiContinuousKnobIndexLostFocus(object sender, RoutedEventArgs e) {
