@@ -133,12 +133,13 @@
               <Label Content="Flash" Margin="0,3,0,0" Padding="0" />
               <ComboBox x:Name="flashRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="60,0,0,0" Width="56">
                 <ComboBoxItem x:Name="frs0" Content="0" IsSelected="True" />
-                <ComboBoxItem x:Name="frs1" Content="1/32" />
-                <ComboBoxItem x:Name="frs2" Content="1/16" />
-                <ComboBoxItem x:Name="frs3" Content="1/8" />
-                <ComboBoxItem x:Name="frs4" Content="1/4" />
-                <ComboBoxItem x:Name="frs5" Content="1/2" />
-                <ComboBoxItem x:Name="frs6" Content="1" />
+                <ComboBoxItem x:Name="frs1" Content="1/2" />
+                <ComboBoxItem x:Name="frs2" Content="1" />
+                <ComboBoxItem x:Name="frs3" Content="2" />
+                <ComboBoxItem x:Name="frs4" Content="4" />
+                <ComboBoxItem x:Name="frs5" Content="8" />
+                <ComboBoxItem x:Name="frs6" Content="16" />
+                <ComboBoxItem x:Name="frs7" Content="32" />
               </ComboBox>
             </Grid>
           </WrapPanel>

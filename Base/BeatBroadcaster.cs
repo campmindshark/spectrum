@@ -145,7 +145,7 @@ namespace Spectrum.Base {
     public bool CurrentlyFlashedOff {
       get {
         return this.config.flashSpeed != 0.0 &&
-          this.ProgressThroughBeat(1.0 / this.config.flashSpeed) >= 0.5;
+          this.ProgressThroughBeat(this.config.flashSpeed) >= 0.5;
       }
     }
 
