@@ -49,6 +49,9 @@
     <Compile Include="Input.cs" />
     <Compile Include="LEDColor.cs" />
     <Compile Include="LEDCommand.cs" />
+    <Compile Include="Level drivers\AudioLevelDriverPreset.cs" />
+    <Compile Include="Level drivers\MidiLevelDriverPreset.cs" />
+    <Compile Include="Level drivers\LevelDriverPreset.cs" />
     <Compile Include="MIDI\ContinuousKnobMidiBindingConfig.cs" />
     <Compile Include="MIDI\DiscreteKnobMidiBindingConfig.cs" />
     <Compile Include="MIDI\DiscreteLogarithmicKnobMidiBindingConfig.cs" />
@@ -60,6 +63,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Visualizer.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

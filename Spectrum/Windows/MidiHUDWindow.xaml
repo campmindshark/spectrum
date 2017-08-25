@@ -9,12 +9,12 @@
   mc:Ignorable="d"
   Title="MIDI Heads-Up Display"
   Icon="pack://siteoforigin:,,,/Resources/s.PNG"
-  Height="760"
-  Width="600"
+  Height="850"
+  Width="900"
   WindowState="Maximized"
 >
   <DockPanel>
-    <DockPanel Height="530" DockPanel.Dock="Top">
+    <DockPanel Height="620" DockPanel.Dock="Top">
       <Grid HorizontalAlignment="Left" VerticalAlignment="Top">
         <Label Content="Colors" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
         <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
@@ -204,6 +204,128 @@
           </Grid>
         </Border>
       </Grid>
+      <DockPanel>
+        <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
+          <Label Content="Channel config" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+          <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top" Width="312">
+            <WrapPanel>
+              <Grid>
+                <Label Content="Audio" Margin="72,0,0,0" Padding="0" VerticalAlignment="Bottom" />
+                <Label Content="MIDI" Margin="192,0,0,0" Padding="0" VerticalAlignment="Bottom" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 0" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel0Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="0" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel0Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="0" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 1" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel1Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="1" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel1Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="1" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 2" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel2Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="2" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel2Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="2" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 3" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel3Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="3" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel3Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="3" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 4" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel4Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="4" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel4Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="4" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 5" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel5Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="5" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel5Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="5" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 6" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel6Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="6" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel6Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="6" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 7" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel7Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="7" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel7Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="7" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+            </WrapPanel>
+          </Border>
+        </WrapPanel>
+        <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
+          <Label Content="Level driver presets" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+          <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+            <Grid Width="300">
+              <ListView x:Name="levelDriverPresetList" Width="298" Height="66" VerticalAlignment="Top" Margin="1,0,1,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="LevelDriverPresetListSelectionChanged">
+                <ListView.View>
+                  <GridView>
+                    <GridViewColumn Header="Name" Width="139" DisplayMemberBinding="{Binding Name}" />
+                    <GridViewColumn Header="Source" Width="139" DisplayMemberBinding="{Binding SourceName}" />
+                  </GridView>
+                </ListView.View>
+              </ListView>
+              <Button x:Name="levelDriverEditPreset" Content="Edit" HorizontalAlignment="Left" Margin="2,71,0,0" VerticalAlignment="Top" Click="LevelDriverEditClicked" Padding="6,2" IsEnabled="False" />
+              <Button x:Name="levelDriverDeletePreset" Content="Delete" HorizontalAlignment="Right" Margin="0,71,2,0" VerticalAlignment="Top" Click="LevelDriverDeleteClicked" Padding="6,2" IsEnabled="False" />
+            </Grid>
+          </Border>
+        </WrapPanel>
+        <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
+          <Label x:Name="levelDriverMutateLabel" Content="Add level driver preset" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+          <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+            <WrapPanel>
+              <Grid>
+                <Label Content="Name" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                <TextBox x:Name="levelDriverName" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Source" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                <ComboBox x:Name="levelDriverSource" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,0,0,0" Width="140" SelectionChanged="LevelDriverSourceChanged">
+                  <ComboBoxItem>Audio</ComboBoxItem>
+                  <ComboBoxItem>MIDI</ComboBoxItem>
+                </ComboBox>
+              </Grid>
+              <WrapPanel x:Name="levelDriverAudioPresetConfig" Visibility="Collapsed">
+                <Grid Margin="0,4,0,0">
+                  <Label Content="Filter range" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <TextBox x:Name="levelDriverAudioFilterRangeStart" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="57" Height="20" LostFocus="LevelDriverAudioFilterRangeStartValueLostFocus" />
+                  <Label Content="to" Margin="144,0,0,2" Padding="0" VerticalAlignment="Center" />
+                  <TextBox x:Name="levelDriverAudioFilterRangeEnd" Margin="163,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="57" Height="20" LostFocus="LevelDriverAudioFilterRangeEndValueLostFocus" />
+                </Grid>
+              </WrapPanel>
+              <WrapPanel x:Name="levelDriverMidiPresetConfig" Visibility="Collapsed">
+                <Grid Margin="0,4,0,0">
+                  <Label Content="Attack (ms)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <TextBox x:Name="levelDriverMidiAttack" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiAttackLostFocus" />
+                </Grid>
+                <Grid Margin="0,4,0,0">
+                  <Label Content="Peak (level)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <TextBox x:Name="levelDriverMidiPeak" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiPeakLostFocus" />
+                </Grid>
+                <Grid Margin="0,4,0,0">
+                  <Label Content="Decay (ms)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <TextBox x:Name="levelDriverMidiDecay" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiDecayLostFocus" />
+                </Grid>
+                <Grid Margin="0,4,0,0">
+                  <Label Content="Sustain (level)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <TextBox x:Name="levelDriverMidiSustain" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiSustainLostFocus" />
+                </Grid>
+                <Grid Margin="0,4,0,0">
+                  <Label Content="Release (ms)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <TextBox x:Name="levelDriverMidiRelease" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiReleaseLostFocus" />
+                </Grid>
+              </WrapPanel>
+              <Grid Width="220" Margin="0,5,0,0">
+                <Button x:Name="levelDriverCancelEditButton" Content="Cancel" HorizontalAlignment="Left" VerticalAlignment="Center" Click="LevelDriverCancelEditClicked" Padding="6,2" Visibility="Collapsed" />
+                <Button x:Name="levelDriverSavePresetButton" Content="Add preset" HorizontalAlignment="Right" VerticalAlignment="Center" Click="LevelDriverSaveClicked" Padding="6,2" />
+              </Grid>
+            </WrapPanel>
+          </Border>
+        </WrapPanel>
+      </DockPanel>
       <Grid Width="100" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
         <Label Content="Tempo" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
         <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
@@ -217,7 +339,7 @@
           </DockPanel>
         </Border>
       </Grid>
-      <Grid Width="135" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
+      <Grid Width="135" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Right">
         <Label Content="Rotation speeds" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
         <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
           <WrapPanel Margin="0,0,0,0">

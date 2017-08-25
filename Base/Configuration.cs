@@ -156,6 +156,10 @@ namespace Spectrum.Base {
     Dictionary<int, MidiPreset> midiPresets { get; set; }
     ObservableMidiLog midiLog { get; set; }
 
+    Dictionary<string, ILevelDriverPreset> levelDriverPresets { get; set; }
+    Dictionary<int, string> channelToAudioLevelDriverPreset { get; set; }
+    Dictionary<int, string> channelToMidiLevelDriverPreset { get; set; }
+
     // The URL at which the fire services can be accessed
     string whyFireURL { get; set; }
 

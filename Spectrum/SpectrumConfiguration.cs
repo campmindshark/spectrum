@@ -170,6 +170,10 @@ namespace Spectrum {
     [XmlIgnore]
     public ObservableMidiLog midiLog { get; set; } = new ObservableMidiLog();
 
+    public Dictionary<string, ILevelDriverPreset> levelDriverPresets { get; set; } = new Dictionary<string, ILevelDriverPreset>();
+    public Dictionary<int, string> channelToAudioLevelDriverPreset { get; set; } = new Dictionary<int, string>();
+    public Dictionary<int, string> channelToMidiLevelDriverPreset { get; set; } = new Dictionary<int, string>();
+
     public string whyFireURL { get; set; } = "http://why.fire/WhyService.svc/Effects/";
 
     // This probably should not be here...
