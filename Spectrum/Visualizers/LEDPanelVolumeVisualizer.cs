@@ -41,7 +41,7 @@ namespace Spectrum {
 
     public void Visualize() {
       int numColumnsToLight =
-        (int)(this.audio.Volume * this.config.boardRowLength);
+        (int)(this.audio.LevelForChannel(0) * this.config.boardRowLength);
       int brightnessByte = (int)(0xFF * this.config.boardBrightness);
       int activeColor = brightnessByte
         | brightnessByte << 8

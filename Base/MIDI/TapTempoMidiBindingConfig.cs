@@ -14,7 +14,7 @@ namespace Spectrum.Base {
     public int buttonIndex { get; set; }
 
     public TapTempoMidiBindingConfig() {
-      this.BindingType = 2;
+      this.BindingType = 1;
     }
 
     public override object Clone() {

@@ -52,6 +52,7 @@
     <Compile Include="Level drivers\AudioLevelDriverPreset.cs" />
     <Compile Include="Level drivers\MidiLevelDriverPreset.cs" />
     <Compile Include="Level drivers\LevelDriverPreset.cs" />
+    <Compile Include="MIDI\AdsrLevelDriverMidiBindingConfig.cs" />
     <Compile Include="MIDI\ContinuousKnobMidiBindingConfig.cs" />
     <Compile Include="MIDI\DiscreteKnobMidiBindingConfig.cs" />
     <Compile Include="MIDI\DiscreteLogarithmicKnobMidiBindingConfig.cs" />

@@ -154,11 +154,12 @@ namespace Spectrum {
         var outwardSegment = this.partLayout.GetSegment(part);
         double startRange = (double)part / volumeSplitInto;
         double endRange = (double)(part + 2) / volumeSplitInto;
-        double scaled = (this.audio.Volume - startRange) /
+        double level = this.audio.LevelForChannel(0);
+        double scaled = (level - startRange) /
           (endRange - startRange);
         scaled = Math.Max(Math.Min(scaled, 1.0), 0.0);
-        startRange = Math.Min(startRange / this.audio.Volume, 1.0);
-        endRange = Math.Min(endRange / this.audio.Volume, 1.0);
+        startRange = Math.Min(startRange / level, 1.0);
+        endRange = Math.Min(endRange / level, 1.0);
 
         foreach (Strut strut in outwardSegment.GetStruts()) {
           this.UpdateStrut(strut, scaled, startRange, endRange);

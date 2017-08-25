@@ -847,6 +847,9 @@ namespace Spectrum {
       this.midiLogarithmicKnobBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 4
         ? Visibility.Visible
         : Visibility.Collapsed;
+      this.midiAdsrLevelDriverBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 5
+        ? Visibility.Visible
+        : Visibility.Collapsed;
     }
 
     private static MidiCommandType commandTypeFromIndex(int index) {
@@ -1028,6 +1031,19 @@ namespace Spectrum {
           numPossibleValues = numPossibleValues,
           startValue = startValue,
         };
+      } else if (this.midiBindingType.SelectedIndex == 5) {
+        int indexRangeStart;
+        try {
+          indexRangeStart = Convert.ToInt32(this.midiAdsrLevelDriverIndexRangeStart.Text.Trim());
+        } catch (Exception) {
+          this.midiAdsrLevelDriverIndexRangeStart.Text = "";
+          this.midiAdsrLevelDriverIndexRangeStart.Focus();
+          return;
+        }
+        newBinding = new AdsrLevelDriverMidiBindingConfig() {
+          BindingName = newName,
+          indexRangeStart = indexRangeStart,
+        };
       } else {
         return;
       }
@@ -1060,6 +1076,8 @@ namespace Spectrum {
         this.midiLogarithmicKnobPropertyName.Text = "";
         this.midiLogarithmicKnobNumPossibleValues.Text = "";
         this.midiLogarithmicKnobStartValue.Text = "";
+      } else if (this.midiBindingType.SelectedIndex == 5) {
+        this.midiAdsrLevelDriverIndexRangeStart.Text = "";
       }
 
       ComboBoxItem item = (ComboBoxItem)this.midiBindingType.SelectedItem;
@@ -1152,6 +1170,9 @@ namespace Spectrum {
         this.midiLogarithmicKnobPropertyName.Text = config.configPropertyName;
         this.midiLogarithmicKnobNumPossibleValues.Text = config.numPossibleValues.ToString();
         this.midiLogarithmicKnobStartValue.Text = config.startValue.ToString();
+      } else if (this.midiBindingType.SelectedIndex == 5) {
+        var config = (AdsrLevelDriverMidiBindingConfig)bindingConfig;
+        this.midiAdsrLevelDriverIndexRangeStart.Text = config.indexRangeStart.ToString();
       }
     }
 
@@ -1302,6 +1323,15 @@ namespace Spectrum {
         Convert.ToDouble(this.midiLogarithmicKnobStartValue.Text.Trim());
       } catch (Exception) {
         this.midiLogarithmicKnobStartValue.Text = "";
+      }
+    }
+
+    private void MidiAdsrLevelDriverIndexRangeStartLostFocus(object sender, RoutedEventArgs e) {
+      try {
+        Convert.ToInt32(this.midiAdsrLevelDriverIndexRangeStart.Text.Trim());
+      } catch (Exception) {
+        this.midiAdsrLevelDriverIndexRangeStart.Text = "";
+        return;
       }
     }
 

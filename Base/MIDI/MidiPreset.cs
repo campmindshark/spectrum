@@ -38,6 +38,7 @@ namespace Spectrum.Base {
   [XmlInclude(typeof(ContinuousKnobMidiBindingConfig))]
   [XmlInclude(typeof(DiscreteKnobMidiBindingConfig))]
   [XmlInclude(typeof(DiscreteLogarithmicKnobMidiBindingConfig))]
+  [XmlInclude(typeof(AdsrLevelDriverMidiBindingConfig))]
   public interface IMidiBindingConfig : ICloneable {
     
     int BindingType { get; set; }

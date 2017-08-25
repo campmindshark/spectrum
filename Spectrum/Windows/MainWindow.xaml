@@ -236,11 +236,11 @@
                   <Label Content="Type" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
                   <ComboBox x:Name="midiBindingType" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,0,0,0" Width="140" SelectionChanged="MidiBindingTypeSelectionChanged">
                     <ComboBoxItem>Change color</ComboBoxItem>
-                    <ComboBoxItem>Computer colors</ComboBoxItem>
                     <ComboBoxItem>Tap tempo</ComboBoxItem>
                     <ComboBoxItem>Continuous knob</ComboBoxItem>
                     <ComboBoxItem>Discrete knob</ComboBoxItem>
                     <ComboBoxItem>Logarithmic knob</ComboBoxItem>
+                    <ComboBoxItem>ADSR level driver</ComboBoxItem>
                   </ComboBox>
                 </Grid>
                 <WrapPanel x:Name="midiChangeColorBindingPanel" Visibility="Collapsed">
@@ -306,6 +306,12 @@
                   <Grid Margin="0,4,0,0">
                     <Label Content="Start value" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
                     <TextBox x:Name="midiLogarithmicKnobStartValue" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="MidiLogarithmicKnobStartValueLostFocus" />
+                  </Grid>
+                </WrapPanel>
+                <WrapPanel x:Name="midiAdsrLevelDriverBindingPanel" Visibility="Collapsed">
+                  <Grid Margin="0,4,0,0">
+                    <Label Content="Start note" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                    <TextBox x:Name="midiAdsrLevelDriverIndexRangeStart" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="MidiAdsrLevelDriverIndexRangeStartLostFocus" />
                   </Grid>
                 </WrapPanel>
                 <Grid Width="220" Margin="0,5,0,0">

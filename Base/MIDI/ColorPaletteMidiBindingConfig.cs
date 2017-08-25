@@ -24,6 +24,9 @@ namespace Spectrum.Base {
       binding.key = new BindingKey(MidiCommandType.Note, -1);
       binding.config = this;
       binding.callback = (index, val) => {
+        if (val == 0.0) {
+          return null;
+        }
         if (index < this.indexRangeStart || index > (this.indexRangeStart + 7)) {
           return null;
         }

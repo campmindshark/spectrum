@@ -59,7 +59,7 @@ namespace Spectrum.Audio {
 
     // We loop around the history array based on this offset
     private int currentHistoryOffset = 0;
-    
+
     public double BPM { get; private set; } = 0.0;
 
     private static int historyLength = 32;
@@ -355,6 +355,83 @@ namespace Spectrum.Audio {
 
     public List<AudioEvent> GetEventsSinceLastTick() {
       return this.eventsSinceLastTick;
+    }
+
+    public double LevelForChannel(int channelIndex) {
+      double? midiLevel =
+        this.config.beatBroadcaster.CurrentMidiLevelDriverValueForChannel(
+          channelIndex
+        );
+      if (midiLevel.HasValue) {
+        return midiLevel.Value;
+      }
+      string audioPreset =
+        this.config.channelToAudioLevelDriverPreset[channelIndex];
+      if (
+        audioPreset == null ||
+        !this.config.levelDriverPresets.ContainsKey(audioPreset) ||
+        !(this.config.levelDriverPresets[audioPreset] is AudioLevelDriverPreset)
+      ) {
+        return 0.0;
+      }
+      AudioLevelDriverPreset preset =
+        (AudioLevelDriverPreset)this.config.levelDriverPresets[audioPreset];
+      return AudioInput.GetBinsEnergy(
+        preset.FilterRangeStart,
+        preset.FilterRangeEnd,
+        this.AudioData
+      );
+    }
+
+    private static double GetBinsEnergy(
+      double low,
+      double high,
+      float[] audioData
+    ) {
+      double lowFreq = AudioInput.EstimateFreq(low, 144.4505);
+      int lowBinIndex = (int)AudioInput.GetFrequencyBinUnrounded(lowFreq);
+      //double highFreq = AudioInput.EstimateFreq(high, 144.4505);
+      //int highBinIndex = (int)Math.Ceiling(AudioInput.GetFrequencyBinUnrounded(highFreq));
+      //return audioData.Skip(lowBinIndex).Take(highBinIndex - lowBinIndex + 1).Max();
+      if (high == 1.0) {
+        // Special case: we want to scoop up all the high frequencies.
+        // So we take the maximum from the low frequency cutoff all the way
+        // to the highest audible frequency.
+        // This will cause a lot more signal to be detected, so "low" should
+        // be increased to cut down on false positives
+        return audioData.Skip(lowBinIndex).Max();
+      } else {
+        // Otherwise, our target range covers a specific number of bins
+        // Take the root-mean-square to get a measurement from 0 to 1 of
+        // 'sound energy' in those bins.
+        double highFreq = AudioInput.EstimateFreq(high, 144.4505);
+        int highBinIndex =
+          (int)Math.Ceiling(AudioInput.GetFrequencyBinUnrounded(highFreq));
+        int nBins = highBinIndex - lowBinIndex + 1;
+        double energyAccumulate = 0.0;
+        // each bin should have a value between 0 and 1 for amplitude
+        int maxPossibleEnergy = nBins;
+        for (int bin = lowBinIndex; bin <= highBinIndex; bin++) {
+          energyAccumulate += (audioData[bin] * audioData[bin]);
+        }
+        return Math.Sqrt(energyAccumulate / nBins);
+      }
+    }
+
+    // x is a number between 0 and 1
+    private static double EstimateFreq(double x, double freqScale) {
+      // Changing freq_scale will lower resolution at the lower frequencies in exchange for more coverage of higher frequencies
+      // 119.65 corresponds to a tuning that covers the human voice
+      // 123.52 corresponds to a tuning that covers the top of a Soprano sax
+      // 144.45 corresponds to a tuning that includes the top end of an 88-key piano
+      // 150.69 corresponds to a tuning that exceeds a piccolo
+      return 15.0 + Math.Exp(.05773259 * freqScale * x);
+    }
+
+    private static double GetFrequencyBinUnrounded(double frequency) {
+      int fftSampleN = 8192;
+      int streamRate = 44100;
+      return fftSampleN * frequency / streamRate;
     }
 
   }
