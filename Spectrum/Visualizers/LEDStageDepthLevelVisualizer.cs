@@ -96,7 +96,7 @@ namespace Spectrum {
             );
             int dimmedColor = LEDColor.ScaleColor(
               color,
-              this.audio.LevelForChannel(0)
+              this.audio.LevelForChannel(secondPart ? 2 : 1)
             );
             for (int l = 0; l < 3; l++) {
               this.stage.SetPixel(i * 3 + j, k, l, dimmedColor);

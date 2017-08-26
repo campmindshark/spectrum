@@ -55,6 +55,7 @@ namespace Spectrum.Audio {
 
     // These values get continuously updated by the internal thread
     public float[] AudioData { get; private set; } = new float[8192];
+    private Dictionary<string, double> maxAudioDataLevels = new Dictionary<string, double>();
     public float Volume { get; private set; } = 0.0f;
 
     // We loop around the history array based on this offset
@@ -216,6 +217,25 @@ namespace Spectrum.Audio {
           -1
         );
         this.AudioData = tempAudioData;
+        foreach (var pair in this.config.levelDriverPresets) {
+          if (pair.Value.Source != LevelDriverSource.Audio) {
+            continue;
+          }
+          AudioLevelDriverPreset preset = (AudioLevelDriverPreset)pair.Value;
+          double filteredMax = AudioInput.GetFilteredMax(
+            preset.FilterRangeStart,
+            preset.FilterRangeEnd,
+            tempAudioData
+          );
+          if (this.maxAudioDataLevels.ContainsKey(preset.Name)) {
+            this.maxAudioDataLevels[preset.Name] = Math.Max(
+              this.maxAudioDataLevels[preset.Name],
+              filteredMax
+            );
+          } else {
+            this.maxAudioDataLevels[preset.Name] = filteredMax;
+          }
+        }
         this.Volume = tempVolume;
         this.UpdateEnergyHistory();
       }
@@ -382,43 +402,55 @@ namespace Spectrum.Audio {
       return AudioInput.GetBinsEnergy(
         preset.FilterRangeStart,
         preset.FilterRangeEnd,
-        this.AudioData
+        this.AudioData,
+        this.maxAudioDataLevels.ContainsKey(preset.Name)
+          ? this.maxAudioDataLevels[preset.Name]
+          : 1.0
       );
     }
 
     private static double GetBinsEnergy(
       double low,
       double high,
+      float[] audioData,
+      double maxAudioDataLevel
+    ) {
+      return AudioInput.GetFilteredMax(low, high, audioData) / maxAudioDataLevel;
+      //if (high == 1.0) {
+      //  // Special case: we want to scoop up all the high frequencies.
+      //  // So we take the maximum from the low frequency cutoff all the way
+      //  // to the highest audible frequency.
+      //  // This will cause a lot more signal to be detected, so "low" should
+      //  // be increased to cut down on false positives
+      //  return audioData.Skip(lowBinIndex).Max();
+      //} else {
+      //  // Otherwise, our target range covers a specific number of bins
+      //  // Take the root-mean-square to get a measurement from 0 to 1 of
+      //  // 'sound energy' in those bins.
+      //  double highFreq = AudioInput.EstimateFreq(high, 144.4505);
+      //  int highBinIndex =
+      //    (int)Math.Ceiling(AudioInput.GetFrequencyBinUnrounded(highFreq));
+      //  int nBins = highBinIndex - lowBinIndex + 1;
+      //  double energyAccumulate = 0.0;
+      //  // each bin should have a value between 0 and 1 for amplitude
+      //  int maxPossibleEnergy = nBins;
+      //  for (int bin = lowBinIndex; bin <= highBinIndex; bin++) {
+      //    energyAccumulate += (audioData[bin] * audioData[bin]);
+      //  }
+      //  return Math.Sqrt(energyAccumulate / nBins);
+      //}
+    }
+
+    private static double GetFilteredMax(
+      double low,
+      double high,
       float[] audioData
     ) {
       double lowFreq = AudioInput.EstimateFreq(low, 144.4505);
       int lowBinIndex = (int)AudioInput.GetFrequencyBinUnrounded(lowFreq);
-      //double highFreq = AudioInput.EstimateFreq(high, 144.4505);
-      //int highBinIndex = (int)Math.Ceiling(AudioInput.GetFrequencyBinUnrounded(highFreq));
-      //return audioData.Skip(lowBinIndex).Take(highBinIndex - lowBinIndex + 1).Max();
-      if (high == 1.0) {
-        // Special case: we want to scoop up all the high frequencies.
-        // So we take the maximum from the low frequency cutoff all the way
-        // to the highest audible frequency.
-        // This will cause a lot more signal to be detected, so "low" should
-        // be increased to cut down on false positives
-        return audioData.Skip(lowBinIndex).Max();
-      } else {
-        // Otherwise, our target range covers a specific number of bins
-        // Take the root-mean-square to get a measurement from 0 to 1 of
-        // 'sound energy' in those bins.
-        double highFreq = AudioInput.EstimateFreq(high, 144.4505);
-        int highBinIndex =
-          (int)Math.Ceiling(AudioInput.GetFrequencyBinUnrounded(highFreq));
-        int nBins = highBinIndex - lowBinIndex + 1;
-        double energyAccumulate = 0.0;
-        // each bin should have a value between 0 and 1 for amplitude
-        int maxPossibleEnergy = nBins;
-        for (int bin = lowBinIndex; bin <= highBinIndex; bin++) {
-          energyAccumulate += (audioData[bin] * audioData[bin]);
-        }
-        return Math.Sqrt(energyAccumulate / nBins);
-      }
+      double highFreq = AudioInput.EstimateFreq(high, 144.4505);
+      int highBinIndex = (int)Math.Ceiling(AudioInput.GetFrequencyBinUnrounded(highFreq));
+      return audioData.Skip(lowBinIndex).Take(highBinIndex - lowBinIndex + 1).Max();
     }
 
     // x is a number between 0 and 1
