@@ -119,6 +119,11 @@ namespace Spectrum {
         this.config,
         stage
       ));
+      this.visualizers.Add(new LEDStageDepthLevelVisualizer(
+        this.config,
+        audio,
+        stage
+      ));
     }
 
     private bool enabled;

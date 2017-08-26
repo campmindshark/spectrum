@@ -376,6 +376,9 @@ namespace Spectrum.Audio {
       }
       AudioLevelDriverPreset preset =
         (AudioLevelDriverPreset)this.config.levelDriverPresets[audioPreset];
+      if (preset.FilterRangeStart == 0.0 && preset.FilterRangeEnd == 1.0) {
+        return this.Volume;
+      }
       return AudioInput.GetBinsEnergy(
         preset.FilterRangeStart,
         preset.FilterRangeEnd,

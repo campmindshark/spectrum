@@ -45,30 +45,6 @@ namespace Spectrum {
       return new Input[] {};
     }
 
-    private int tracerLEDIndex(int sideIndex) {
-      double beatFactor = this.config.stageTracerSpeed / 3;
-      double progress =
-        this.config.beatBroadcaster.ProgressThroughBeat(beatFactor) * 3;
-      int tracerLEDIndex;
-      if (progress < 1.0) {
-        tracerLEDIndex = (int)(
-          progress * this.config.stageSideLengths[sideIndex * 3]
-        );
-      } else if (progress < 2.0) {
-        tracerLEDIndex = (int)(
-          this.config.stageSideLengths[sideIndex * 3] +
-          (progress - 1.0) * this.config.stageSideLengths[sideIndex * 3 + 1]
-        );
-      } else {
-        tracerLEDIndex = (int)(
-          this.config.stageSideLengths[sideIndex * 3] +
-          this.config.stageSideLengths[sideIndex * 3 + 1] +
-          (progress - 2.0) * this.config.stageSideLengths[sideIndex * 3 + 2]
-        );
-      }
-      return tracerLEDIndex;
-    }
-
     public void Visualize() {
       if (this.stopwatch.ElapsedMilliseconds <= 10) {
         return;
@@ -77,7 +53,10 @@ namespace Spectrum {
 
       int triangles = this.config.stageSideLengths.Length / 3;
       for (int i = 0; i < triangles; i++) {
-        int tracerIndex = this.tracerLEDIndex(i);
+        int tracerIndex = LEDStageTracerVisualizer.TracerLEDIndex(
+          this.config,
+          i
+        );
         int triangleCounter = 0;
         for (int j = 0; j < 3; j++) {
           for (
@@ -95,6 +74,33 @@ namespace Spectrum {
         }
       }
       this.stage.Flush();
+    }
+
+    public static int TracerLEDIndex(
+      Configuration config,
+      int triangleIndex
+    ) {
+      double beatFactor = config.stageTracerSpeed / 3;
+      double progress =
+        config.beatBroadcaster.ProgressThroughBeat(beatFactor) * 3;
+      int tracerLEDIndex;
+      if (progress < 1.0) {
+        tracerLEDIndex = (int)(
+          progress * config.stageSideLengths[triangleIndex * 3]
+        );
+      } else if (progress < 2.0) {
+        tracerLEDIndex = (int)(
+          config.stageSideLengths[triangleIndex * 3] +
+          (progress - 1.0) * config.stageSideLengths[triangleIndex * 3 + 1]
+        );
+      } else {
+        tracerLEDIndex = (int)(
+          config.stageSideLengths[triangleIndex * 3] +
+          config.stageSideLengths[triangleIndex * 3 + 1] +
+          (progress - 2.0) * config.stageSideLengths[triangleIndex * 3 + 2]
+        );
+      }
+      return tracerLEDIndex;
     }
 
   }
