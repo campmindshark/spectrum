@@ -13,6 +13,7 @@ namespace Spectrum {
     private AudioInput audio;
     private LEDStageOutput stage;
     private bool[] sideParts;
+    private Stopwatch stopwatch;
 
     public LEDStageDepthLevelVisualizer(
       Configuration config,
@@ -23,6 +24,8 @@ namespace Spectrum {
       this.audio = audio;
       this.stage = stage;
       this.stage.RegisterVisualizer(this);
+      this.stopwatch = new Stopwatch();
+      this.stopwatch.Start();
       this.CalculateSideParts();
       this.config.PropertyChanged += ConfigUpdated;
     }
@@ -70,6 +73,10 @@ namespace Spectrum {
     }
 
     public void Visualize() {
+      if (this.stopwatch.ElapsedMilliseconds <= 1000) {
+        return;
+      }
+      this.stopwatch.Restart();
       int triangles = this.config.stageSideLengths.Length / 3;
       for (int i = 0; i < triangles; i++) {
         int tracerIndex = LEDStageTracerVisualizer.TracerLEDIndex(
