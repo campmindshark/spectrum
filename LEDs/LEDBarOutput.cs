@@ -10,6 +10,7 @@ namespace Spectrum.LEDs {
     private TeensyAPI teensyAPI;
     private OPCAPI opcAPI;
     private Configuration config;
+    private LEDDomeOutput dome;
     private List<Visualizer> visualizers;
 
     public LEDBarOutput(Configuration config) {
@@ -18,8 +19,15 @@ namespace Spectrum.LEDs {
       this.config.PropertyChanged += this.ConfigUpdated;
     }
 
+    public LEDBarOutput(Configuration config, LEDDomeOutput dome) {
+      this.config = config;
+      this.dome = dome;
+      this.visualizers = new List<Visualizer>();
+      this.config.PropertyChanged += this.ConfigUpdated;
+    }
+
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (!this.active) {
+      if (!this.active || this.dome != null) {
         return;
       }
       if (e.PropertyName == "barHardwareSetup") {
@@ -60,6 +68,9 @@ namespace Spectrum.LEDs {
     }
 
     private void initializeTeensyAPI() {
+      if (this.dome != null) {
+        return;
+      }
       this.teensyAPI = new TeensyAPI(
         this.config.barTeensyUSBPort,
         this.config.barOutputInSeparateThread,
@@ -70,6 +81,9 @@ namespace Spectrum.LEDs {
     }
 
     private void initializeOPCAPI() {
+      if (this.dome != null) {
+        return;
+      }
       var opcAddress = this.config.barBeagleboneOPCAddress;
       string[] parts = opcAddress.Split(':');
       if (parts.Length < 3) {
@@ -94,6 +108,9 @@ namespace Spectrum.LEDs {
           return;
         }
         this.active = value;
+        if (this.dome != null) {
+          this.dome.Active = value;
+        }
         if (value) {
           if (this.config.barHardwareSetup == 0) {
             this.initializeTeensyAPI();
@@ -135,6 +152,9 @@ namespace Spectrum.LEDs {
     }
 
     public void Flush() {
+      if (this.dome != null) {
+        this.dome.Flush();
+      }
       if (this.config.barHardwareSetup == 0 && this.teensyAPI != null) {
         this.teensyAPI.Flush();
       }
@@ -176,6 +196,9 @@ namespace Spectrum.LEDs {
           // The second infinity strip is reversed
           pixelIndex = totalInfinityLength - ledIndex + infinityStripLength - 1;
         }
+      }
+      if (this.dome != null) {
+        this.dome.SetBarPixel(pixelIndex, color);
       }
       if (this.config.barHardwareSetup == 0 && this.teensyAPI != null) {
         this.teensyAPI.SetPixel(pixelIndex, color);

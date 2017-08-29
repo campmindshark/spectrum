@@ -48,7 +48,7 @@ namespace Spectrum {
       this.outputs.Add(dome);
       var whyFire = new WhyFireOutput(config);
       this.outputs.Add(whyFire);
-      var bar = new LEDBarOutput(config);
+      var bar = new LEDBarOutput(config, dome);
       this.outputs.Add(bar);
       var stage = new LEDStageOutput(config);
       this.outputs.Add(stage);

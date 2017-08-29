@@ -33,6 +33,7 @@ namespace Spectrum.LEDs {
     private Stopwatch frameRateStopwatch;
     private int framesThisSecond;
     private byte defaultChannel;
+    private bool flushHappened;
 
     /**
      * hostAndPort looks like:
@@ -60,6 +61,7 @@ namespace Spectrum.LEDs {
       this.nextPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
       this.currentFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
       this.nextFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
+      this.flushHappened = false;
       this.separateThread = separateThread;
       this.setFPS = setFPS;
 
@@ -116,7 +118,7 @@ namespace Spectrum.LEDs {
     }
 
     private void Update() {
-      if (this.currentFirstPixelNotSet.Count == 0) {
+      if (!this.flushHappened) {
         return;
       }
       lock (this.lockObject) {
@@ -126,7 +128,11 @@ namespace Spectrum.LEDs {
           colorsPerChannel[pixelPair.Key] = new int[pixelPair.Value];
         }
         foreach (var pixelColorPair in this.currentPixelColors) {
-          colorsPerChannel[pixelColorPair.Key.Item1][pixelColorPair.Key.Item2] = pixelColorPair.Value;
+          var channelIndex = pixelColorPair.Key.Item1;
+          var pixelIndex = pixelColorPair.Key.Item2;
+          if (pixelIndex < colorsPerChannel[channelIndex].Length) {
+            colorsPerChannel[channelIndex][pixelIndex] = pixelColorPair.Value;
+          }
         }
         byte[][] messages = new byte[colorsPerChannel.Count][];
         int i = 0;
@@ -148,7 +154,7 @@ namespace Spectrum.LEDs {
         try {
           this.socket.Send(bytes);
         } catch (Exception) { }
-        this.currentFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
+        this.flushHappened = false;
       }
     }
 
@@ -178,12 +184,12 @@ namespace Spectrum.LEDs {
     public void Flush() {
       lock (this.lockObject) {
         this.currentFirstPixelNotSet = this.nextFirstPixelNotSet;
+        this.nextFirstPixelNotSet =
+          new ConcurrentDictionary<byte, int>(this.nextFirstPixelNotSet);
         this.currentPixelColors = this.nextPixelColors;
-        this.nextFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
-        // there is no need to reset nextPixelColors, since that should contain
-        // the most recent state of all of the pixels
         this.nextPixelColors =
           new ConcurrentDictionary<Tuple<byte, int>, int>(this.nextPixelColors);
+        this.flushHappened = true;
       }
     }
 
