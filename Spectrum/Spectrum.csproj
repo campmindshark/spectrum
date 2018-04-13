@@ -101,6 +101,7 @@
     <Compile Include="Converter\FPSToBrushConverter.cs" />
     <Compile Include="Converter\StringJoinConverter.cs" />
     <Compile Include="Visualizers\LEDStageDepthLevelVisualizer.cs" />
+    <Compile Include="Visualizers\LEDStageSwagVisualizer.cs" />
     <Compile Include="Visualizers\LEDStageTracerVisualizer.cs" />
     <Compile Include="Windows\BarSimulatorWindow.xaml.cs">
       <DependentUpon>BarSimulatorWindow.xaml</DependentUpon>
