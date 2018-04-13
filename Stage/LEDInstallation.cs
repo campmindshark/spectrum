@@ -64,7 +64,7 @@ namespace Stage
                 _pixels = value;
             }
         }
-        
+
         /// <summary>
         /// Palette for Rendering
         /// </summary>
@@ -110,7 +110,7 @@ namespace Stage
         }
 
         public const double ScalingFactor = 100.0;
-        
+
         /// <summary>
         /// Throw me to Notify the Simulator of an update the the Bitmap.
         /// </summary>
@@ -266,7 +266,7 @@ namespace Stage
             OrderedDictionary od = new OrderedDictionary();
             for (int i = 0; i < 4; i++)
             {
-                od.Add(point, new LightShapeSegment(origin:point));
+                od.Add(point, new LightShapeSegment(origin: point));
                 //translate the next shape's origin 10px horizontally and vertically
                 point.X += 10;
                 point.Y += 10;
@@ -400,7 +400,7 @@ namespace Stage
                     break;
                 case LEDCommand.Add:
                     CurrentColor += color;
-                    isDirty= true;
+                    isDirty = true;
                     DrawLED();
                     break;
                 case LEDCommand.Subtract:
