@@ -16,27 +16,6 @@ namespace Spectrum.LEDs {
 
     public LEDStageOutput(Configuration config) {
       this.config = config;
-      this.config.stageSideLengths = new[] {
-                    16, 14, 18,
-                    15, 16, 13,
-                    17, 15, 16,
-                    15, 15, 15,
-
-                    16, 14, 18,
-                    15, 16, 13,
-                    16, 15, 16,
-                    15, 15, 15,
-
-                    10, 10, 10,
-                    10, 10, 10,
-                    10, 10, 10,
-                    10, 10, 10,
-
-                    16, 15, 17,
-                    15, 16, 13,
-                    16, 15, 13,
-                    17, 15, 16
-                };
       this.visualizers = new List<Visualizer>();
       this.config.PropertyChanged += this.ConfigUpdated;
     }

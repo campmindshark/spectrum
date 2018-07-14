@@ -175,7 +175,7 @@ namespace Spectrum {
         }
         this.operatorThreadBlockingStopwatch.Restart();
 
-        if (this.frameRateStopwatch.ElapsedMilliseconds >= 2000) {
+        if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
           this.frameRateStopwatch.Restart();
           this.config.operatorFPS = this.framesThisSecond;
           this.framesThisSecond = 0;

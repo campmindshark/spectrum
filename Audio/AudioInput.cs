@@ -183,7 +183,6 @@ namespace Spectrum.Audio {
         44100,
         0,
         BASSWASAPIInit.BASS_WASAPI_BUFFER | BASSWASAPIInit.BASS_WASAPI_AUTOFORMAT,
-        BASSWASAPIFormat.BASS_WASAPI_FORMAT_8BIT,
         1,
         0,
         this.process,

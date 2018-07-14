@@ -566,7 +566,6 @@
                         </Border>
                     </WrapPanel>
                     <CheckBox x:Name="stageThreadCheckbox" Content="Call bar in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
-                    <Image x:Name="TestImage"></Image>
                 </Grid>
             </TabItem>
         </TabControl>

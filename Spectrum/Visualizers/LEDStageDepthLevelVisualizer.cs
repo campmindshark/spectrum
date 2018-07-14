@@ -51,7 +51,7 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return 1;
+        return 3;
       }
     }
 
@@ -69,7 +69,7 @@ namespace Spectrum {
     }
 
     public Input[] GetInputs() {
-      return new Input[] { };
+      return new Input[] {};
     }
 
     public void Visualize() {

@@ -107,10 +107,6 @@ namespace Spectrum {
 
       this.LoadConfig();
       this.config.PropertyChanged += ConfigUpdated;
-
-      //var installation = new Stage.LEDInstallation();
-
-      //TestImage.Source = Stage.LEDInstallation.GetBitmap();
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
@@ -176,8 +172,6 @@ namespace Spectrum {
           this.config = new XmlSerializer<SpectrumConfiguration>(
           ).Deserialize(stream);
         }
-      } else {
-        Console.WriteLine("config file doesn't exit!");
       }
       if (this.config == null) {
         this.config = new SpectrumConfiguration();
