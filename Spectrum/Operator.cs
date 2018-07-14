@@ -181,7 +181,7 @@ namespace Spectrum {
           this.framesThisSecond = 0;
         }
         this.framesThisSecond++;
-        
+
         // We're going to start by figuring out which Outputs consider
         // themselves enabled. For each enabled Output, we'll find what the
         // highest priority reported by any Visualizer is, and we'll consider

@@ -52,7 +52,7 @@ namespace Spectrum.Base {
       }
       return numSteps;
     }
- 
+
   }
 
 }

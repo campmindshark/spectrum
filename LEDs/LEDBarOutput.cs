@@ -132,7 +132,7 @@ namespace Spectrum.LEDs {
       get {
         return this.config.barEnabled || this.config.barSimulationEnabled;
       }
-   }
+    }
 
     public void OperatorUpdate() {
       if (this.config.barHardwareSetup == 0 && this.teensyAPI != null) {

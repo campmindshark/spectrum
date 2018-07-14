@@ -18,7 +18,7 @@ namespace Spectrum.Base {
     }
 
     public override object Clone() {
-      return new TapTempoMidiBindingConfig () {
+      return new TapTempoMidiBindingConfig() {
         BindingName = this.BindingName,
         buttonType = this.buttonType,
         buttonIndex = this.buttonIndex,

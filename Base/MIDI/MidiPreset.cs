@@ -40,7 +40,7 @@ namespace Spectrum.Base {
   [XmlInclude(typeof(DiscreteLogarithmicKnobMidiBindingConfig))]
   [XmlInclude(typeof(AdsrLevelDriverMidiBindingConfig))]
   public interface IMidiBindingConfig : ICloneable {
-    
+
     int BindingType { get; set; }
     string BindingName { get; set; }
 
@@ -54,7 +54,7 @@ namespace Spectrum.Base {
     public string BindingName { get; set; }
 
     public abstract object Clone();
-    
+
     public abstract Binding[] GetBindings(Configuration config);
 
   }

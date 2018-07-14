@@ -7,8 +7,8 @@ using System.Diagnostics;
 
 namespace Spectrum {
 
-    class LEDStageDepthLevelVisualizer : Visualizer {
-       
+  class LEDStageDepthLevelVisualizer : Visualizer {
+
     private Configuration config;
     private AudioInput audio;
     private LEDStageOutput stage;
@@ -69,7 +69,7 @@ namespace Spectrum {
     }
 
     public Input[] GetInputs() {
-       return new Input[] {};
+      return new Input[] { };
     }
 
     public void Visualize() {

@@ -84,7 +84,7 @@ namespace Spectrum.Hues {
       get {
         return this.config.huesEnabled;
       }
-   }
+    }
 
     private void OutputThread() {
       while (true) {

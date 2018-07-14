@@ -127,7 +127,7 @@ namespace Spectrum.LEDs {
       get {
         return this.config.ledBoardEnabled;
       }
-   }
+    }
 
     public void OperatorUpdate() {
       if (this.config.boardHardwareSetup == 0 && this.teensyAPI != null) {

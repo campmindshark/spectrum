@@ -45,7 +45,7 @@ namespace Spectrum.Base {
       };
       return new Binding[] { binding };
     }
- 
+
     /**
      * If includeZero is on, the first value is 0.0. numPossibleValues does not
      * include a hypothetical zero in its count.

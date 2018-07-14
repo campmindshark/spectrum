@@ -16,7 +16,7 @@ namespace Spectrum.LEDs {
 
     public LEDStageOutput(Configuration config) {
       this.config = config;
-            this.config.stageSideLengths = new[] {
+      this.config.stageSideLengths = new[] {
                     16, 14, 18,
                     15, 16, 13,
                     17, 15, 16,
@@ -176,7 +176,7 @@ namespace Spectrum.LEDs {
       get {
         return this.config.stageEnabled || this.config.stageSimulationEnabled;
       }
-   }
+    }
 
     public void OperatorUpdate() {
       if (this.config.stageHardwareSetup == 0 && this.teensies != null) {

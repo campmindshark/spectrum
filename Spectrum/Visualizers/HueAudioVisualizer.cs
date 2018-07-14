@@ -45,7 +45,7 @@ namespace Spectrum {
       this.audio = audio;
       this.hue = hue;
       this.hue.RegisterVisualizer(this);
-      
+
       this.random = new Random();
       bins = new Dictionary<String, double[]>();
       energyHistory = new Dictionary<String, float[]>();
