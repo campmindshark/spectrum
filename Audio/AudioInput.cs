@@ -4,12 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using Spectrum.Base;
-using Un4seen.Bass;
 using Un4seen.BassWasapi;
-using Un4seen.Bass.Misc;
 using System.Diagnostics;
-using Un4seen.Bass.AddOn.Mix;
 using System.Collections.Concurrent;
+using NAudio.CoreAudioApi;
+using NAudio.Dsp;
 
 namespace Spectrum.Audio {
 
@@ -20,17 +19,6 @@ namespace Spectrum.Audio {
     public double significance;
   }
 
-  /**
-   * There are two ways to use AudioInput. In one way, AudioInput will
-   * initialize its own thread, and will automatically update the AudioData and
-   * Volume properties. Your thread will check them as desired. In the other way
-   * of using AudioInput, you will have to manually poll the UpdateAudio method
-   * in order to update AudioData and Volume.
-   *
-   * Choose between them with config.audioInputInSeparateThread. Note that
-   * either way, you'll need to set the Active property to true in order to get
-   * updates. Setting it to false will disable any running threads.
-   */
   public class AudioInput : Input {
 
     private static Dictionary<AudioDetectorType, double[]> bins =
@@ -50,12 +38,13 @@ namespace Spectrum.Audio {
 
     private Configuration config;
 
-    // Needed for memory management reasons. More details in MagicIncantations()
-    private WASAPIPROC process;
+    private WasapiCapture recordingDevice;
+    private List<short> unanalyzedValues = new List<short>();
 
     // These values get continuously updated by the internal thread
-    public float[] AudioData { get; private set; } = new float[8192];
-    private Dictionary<string, double> maxAudioDataLevels = new Dictionary<string, double>();
+    public static readonly int fftSize = 8192;
+    public float[] AudioData { get; private set; } = new float[fftSize];
+    private ConcurrentDictionary<string, double> maxAudioDataLevels = new ConcurrentDictionary<string, double>();
     public float Volume { get; private set; } = 0.0f;
 
     // We loop around the history array based on this offset
@@ -72,13 +61,6 @@ namespace Spectrum.Audio {
     public AudioInput(Configuration config) {
       this.config = config;
 
-      BassNet.Registration("larry.fenn@gmail.com", "2X531420152222");
-
-      // This is being initialized here because we need to pass this variable
-      // into some scary old C-style API and it doesn't get refcounted there.
-      // We declare the variable as a member to avoid garbage collection.
-      this.process = new WASAPIPROC(this.NoOp);
-
       this.energyHistory = new Dictionary<AudioDetectorType, double[]>();
       this.eventBuffer =
         new ConcurrentDictionary<AudioDetectorType, AudioEvent>();
@@ -94,60 +76,22 @@ namespace Spectrum.Audio {
      * Strange incantations required to make the Un4seen libraries work are
      * quarantined here.
      */
-    private void MagicIncantations() {
-      // A common usage pattern of the Un4seen libraries involves setting up an
-      // auto-updating HSTREAM object and passing it around to various functions
-      // that will extract data off of it. To accomplish the auto-updating
-      // behavior, the libraries set up a background thread by default. We
-      // disable that functionality here because we bypass all that by using
-      // BASS_WASAPI_GetData instead of BASS_ChannelGetData. We give no fucks.
-      Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_UPDATETHREADS, 0);
-      // So we set up "double buffering" below with the BASS_WASAPI_BUFFER flag.
-      // Apparently "double buffering" requires that we set up this "no sound"
-      // device first. Ashoat has no idea why we need "double buffering", but
-      // surmises it might be a requirement for the BASS_WASAPI_GetLevel call?
-      // Larry probably knows.
-      bool result = Bass.BASS_Init(
-        0,
-        44100,
-        BASSInit.BASS_DEVICE_DEFAULT,
-        IntPtr.Zero
-      );
-      if (!result) {
-        throw new Exception(
-          "Failed to set up \"no sound\" device for \"double buffering\""
-        );
-      }
-    }
-
     private bool active;
-    private Thread inputThread;
     public bool Active {
       get {
-        lock (this.process) {
+        lock (this.maxAudioDataLevels) {
           return this.active;
         }
       }
       set {
-        lock (this.process) {
+        lock (this.maxAudioDataLevels) {
           if (this.active == value) {
             return;
           }
           if (value) {
-            if (this.config.audioInputInSeparateThread) {
-              this.inputThread = new Thread(AudioProcessingThread);
-              this.inputThread.Start();
-            } else {
-              this.InitializeAudio();
-            }
+            this.InitializeAudio();
           } else {
-            if (this.inputThread != null) {
-              this.inputThread.Abort();
-              this.inputThread.Join();
-              this.inputThread = null;
-            } else {
-              this.TerminateAudio();
-            }
+            this.TerminateAudio();
           }
           this.active = value;
         }
@@ -166,57 +110,47 @@ namespace Spectrum.Audio {
       }
     }
 
-    /**
-     * The Un4seen libraries need some function to call.
-     */
-    private int NoOp(IntPtr buffer, int length, IntPtr user) {
-      return 1;
-    }
-
     private void InitializeAudio() {
-      this.MagicIncantations();
-      if (this.config.audioDeviceIndex == -1) {
-        throw new Exception("audioDeviceIndex not set!");
+      if (this.config.audioDeviceID == null) {
+        throw new Exception("audioDeviceID not set!");
       }
-      bool result = BassWasapi.BASS_WASAPI_Init(
-        this.config.audioDeviceIndex,
-        44100,
-        0,
-        BASSWASAPIInit.BASS_WASAPI_BUFFER | BASSWASAPIInit.BASS_WASAPI_AUTOFORMAT,
-        1,
-        0,
-        this.process,
-        IntPtr.Zero
+      var iterator = new MMDeviceEnumerator().EnumerateAudioEndPoints(
+        DataFlow.Capture,
+        DeviceState.Active
       );
-      if (!result) {
-        throw new Exception(
-          "Couldn't initialize BassWasapi: " +
-            Bass.BASS_ErrorGetCode().ToString()
-        );
+      MMDevice device = null;
+      foreach (var audioDevice in iterator) {
+        if (this.config.audioDeviceID == audioDevice.ID) {
+          device = audioDevice;
+          break;
+        }
       }
-      BassWasapi.BASS_WASAPI_Start();
+      if (device == null) {
+        throw new Exception("audioDeviceID not set!");
+      }
+      this.recordingDevice = new WasapiCapture(device, false, 32);
+      this.recordingDevice.DataAvailable += Update;
+      this.recordingDevice.StartRecording();
     }
 
     private void TerminateAudio() {
-      BassWasapi.BASS_WASAPI_Free();
-      Bass.BASS_Free();
+      this.recordingDevice.StopRecording();
+      this.recordingDevice = null;
     }
 
-    private void Update() {
-      lock (this.process) {
-        // get fft data. Return value is -1 on error
-        // type: 1/8192 of the channel sample rate
-        // (here, 44100 hz; so the bin size is roughly 2.69 Hz)
-        float[] tempAudioData = new float[8192];
-        BassWasapi.BASS_WASAPI_GetData(
-          tempAudioData,
-          (int)BASSData.BASS_DATA_FFT16384
-        );
-        float tempVolume = BassWasapi.BASS_WASAPI_GetDeviceLevel(
-          this.config.audioDeviceIndex,
-          -1
-        );
-        this.AudioData = tempAudioData;
+    private void Update(object sender, NAudio.Wave.WaveInEventArgs args) {
+      lock (this.maxAudioDataLevels) {
+        short[] values = new short[args.Buffer.Length / 2];
+        for (int i = 0; i < args.BytesRecorded; i += 2) {
+          values[i / 2] = (short)((args.Buffer[i + 1] << 8) | args.Buffer[i]);
+        }
+        this.unanalyzedValues.AddRange(values);
+
+        if (this.unanalyzedValues.Count >= fftSize) {
+          this.GenerateAudioData();
+          this.unanalyzedValues.Clear();
+        }
+
         foreach (var pair in this.config.levelDriverPresets) {
           if (pair.Value.Source != LevelDriverSource.Audio) {
             continue;
@@ -225,7 +159,7 @@ namespace Spectrum.Audio {
           double filteredMax = AudioInput.GetFilteredMax(
             preset.FilterRangeStart,
             preset.FilterRangeEnd,
-            tempAudioData
+            this.AudioData
           );
           if (this.maxAudioDataLevels.ContainsKey(preset.Name)) {
             this.maxAudioDataLevels[preset.Name] = Math.Max(
@@ -236,9 +170,45 @@ namespace Spectrum.Audio {
             this.maxAudioDataLevels[preset.Name] = filteredMax;
           }
         }
-        this.Volume = tempVolume;
         this.UpdateEnergyHistory();
       }
+    }
+
+    private void GenerateAudioData() {
+      float peakLevel = 0;
+      foreach (var value in this.unanalyzedValues) {
+        var sampleLevel = value / 32768f;
+        if (sampleLevel < 0) sampleLevel = -sampleLevel;
+        if (sampleLevel > peakLevel) peakLevel = sampleLevel;
+      }
+      this.Volume = peakLevel;
+
+      // Q: make sure that fft_data can be 'filled in' by values[]
+      // Ideally buffer should have exactly as much data as we need for fft
+      // Possibly tweak latency or the thread sleep duration? Alternatively increase FFT reso.
+      Complex[] fft_data = new Complex[fftSize];
+      int i = 0;
+      foreach (var value in this.unanalyzedValues.GetRange(0, fftSize)) {
+        fft_data[i].X = (float)(value * FastFourierTransform.BlackmannHarrisWindow(i, fftSize));
+        fft_data[i].Y = 0;
+        i++;
+      }
+      FastFourierTransform.FFT(true, (int)Math.Log(fftSize, 2.0), fft_data);
+
+      // FFT results are Complex
+      // now we want the magnitude of each band
+
+      float[] fft_results = new float[fftSize];
+
+      for (int j = 0; j < fftSize; j++) {
+        fft_results[j] = Magnitude(fft_data[j].X, fft_data[j].Y);
+      }
+      // fft_results should have 8192 results
+      this.AudioData = fft_results;
+    }
+
+    private float Magnitude(float x, float y) {
+      return (float)Math.Sqrt((float)Math.Pow(x, 2) + (float)Math.Pow(y, 2));
     }
 
     private void UpdateEnergyHistory() {
@@ -323,22 +293,7 @@ namespace Spectrum.Audio {
       );
     }
 
-    private void AudioProcessingThread() {
-      this.InitializeAudio();
-      try {
-        while (true) {
-          this.Update();
-        }
-      } catch (ThreadAbortException) {
-        this.TerminateAudio();
-      }
-    }
-
     public void OperatorUpdate() {
-      if (!this.config.audioInputInSeparateThread) {
-        this.Update();
-      }
-
       long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
       this.eventsSinceLastTick = new List<AudioEvent>(
         bins.Keys.Select(type => {
@@ -357,20 +312,18 @@ namespace Spectrum.Audio {
       );
     }
 
-    public static int DeviceCount {
+    public static List<AudioDevice> AudioDevices {
       get {
-        return BassWasapi.BASS_WASAPI_GetDeviceCount();
+        var audioDeviceList = new List<AudioDevice>();
+        var iterator = new MMDeviceEnumerator().EnumerateAudioEndPoints(
+          DataFlow.Capture,
+          DeviceState.Active
+        );
+        foreach (var audioDevice in iterator) {
+          audioDeviceList.Add(new AudioDevice() { id = audioDevice.ID, name = audioDevice.FriendlyName });
+        }
+        return audioDeviceList;
       }
-    }
-
-    public static bool IsEnabledInputDevice(int deviceIndex) {
-      var device = BassWasapi.BASS_WASAPI_GetDeviceInfo(deviceIndex);
-      return device.IsEnabled && device.IsInput;
-    }
-
-    public static string GetDeviceName(int deviceIndex) {
-      var device = BassWasapi.BASS_WASAPI_GetDeviceInfo(deviceIndex);
-      return device.name;
     }
 
     public List<AudioEvent> GetEventsSinceLastTick() {
@@ -399,46 +352,15 @@ namespace Spectrum.Audio {
       if (preset.FilterRangeStart == 0.0 && preset.FilterRangeEnd == 1.0) {
         return this.Volume;
       }
-      return AudioInput.GetBinsEnergy(
+      var maxLevel = this.maxAudioDataLevels.ContainsKey(preset.Name)
+        ? this.maxAudioDataLevels[preset.Name]
+        : 1.0;
+
+      return AudioInput.GetFilteredMax(
         preset.FilterRangeStart,
         preset.FilterRangeEnd,
-        this.AudioData,
-        this.maxAudioDataLevels.ContainsKey(preset.Name)
-          ? this.maxAudioDataLevels[preset.Name]
-          : 1.0
-      );
-    }
-
-    private static double GetBinsEnergy(
-      double low,
-      double high,
-      float[] audioData,
-      double maxAudioDataLevel
-    ) {
-      return AudioInput.GetFilteredMax(low, high, audioData) / maxAudioDataLevel;
-      //if (high == 1.0) {
-      //  // Special case: we want to scoop up all the high frequencies.
-      //  // So we take the maximum from the low frequency cutoff all the way
-      //  // to the highest audible frequency.
-      //  // This will cause a lot more signal to be detected, so "low" should
-      //  // be increased to cut down on false positives
-      //  return audioData.Skip(lowBinIndex).Max();
-      //} else {
-      //  // Otherwise, our target range covers a specific number of bins
-      //  // Take the root-mean-square to get a measurement from 0 to 1 of
-      //  // 'sound energy' in those bins.
-      //  double highFreq = AudioInput.EstimateFreq(high, 144.4505);
-      //  int highBinIndex =
-      //    (int)Math.Ceiling(AudioInput.GetFrequencyBinUnrounded(highFreq));
-      //  int nBins = highBinIndex - lowBinIndex + 1;
-      //  double energyAccumulate = 0.0;
-      //  // each bin should have a value between 0 and 1 for amplitude
-      //  int maxPossibleEnergy = nBins;
-      //  for (int bin = lowBinIndex; bin <= highBinIndex; bin++) {
-      //    energyAccumulate += (audioData[bin] * audioData[bin]);
-      //  }
-      //  return Math.Sqrt(energyAccumulate / nBins);
-      //}
+        this.AudioData
+      ) / maxLevel;
     }
 
     private static double GetFilteredMax(
@@ -464,9 +386,8 @@ namespace Spectrum.Audio {
     }
 
     private static double GetFrequencyBinUnrounded(double frequency) {
-      int fftSampleN = 8192;
       int streamRate = 44100;
-      return fftSampleN * frequency / streamRate;
+      return fftSize * frequency / streamRate;
     }
 
   }

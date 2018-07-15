@@ -18,11 +18,10 @@
         <TabControl Margin="4,0,4,4">
             <TabItem Header="Home">
                 <Grid>
-                    <ComboBox x:Name="audioDevices" HorizontalAlignment="Left" Margin="126,192,0,0" VerticalAlignment="Top" Width="266" SelectionChanged="AudioInputDeviceChanged" />
+                    <ComboBox x:Name="audioDevices" HorizontalAlignment="Left" Margin="126,192,0,0" VerticalAlignment="Top" Width="266" SelectionChanged="AudioInputDeviceChanged" DisplayMemberPath="name" />
                     <Button x:Name="powerButton" Content="Go" HorizontalAlignment="Left" Margin="397,192,0,0" VerticalAlignment="Top" Width="44" Click="PowerButtonClicked" Height="22" />
                     <Image HorizontalAlignment="Center" Height="72" VerticalAlignment="Top" Width="314" Margin="0,120,0,0" Source="pack://siteoforigin:,,,/Resources/spectrum wordmark.PNG"/>
                     <Label x:Name="operatorFPSLabel" Content="0" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,0,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                    <CheckBox x:Name="audioThreadCheckbox" Content="Process audio in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" />
                     <Button Content="Refresh audio devices" VerticalAlignment="Bottom" HorizontalAlignment="Right" Style="{StaticResource HyperlinkButton}" Margin="0,0,5,5" FontStyle="Italic" Click="RefreshAudioDevices" />
                 </Grid>
             </TabItem>

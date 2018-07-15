@@ -44,7 +44,6 @@ namespace Spectrum {
     }
 
     private static HashSet<string> configPropertiesToRebootOn = new HashSet<string>() {
-      "audioInputInSeparateThread",
       "huesOutputInSeparateThread",
       "ledBoardOutputInSeparateThread",
       "midiInputInSeparateThread",
@@ -81,7 +80,6 @@ namespace Spectrum {
     private Operator op;
     private SpectrumConfiguration config;
     private bool loadingConfig = false;
-    private int[] audioDeviceIndices;
     private List<int> midiDeviceIndices;
     private List<int> midiPresetIndices;
     private DomeSimulatorWindow domeSimulatorWindow;
@@ -189,7 +187,6 @@ namespace Spectrum {
       this.Bind("huesEnabled", this.hueEnabled, CheckBox.IsCheckedProperty);
       this.Bind("ledBoardEnabled", this.ledBoardEnabled, CheckBox.IsCheckedProperty);
       this.Bind("midiInputEnabled", this.midiEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("audioInputInSeparateThread", this.audioThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("huesOutputInSeparateThread", this.hueThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("ledBoardOutputInSeparateThread", this.ledBoardThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("midiInputInSeparateThread", this.midiThreadCheckbox, CheckBox.IsCheckedProperty);
@@ -425,22 +422,15 @@ namespace Spectrum {
       this.op.Enabled = false;
       this.powerButton.Content = "Go";
 
-      int deviceCount = AudioInput.DeviceCount;
-      this.audioDeviceIndices = new int[deviceCount];
+      var audioDevices = AudioInput.AudioDevices;
 
       this.audioDevices.Items.Clear();
-      int itemIndex = 0;
-      for (int i = 0; i < deviceCount; i++) {
-        if (!AudioInput.IsEnabledInputDevice(i)) {
-          continue;
-        }
-        this.audioDevices.Items.Add(AudioInput.GetDeviceName(i));
-        this.audioDeviceIndices[itemIndex++] = i;
+      foreach (var audioDevice in audioDevices) {
+        this.audioDevices.Items.Add(audioDevice);
       }
 
-      this.audioDevices.SelectedIndex = Array.FindIndex(
-        this.audioDeviceIndices,
-        i => i == this.config.audioDeviceIndex
+      this.audioDevices.SelectedIndex = audioDevices.FindIndex(
+        device => device.id == this.config.audioDeviceID
       );
     }
 
@@ -451,8 +441,7 @@ namespace Spectrum {
       if (this.audioDevices.SelectedIndex == -1) {
         return;
       }
-      this.config.audioDeviceIndex =
-        this.audioDeviceIndices[this.audioDevices.SelectedIndex];
+      this.config.audioDeviceID = ((AudioDevice)this.audioDevices.SelectedItem).id;
       this.op.Reboot();
     }
 

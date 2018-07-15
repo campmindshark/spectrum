@@ -32,6 +32,7 @@ namespace Spectrum {
     }
 
     public int audioDeviceIndex { get; set; } = -1;
+    public string audioDeviceID { get; set; } = null;
 
     public bool huesEnabled { get; set; } = false;
     public bool ledBoardEnabled { get; set; } = false;
@@ -41,7 +42,6 @@ namespace Spectrum {
     public bool barEnabled { get; set; } = false;
     public bool stageEnabled { get; set; } = false;
 
-    public bool audioInputInSeparateThread { get; set; } = false;
     public bool huesOutputInSeparateThread { get; set; } = false;
     public bool ledBoardOutputInSeparateThread { get; set; } = false;
     public bool midiInputInSeparateThread { get; set; } = false;
