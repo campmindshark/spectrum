@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using Spectrum.Base;
-using Un4seen.BassWasapi;
 using System.Diagnostics;
 using System.Collections.Concurrent;
 using NAudio.CoreAudioApi;
@@ -128,7 +127,7 @@ namespace Spectrum.Audio {
       if (device == null) {
         throw new Exception("audioDeviceID not set!");
       }
-      this.recordingDevice = new WasapiCapture(device, false, 32);
+      this.recordingDevice = new WasapiCapture(device, false, 16);
       this.recordingDevice.DataAvailable += Update;
       this.recordingDevice.StartRecording();
     }
