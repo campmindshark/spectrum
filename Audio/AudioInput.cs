@@ -26,14 +26,6 @@ namespace Spectrum.Audio {
         { AudioDetectorType.Snare, new double[] { 1500, 2500 } },
       };
 
-    private static bool WindowContains(double[] window, int index) {
-      return (FreqToFFTBin(window[0]) <= index
-        && FreqToFFTBin(window[1]) >= index);
-    }
-
-    private static int FreqToFFTBin(double freq) {
-      return (int)(freq / 2.69);
-    }
 
     private Configuration config;
 
@@ -387,6 +379,15 @@ namespace Spectrum.Audio {
     private static double GetFrequencyBinUnrounded(double frequency) {
       int streamRate = 44100;
       return fftSize * frequency / streamRate;
+    }
+
+    private static int FreqToFFTBin(double frequency) {
+      return (int)GetFrequencyBinUnrounded(frequency);
+    }
+
+    private static bool WindowContains(double[] window, int index) {
+      return (FreqToFFTBin(window[0]) <= index
+        && FreqToFFTBin(window[1]) >= index);
     }
 
   }
