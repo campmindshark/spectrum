@@ -21,6 +21,7 @@ namespace Spectrum.Audio {
 
   public class AudioInput : Input {
 
+    private static readonly int fftSize = 32768;
     private static readonly int audioFormatSampleFrequency = 44100;
     private static Dictionary<AudioDetectorType, double[]> bins =
       new Dictionary<AudioDetectorType, double[]>() {
@@ -36,7 +37,6 @@ namespace Spectrum.Audio {
     private List<short> unanalyzedValues = new List<short>();
 
     // These values get continuously updated by the internal thread
-    public static readonly int fftSize = 8192;
     public float[] AudioData { get; private set; } = new float[fftSize];
     private ConcurrentDictionary<string, double> maxAudioDataLevels = new ConcurrentDictionary<string, double>();
     public float Volume { get; private set; } = 0.0f;
