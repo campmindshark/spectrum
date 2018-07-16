@@ -7,6 +7,7 @@ using Spectrum.Base;
 using System.Diagnostics;
 using System.Collections.Concurrent;
 using NAudio.CoreAudioApi;
+using NAudio.Wave;
 using NAudio.Dsp;
 
 namespace Spectrum.Audio {
@@ -20,6 +21,7 @@ namespace Spectrum.Audio {
 
   public class AudioInput : Input {
 
+    private static readonly int audioFormatSampleFrequency = 44100;
     private static Dictionary<AudioDetectorType, double[]> bins =
       new Dictionary<AudioDetectorType, double[]>() {
         { AudioDetectorType.Kick, new double[] { 40, 50 } },
@@ -29,7 +31,8 @@ namespace Spectrum.Audio {
 
     private Configuration config;
 
-    private WasapiCapture recordingDevice;
+    private MMDevice recordingDevice;
+    private WasapiCapture captureStream;
     private List<short> unanalyzedValues = new List<short>();
 
     // These values get continuously updated by the internal thread
@@ -119,14 +122,18 @@ namespace Spectrum.Audio {
       if (device == null) {
         throw new Exception("audioDeviceID not set!");
       }
-      this.recordingDevice = new WasapiCapture(device, false, 16);
-      this.recordingDevice.DataAvailable += Update;
-      this.recordingDevice.StartRecording();
+      this.recordingDevice = device;
+      // Windows audio format available in the Sounds control panel (mmsys.cpl)
+      // We standardize around 44.1 kHz, 16-bit PCM (signed) 2 channel audio
+      this.captureStream = new WasapiCapture(device, false, 16);
+      this.captureStream.WaveFormat = new WaveFormat(audioFormatSampleFrequency, 16, 2);
+      this.captureStream.DataAvailable += Update;
+      this.captureStream.StartRecording();
     }
 
     private void TerminateAudio() {
-      this.recordingDevice.StopRecording();
-      this.recordingDevice = null;
+      this.captureStream.StopRecording();
+      this.captureStream = null;
     }
 
     private void Update(object sender, NAudio.Wave.WaveInEventArgs args) {
@@ -377,8 +384,7 @@ namespace Spectrum.Audio {
     }
 
     private static double GetFrequencyBinUnrounded(double frequency) {
-      int streamRate = 44100;
-      return fftSize * frequency / streamRate;
+      return fftSize * frequency / (audioFormatSampleFrequency * 2);
     }
 
     private static int FreqToFFTBin(double frequency) {
