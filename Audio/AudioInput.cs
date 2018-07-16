@@ -187,14 +187,28 @@ namespace Spectrum.Audio {
       FastFourierTransform.FFT(true, (int)Math.Log(fftSize, 2.0), fft_data);
 
       // FFT results are Complex
-      // now we want the magnitude of each band
+      // Now we want the magnitude of each band
+      // Note: cumulative power after transformation is slightly higher than original. Precision errors?
+      // In any case we're scaling so that total power is 1.
+      // TODO: scaling is all over the place in terms of where and when it's done. this should be fixed:
+      // Possible places where we could or already do re-scale:
+      // - Scaling on input (ex. "auto-gain")
+      // - Scaling on FFT results (numerical precision concern?)
+      //   This one is required by FFT theory - cumulative power 'in' and 'out' of the transform is preserved
+      // - Scaling on processing (statistical methods might require values in a specific domain)
 
       float[] fft_results = new float[fftSize];
 
+      float maxBinValue = 0;
       for (int j = 0; j < fftSize; j++) {
-        fft_results[j] = Magnitude(fft_data[j].X, fft_data[j].Y);
+        fft_results[j] = Magnitude(fft_data[j].X, fft_data[j].Y) / fftSize;
+        if (fft_results[j] > maxBinValue) maxBinValue = fft_results[j];
       }
-      // fft_results should have 8192 results
+
+      // Here we arbitrarily re-scale so that the max is 1
+      for (int j = 0; j < fftSize; j++) {
+        fft_results[j] = fft_results[j] / maxBinValue;
+      }
       this.AudioData = fft_results;
     }
 
