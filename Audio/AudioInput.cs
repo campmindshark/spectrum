@@ -137,6 +137,7 @@ namespace Spectrum.Audio {
     }
 
     private void Update(object sender, NAudio.Wave.WaveInEventArgs args) {
+      this.Volume = recordingDevice.AudioMeterInformation.MasterPeakValue;
       lock (this.maxAudioDataLevels) {
         short[] values = new short[args.Buffer.Length / 2];
         for (int i = 0; i < args.BytesRecorded; i += 2) {
@@ -173,14 +174,6 @@ namespace Spectrum.Audio {
     }
 
     private void GenerateAudioData() {
-      float peakLevel = 0;
-      foreach (var value in this.unanalyzedValues) {
-        var sampleLevel = value / 32768f;
-        if (sampleLevel < 0) sampleLevel = -sampleLevel;
-        if (sampleLevel > peakLevel) peakLevel = sampleLevel;
-      }
-      this.Volume = peakLevel;
-
       // Q: make sure that fft_data can be 'filled in' by values[]
       // Ideally buffer should have exactly as much data as we need for fft
       // Possibly tweak latency or the thread sleep duration? Alternatively increase FFT reso.
