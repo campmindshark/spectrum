@@ -66,6 +66,10 @@ namespace Spectrum.Audio {
       }
     }
 
+    /**
+     * Strange incantations required to make the Un4seen libraries work are
+     * quarantined here.
+     */
     private bool active;
     public bool Active {
       get {
