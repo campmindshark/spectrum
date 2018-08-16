@@ -52,6 +52,8 @@ namespace Spectrum {
       this.outputs.Add(bar);
       var stage = new LEDStageOutput(config);
       this.outputs.Add(stage);
+      var geometry = new LEDGeometryOutput(config);
+      this.outputs.Add(geometry);
 
       this.visualizers = new List<Visualizer>();
       this.visualizers.Add(new HueAudioVisualizer(
@@ -124,6 +126,10 @@ namespace Spectrum {
         audio,
         stage
       ));
+      this.visualizers.Add(new LEDIcosahedronDiagnosticVisualizer(
+        config,
+        geometry
+        ));
     }
 
     private bool enabled;

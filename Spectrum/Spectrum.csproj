@@ -93,6 +93,7 @@
     <Compile Include="Converter\SpecificValuesConverter.cs" />
     <Compile Include="Converter\FPSToBrushConverter.cs" />
     <Compile Include="Converter\StringJoinConverter.cs" />
+    <Compile Include="Visualizers\LEDIcosahedronDiagnosticVisualizer.cs" />
     <Compile Include="Visualizers\LEDStageDepthLevelVisualizer.cs" />
     <Compile Include="Visualizers\LEDStageTracerVisualizer.cs" />
     <Compile Include="Windows\BarSimulatorWindow.xaml.cs">
@@ -191,6 +192,10 @@
       <Project>{7394ef18-baf4-4ec2-a078-4ba82f20c5ff}</Project>
       <Name>Audio</Name>
     </ProjectReference>
+    <ProjectReference Include="..\BarGeometry\BarGeometry.csproj">
+      <Project>{FF6B43E8-155B-4440-9BA6-7CAB2234D8F3}</Project>
+      <Name>BarGeometry</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Base\Base.csproj">
       <Project>{5258999b-1e36-4a6c-9674-23c259dad81e}</Project>
       <Name>Base</Name>
@@ -206,6 +211,10 @@
     <ProjectReference Include="..\MIDI\MIDI.csproj">
       <Project>{6360857c-0b88-4af4-b939-ba60083063f0}</Project>
       <Name>MIDI</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Stage\Stage.csproj">
+      <Project>{880F41E5-F39E-48F0-A855-85AB703C67CD}</Project>
+      <Name>Stage</Name>
     </ProjectReference>
     <ProjectReference Include="..\WhyFIre\WhyFire.csproj">
       <Project>{3bfb11e1-3be0-4799-9c29-d7c00c394adc}</Project>
