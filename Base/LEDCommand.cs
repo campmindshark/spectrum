@@ -32,4 +32,12 @@ namespace Spectrum.Base {
     public int color;
   }
 
+  public class GeometryLEDCommand {
+    public bool isFlush;
+    // rest doesn't matter if isFlush
+    public int ledIndex;
+    public int brightness;
+    public int color;
+  }
+
 }
