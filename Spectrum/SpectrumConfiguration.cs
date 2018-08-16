@@ -8,6 +8,7 @@ using PropertyChanged;
 using System.ComponentModel;
 using System.Collections.Concurrent;
 using System.Xml.Serialization;
+using Stage;
 
 namespace Spectrum {
 
@@ -88,6 +89,8 @@ namespace Spectrum {
     public int stageBeagleboneOPCFPS { get; set; } = 0;
     [XmlIgnore]
     public int stageBeagleboneCAMPFPS { get; set; } = 0;
+    [XmlIgnore]
+    public int geometryBeagleboneOPCFPS { get; set; } = 0;
 
     // 0 - Teensy, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
     public int boardHardwareSetup { get; set; } = 0;
@@ -140,6 +143,13 @@ namespace Spectrum {
     public double domeGradientSpeed { get; set; } = 1.0;
     public int domeSkipLEDs { get; set; } = 0;
     public int domeTestPattern { get; set; } = 0;
+
+    public bool geometryEnabled { get; set; } = true;
+    public int geometryHardwareSetup { get; set; } = 1;
+    public bool geometrySimulationEnabled { get; set; } = false;
+    public string geometryBeagleboneOPCAddress { get; set; } = "192.168.2.16:7890";
+    public bool geometryOutputInSeparateThread { get; set; } = true;
+    public int geometryTestPattern { get; set; } = 0;
 
     public int hueDelay { get; set; } = 125;
     public bool hueIdleOnSilent { get; set; } = true;
@@ -204,6 +214,8 @@ namespace Spectrum {
     [XmlIgnore, DoNotNotify]
     public ConcurrentQueue<StageLEDCommand> stageCommandQueue { get; } =
       new ConcurrentQueue<StageLEDCommand>();
+    [XmlIgnore, DoNotNotify]
+    public ConcurrentQueue<GeometryLEDCommand> geometryCommandQueue { get; } = new ConcurrentQueue<GeometryLEDCommand>();
 
     // The rest is not on Configuration
     // Just convenience properties for data binding
@@ -246,7 +258,7 @@ namespace Spectrum {
         }
       }
     }
-
+    
   }
 
 }
