@@ -41,6 +41,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="LEDGeometryOutput.cs" />
     <Compile Include="LEDStageOutput.cs" />
     <Compile Include="LEDBarOutput.cs" />
     <Compile Include="StrutLayout.cs" />
@@ -52,9 +53,17 @@
     <Compile Include="StrutLayoutFactory.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\BarGeometry\BarGeometry.csproj">
+      <Project>{FF6B43E8-155B-4440-9BA6-7CAB2234D8F3}</Project>
+      <Name>BarGeometry</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Base\Base.csproj">
       <Project>{5258999b-1e36-4a6c-9674-23c259dad81e}</Project>
       <Name>Base</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Stage\Stage.csproj">
+      <Project>{880f41e5-f39e-48f0-a855-85ab703c67cd}</Project>
+      <Name>Stage</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
