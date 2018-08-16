@@ -51,6 +51,7 @@ namespace Spectrum {
       "whyFireOutputInSeparateThread",
       "barOutputInSeparateThread",
       "stageOutputInSeparateThread",
+      "geometryOutputInSeparateThread"
     };
     private static HashSet<string> configPropertiesIgnored = new HashSet<string>() {
       "operatorFPS",
@@ -71,6 +72,7 @@ namespace Spectrum {
       "stageTeensyFPS2",
       "stageBeagleboneOPCFPS",
       "stageBeagleboneCAMPFPS",
+      "geometryBeagleboneOPCFPS",
       "beatBroadcaster",
       "domeCommandQueue",
       "barCommandQueue",
@@ -343,9 +345,16 @@ namespace Spectrum {
       this.Bind("stageBrightness", this.stageBrightnessSlider, Slider.ValueProperty);
       this.Bind("stageBrightness", this.stageBrightnessLabel, Label.ContentProperty);
       this.Bind("midiHUDEnabled", this.midiHUDEnabled, CheckBox.IsCheckedProperty);
+      this.Bind("geometryEnabled", this.geometryEnabled, CheckBox.IsCheckedProperty);
+      this.Bind("geometrySimulationEnabled", this.geometrySimulationEnabled, CheckBox.IsCheckedProperty);
+      this.Bind("geometryHardwareSetup", this.geometryHardwareSetup, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.geometryHardwareSetupTwoTeensies, [1] = this.geometryHardwareSetupBeagleboneViaOPC, [2] = this.geometryHardwareSetupBeagleboneViaCAMP }, true));
+      this.Bind("geometryHardwareSetup", this.geometryTeensyPanel, WrapPanel.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
+      this.Bind("geometryHardwareSetup", this.geometryBeagleboneOPCPanel, Grid.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Collapsed }));
+      this.Bind("geometryBrightness", this.geometryBrightnessSlider, Slider.ValueProperty);
+      this.Bind("geometryBrightness", this.geometryBrightnessLabel, Label.ContentProperty);
 
       this.loadingConfig = false;
-    }
+ }
 
     private void Bind(
       string configPath,
@@ -1478,6 +1487,13 @@ namespace Spectrum {
       this.op.Reboot();
     }
 
+    private void RefreshIcosahedronUSBPorts(object sender, RoutedEventArgs e) {
+
+    }
+
+    private void geometryUSBPortsChanged(object sender, SelectionChangedEventArgs e) {
+
+    }
   }
 
 }

@@ -8,9 +8,8 @@
   xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
   mc:Ignorable="d"
   Title="Spectrum"
-  Height="480"
   Width="600"
-  ResizeMode="CanMinimize"
+  ResizeMode="CanResizeWithGrip"
   Icon="pack://siteoforigin:,,,/Resources/s.PNG"
   Closing="HandleClose"
 >
@@ -456,6 +455,7 @@
                                 <Label Content="Brightness" HorizontalAlignment="Left" Padding="0" Margin="0,101,0,0" />
                                 <Slider x:Name="barBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="100,101,0,0" VerticalAlignment="Top" Height="20" Width="160" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                                 <Label x:Name="barBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="265,101,0,0" Padding="0" ContentStringFormat="F3" />
+                                
                             </Grid>
                         </Border>
                     </Grid>
@@ -565,6 +565,84 @@
                         </Border>
                     </WrapPanel>
                     <CheckBox x:Name="stageThreadCheckbox" Content="Call bar in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
+                </Grid>
+            </TabItem>
+            <TabItem Header="Geometry">
+                <Grid>
+                    <Grid HorizontalAlignment="Left" Width="317">
+                        <Label Content="General" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
+                            <Grid>
+                                <CheckBox x:Name="geometryEnabled" Content="Enabled" VerticalAlignment="Top" IsChecked="False" FontWeight="Bold" Margin="0,3,0,0" />
+                                <CheckBox x:Name="geometrySimulationEnabled" Content="Simulate" VerticalAlignment="Top" Margin="150,3,0,0" IsChecked="False"  />
+                                <Label Content="Side lengths" Margin="0,26,0,0" Padding="0" />
+                                <TextBox x:Name="geometrySideLengths" Margin="94,26,0,0" Width="202" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                <ScrollViewer VerticalScrollBarVisibility="Visible" Visibility="Hidden">
+                                    <ItemsControl Name="icgeometrySideLengths" Margin="124,150,0,0" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="25,0,0,5">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox Text="{Binding Path=., Mode=TwoWay}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                                <Label Content="Brightness" HorizontalAlignment="Left" Padding="0" Margin="0,51,0,0" />
+                                <Slider x:Name="geometryBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,51,0,0" VerticalAlignment="Top" Height="20" Width="170" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                                <Label x:Name="geometryBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="265,51,0,0" Padding="0" ContentStringFormat="F3" />
+                            </Grid>
+                        </Border>
+                    </Grid>
+                    <WrapPanel HorizontalAlignment="Right" Width="240" Margin="0,0,5,0">
+                        <Label Content="Hardware" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+                            <Grid>
+                                <Label Content="Setup" Margin="0,3,0,0" Padding="0" />
+                                <ComboBox x:Name="geometryHardwareSetup" HorizontalAlignment="Left" VerticalAlignment="Top" Width="140" Margin="80,0,0,0">
+                                    <ComboBoxItem x:Name="geometryHardwareSetupTwoTeensies" Content="2 Teensies" IsSelected="True" />
+                                    <ComboBoxItem x:Name="geometryHardwareSetupBeagleboneViaOPC" Content="Beaglebone via OPC" />
+                                    <ComboBoxItem x:Name="geometryHardwareSetupBeagleboneViaCAMP" Content="Beaglebone via CAMP" />
+                                </ComboBox>
+                                <WrapPanel x:Name="geometryTeensyPanel" Margin="0,25,0,0">
+                                    <Grid Height="24">
+                                        <Label Content="USB ports" Margin="0,3,0,0" Padding="0" />
+                                        <ComboBox x:Name="geometryTeensyUSBPorts1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="80,0,0,0" Width="115" SelectionChanged="geometryUSBPortsChanged" />
+                                        <Label x:Name="geometryTeensyFPS1Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="197,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                                    </Grid>
+                                    <Grid Height="24">
+                                        <ComboBox x:Name="geometryTeensyUSBPorts2" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="80,0,0,0" Width="115" SelectionChanged="geometryUSBPortsChanged" />
+                                        <Label x:Name="geometryTeensyFPS2Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="197,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                                    </Grid>
+                                    <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Left" Style="{StaticResource HyperlinkButton}" Margin="83,4,0,1" FontStyle="Italic" Click="RefreshIcosahedronUSBPorts" />
+                                </WrapPanel>
+                                <Grid x:Name="geometryBeagleboneOPCPanel" Margin="0,28,0,2" Visibility="Collapsed">
+                                    <Label Content="Host and port" Padding="0" />
+                                    <TextBox x:Name="geometryBeagleboneOPCHostAndPort" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="115" />
+                                    <Label x:Name="geometryBeagleboneOPCFPSLabel" Content="0" VerticalAlignment="Top" Margin="197,0,-0.6,-0.6" Padding="5,2,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                                </Grid>
+                                <Grid x:Name="geometryBeagleboneCAMPPanel" Margin="0,28,0,2" Visibility="Collapsed">
+                                    <Label Content="Host and port" Padding="0" />
+                                    <TextBox x:Name="geometryBeagleboneCAMPHostAndPort" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="115" />
+                                    <Label x:Name="geometryBeagleboneCAMPFPSLabel" Content="0" VerticalAlignment="Top" Margin="197,0,-0.6,-0.6" Padding="5,2,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+                        <Label Content="Diagnostics" HorizontalAlignment="Left" Margin="4,1,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+                            <Grid>
+                                <Label Content="Test pattern" Margin="0,3,0,0" Padding="0" />
+                                <ComboBox x:Name="geometryTestPattern" HorizontalAlignment="Left" VerticalAlignment="Top" Width="140" Margin="80,0,0,0">
+                                    <ComboBoxItem x:Name="geometryTestPatternNone" Content="None" IsSelected="True" />
+                                    <ComboBoxItem x:Name="geometryTestPatternFlashColors" Content="Flash colors" />
+                                </ComboBox>
+                            </Grid>
+                        </Border>
+                    </WrapPanel>
+                    <CheckBox x:Name="geometryThreadCheckbox" Content="Call bar in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
                 </Grid>
             </TabItem>
         </TabControl>
