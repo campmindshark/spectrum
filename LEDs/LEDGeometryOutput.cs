@@ -114,16 +114,16 @@ namespace Spectrum.LEDs {
     /// <param name="stripIndex"></param>
     /// <param name="color"></param>
     public void SetPixel(
-      ShapeType type,
+      GeometryShapeType type,
       int shapeId,
       int stripId,
       int ledIndex,
       int color) {
       switch (type) {
-        case ShapeType.Icosahedron:
+        case GeometryShapeType.Icosahedron:
           SetIcosahedronPixel(shapeId, stripId, ledIndex, color);
           break;
-        case ShapeType.Octahedron:
+        case GeometryShapeType.Octahedron:
           SetOctahedronPixel(shapeId, stripId, ledIndex, color);
           break;
         default:

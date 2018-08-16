@@ -126,7 +126,7 @@ namespace Spectrum {
         audio,
         stage
       ));
-      this.visualizers.Add(new LEDIcosahedronDiagnosticVisualizer(
+      this.visualizers.Add(new LEDBarGeometryDiagnosticVisualizer(
         config,
         geometry
         ));

@@ -144,7 +144,7 @@ namespace BarGeometry {
     }
   }
 
-  public enum ShapeType {
+  public enum GeometryShapeType {
     Icosahedron,
     Octahedron
   }
