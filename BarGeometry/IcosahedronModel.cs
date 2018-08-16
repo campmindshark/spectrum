@@ -78,18 +78,18 @@ namespace BarGeometry {
           new Strip(LedsPerStrip,59, true, 4, 1, 0)
         });
       ManualVerticies = new List<Vertex>(){
-          new Vertex(new[] {0,1,2,3,4}),
-          new Vertex(new[] {4,5,6,7,8}),
-          new Vertex(new[] {0,8,9,10,11}),
-          new Vertex(new[] {1,11,12,13,14}),
-          new Vertex(new[] {2,14,15,16,17}),
-          new Vertex(new[] {3,5,17,18,19}),
-          new Vertex(new[] {6,19,20,21,22}),
-          new Vertex(new[] {7,9,22,23,24}),
-          new Vertex(new[] {10,12,24,25,26}),
-          new Vertex(new[] {13,15,26,27,28}),
-          new Vertex(new[] {16,18,20,28,29}),
-          new Vertex(new[] {21,23,25,27,29})
+          new Vertex(0, new[] {0,1,2,3,4}),
+          new Vertex(1, new[] {4,5,6,7,8}),
+          new Vertex(2, new[] {0,8,9,10,11}),
+          new Vertex(3, new[] {1,11,12,13,14}),
+          new Vertex(4, new[] {2,14,15,16,17}),
+          new Vertex(5, new[] {3,5,17,18,19}),
+          new Vertex(6, new[] {6,19,20,21,22}),
+          new Vertex(7, new[] {7,9,22,23,24}),
+          new Vertex(8, new[] {10,12,24,25,26}),
+          new Vertex(9, new[] {13,15,26,27,28}),
+          new Vertex(10, new[] {16,18,20,28,29}),
+          new Vertex(11, new[] {21,23,25,27,29})
         };
       ManualSides = new List<Side>() {
           new Side(new[]{0, 1}),

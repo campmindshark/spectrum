@@ -21,8 +21,10 @@
   /// A Vertex on the Shape 
   /// </summary>
   public class Vertex {
+    public int VertexId = -1;
     public int[] SideIds { get; set; } = new int[5];
-    public Vertex(int[] sideIds) {
+    public Vertex(int vertexId, int[] sideIds) {
+      VertexId = vertexId;
       SideIds = sideIds;
     }
   }

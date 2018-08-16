@@ -5,19 +5,29 @@ using System.Linq;
 
 namespace BarGeometry {
   public abstract class Shape {
-    public List<Side> Sides { get; private set; }
-    public List<Vertex> StartVerticies { get; private set; } //Strips that Start at a Vertex
-    public List<Vertex> EndVerticies { get; private set; } //Strips that end at a Vertex
-    public List<Vertex> Vertices { get; private set; } // Strips that touch a vertex, start or end
+    public List<Side> Sides { get; private set; } = new List<Side>();
+    public List<Vertex> StartVerticies { get; private set; } = new List<Vertex>();//Strips that Start at a Vertex
+    public List<Vertex> EndVerticies { get; private set; } = new List<Vertex>();//Strips that end at a Vertex
+    public List<Vertex> Vertices { get; private set; } = new List<Vertex>(); // Strips that touch a vertex, start or end
 
 
     private List<Strip> _strips;
     public List<Strip> Strips //Master List of Strips. 
       {
-      get => _strips;
+      get {
+        if (_strips == null) {
+          _strips = new List<Strip>();
+        }
+        return _strips;
+      }
       set {
         if (value != _strips) {
-          _strips = value;
+          if (_strips == null) {
+            _strips = new List<Strip>(value);
+          } else {
+            _strips = value;
+          }
+
         }
       }
     }
@@ -41,21 +51,7 @@ namespace BarGeometry {
       EndVerticies.Clear();
       Vertices.Clear();
 
-      var startVertexStripIds = (from strip in _strips
-                                 group strip.StripId by strip.StartVertexId into g
-                                 select g.ToList()).ToList();
-      for (int i = 0; i < startVertexStripIds.Count; i++) {
-        StartVerticies.Add(new Vertex(startVertexStripIds[i].ToArray()));
-      }
-      var vertexStripIds = startVertexStripIds;
-      var endVertexStripIds = (from strip in _strips
-                               group strip.StripId by strip.EndVertexId into g
-                               select g.ToList()).ToList();
-      for (int i = 0; i < endVertexStripIds.Count; i++) {
-        EndVerticies.Add(new Vertex(endVertexStripIds[i].ToArray()));
-        vertexStripIds[i].AddRange(endVertexStripIds[i]);
-        Vertices.Add(new Vertex(vertexStripIds[i].ToArray()));
-      }
+     //Todo: build vertex look up objects from Strip data
     }
 
     public int OPCStartChannel; //This Shape's first pin on the NatShip
@@ -82,7 +78,8 @@ namespace BarGeometry {
     /// <param name="channelId">NatShip/OPC Channel Id</param>
     /// <param name="strips"></param>
     public void AddOpcChannel(byte channelId, Strip[] strips) {
-      var nextStripId = Strips?.Count ?? 0;
+      int nextStripId = Strips.Count;
+
       //Create the Channel
       OpcChannel channel = new OpcChannel(channelId, nextStripId, strips.Length);
       //Add this channels strips
