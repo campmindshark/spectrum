@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Stage;
 
 namespace Spectrum.Base {
 
@@ -119,6 +120,14 @@ namespace Spectrum.Base {
     // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts
     int domeTestPattern { get; set; }
 
+    bool geometryEnabled { get; set; }
+    int geometryHardwareSetup { get; set; }
+    bool geometrySimulationEnabled { get; set; }
+    string geometryBeagleboneOPCAddress { get; set; } 
+    int geometryBeagleboneOPCFPS { get; set; }
+    bool geometryOutputInSeparateThread { get; set; }
+    int geometryTestPattern { get; set; }
+
     // This is the delay in milliseconds between consecutive commands we give
     // the Hue hub
     int hueDelay { get; set; }
@@ -175,7 +184,8 @@ namespace Spectrum.Base {
     ConcurrentQueue<DomeLEDCommand> domeCommandQueue { get; }
     ConcurrentQueue<BarLEDCommand> barCommandQueue { get; }
     ConcurrentQueue<StageLEDCommand> stageCommandQueue { get; }
-
+    ConcurrentQueue<GeometryLEDCommand> geometryCommandQueue { get; }
+    
   }
 
 }
