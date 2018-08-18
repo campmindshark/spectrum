@@ -353,6 +353,8 @@ namespace Spectrum {
       this.Bind("geometryBrightness", this.geometryBrightnessSlider, Slider.ValueProperty);
       this.Bind("geometryBrightness", this.geometryBrightnessLabel, Label.ContentProperty);
 
+      this.Bind("geometryBeagleboneOPCAddress", this.geometryBeagleboneOPCHostAndPort, TextBox.TextProperty);
+
       this.loadingConfig = false;
  }
 

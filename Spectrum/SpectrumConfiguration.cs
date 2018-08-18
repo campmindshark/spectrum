@@ -147,7 +147,7 @@ namespace Spectrum {
     public bool geometryEnabled { get; set; } = true;
     public int geometryHardwareSetup { get; set; } = 1;
     public bool geometrySimulationEnabled { get; set; } = false;
-    public string geometryBeagleboneOPCAddress { get; set; } = "192.168.2.16:7890";
+    public string geometryBeagleboneOPCAddress { get; set; }
     public bool geometryOutputInSeparateThread { get; set; } = true;
     public int geometryTestPattern { get; set; } = 0;
 

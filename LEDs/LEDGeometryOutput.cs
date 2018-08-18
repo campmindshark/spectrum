@@ -55,10 +55,10 @@ namespace Spectrum.LEDs {
       this.visualizers = new List<Visualizer>();
       this.config.PropertyChanged += this.ConfigUpdated;
       this.Icosahedrons = new[] {
-        new IcosahedronModel(0)
+        new IcosahedronModel(8)
       };
       this.Octahedrons = new[] {
-        new OctahedronModel(4),
+        new OctahedronModel(0),
         new OctahedronModel(7)
       };
     }
@@ -159,6 +159,7 @@ namespace Spectrum.LEDs {
             absIndex += Octahedrons[shapeId].Strips[j].LedCount;
           }
           absIndex += ledIndex;
+          break;
         }
       }
       opcAPI.SetPixel(channelId, absIndex, color);
@@ -255,10 +256,8 @@ namespace Spectrum.LEDs {
       }
     }
 
-
-
     private void initializeOPCAPI() {
-      var opcAddress = "192.168.2.16:7890";//this.config.geometryBeagleboneOPCAddress;
+      var opcAddress = this.config.geometryBeagleboneOPCAddress;
       string[] parts = opcAddress.Split(':');
       if (parts.Length < 3) {
         opcAddress += ":0"; // default to channel 0

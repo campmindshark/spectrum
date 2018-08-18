@@ -55,7 +55,7 @@ namespace BarGeometry {
     }
 
     public int OPCStartChannel; //This Shape's first pin on the NatShip
-    public List<OpcChannel> Channels;//Index + OPCStartChannel =  NatShip Channel
+    public List<OpcChannel> Channels = new List<OpcChannel>();//Index + OPCStartChannel =  NatShip Channel
     public int MaxOPCStripLength {
       get {
         int max = 0;
@@ -84,6 +84,7 @@ namespace BarGeometry {
       OpcChannel channel = new OpcChannel(channelId, nextStripId, strips.Length);
       //Add this channels strips
       Strips.AddRange(strips);
+      Channels.Add(channel);
     }
 
     private int GetLedCountForChannel(int channelId) {
