@@ -438,7 +438,12 @@ namespace Spectrum.LEDs {
           this.teensies[teensyIndex].SetPixel(pixelIndex, color);
         }
         if (this.opcAPIs != null && this.opcAPIs[0] != null) {
-          var totalPixelIndex = teensyIndex * (maxStripLength * 8) + pixelIndex;
+          int totalPixelIndex = teensyIndex * (maxStripLength * 8) + pixelIndex;
+          if (teensyIndex > 3) {
+            // NatShip rev A seems to have a design defect where "channels" 34
+            // and 45 are broken. To get around this, we are skipping 4 channels
+            totalPixelIndex += maxStripLength * 4;
+          }
           this.opcAPIs[0].SetPixel(totalPixelIndex, color);
         }
       }
