@@ -116,7 +116,7 @@ namespace Spectrum.Base {
     double domeVolumeRotationSpeed { get; set; }
     double domeGradientSpeed { get; set; }
     int domeSkipLEDs { get; set; }
-    // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts
+    // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts, 3 - Strip test
     int domeTestPattern { get; set; }
 
     // This is the delay in milliseconds between consecutive commands we give

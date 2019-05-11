@@ -230,7 +230,7 @@ namespace Spectrum {
       this.Bind("domeBeagleboneCAMPFPS", this.domeBeagleboneCAMPFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
       this.Bind("domeOutputInSeparateThread", this.domeBeagleboneCAMPFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
       this.Bind("domeOutputInSeparateThread", this.domeBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
-      this.Bind("domeTestPattern", this.domeTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.domeTestPatternNone, [1] = this.domeTestPatternFlashColorsByStrut, [2] = this.domeTestPatternIterateThroughStruts }, true));
+      this.Bind("domeTestPattern", this.domeTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.domeTestPatternNone, [1] = this.domeTestPatternFlashColorsByStrut, [2] = this.domeTestPatternIterateThroughStruts, [3] = this.domeTestPatternStripTest }, true));
       this.Bind("boardTeensyFPS", this.boardTeensyFPSLabel, Label.ContentProperty);
       this.Bind("boardTeensyFPS", this.boardTeensyFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
       this.Bind("ledBoardOutputInSeparateThread", this.boardTeensyFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
