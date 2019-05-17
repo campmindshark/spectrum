@@ -360,11 +360,14 @@ namespace Spectrum.Audio {
       if (midiLevel.HasValue) {
         return midiLevel.Value;
       }
+
       if (!this.config.channelToAudioLevelDriverPreset.ContainsKey(channelIndex)) {
         return this.Volume;
       }
+
       string audioPreset =
-        this.config.channelToAudioLevelDriverPreset[channelIndex];
+        this.config.channelToAudioLevelDriverPreset.ContainsKey(channelIndex) ?
+        this.config.channelToAudioLevelDriverPreset[channelIndex] : null;
       if (
         audioPreset == null ||
         !this.config.levelDriverPresets.ContainsKey(audioPreset) ||
