@@ -117,7 +117,7 @@ namespace Spectrum {
     public string stageTeensyUSBPort1 { get; set; } = null;
     public string stageTeensyUSBPort2 { get; set; } = null;
     public bool stageSimulationEnabled { get; set; } = false;
-    public int[] stageSideLengths { get; set; } = null;
+    public int[] stageSideLengths { get; set; } = new int[0];
     public double stageBrightness { get; set; } = 0.1;
     public int stageTestPattern { get; set; } = 0;
     public double stageTracerSpeed { get; set; } = 1.0;
