@@ -120,6 +120,7 @@ namespace Spectrum.Audio {
         throw new Exception("audioDeviceID not set!");
       }
       this.recordingDevice = device;
+
       var bitrate = device.AudioClient.MixFormat.BitsPerSample;
       this.captureStream = new WasapiCapture(device, false, bitrate);
       this.captureStream.WaveFormat = new WaveFormat(
@@ -127,6 +128,7 @@ namespace Spectrum.Audio {
         bitrate,
         device.AudioClient.MixFormat.Channels
       );
+
       this.captureStream.DataAvailable += Update;
       this.captureStream.StartRecording();
       this.quietSince = -1;
