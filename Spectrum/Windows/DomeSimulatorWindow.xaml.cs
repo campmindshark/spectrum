@@ -20,7 +20,8 @@ using Spectrum.LEDs;
 namespace Spectrum {
 
   public partial class DomeSimulatorWindow : Window {
-
+    // JKMD: these are all the points of the dome, mapped into 2d space
+    // TODO: possibly move this information into StrutLayoutFactory
     // What has become of my life
     private static readonly int[,] points = new int[,] {
       { 395, 86  }, { 477, 107 }, { 545, 157 }, { 591, 229 }, { 623, 319 }, // 1
@@ -172,6 +173,9 @@ namespace Spectrum {
         uint color = (uint)SimulatorUtils.GetComputerColor(command.color)
           | (uint)0xFF000000;
         this.SetPixelColor(this.pixels, x, y, color);
+        //this.SetPixelColor(this.pixels, x + 1, y, color);
+        //this.SetPixelColor(this.pixels, x, y + 1, color);
+        //this.SetPixelColor(this.pixels, x + 1, y + 1, color);
       }
 
       if (shouldRedraw && !this.keyMode) {

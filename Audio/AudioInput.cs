@@ -121,13 +121,10 @@ namespace Spectrum.Audio {
       }
       this.recordingDevice = device;
 
-      var bitrate = device.AudioClient.MixFormat.BitsPerSample;
-      this.captureStream = new WasapiCapture(device, false, bitrate);
-      this.captureStream.WaveFormat = new WaveFormat(
-        audioFormatSampleFrequency,
-        bitrate,
-        device.AudioClient.MixFormat.Channels
-      );
+      // Windows audio format available in the Sounds control panel (mmsys.cpl)
+      // We standardize around 44.1 kHz, 16-bit PCM (signed) 2 channel audio
+      this.captureStream = new WasapiCapture(device, false, 16);
+      this.captureStream.WaveFormat = new WaveFormat(audioFormatSampleFrequency, 16, 2); //JKMD: had to change this from 2 to 1 channels
 
       this.captureStream.DataAvailable += Update;
       this.captureStream.StartRecording();

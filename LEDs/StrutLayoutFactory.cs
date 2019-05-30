@@ -12,6 +12,7 @@ namespace Spectrum.LEDs {
 
   public class StrutLayoutFactory {
 
+    // these are all the struts, and their start and end points
     public static int[,] lines = new int[,] {
       { 0,  1  }, { 1,  2  }, { 3,  2  }, { 3,  4  }, { 4,  5  }, { 5,  6  },
       { 7,  6  }, { 7,  8  }, { 8,  9  }, { 9,  10 }, { 11, 10 }, { 11, 12 },
