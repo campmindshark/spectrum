@@ -49,6 +49,44 @@ namespace Spectrum.LEDs {
     };
     private static readonly EdgeDictionary edgeDictionary;
 
+    // JKMD: these are all the points of the dome, mapped into 2d space
+    // TODO: possibly move this information into StrutLayoutFactory
+    // TODO: normalize these (to 0-1 or -1-1) and add parametric coordinates
+    // What has become of my life
+    private static int[,] handDrawnPoints = new int[,] {
+      { 395, 86  }, { 477, 107 }, { 545, 157 }, { 591, 229 }, { 623, 319 }, // 1
+      { 627, 404 }, { 599, 484 }, { 546, 551 }, { 471, 606 }, { 390, 637 },
+      { 304, 637 }, { 226, 605 }, { 149, 551 }, { 95,  485 }, { 70,  403 },
+      { 74,  319 }, { 103, 229 }, { 149, 157 }, { 218, 107 }, { 299, 87  },
+      { 348, 139 }, { 425, 149 }, { 487, 165 }, { 524, 219 }, { 555, 290 }, // 2
+      { 572, 366 }, { 575, 431 }, { 535, 482 }, { 477, 534 }, { 409, 574 },
+      { 348, 595 }, { 286, 573 }, { 220, 536 }, { 163, 483 }, { 123, 431 },
+      { 125, 366 }, { 141, 292 }, { 172, 220 }, { 209, 166 }, { 270, 148 },
+      { 386, 199 }, { 456, 210 }, { 487, 272 }, { 511, 346 }, { 523, 414 }, // 3
+      { 473, 463 }, { 410, 509 }, { 348, 541 }, { 286, 509 }, { 223, 464 },
+      { 173, 415 }, { 185, 347 }, { 209, 273 }, { 240, 209 }, { 310, 199 },
+      { 348, 259 }, { 418, 262 }, { 442, 327 }, { 461, 394 }, { 406, 437 }, // 4
+      { 348, 476 }, { 290, 438 }, { 236, 394 }, { 253, 327 }, { 278, 262 },
+      { 379, 314 }, { 400, 375 }, { 349, 412 }, { 297, 375 }, { 316, 314 }, // 5
+      { 348, 358 }                                                          // 6
+    };
+
+    private static double[,] points;
+    private static void InitPoints() {
+      points = new double[handDrawnPoints.GetLength(0), 4];
+      for (int i = 0; i < handDrawnPoints.GetLength(0); i++) {
+        var x = points[i,0] = (((double)handDrawnPoints[i,0])-70.0)/557.0;
+        var y = points[i, 1] = (((double)handDrawnPoints[i, 1]) - 86) / 551.0;
+
+        x = x * 2 - 1;
+        if (x == 0) x += 0.00001;
+        y = y * 2 - 1;
+
+        var angle = points[i, 2] = Math.Tanh(y / x);
+        var dist = points[i, 3] = Math.Sqrt(x * x + y * y);
+      }
+    }
+
     static StrutLayoutFactory() {
       edgeDictionary = new EdgeDictionary();
       for (int i = 0; i < lines.GetLength(0); i++) {
@@ -63,6 +101,45 @@ namespace Spectrum.LEDs {
         edgeDictionary[pt0].Add(pt1, new Tuple<int, bool>(i, false));
         edgeDictionary[pt1].Add(pt0, new Tuple<int, bool>(i, true));
       }
+
+      InitPoints();
+    }
+
+    public static Tuple<double, double> GetProjectedPoint(int strutIndex, int point) {
+      int index = StrutLayoutFactory.lines[strutIndex, point];
+      return new Tuple<double, double>(
+        points[index, 0], points[index, 1]
+       );
+    }
+
+    public static Tuple<double, double> GetProjectedLEDPoint(int strutIndex, int ledIndex) {
+      var p1 = GetProjectedPoint(strutIndex, 0);
+      var p2 = GetProjectedPoint(strutIndex, 1);
+      var leds = LEDDomeOutput.GetNumLEDs(strutIndex);
+
+      var d = ((double)ledIndex + 1) / ((double)leds + 2);
+      var x = (p2.Item1 - p1.Item1) * d + p1.Item1;
+      var y = (p2.Item2 - p1.Item2) * d + p1.Item2;
+
+      return new Tuple<double, double>(x, y);
+    }
+
+    public static Tuple<double, double, double, double> GetProjectedLEDPointParametric(int strutIndex, int ledIndex) {
+      var p = GetProjectedLEDPoint(strutIndex, ledIndex);
+
+      var x = p.Item1;
+      var y = p.Item2;
+
+      x = x * 2 - 1;
+      if (x == 0) x += 0.00001;
+      y = y * 2 - 1;
+
+      var angle = Math.Tanh(y / x);
+      var dist = Math.Sqrt(x * x + y * y);
+
+      return new Tuple<double, double, double, double>(
+        x, y, angle, dist
+      );
     }
 
     public static StrutLayout[] ConcentricFromStartingPoints(

@@ -20,32 +20,13 @@ using Spectrum.LEDs;
 namespace Spectrum {
 
   public partial class DomeSimulatorWindow : Window {
-    // JKMD: these are all the points of the dome, mapped into 2d space
-    // TODO: possibly move this information into StrutLayoutFactory
-    // What has become of my life
-    private static readonly int[,] points = new int[,] {
-      { 395, 86  }, { 477, 107 }, { 545, 157 }, { 591, 229 }, { 623, 319 }, // 1
-      { 627, 404 }, { 599, 484 }, { 546, 551 }, { 471, 606 }, { 390, 637 },
-      { 304, 637 }, { 226, 605 }, { 149, 551 }, { 95,  485 }, { 70,  403 },
-      { 74,  319 }, { 103, 229 }, { 149, 157 }, { 218, 107 }, { 299, 87  },
-      { 348, 139 }, { 425, 149 }, { 487, 165 }, { 524, 219 }, { 555, 290 }, // 2
-      { 572, 366 }, { 575, 431 }, { 535, 482 }, { 477, 534 }, { 409, 574 },
-      { 348, 595 }, { 286, 573 }, { 220, 536 }, { 163, 483 }, { 123, 431 },
-      { 125, 366 }, { 141, 292 }, { 172, 220 }, { 209, 166 }, { 270, 148 },
-      { 386, 199 }, { 456, 210 }, { 487, 272 }, { 511, 346 }, { 523, 414 }, // 3
-      { 473, 463 }, { 410, 509 }, { 348, 541 }, { 286, 509 }, { 223, 464 },
-      { 173, 415 }, { 185, 347 }, { 209, 273 }, { 240, 209 }, { 310, 199 },
-      { 348, 259 }, { 418, 262 }, { 442, 327 }, { 461, 394 }, { 406, 437 }, // 4
-      { 348, 476 }, { 290, 438 }, { 236, 394 }, { 253, 327 }, { 278, 262 },
-      { 379, 314 }, { 400, 375 }, { 349, 412 }, { 297, 375 }, { 316, 314 }, // 5
-      { 348, 358 }                                                          // 6
-    };
 
     private static Tuple<int, int> GetPoint(int strutIndex, int point) {
+      var p = StrutLayoutFactory.GetProjectedPoint(strutIndex, point);
       int index = StrutLayoutFactory.lines[strutIndex, point];
       return new Tuple<int, int>(
-        (int)((double)(points[index, 0] - 70) / 557 * 690) + 10,
-        (int)((double)(points[index, 1] - 86) / 551 * 690) + 10
+        (int)(p.Item1 * 690) + 10,
+        (int)(p.Item2 * 690) + 10
       );
     }
 
