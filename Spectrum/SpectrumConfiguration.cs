@@ -38,7 +38,6 @@ namespace Spectrum {
     public bool ledBoardEnabled { get; set; } = false;
     public bool domeEnabled { get; set; } = false;
     public bool midiInputEnabled { get; set; } = false;
-    public bool whyFireEnabled { get; set; } = false;
     public bool barEnabled { get; set; } = false;
     public bool stageEnabled { get; set; } = false;
 
@@ -46,7 +45,6 @@ namespace Spectrum {
     public bool ledBoardOutputInSeparateThread { get; set; } = false;
     public bool midiInputInSeparateThread { get; set; } = false;
     public bool domeOutputInSeparateThread { get; set; } = false;
-    public bool whyFireOutputInSeparateThread { get; set; } = false;
     public bool barOutputInSeparateThread { get; set; } = false;
     public bool stageOutputInSeparateThread { get; set; } = false;
 
@@ -173,8 +171,6 @@ namespace Spectrum {
     public Dictionary<string, ILevelDriverPreset> levelDriverPresets { get; set; } = new Dictionary<string, ILevelDriverPreset>();
     public Dictionary<int, string> channelToAudioLevelDriverPreset { get; set; } = new Dictionary<int, string>();
     public Dictionary<int, string> channelToMidiLevelDriverPreset { get; set; } = new Dictionary<int, string>();
-
-    public string whyFireURL { get; set; } = "http://why.fire/WhyService.svc/Effects/";
 
     // This probably should not be here...
     [XmlIgnore, DoNotNotify]

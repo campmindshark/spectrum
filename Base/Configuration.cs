@@ -22,7 +22,6 @@ namespace Spectrum.Base {
     bool ledBoardEnabled { get; set; }
     bool domeEnabled { get; set; }
     bool midiInputEnabled { get; set; }
-    bool whyFireEnabled { get; set; }
     bool barEnabled { get; set; }
     bool stageEnabled { get; set; }
 
@@ -33,7 +32,6 @@ namespace Spectrum.Base {
     bool ledBoardOutputInSeparateThread { get; set; }
     bool midiInputInSeparateThread { get; set; }
     bool domeOutputInSeparateThread { get; set; }
-    bool whyFireOutputInSeparateThread { get; set; }
     bool barOutputInSeparateThread { get; set; }
     bool stageOutputInSeparateThread { get; set; }
 
@@ -159,9 +157,6 @@ namespace Spectrum.Base {
     Dictionary<string, ILevelDriverPreset> levelDriverPresets { get; set; }
     Dictionary<int, string> channelToAudioLevelDriverPreset { get; set; }
     Dictionary<int, string> channelToMidiLevelDriverPreset { get; set; }
-
-    // The URL at which the fire services can be accessed
-    string whyFireURL { get; set; }
 
     // This probably should not be here...
     BeatBroadcaster beatBroadcaster { get; set; }

@@ -48,7 +48,6 @@ namespace Spectrum {
       "ledBoardOutputInSeparateThread",
       "midiInputInSeparateThread",
       "domeOutputInSeparateThread",
-      "whyFireOutputInSeparateThread",
       "barOutputInSeparateThread",
       "stageOutputInSeparateThread",
     };
@@ -197,7 +196,6 @@ namespace Spectrum {
       this.Bind("ledBoardOutputInSeparateThread", this.ledBoardThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("midiInputInSeparateThread", this.midiThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("domeOutputInSeparateThread", this.domeThreadCheckbox, CheckBox.IsCheckedProperty);
-      this.Bind("whyFireOutputInSeparateThread", this.whyFireThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("barOutputInSeparateThread", this.barThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("stageOutputInSeparateThread", this.stageThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("operatorFPS", this.operatorFPSLabel, Label.ContentProperty);
@@ -326,8 +324,6 @@ namespace Spectrum {
       this.Bind("domeVolumeAnimationSize", this.domeVolumeAnimationSize, ComboBox.SelectedIndexProperty);
       this.Bind("domeAutoFlashDelay", this.domeAutoFlashDelay, TextBox.TextProperty);
       this.Bind("domeSkipLEDs", this.domeSkipLEDs, TextBox.TextProperty);
-      this.Bind("whyFireEnabled", this.whyFireEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("whyFireURL", this.whyFireAddress, TextBox.TextProperty);
       this.Bind("barEnabled", this.barEnabled, CheckBox.IsCheckedProperty);
       this.Bind("barSimulationEnabled", this.barSimulationEnabled, CheckBox.IsCheckedProperty);
       this.Bind("barHardwareSetup", this.barHardwareSetup, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.barHardwareSetupTeensy, [1] = this.barHardwareSetupBeagleboneViaOPC, [2] = this.barHardwareSetupBeagleboneViaCAMP }, true));
