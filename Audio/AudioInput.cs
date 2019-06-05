@@ -51,6 +51,7 @@ namespace Spectrum.Audio {
     private ConcurrentDictionary<AudioDetectorType, AudioEvent> eventBuffer;
     private List<AudioEvent> eventsSinceLastTick;
     private Dictionary<AudioDetectorType, long> lastEventTime;
+    private long quietSince = -1;
 
     public AudioInput(Configuration config) {
       this.config = config;
@@ -90,7 +91,7 @@ namespace Spectrum.Audio {
 
     public bool AlwaysActive {
       get {
-        return false;
+        return true;
       }
     }
 
@@ -128,6 +129,7 @@ namespace Spectrum.Audio {
       );
       this.captureStream.DataAvailable += Update;
       this.captureStream.StartRecording();
+      this.quietSince = -1;
     }
 
     private void TerminateAudio() {
@@ -314,6 +316,22 @@ namespace Spectrum.Audio {
           return audioEvent;
         }).Where(audioEvent => audioEvent != null)
       );
+
+      if (this.Volume > 0.01) {
+        this.quietSince = -1;
+      } else if (this.quietSince == -1) {
+        this.quietSince = timestamp;
+      }
+    }
+
+    public bool isQuiet {
+      get {
+        if (this.quietSince == -1) {
+          return false;
+        }
+        long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+        return timestamp - this.quietSince > 7500;
+      }
     }
 
     public static List<AudioDevice> AudioDevices {

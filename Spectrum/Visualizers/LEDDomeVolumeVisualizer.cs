@@ -109,7 +109,7 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return 2;
+        return this.audio.isQuiet ? 0 : 2;
       }
     }
 
