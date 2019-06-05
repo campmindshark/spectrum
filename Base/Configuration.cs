@@ -44,9 +44,7 @@ namespace Spectrum.Base {
     int domeBeagleboneOPCFPS { get; set; }
     int domeBeagleboneCAMPFPS { get; set; }
     int boardBeagleboneOPCFPS { get; set; }
-    int barTeensyFPS { get; set; }
     int barBeagleboneOPCFPS { get; set; }
-    int barBeagleboneCAMPFPS { get; set; }
     int stageTeensyFPS1 { get; set; }
     int stageTeensyFPS2 { get; set; }
     int stageBeagleboneOPCFPS { get; set; }
@@ -59,11 +57,7 @@ namespace Spectrum.Base {
     // Brightness of the LED Board
     double boardBrightness { get; set; }
 
-    // 0 - Teensy, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
-    int barHardwareSetup { get; set; }
     string barBeagleboneOPCAddress { get; set; }
-    string barBeagleboneCAMPAddress { get; set; }
-    string barTeensyUSBPort { get; set; }
     bool barSimulationEnabled { get; set; }
     // Dimensions (in terms of pixel count)
     int barInfinityWidth { get; set; }

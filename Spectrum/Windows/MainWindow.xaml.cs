@@ -61,9 +61,7 @@ namespace Spectrum {
       "domeBeagleboneOPCFPS",
       "domeBeagleboneCAMPFPS",
       "boardBeagleboneOPCFPS",
-      "barTeensyFPS",
       "barBeagleboneOPCFPS",
-      "barBeagleboneCAMPFPS",
       "stageTeensyFPS1",
       "stageTeensyFPS2",
       "stageBeagleboneOPCFPS",
@@ -182,7 +180,6 @@ namespace Spectrum {
       this.RefreshAudioDevices(null, null);
       this.RefreshMidiDevices(null, null);
       this.RefreshDomePorts(null, null);
-      this.RefreshBarUSBPorts(null, null);
       this.RefreshStageUSBPorts(null, null);
       this.LoadPresets();
 
@@ -237,20 +234,11 @@ namespace Spectrum {
       this.Bind("boardBeagleboneOPCFPS", this.boardBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
       this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
       this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
-      this.Bind("barTeensyFPS", this.barTeensyFPSLabel, Label.ContentProperty);
-      this.Bind("barTeensyFPS", this.barTeensyFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("barOutputInSeparateThread", this.barTeensyFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("barOutputInSeparateThread", this.barUSBPorts, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("barBeagleboneOPCAddress", this.barBeagleboneOPCHostAndPort, TextBox.TextProperty);
       this.Bind("barBeagleboneOPCFPS", this.barBeagleboneOPCFPSLabel, Label.ContentProperty);
       this.Bind("barBeagleboneOPCFPS", this.barBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
       this.Bind("barOutputInSeparateThread", this.barBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
       this.Bind("barOutputInSeparateThread", this.barBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
-      this.Bind("barBeagleboneCAMPAddress", this.barBeagleboneCAMPHostAndPort, TextBox.TextProperty);
-      this.Bind("barBeagleboneCAMPFPS", this.barBeagleboneCAMPFPSLabel, Label.ContentProperty);
-      this.Bind("barBeagleboneCAMPFPS", this.barBeagleboneCAMPFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("barOutputInSeparateThread", this.barBeagleboneCAMPFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("barOutputInSeparateThread", this.barBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("barTestPattern", this.barTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.barTestPatternNone, [1] = this.barTestPatternFlashColors }, true));
       this.Bind("stageTeensyFPS1", this.stageTeensyFPS1Label, Label.ContentProperty);
       this.Bind("stageTeensyFPS1", this.stageTeensyFPS1Label, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
@@ -310,10 +298,6 @@ namespace Spectrum {
       this.Bind("domeSkipLEDs", this.domeSkipLEDs, TextBox.TextProperty);
       this.Bind("barEnabled", this.barEnabled, CheckBox.IsCheckedProperty);
       this.Bind("barSimulationEnabled", this.barSimulationEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("barHardwareSetup", this.barHardwareSetup, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.barHardwareSetupTeensy, [1] = this.barHardwareSetupBeagleboneViaOPC, [2] = this.barHardwareSetupBeagleboneViaCAMP }, true));
-      this.Bind("barHardwareSetup", this.barTeensyPanel, WrapPanel.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
-      this.Bind("barHardwareSetup", this.barBeagleboneOPCPanel, Grid.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Collapsed }));
-      this.Bind("barHardwareSetup", this.barBeagleboneCAMPPanel, Grid.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Collapsed, [2] = Visibility.Visible }));
       this.Bind("barInfinityLength", this.barInfinityLength, TextBox.TextProperty);
       this.Bind("barInfinityWidth", this.barInfiniteWidth, TextBox.TextProperty);
       this.Bind("barRunnerLength", this.barRunnerLength, TextBox.TextProperty);
@@ -1376,28 +1360,6 @@ namespace Spectrum {
 
     private void BarSimulatorClosed(object sender, EventArgs e) {
       this.config.barSimulationEnabled = false;
-    }
-
-    private void RefreshBarUSBPorts(object sender, RoutedEventArgs e) {
-      this.barEnabled.IsChecked = false;
-
-      this.barUSBPorts.Items.Clear();
-      foreach (string portName in System.IO.Ports.SerialPort.GetPortNames()) {
-        this.barUSBPorts.Items.Add(portName);
-      }
-
-      this.barUSBPorts.SelectedValue = this.config.barTeensyUSBPort;
-    }
-
-    private void BarUSBPortsChanged(
-      object sender,
-      SelectionChangedEventArgs e
-    ) {
-      if (this.barUSBPorts.SelectedIndex == -1) {
-        return;
-      }
-      this.config.barTeensyUSBPort = this.barUSBPorts.SelectedItem as string;
-      this.op.Reboot();
     }
 
     private void OpenStageSimulator(object sender, RoutedEventArgs e) {

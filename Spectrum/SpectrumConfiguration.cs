@@ -69,11 +69,7 @@ namespace Spectrum {
     [XmlIgnore]
     public int boardBeagleboneOPCFPS { get; set; } = 0;
     [XmlIgnore]
-    public int barTeensyFPS { get; set; } = 0;
-    [XmlIgnore]
     public int barBeagleboneOPCFPS { get; set; } = 0;
-    [XmlIgnore]
-    public int barBeagleboneCAMPFPS { get; set; } = 0;
     [XmlIgnore]
     public int stageTeensyFPS1 { get; set; } = 0;
     [XmlIgnore]
@@ -88,11 +84,7 @@ namespace Spectrum {
     public int boardRowsPerStrip { get; set; } = 5;
     public double boardBrightness { get; set; } = 0.1;
 
-    // 0 - Teensy, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
-    public int barHardwareSetup { get; set; } = 0;
     public string barBeagleboneOPCAddress { get; set; } = "";
-    public string barBeagleboneCAMPAddress { get; set; } = "";
-    public string barTeensyUSBPort { get; set; } = "";
     public bool barSimulationEnabled { get; set; } = false;
     public int barInfinityWidth { get; set; } = 0;
     public int barInfinityLength { get; set; } = 0;

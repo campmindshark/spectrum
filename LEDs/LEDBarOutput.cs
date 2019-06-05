@@ -7,7 +7,6 @@ namespace Spectrum.LEDs {
 
   public class LEDBarOutput : Output {
 
-    private TeensyAPI teensyAPI;
     private OPCAPI opcAPI;
     private Configuration config;
     private LEDDomeOutput dome;
@@ -27,57 +26,19 @@ namespace Spectrum.LEDs {
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (!this.active || this.dome != null) {
+      if (!this.active || !this.config.barEnabled || this.dome != null) {
         return;
       }
-      if (e.PropertyName == "barHardwareSetup") {
-        if (this.config.barHardwareSetup == 0) {
-          if (this.opcAPI != null) {
-            this.opcAPI.Active = false;
-          }
-          this.initializeTeensyAPI();
-        } else if (this.config.barHardwareSetup == 1) {
-          if (this.teensyAPI != null) {
-            this.teensyAPI.Active = false;
-          }
-          this.initializeOPCAPI();
-        }
-      } else if (e.PropertyName == "barTeensyUSBPort") {
-        if (this.config.barHardwareSetup == 0) {
-          this.teensyAPI.Active = false;
-          this.initializeTeensyAPI();
-        }
-      } else if (e.PropertyName == "barBeagleboneOPCAddress") {
-        if (this.config.barHardwareSetup == 1) {
-          this.opcAPI.Active = false;
-          this.initializeOPCAPI();
-        }
-      } else if (e.PropertyName == "barOutputInSeparateThread") {
-        if (this.config.barHardwareSetup == 0) {
-          if (this.teensyAPI != null) {
-            this.teensyAPI.Active = false;
-          }
-          this.initializeTeensyAPI();
-        } else if (this.config.barHardwareSetup == 1) {
-          if (this.opcAPI != null) {
-            this.opcAPI.Active = false;
-          }
-          this.initializeOPCAPI();
-        }
-      }
-    }
-
-    private void initializeTeensyAPI() {
-      if (this.dome != null) {
+      if (
+        e.PropertyName != "barBeagleboneOPCAddress" &&
+        e.PropertyName != "barOutputInSeparateThread"
+      ) {
         return;
       }
-      this.teensyAPI = new TeensyAPI(
-        this.config.barTeensyUSBPort,
-        this.config.barOutputInSeparateThread,
-        newFPS => this.config.barTeensyFPS = newFPS
-      );
-      this.teensyAPI.Active = this.active &&
-        this.config.barHardwareSetup == 0;
+      if (this.opcAPI != null) {
+        this.opcAPI.Active = false;
+      }
+      this.initializeOPCAPI();
     }
 
     private void initializeOPCAPI() {
@@ -94,8 +55,7 @@ namespace Spectrum.LEDs {
         this.config.barOutputInSeparateThread,
         newFPS => this.config.barBeagleboneOPCFPS = newFPS
       );
-      this.opcAPI.Active = this.active &&
-        this.config.barHardwareSetup == 1;
+      this.opcAPI.Active = this.active;
     }
 
     private bool active = false;
@@ -112,18 +72,9 @@ namespace Spectrum.LEDs {
           this.dome.Active = value;
         }
         if (value) {
-          if (this.config.barHardwareSetup == 0) {
-            this.initializeTeensyAPI();
-          } else if (this.config.barHardwareSetup == 1) {
-            this.initializeOPCAPI();
-          }
-        } else {
-          if (this.teensyAPI != null) {
-            this.teensyAPI.Active = false;
-          }
-          if (this.opcAPI != null) {
-            this.opcAPI.Active = false;
-          }
+          this.initializeOPCAPI();
+        } else if (this.opcAPI != null) {
+          this.opcAPI.Active = false;
         }
       }
     }
@@ -135,10 +86,7 @@ namespace Spectrum.LEDs {
     }
 
     public void OperatorUpdate() {
-      if (this.config.barHardwareSetup == 0 && this.teensyAPI != null) {
-        this.teensyAPI.OperatorUpdate();
-      }
-      if (this.config.barHardwareSetup == 1 && this.opcAPI != null) {
+      if (this.opcAPI != null) {
         this.opcAPI.OperatorUpdate();
       }
     }
@@ -155,10 +103,7 @@ namespace Spectrum.LEDs {
       if (this.dome != null) {
         this.dome.Flush();
       }
-      if (this.config.barHardwareSetup == 0 && this.teensyAPI != null) {
-        this.teensyAPI.Flush();
-      }
-      if (this.config.barHardwareSetup == 1 && this.opcAPI != null) {
+      if (this.opcAPI != null) {
         this.opcAPI.Flush();
       }
       if (this.config.barSimulationEnabled) {
@@ -200,10 +145,7 @@ namespace Spectrum.LEDs {
       if (this.dome != null) {
         this.dome.SetBarPixel(pixelIndex, color);
       }
-      if (this.config.barHardwareSetup == 0 && this.teensyAPI != null) {
-        this.teensyAPI.SetPixel(pixelIndex, color);
-      }
-      if (this.config.barHardwareSetup == 1 && this.opcAPI != null) {
+      if (this.opcAPI != null) {
         this.opcAPI.SetPixel(pixelIndex, color);
       }
       if (this.config.barSimulationEnabled) {
