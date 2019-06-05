@@ -78,7 +78,7 @@
   <stageBrightness>0.834591194968554</stageBrightness>
   <stageTestPattern>0</stageTestPattern>
   <stageTracerSpeed>2</stageTracerSpeed>
-  <domeBeagleboneOPCAddress>192.168.1.146:7890</domeBeagleboneOPCAddress>
+  <domeBeagleboneOPCAddress>192.168.1.69:7890</domeBeagleboneOPCAddress>
   <domeSimulationEnabled>false</domeSimulationEnabled>
   <domeMaxBrightness>1</domeMaxBrightness>
   <domeBrightness>0.356915762888129</domeBrightness>
