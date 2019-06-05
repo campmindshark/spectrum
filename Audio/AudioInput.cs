@@ -119,10 +119,13 @@ namespace Spectrum.Audio {
         throw new Exception("audioDeviceID not set!");
       }
       this.recordingDevice = device;
-      // Windows audio format available in the Sounds control panel (mmsys.cpl)
-      // We standardize around 44.1 kHz, 16-bit PCM (signed) 2 channel audio
-      this.captureStream = new WasapiCapture(device, false, 16);
-      this.captureStream.WaveFormat = new WaveFormat(audioFormatSampleFrequency, 16, 2);
+      var bitrate = device.AudioClient.MixFormat.BitsPerSample;
+      this.captureStream = new WasapiCapture(device, false, bitrate);
+      this.captureStream.WaveFormat = new WaveFormat(
+        audioFormatSampleFrequency,
+        bitrate,
+        device.AudioClient.MixFormat.Channels
+      );
       this.captureStream.DataAvailable += Update;
       this.captureStream.StartRecording();
     }
