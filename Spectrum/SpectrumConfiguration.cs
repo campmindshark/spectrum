@@ -134,7 +134,7 @@ namespace Spectrum {
     public bool domeSimulationEnabled { get; set; } = false;
     public double domeMaxBrightness { get; set; } = 0.5;
     public double domeBrightness { get; set; } = 0.1;
-    public int domeVolumeAnimationSize { get; set; } = 2;
+    public int domeVolumeAnimationSize { get; set; } = 4;
     public int domeAutoFlashDelay { get; set; } = 100;
     public double domeVolumeRotationSpeed { get; set; } = 1.0;
     public double domeGradientSpeed { get; set; } = 1.0;
