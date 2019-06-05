@@ -20,8 +20,8 @@ namespace Spectrum.LEDs {
   public class LEDBoardOutput : Output {
 
     private OPCAPI opcAPI;
-    private Configuration config;
-    private List<Visualizer> visualizers;
+    private readonly Configuration config;
+    private readonly List<Visualizer> visualizers;
 
     public LEDBoardOutput(Configuration config) {
       this.config = config;

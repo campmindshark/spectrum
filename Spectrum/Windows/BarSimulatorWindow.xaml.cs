@@ -21,8 +21,8 @@ namespace Spectrum {
 
   public partial class BarSimulatorWindow : Window {
 
-    private Configuration config;
-    private WriteableBitmap bitmap;
+    private readonly Configuration config;
+    private readonly WriteableBitmap bitmap;
     private Int32Rect rect;
 
     public BarSimulatorWindow(Configuration config) {

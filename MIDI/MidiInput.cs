@@ -24,7 +24,7 @@ namespace Spectrum.MIDI {
   public class MidiInput : Input {
 
     // Each key on the keyboard corresponds to a color
-    private static int[] colorFromColorIndex = new int[] {
+    private static readonly int[] colorFromColorIndex = new int[] {
       0x000000, 0xFF0000, 0xFF3232, 0xFE00FF, 0xFD32FF, 0xFD54FF, 0xA100FF,
       0xA432FF, 0xA954FF, 0x0055FF, 0x3262FF, 0x00D5FF, 0x33D9FF, 0x54DEFF,
       0x00FFB9, 0x33FFBA, 0x39FF00, 0x50FF34, 0xE6FF00, 0xE8FF34, 0xFFD300,
@@ -35,11 +35,11 @@ namespace Spectrum.MIDI {
       0xFF00FF, 0xFF55FF, 0xFFABFF, 0xFFFFFF,*/
     };
 
-    private Configuration config;
+    private readonly Configuration config;
     private Dictionary<int, InputDevice> devices;
-    private ConcurrentQueue<MidiCommand> buffer;
-    private Dictionary<int, Dictionary<int, double>> knobValues;
-    private Dictionary<int, Dictionary<int, double>> noteVelocities;
+    private readonly ConcurrentQueue<MidiCommand> buffer;
+    private readonly Dictionary<int, Dictionary<int, double>> knobValues;
+    private readonly Dictionary<int, Dictionary<int, double>> noteVelocities;
     private MidiCommand[] commandsSinceLastTick;
     private Dictionary<InnerBindingKey, List<Binding>> bindings;
 

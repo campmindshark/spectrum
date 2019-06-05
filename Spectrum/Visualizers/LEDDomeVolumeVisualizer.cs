@@ -12,23 +12,23 @@ namespace Spectrum {
 
   class LEDDomeVolumeVisualizer : Visualizer {
 
-    private Configuration config;
-    private AudioInput audio;
-    private LEDDomeOutput dome;
+    private readonly Configuration config;
+    private readonly AudioInput audio;
+    private readonly LEDDomeOutput dome;
     private int animationSize;
     private int centerOffset;
 
     private StrutLayout partLayout, indexLayout, sectionLayout;
 
     // For color-from-part mode, maps each part to a color
-    private int[] partColors = new int[4];
+    private readonly int[] partColors = new int[4];
     // For color-from-index mode, maps each index to a color
-    private int[] indexColors = new int[6];
+    private readonly int[] indexColors = new int[6];
     // For color-from-part-and-spoke mode, maps each part/spoke to a color
-    private int[] partAndSpokeColors = new int[5];
+    private readonly int[] partAndSpokeColors = new int[5];
     // For color-from-random mode, maps each strut to a color
-    private int[] randomStrutColors = new int[LEDDomeOutput.GetNumStruts()];
-    private Random random = new Random();
+    private readonly int[] randomStrutColors = new int[LEDDomeOutput.GetNumStruts()];
+    private readonly Random random = new Random();
     private bool wipeStrutsNextCycle = false;
 
     public LEDDomeVolumeVisualizer(
@@ -46,7 +46,7 @@ namespace Spectrum {
       this.UpdateLayouts();
     }
 
-    private StrutLayout spokeLayout;
+    private readonly StrutLayout spokeLayout;
     private StrutLayout BuildSpokeLayout() {
       int[][] strutsBySpoke = new int[][] {
         new int[] {

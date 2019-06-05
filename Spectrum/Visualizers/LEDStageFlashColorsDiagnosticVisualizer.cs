@@ -6,9 +6,9 @@ namespace Spectrum {
 
   class LEDStageFlashColorsDiagnosticVisualizer : Visualizer {
 
-    private Configuration config;
-    private LEDStageOutput stage;
-    private Stopwatch stopwatch;
+    private readonly Configuration config;
+    private readonly LEDStageOutput stage;
+    private readonly Stopwatch stopwatch;
     // 0: everything off, 1: everything on, 2: only borders on, 3: everything on
     private int state = 3;
 

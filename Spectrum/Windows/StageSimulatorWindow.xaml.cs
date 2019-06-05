@@ -21,14 +21,14 @@ namespace Spectrum {
 
   public partial class StageSimulatorWindow : Window {
 
-    private static int[,] points = new int[,] {
+    private static readonly int[,] points = new int[,] {
       { 75, 130 }, { 150, 0 }, { 0, 0 },
       { 225, 130 }, { 300, 0 }, { 150, 260 },
       { 375, 130 }, { 300, 260 }, { 450, 260 },
       { 450, 0 }, { 525, 130 }, { 600, 0 },
       { 225, 390 }, { 375, 390 }, { 300, 520 },
     };
-    private static int[,] sides = new int[,] {
+    private static readonly int[,] sides = new int[,] {
       { 0, 1 }, { 1, 2 }, { 2, 0 },
       { 3, 1 }, { 1, 0 }, { 0, 3 },
       { 3, 4 }, { 4, 1 }, { 1, 3 },
@@ -92,12 +92,12 @@ namespace Spectrum {
       );
     }
 
-    private Configuration config;
-    private WriteableBitmap bitmap;
+    private readonly Configuration config;
+    private readonly WriteableBitmap bitmap;
     private Int32Rect rect;
-    private byte[] pixels;
+    private readonly byte[] pixels;
     private bool keyMode;
-    private Label[] sideLabels;
+    private readonly Label[] sideLabels;
 
     public StageSimulatorWindow(Configuration config) {
       this.InitializeComponent();

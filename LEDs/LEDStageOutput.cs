@@ -9,8 +9,8 @@ namespace Spectrum.LEDs {
   public class LEDStageOutput : Output {
 
     private OPCAPI opcAPI;
-    private Configuration config;
-    private List<Visualizer> visualizers;
+    private readonly Configuration config;
+    private readonly List<Visualizer> visualizers;
     private int maxTriangleLength;
 
     public LEDStageOutput(Configuration config) {

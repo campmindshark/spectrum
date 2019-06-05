@@ -11,10 +11,10 @@ namespace Spectrum {
 
   class LEDPanelMidiVisualizer : Visualizer {
 
-    private Configuration config;
-    private MidiInput midi;
-    private LEDBoardOutput board;
-    private List<KeyValuePair<int, double>> currentlyOn;
+    private readonly Configuration config;
+    private readonly MidiInput midi;
+    private readonly LEDBoardOutput board;
+    private readonly List<KeyValuePair<int, double>> currentlyOn;
 
     public LEDPanelMidiVisualizer(
       Configuration config,

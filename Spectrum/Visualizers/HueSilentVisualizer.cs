@@ -12,13 +12,13 @@ namespace Spectrum {
 
   class HueSilentVisualizer : Visualizer {
 
-    private Configuration config;
-    private AudioInput audio;
-    private HueOutput hue;
+    private readonly Configuration config;
+    private readonly AudioInput audio;
+    private readonly HueOutput hue;
 
     private bool silentMode = false;
     private int silentCounter = 40;
-    private Stopwatch stopwatch;
+    private readonly Stopwatch stopwatch;
 
     private int hueIndex = 0;
     private int satIndex = 254;

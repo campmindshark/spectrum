@@ -22,7 +22,7 @@ namespace Spectrum {
   public partial class DomeSimulatorWindow : Window {
 
     // What has become of my life
-    private static int[,] points = new int[,] {
+    private static readonly int[,] points = new int[,] {
       { 395, 86  }, { 477, 107 }, { 545, 157 }, { 591, 229 }, { 623, 319 }, // 1
       { 627, 404 }, { 599, 484 }, { 546, 551 }, { 471, 606 }, { 390, 637 },
       { 304, 637 }, { 226, 605 }, { 149, 551 }, { 95,  485 }, { 70,  403 },
@@ -48,12 +48,12 @@ namespace Spectrum {
       );
     }
 
-    private Configuration config;
-    private WriteableBitmap bitmap;
+    private readonly Configuration config;
+    private readonly WriteableBitmap bitmap;
     private Int32Rect rect;
-    private byte[] pixels;
+    private readonly byte[] pixels;
     private bool keyMode;
-    private Label[] strutLabels;
+    private readonly Label[] strutLabels;
 
     public DomeSimulatorWindow(Configuration config) {
       this.InitializeComponent();

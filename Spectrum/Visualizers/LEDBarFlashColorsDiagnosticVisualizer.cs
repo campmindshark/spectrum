@@ -6,9 +6,9 @@ namespace Spectrum {
 
   class LEDBarFlashColorsDiagnosticVisualizer : Visualizer {
 
-    private Configuration config;
-    private LEDBarOutput bar;
-    private Stopwatch stopwatch;
+    private readonly Configuration config;
+    private readonly LEDBarOutput bar;
+    private readonly Stopwatch stopwatch;
     // 0: everything off, 1: everything on, 2: only borders on, 3: everything on
     private int state = 3;
 

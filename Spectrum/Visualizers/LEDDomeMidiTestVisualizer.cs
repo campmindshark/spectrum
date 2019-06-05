@@ -18,12 +18,12 @@ namespace Spectrum {
    */
   class LEDDomeMidiTestVisualizer : Visualizer {
 
-    private Configuration config;
-    private MidiInput midi;
-    private LEDDomeOutput dome;
+    private readonly Configuration config;
+    private readonly MidiInput midi;
+    private readonly LEDDomeOutput dome;
     // Map from note to strut it has turned on
-    private Dictionary<int, int> strutStates;
-    private Random rand;
+    private readonly Dictionary<int, int> strutStates;
+    private readonly Random rand;
 
     public LEDDomeMidiTestVisualizer(
       Configuration config,

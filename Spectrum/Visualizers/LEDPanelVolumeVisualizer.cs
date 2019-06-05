@@ -11,9 +11,9 @@ namespace Spectrum {
 
   class LEDPanelVolumeVisualizer : Visualizer {
 
-    private Configuration config;
-    private AudioInput audio;
-    private LEDBoardOutput board;
+    private readonly Configuration config;
+    private readonly AudioInput audio;
+    private readonly LEDBoardOutput board;
 
     public LEDPanelVolumeVisualizer(
       Configuration config,

@@ -10,7 +10,7 @@ namespace Spectrum {
 
   class TrueIfValueConverter<T> : IValueConverter where T : IComparable {
 
-    private T value;
+    private readonly T value;
 
     // Note that to be bidirectional, values must be unique
     public TrueIfValueConverter(T value) {

@@ -15,12 +15,12 @@ namespace Spectrum {
 
   class Operator {
 
-    private Configuration config;
-    private List<Input> inputs;
-    private List<Output> outputs;
-    private List<Visualizer> visualizers;
-    private Stopwatch operatorThreadBlockingStopwatch;
-    private Stopwatch frameRateStopwatch;
+    private readonly Configuration config;
+    private readonly List<Input> inputs;
+    private readonly List<Output> outputs;
+    private readonly List<Visualizer> visualizers;
+    private readonly Stopwatch operatorThreadBlockingStopwatch;
+    private readonly Stopwatch frameRateStopwatch;
     private int framesThisSecond;
 
     public Operator(Configuration config) {

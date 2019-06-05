@@ -17,7 +17,7 @@ namespace Spectrum.Base {
 
     public static int bufferSize = 200;
 
-    private BlockingCollection<MidiLogMessage> messages
+    private readonly BlockingCollection<MidiLogMessage> messages
       = new BlockingCollection<MidiLogMessage>(bufferSize);
 
     public event PropertyChangedEventHandler PropertyChanged;

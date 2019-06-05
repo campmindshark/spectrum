@@ -19,14 +19,14 @@ namespace Spectrum.Base {
 
   public class BeatBroadcaster : INotifyPropertyChanged {
 
-    private static int tapTempoConclusionTime = 2000;
+    private static readonly int tapTempoConclusionTime = 2000;
 
-    private Configuration config;
+    private readonly Configuration config;
     private List<long> currentTaps = new List<long>();
     private long startingTime = -1;
     private int measureLength = -1;
-    private Timer tapTempoConclusionTimer = new Timer(tapTempoConclusionTime);
-    private MidiLevelDriverInstance[] driversByChannel = new MidiLevelDriverInstance[] {
+    private readonly Timer tapTempoConclusionTimer = new Timer(tapTempoConclusionTime);
+    private readonly MidiLevelDriverInstance[] driversByChannel = new MidiLevelDriverInstance[] {
       null, null, null, null, null, null, null, null,
     };
     private long lastChannelInteractionTime = 0;

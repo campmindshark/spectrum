@@ -177,17 +177,17 @@ namespace Spectrum {
 
   class LEDDomeFlashVisualizer : Visualizer {
 
-    private Configuration config;
-    private AudioInput audio;
-    private LEDDomeOutput dome;
-    private MidiInput midi;
+    private readonly Configuration config;
+    private readonly AudioInput audio;
+    private readonly LEDDomeOutput dome;
+    private readonly MidiInput midi;
 
-    private Dictionary<ShapeType, List<Shape>> shapes;
-    private Dictionary<int, List<Shape>> strutsToShapes;
-    private List<Animation> activeAnimations;
-    private Dictionary<int, Animation> padsToLastAnimation;
+    private readonly Dictionary<ShapeType, List<Shape>> shapes;
+    private readonly Dictionary<int, List<Shape>> strutsToShapes;
+    private readonly List<Animation> activeAnimations;
+    private readonly Dictionary<int, Animation> padsToLastAnimation;
 
-    private Random rand;
+    private readonly Random rand;
     public long lastUserAnimationCreated;
 
     public LEDDomeFlashVisualizer(

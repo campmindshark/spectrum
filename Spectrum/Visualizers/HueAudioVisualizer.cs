@@ -11,17 +11,17 @@ namespace Spectrum {
 
   class HueAudioVisualizer : Visualizer {
 
-    private Configuration config;
-    private AudioInput audio;
-    private HueOutput hue;
+    private readonly Configuration config;
+    private readonly AudioInput audio;
+    private readonly HueOutput hue;
 
-    private Random random;
+    private readonly Random random;
 
     // FFT analysis dicts
-    private Dictionary<String, double[]> bins;
-    private Dictionary<String, float[]> energyHistory;
-    private Dictionary<String, float> energyLevels;
-    private int historyLength = 16;
+    private readonly Dictionary<String, double[]> bins;
+    private readonly Dictionary<String, float[]> energyHistory;
+    private readonly Dictionary<String, float> energyLevels;
+    private readonly int historyLength = 16;
     private int processCount;
 
     // analysis/history variables

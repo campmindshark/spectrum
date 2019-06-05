@@ -6,9 +6,9 @@ namespace Spectrum {
 
   class LEDDomeStrandTestDiagnosticVisualizer : Visualizer {
 
-    private Configuration config;
-    private LEDDomeOutput dome;
-    private Stopwatch stopwatch;
+    private readonly Configuration config;
+    private readonly LEDDomeOutput dome;
+    private readonly Stopwatch stopwatch;
     // 0: everything off, 1: everything on
     private int state = 1;
 

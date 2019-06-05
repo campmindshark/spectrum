@@ -9,7 +9,7 @@ namespace Spectrum.LEDs {
 
   public class Strut {
 
-    private static Dictionary<Tuple<int, bool>, Strut> struts =
+    private static readonly Dictionary<Tuple<int, bool>, Strut> struts =
       new Dictionary<Tuple<int, bool>, Strut>();
 
     public static Strut FromIndex(Configuration config, int index) {
@@ -28,9 +28,9 @@ namespace Spectrum.LEDs {
       return struts[key];
     }
 
-    private Configuration config;
-    private int index;
-    private bool reversed;
+    private readonly Configuration config;
+    private readonly int index;
+    private readonly bool reversed;
 
     private Strut(
       Configuration config,
@@ -84,7 +84,7 @@ namespace Spectrum.LEDs {
 
   public class StrutLayoutSegment {
 
-    private HashSet<Strut> struts;
+    private readonly HashSet<Strut> struts;
 
     public StrutLayoutSegment(HashSet<Strut> struts) {
       this.struts = struts;
@@ -108,8 +108,8 @@ namespace Spectrum.LEDs {
 
   public class StrutLayout {
 
-    private StrutLayoutSegment[] segments;
-    private Dictionary<int, int> strutToSegment;
+    private readonly StrutLayoutSegment[] segments;
+    private readonly Dictionary<int, int> strutToSegment;
 
     public StrutLayout(StrutLayoutSegment[] segments) {
       this.segments = segments;

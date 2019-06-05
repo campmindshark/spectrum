@@ -43,7 +43,7 @@ namespace Spectrum {
       public string BindingTypeName { get; set; }
     }
 
-    private static HashSet<string> configPropertiesToRebootOn = new HashSet<string>() {
+    private static readonly HashSet<string> configPropertiesToRebootOn = new HashSet<string>() {
       "huesOutputInSeparateThread",
       "ledBoardOutputInSeparateThread",
       "midiInputInSeparateThread",
@@ -51,7 +51,7 @@ namespace Spectrum {
       "barOutputInSeparateThread",
       "stageOutputInSeparateThread",
     };
-    private static HashSet<string> configPropertiesIgnored = new HashSet<string>() {
+    private static readonly HashSet<string> configPropertiesIgnored = new HashSet<string>() {
       "operatorFPS",
       "domeBeagleboneOPCFPS",
       "boardBeagleboneOPCFPS",

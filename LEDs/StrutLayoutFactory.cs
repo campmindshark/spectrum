@@ -46,7 +46,7 @@ namespace Spectrum.LEDs {
       { 62, 68 }, { 63, 68 }, { 63, 69 }, { 64, 69 }, { 55, 69 }, { 65, 70 },
       { 66, 70 }, { 67, 70 }, { 68, 70 }, { 69, 70 },
     };
-    private static EdgeDictionary edgeDictionary;
+    private static readonly EdgeDictionary edgeDictionary;
 
     static StrutLayoutFactory() {
       edgeDictionary = new EdgeDictionary();

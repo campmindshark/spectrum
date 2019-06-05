@@ -19,9 +19,9 @@ namespace Spectrum {
    */
   class LEDDomeStrutIterationDiagnosticVisualizer : Visualizer {
 
-    private Configuration config;
-    private LEDDomeOutput dome;
-    private Stopwatch stopwatch;
+    private readonly Configuration config;
+    private readonly LEDDomeOutput dome;
+    private readonly Stopwatch stopwatch;
     private int lastIndex = 37;
     private int lastControlBox = 4;
     private int color = 0xFF0000;

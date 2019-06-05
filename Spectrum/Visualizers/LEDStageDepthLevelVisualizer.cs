@@ -9,11 +9,11 @@ namespace Spectrum {
 
   class LEDStageDepthLevelVisualizer : Visualizer {
 
-    private Configuration config;
-    private AudioInput audio;
-    private LEDStageOutput stage;
+    private readonly Configuration config;
+    private readonly AudioInput audio;
+    private readonly LEDStageOutput stage;
     private bool[] sideParts;
-    private Stopwatch stopwatch;
+    private readonly Stopwatch stopwatch;
 
     public LEDStageDepthLevelVisualizer(
       Configuration config,

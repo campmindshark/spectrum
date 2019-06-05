@@ -15,8 +15,8 @@ namespace Spectrum.LEDs {
    */
   class OPCAPI {
 
-    private string host;
-    private int port;
+    private readonly string host;
+    private readonly int port;
     private Socket socket;
     // (channel ID, pixel ID) => RGB value
     // these values have been realized (ie. a flush has happened)
@@ -28,11 +28,11 @@ namespace Spectrum.LEDs {
     private ConcurrentDictionary<byte, int> currentFirstPixelNotSet;
     // these values haven't been realized (ie. flush hasn't happened yet)
     private ConcurrentDictionary<byte, int> nextFirstPixelNotSet;
-    private bool separateThread;
-    private Action<int> setFPS;
-    private Stopwatch frameRateStopwatch;
+    private readonly bool separateThread;
+    private readonly Action<int> setFPS;
+    private readonly Stopwatch frameRateStopwatch;
     private int framesThisSecond;
-    private byte defaultChannel;
+    private readonly byte defaultChannel;
     private bool flushHappened;
 
     /**
@@ -68,7 +68,7 @@ namespace Spectrum.LEDs {
 
     private bool active;
     private Thread outputThread;
-    private object lockObject = new object();
+    private readonly object lockObject = new object();
     public bool Active {
       get {
         lock (this.lockObject) {

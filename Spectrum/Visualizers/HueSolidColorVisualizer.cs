@@ -10,8 +10,8 @@ namespace Spectrum {
 
   class HueSolidColorVisualizer : Visualizer {
 
-    private Configuration config;
-    private HueOutput hue;
+    private readonly Configuration config;
+    private readonly HueOutput hue;
     private bool shouldRun = false;
 
     // We cache previous values so we can detect when there was a change

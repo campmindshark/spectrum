@@ -35,9 +35,9 @@ namespace Spectrum {
       }
     }
 
-    private Configuration config;
+    private readonly Configuration config;
     private string currentlyEditingLevelDriverPreset;
-    private Dictionary<LevelDriverSource, ComboBox[]> channelComboBoxes;
+    private readonly Dictionary<LevelDriverSource, ComboBox[]> channelComboBoxes;
 
     public MidiHUDWindow(Configuration config) {
       this.InitializeComponent();

@@ -23,22 +23,22 @@ namespace Spectrum.Audio {
 
     private static readonly int fftSize = 32768;
     private static readonly int audioFormatSampleFrequency = 44100;
-    private static Dictionary<AudioDetectorType, double[]> bins =
+    private static readonly Dictionary<AudioDetectorType, double[]> bins =
       new Dictionary<AudioDetectorType, double[]>() {
         { AudioDetectorType.Kick, new double[] { 40, 50 } },
         { AudioDetectorType.Snare, new double[] { 1500, 2500 } },
       };
 
 
-    private Configuration config;
+    private readonly Configuration config;
 
     private MMDevice recordingDevice;
     private WasapiCapture captureStream;
-    private List<short> unanalyzedValues = new List<short>();
+    private readonly List<short> unanalyzedValues = new List<short>();
 
     // These values get continuously updated by the internal thread
     public float[] AudioData { get; private set; } = new float[fftSize];
-    private ConcurrentDictionary<string, double> maxAudioDataLevels = new ConcurrentDictionary<string, double>();
+    private readonly ConcurrentDictionary<string, double> maxAudioDataLevels = new ConcurrentDictionary<string, double>();
     public float Volume { get; private set; } = 0.0f;
 
     // We loop around the history array based on this offset
@@ -46,11 +46,11 @@ namespace Spectrum.Audio {
 
     public double BPM { get; private set; } = 0.0;
 
-    private static int historyLength = 32;
-    private Dictionary<AudioDetectorType, double[]> energyHistory;
-    private ConcurrentDictionary<AudioDetectorType, AudioEvent> eventBuffer;
+    private static readonly int historyLength = 32;
+    private readonly Dictionary<AudioDetectorType, double[]> energyHistory;
+    private readonly ConcurrentDictionary<AudioDetectorType, AudioEvent> eventBuffer;
     private List<AudioEvent> eventsSinceLastTick;
-    private Dictionary<AudioDetectorType, long> lastEventTime;
+    private readonly Dictionary<AudioDetectorType, long> lastEventTime;
     private long quietSince = -1;
 
     public AudioInput(Configuration config) {

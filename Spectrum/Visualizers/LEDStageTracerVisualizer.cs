@@ -7,9 +7,9 @@ namespace Spectrum {
 
   class LEDStageTracerVisualizer : Visualizer {
 
-    private Configuration config;
-    private LEDStageOutput stage;
-    private Stopwatch stopwatch;
+    private readonly Configuration config;
+    private readonly LEDStageOutput stage;
+    private readonly Stopwatch stopwatch;
 
     public LEDStageTracerVisualizer(
       Configuration config,

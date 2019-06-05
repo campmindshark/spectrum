@@ -13,7 +13,7 @@ namespace Spectrum.Hues {
 
   public struct HueCommand {
 
-    private static JsonSerializerSettings jsonSettings
+    private static readonly JsonSerializerSettings jsonSettings
       = new JsonSerializerSettings {
         NullValueHandling = NullValueHandling.Ignore
       };
@@ -39,9 +39,9 @@ namespace Spectrum.Hues {
       public HueCommand command;
     }
 
-    private Configuration config;
+    private readonly Configuration config;
     private ConcurrentQueue<HueMessage> buffer;
-    private List<Visualizer> visualizers;
+    private readonly List<Visualizer> visualizers;
 
     public HueOutput(Configuration config) {
       this.config = config;

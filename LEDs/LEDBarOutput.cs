@@ -8,9 +8,9 @@ namespace Spectrum.LEDs {
   public class LEDBarOutput : Output {
 
     private OPCAPI opcAPI;
-    private Configuration config;
-    private LEDDomeOutput dome;
-    private List<Visualizer> visualizers;
+    private readonly Configuration config;
+    private readonly LEDDomeOutput dome;
+    private readonly List<Visualizer> visualizers;
 
     public LEDBarOutput(Configuration config) {
       this.config = config;

@@ -14,7 +14,7 @@ namespace Spectrum.LEDs {
 
     // There are 8 strands coming out of each control box. For each of these
     // strands, this variable represents the sequence of strut types
-    private static LEDDomeStrutTypes[][] controlBoxStrutOrder =
+    private static readonly LEDDomeStrutTypes[][] controlBoxStrutOrder =
       new LEDDomeStrutTypes[][] {
         new LEDDomeStrutTypes[] {
           LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Blue,
@@ -55,7 +55,7 @@ namespace Spectrum.LEDs {
           LEDDomeStrutTypes.Blue, LEDDomeStrutTypes.Yellow,
         },
       };
-    private static Dictionary<LEDDomeStrutTypes, int> strutLengths =
+    private static readonly Dictionary<LEDDomeStrutTypes, int> strutLengths =
       new Dictionary<LEDDomeStrutTypes, int> {
         [LEDDomeStrutTypes.Yellow] = 34,
         [LEDDomeStrutTypes.Red] = 40,
@@ -68,7 +68,7 @@ namespace Spectrum.LEDs {
     // a control box, and an index within that control box. The control box
     // index is based on the sequence of the 8 strands and the struts that
     // comprise them. See comment at the top of FindStrutIndex for more details.
-    private static Tuple<int, int>[] strutPositions = new Tuple<int, int>[] {
+    private static readonly Tuple<int, int>[] strutPositions = new Tuple<int, int>[] {
       new Tuple<int, int>(0, 22), new Tuple<int, int>(0, 23),
       new Tuple<int, int>(1, 36), new Tuple<int, int>(1, 21),
       new Tuple<int, int>(1, 22), new Tuple<int, int>(1, 23),
@@ -167,10 +167,10 @@ namespace Spectrum.LEDs {
     };
 
     private OPCAPI opcAPI;
-    private Configuration config;
-    private List<Visualizer> visualizers;
-    private HashSet<int> reservedStruts;
-    private static int maxStripLength;
+    private readonly Configuration config;
+    private readonly List<Visualizer> visualizers;
+    private readonly HashSet<int> reservedStruts;
+    private static readonly int maxStripLength;
 
     private static int calculateMaxStripLength() {
       int maxLength = 0;

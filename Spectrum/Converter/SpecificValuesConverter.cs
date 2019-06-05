@@ -10,8 +10,8 @@ namespace Spectrum {
 
   class SpecificValuesConverter<F, T> : IValueConverter {
 
-    private Dictionary<F, T> converterDictionary;
-    private Dictionary<T, F> invertedDictionary;
+    private readonly Dictionary<F, T> converterDictionary;
+    private readonly Dictionary<T, F> invertedDictionary;
 
     // Note that to be bidirectional, values must be unique
     public SpecificValuesConverter(Dictionary<F, T> converterDictionary, bool bidirectional = false) {
