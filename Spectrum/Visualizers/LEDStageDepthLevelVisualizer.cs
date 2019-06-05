@@ -26,12 +26,11 @@ namespace Spectrum {
       this.stage.RegisterVisualizer(this);
       this.stopwatch = new Stopwatch();
       this.stopwatch.Start();
-      this.CalculateSideParts();
       this.config.PropertyChanged += ConfigUpdated;
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (e.PropertyName == "stageSideLengths") {
+      if (e.PropertyName == "stageSideLengths" && this.Enabled) {
         this.CalculateSideParts();
       }
     }
@@ -63,6 +62,9 @@ namespace Spectrum {
       set {
         if (value == this.enabled) {
           return;
+        }
+        if (value) {
+          this.CalculateSideParts();
         }
         this.enabled = value;
       }
