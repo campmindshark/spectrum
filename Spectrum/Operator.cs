@@ -200,13 +200,20 @@ namespace Spectrum {
               continue;
             }
             int pri = visualizer.Priority;
+            bool canAdd = false;
             if (pri == -1) {
               alwaysRunVisualizers.Add(visualizer);
             } else if (pri > topPri) {
               topPri = pri;
               topPriVisualizers.Clear();
-              topPriVisualizers.Add(visualizer);
+              canAdd = true;
             } else if (pri == topPri) {
+              canAdd = true;
+            }
+            if (!canAdd) {
+              continue;
+            }
+            if (visualizer.GetInputs().All(input => input.Enabled)) {
               topPriVisualizers.Add(visualizer);
             }
           }
@@ -221,6 +228,9 @@ namespace Spectrum {
         foreach (var visualizer in activeVisualizers) {
           activeInputs.UnionWith(visualizer.GetInputs());
         }
+        activeInputs.UnionWith(
+          this.inputs.Where(input => input.Enabled && input.AlwaysActive)
+        );
 
         foreach (var output in this.outputs) {
           output.Active = activeOutputs.Contains(output);
@@ -229,8 +239,7 @@ namespace Spectrum {
           visualizer.Enabled = activeVisualizers.Contains(visualizer);
         }
         foreach (var input in this.inputs) {
-          input.Active = (input.Enabled && input.AlwaysActive)
-            || activeInputs.Contains(input);
+          input.Active = activeInputs.Contains(input);
         }
 
         foreach (var input in activeInputs) {
