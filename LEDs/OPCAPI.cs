@@ -52,11 +52,7 @@ namespace Spectrum.LEDs {
       if (parts.Length >= 3) {
         this.defaultChannel = Convert.ToByte(parts[2]);
       }
-      this.socket = new Socket(
-        AddressFamily.InterNetwork,
-        SocketType.Stream,
-        ProtocolType.Tcp
-      );
+      this.InitializeSocket();
       this.currentPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
       this.nextPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
       this.currentFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
@@ -105,8 +101,27 @@ namespace Spectrum.LEDs {
       }
     }
 
+    private void InitializeSocket() {
+      this.socket = new Socket(
+        AddressFamily.InterNetwork,
+        SocketType.Stream,
+        ProtocolType.Tcp
+      );
+    }
+
     private void ConnectSocket() {
-      this.socket.Connect(this.host, this.port);
+      while (true) {
+        if (!this.Active) {
+          return;
+        }
+        var asyncResult = this.socket.BeginConnect(this.host, this.port, null, null);
+        bool result = asyncResult.AsyncWaitHandle.WaitOne(2000, true);
+        if (result) {
+          return;
+        }
+        this.socket.Close();
+        this.InitializeSocket();
+      }
     }
 
     private void DisconnectSocket() {
