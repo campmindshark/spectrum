@@ -569,7 +569,11 @@ namespace Spectrum.LEDs {
         index,
         this.config.colorPaletteIndex
       );
-      if (this.config.colorPalette.colors[absoluteIndex] == null) {
+      if (
+        this.config.colorPalette.colors == null ||
+        this.config.colorPalette.colors.Length <= absoluteIndex ||
+        this.config.colorPalette.colors[absoluteIndex] == null
+      ) {
         return 0x000000;
       }
       if (!this.config.colorPalette.colors[absoluteIndex].IsGradient) {

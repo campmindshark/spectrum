@@ -78,7 +78,7 @@ namespace Spectrum.Base {
     }
 
     private int? GetColor(int index, int whichColor) {
-      if (this.colors == null || this.colors[index] == null) {
+      if (this.colors == null || this.colors.Length <= index || this.colors[index] == null) {
         return null;
       }
       if (whichColor == 0) {
