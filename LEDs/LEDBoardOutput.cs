@@ -5,9 +5,9 @@ using System.ComponentModel;
 namespace Spectrum.LEDs {
 
   /**
-   * This is a simple wrapper around SimpleTeensyOutput that exposes a
-   * Cartestian coordinate system for a LED grid that is arrayed in a particular
-   * back-and-forth grid structure. Here's a drawing:
+   * This is a simple wrapper around OPCAPI that exposes a Cartesian coordinate
+   * system for a LED grid that is arrayed in a particular back-and-forth grid
+   * structure. Here's a drawing:
    *   >>>>>
    *   <<<<<
    *   >>>>>
@@ -19,7 +19,6 @@ namespace Spectrum.LEDs {
    */
   public class LEDBoardOutput : Output {
 
-    private TeensyAPI teensyAPI;
     private OPCAPI opcAPI;
     private Configuration config;
     private List<Visualizer> visualizers;
@@ -31,54 +30,19 @@ namespace Spectrum.LEDs {
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (!this.active) {
+      if (!this.active || !this.config.ledBoardEnabled) {
         return;
       }
-      if (e.PropertyName == "boardHardwareSetup") {
-        if (this.config.boardHardwareSetup == 0) {
-          if (this.opcAPI != null) {
-            this.opcAPI.Active = false;
-          }
-          this.initializeTeensyAPI();
-        } else if (this.config.boardHardwareSetup == 1) {
-          if (this.teensyAPI != null) {
-            this.teensyAPI.Active = false;
-          }
-          this.initializeOPCAPI();
-        }
-      } else if (e.PropertyName == "boardTeensyUSBPort") {
-        if (this.config.boardHardwareSetup == 0) {
-          this.teensyAPI.Active = false;
-          this.initializeTeensyAPI();
-        }
-      } else if (e.PropertyName == "boardBeagleboneOPCAddress") {
-        if (this.config.boardHardwareSetup == 1) {
-          this.opcAPI.Active = false;
-          this.initializeOPCAPI();
-        }
-      } else if (e.PropertyName == "ledBoardOutputInSeparateThread") {
-        if (this.config.boardHardwareSetup == 0) {
-          if (this.teensyAPI != null) {
-            this.teensyAPI.Active = false;
-          }
-          this.initializeTeensyAPI();
-        } else if (this.config.boardHardwareSetup == 1) {
-          if (this.opcAPI != null) {
-            this.opcAPI.Active = false;
-          }
-          this.initializeOPCAPI();
-        }
+      if (
+        e.PropertyName != "boardBeagleboneOPCAddress" &&
+        e.PropertyName != "ledBoardOutputInSeparateThread"
+      ) {
+        return;
       }
-    }
-
-    private void initializeTeensyAPI() {
-      this.teensyAPI = new TeensyAPI(
-        this.config.boardTeensyUSBPort,
-        this.config.ledBoardOutputInSeparateThread,
-        newFPS => this.config.boardTeensyFPS = newFPS
-      );
-      this.teensyAPI.Active = this.active &&
-        this.config.boardHardwareSetup == 0;
+      if (this.opcAPI != null) {
+        this.opcAPI.Active = false;
+      }
+      this.initializeOPCAPI();
     }
 
     private void initializeOPCAPI() {
@@ -92,8 +56,7 @@ namespace Spectrum.LEDs {
         this.config.ledBoardOutputInSeparateThread,
         newFPS => this.config.boardBeagleboneOPCFPS = newFPS
       );
-      this.opcAPI.Active = this.active &&
-        this.config.boardHardwareSetup == 1;
+      this.opcAPI.Active = this.active;
     }
 
     private bool active = false;
@@ -107,18 +70,9 @@ namespace Spectrum.LEDs {
         }
         this.active = value;
         if (value) {
-          if (this.config.boardHardwareSetup == 0) {
-            this.initializeTeensyAPI();
-          } else if (this.config.boardHardwareSetup == 1) {
-            this.initializeOPCAPI();
-          }
-        } else {
-          if (this.teensyAPI != null) {
-            this.teensyAPI.Active = false;
-          }
-          if (this.opcAPI != null) {
-            this.opcAPI.Active = false;
-          }
+          this.initializeOPCAPI();
+        } else if (this.opcAPI != null) {
+          this.opcAPI.Active = false;
         }
       }
     }
@@ -130,10 +84,7 @@ namespace Spectrum.LEDs {
     }
 
     public void OperatorUpdate() {
-      if (this.config.boardHardwareSetup == 0 && this.teensyAPI != null) {
-        this.teensyAPI.OperatorUpdate();
-      }
-      if (this.config.boardHardwareSetup == 1 && this.opcAPI != null) {
+      if (this.opcAPI != null) {
         this.opcAPI.OperatorUpdate();
       }
     }
@@ -147,10 +98,7 @@ namespace Spectrum.LEDs {
     }
 
     public void Flush() {
-      if (this.config.boardHardwareSetup == 0 && this.teensyAPI != null) {
-        this.teensyAPI.Flush();
-      }
-      if (this.config.boardHardwareSetup == 1 && this.opcAPI != null) {
+      if (this.opcAPI != null) {
         this.opcAPI.Flush();
       }
     }
@@ -165,10 +113,7 @@ namespace Spectrum.LEDs {
       } else {
         pixelIndex += x;
       }
-      if (this.config.boardHardwareSetup == 0 && this.teensyAPI != null) {
-        this.teensyAPI.SetPixel(pixelIndex, color);
-      }
-      if (this.config.boardHardwareSetup == 1 && this.opcAPI != null) {
+      if (this.opcAPI != null) {
         this.opcAPI.SetPixel(pixelIndex, color);
       }
     }
