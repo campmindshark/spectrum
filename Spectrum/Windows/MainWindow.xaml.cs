@@ -165,8 +165,14 @@ namespace Spectrum {
     private void LoadConfig() {
       this.loadingConfig = true;
 
+      string loadFile = null;
       if (File.Exists("spectrum_config.xml")) {
-        using (FileStream stream = File.OpenRead("spectrum_config.xml")) {
+        loadFile = "spectrum_config.xml";
+      } else if (File.Exists("spectrum_default_config.xml")) {
+        loadFile = "spectrum_default_config.xml";
+      }
+      if (loadFile != null) {
+        using (FileStream stream = File.OpenRead(loadFile)) {
           this.config = new XmlSerializer<SpectrumConfiguration>(
           ).Deserialize(stream);
         }
