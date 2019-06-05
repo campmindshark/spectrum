@@ -72,9 +72,9 @@ namespace Spectrum {
         | brightnessByte << 8
         | brightnessByte;
 
-      for (int teensy = 0; teensy < 5; teensy++) {
+      for (int controlBox = 0; controlBox < 5; controlBox++) {
         for (int localIndex = 0; localIndex < 38; localIndex++) {
-          var strutIndex = LEDDomeOutput.FindStrutIndex(teensy, localIndex);
+          var strutIndex = LEDDomeOutput.FindStrutIndex(controlBox, localIndex);
           Strut strut = Strut.FromIndex(this.config, strutIndex);
           if (this.state == 2) {
             for (int j = 1; j < strut.Length - 1; j++) {

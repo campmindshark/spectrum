@@ -53,19 +53,7 @@ namespace Spectrum {
     [XmlIgnore]
     public int operatorFPS { get; set; } = 0;
     [XmlIgnore]
-    public int domeTeensyFPS1 { get; set; } = 0;
-    [XmlIgnore]
-    public int domeTeensyFPS2 { get; set; } = 0;
-    [XmlIgnore]
-    public int domeTeensyFPS3 { get; set; } = 0;
-    [XmlIgnore]
-    public int domeTeensyFPS4 { get; set; } = 0;
-    [XmlIgnore]
-    public int domeTeensyFPS5 { get; set; } = 0;
-    [XmlIgnore]
     public int domeBeagleboneOPCFPS { get; set; } = 0;
-    [XmlIgnore]
-    public int domeBeagleboneCAMPFPS { get; set; } = 0;
     [XmlIgnore]
     public int boardBeagleboneOPCFPS { get; set; } = 0;
     [XmlIgnore]
@@ -93,15 +81,8 @@ namespace Spectrum {
     public int stageTestPattern { get; set; } = 0;
     public double stageTracerSpeed { get; set; } = 1.0;
 
-    // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
-    public int domeHardwareSetup { get; set; } = 0;
-    public string domeTeensyUSBPort1 { get; set; } = null;
-    public string domeTeensyUSBPort2 { get; set; } = null;
-    public string domeTeensyUSBPort3 { get; set; } = null;
-    public string domeTeensyUSBPort4 { get; set; } = null;
-    public string domeTeensyUSBPort5 { get; set; } = null;
     public string domeBeagleboneOPCAddress { get; set; } = "";
-    public string domeBeagleboneCAMPAddress { get; set; } = "";
+
     public bool domeSimulationEnabled { get; set; } = false;
     public double domeMaxBrightness { get; set; } = 0.5;
     public double domeBrightness { get; set; } = 0.1;

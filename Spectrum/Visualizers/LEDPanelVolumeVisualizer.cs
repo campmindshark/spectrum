@@ -13,17 +13,17 @@ namespace Spectrum {
 
     private Configuration config;
     private AudioInput audio;
-    private LEDBoardOutput teensy;
+    private LEDBoardOutput board;
 
     public LEDPanelVolumeVisualizer(
       Configuration config,
       AudioInput audio,
-      LEDBoardOutput teensy
+      LEDBoardOutput board
     ) {
       this.config = config;
       this.audio = audio;
-      this.teensy = teensy;
-      this.teensy.RegisterVisualizer(this);
+      this.board = board;
+      this.board.RegisterVisualizer(this);
     }
 
     public int Priority {
@@ -50,10 +50,10 @@ namespace Spectrum {
       for (int j = 0; j < this.config.boardRowsPerStrip * 8; j++) {
         for (int i = 0; i < this.config.boardRowLength; i++) {
           int color = numColumnsToLight > i ? activeColor : 0x000000;
-          this.teensy.SetPixel(i, j, color);
+          this.board.SetPixel(i, j, color);
         }
       }
-      this.teensy.Flush();
+      this.board.Flush();
     }
 
   }

@@ -12,7 +12,9 @@ namespace Spectrum.LEDs {
 
   public class LEDDomeOutput : Output {
 
-    private static LEDDomeStrutTypes[][] teensyStrutOrder =
+    // There are 8 strands coming out of each control box. For each of these
+    // strands, this variable represents the sequence of strut types
+    private static LEDDomeStrutTypes[][] controlBoxStrutOrder =
       new LEDDomeStrutTypes[][] {
         new LEDDomeStrutTypes[] {
           LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Blue,
@@ -62,6 +64,10 @@ namespace Spectrum.LEDs {
         [LEDDomeStrutTypes.Green] = 42,
         [LEDDomeStrutTypes.Purple] = 44,
       };
+    // We assign each strut an index. This variable maps that strut index to
+    // a control box, and an index within that control box. The control box
+    // index is based on the sequence of the 8 strands and the struts that
+    // comprise them. See comment at the top of FindStrutIndex for more details.
     private static Tuple<int, int>[] strutPositions = new Tuple<int, int>[] {
       new Tuple<int, int>(0, 22), new Tuple<int, int>(0, 23),
       new Tuple<int, int>(1, 36), new Tuple<int, int>(1, 21),
@@ -160,8 +166,7 @@ namespace Spectrum.LEDs {
       new Tuple<int, int>(4, 4), new Tuple<int, int>(0, 4),
     };
 
-    private TeensyAPI[] teensies;
-    private OPCAPI[] opcAPIs;
+    private OPCAPI opcAPI;
     private Configuration config;
     private List<Visualizer> visualizers;
     private HashSet<int> reservedStruts;
@@ -169,7 +174,7 @@ namespace Spectrum.LEDs {
 
     private static int calculateMaxStripLength() {
       int maxLength = 0;
-      foreach (LEDDomeStrutTypes[] struts in teensyStrutOrder) {
+      foreach (LEDDomeStrutTypes[] struts in controlBoxStrutOrder) {
         int length = 0;
         foreach (LEDDomeStrutTypes type in struts) {
           length += strutLengths[type];
@@ -201,132 +206,19 @@ namespace Spectrum.LEDs {
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (!this.active) {
+      if (!this.active || !this.config.domeEnabled) {
         return;
       }
-      if (e.PropertyName == "domeHardwareSetup") {
-        if (!this.config.domeEnabled) {
-        } else if (this.config.domeHardwareSetup == 0) {
-          if (this.opcAPIs != null) {
-            foreach (var opcAPI in this.opcAPIs) {
-              if (opcAPI != null) {
-                opcAPI.Active = false;
-              }
-            }
-          }
-          this.initializeTeensies();
-        } else if (this.config.domeHardwareSetup == 1) {
-          if (this.teensies != null) {
-            foreach (var teensy in this.teensies) {
-              if (teensy != null) {
-                teensy.Active = false;
-              }
-            }
-          }
-          this.initializeOPCAPI();
-        }
-      } else if (
-        e.PropertyName == "domeTeensyUSBPort1" ||
-          e.PropertyName == "domeTeensyUSBPort2" ||
-          e.PropertyName == "domeTeensyUSBPort3" ||
-          e.PropertyName == "domeTeensyUSBPort4" ||
-          e.PropertyName == "domeTeensyUSBPort5"
+      if (
+        e.PropertyName != "domeBeagleboneOPCAddress" &&
+        e.PropertyName != "domeOutputInSeparateThread"
       ) {
-        if (this.config.domeHardwareSetup == 0 && this.config.domeEnabled) {
-          foreach (var teensy in this.teensies) {
-            if (teensy != null) {
-              teensy.Active = false;
-            }
-          }
-          this.initializeTeensies();
-        }
-      } else if (e.PropertyName == "domeBeagleboneOPCAddress") {
-        if (this.config.domeHardwareSetup == 1 && this.config.domeEnabled) {
-          foreach (var opcAPI in this.opcAPIs) {
-            if (opcAPI != null) {
-              opcAPI.Active = false;
-            }
-          }
-          this.initializeOPCAPI();
-        }
-      } else if (e.PropertyName == "domeOutputInSeparateThread") {
-        if (!this.config.domeEnabled) {
-        } else if (this.config.domeHardwareSetup == 0) {
-          if (this.teensies != null) {
-            foreach (var teensy in this.teensies) {
-              if (teensy != null) {
-                teensy.Active = false;
-              }
-            }
-          }
-          this.initializeTeensies();
-        } else if (this.config.domeHardwareSetup == 1) {
-          if (this.opcAPIs != null) {
-            foreach (var opcAPI in this.opcAPIs) {
-              if (opcAPI != null) {
-                opcAPI.Active = false;
-              }
-            }
-          }
-          this.initializeOPCAPI();
-        }
+        return;
       }
-    }
-
-    private void initializeTeensies() {
-      bool active = this.active && this.config.domeHardwareSetup == 0;
-      TeensyAPI api1, api2, api3, api4, api5;
-      try {
-        api1 = new TeensyAPI(
-          this.config.domeTeensyUSBPort1,
-          this.config.domeOutputInSeparateThread,
-          newFPS => this.config.domeTeensyFPS1 = newFPS
-        );
-        api1.Active = active;
-      } catch (Exception) {
-        api1 = null;
+      if (this.opcAPI != null) {
+        this.opcAPI.Active = false;
       }
-      try {
-        api2 = new TeensyAPI(
-          this.config.domeTeensyUSBPort2,
-          this.config.domeOutputInSeparateThread,
-          newFPS => this.config.domeTeensyFPS2 = newFPS
-        );
-        api2.Active = active;
-      } catch (Exception) {
-        api2 = null;
-      }
-      try {
-        api3 = new TeensyAPI(
-          this.config.domeTeensyUSBPort3,
-          this.config.domeOutputInSeparateThread,
-          newFPS => this.config.domeTeensyFPS3 = newFPS
-        );
-        api3.Active = active;
-      } catch (Exception) {
-        api3 = null;
-      }
-      try {
-        api4 = new TeensyAPI(
-          this.config.domeTeensyUSBPort4,
-          this.config.domeOutputInSeparateThread,
-          newFPS => this.config.domeTeensyFPS4 = newFPS
-        );
-        api4.Active = active;
-      } catch (Exception) {
-        api4 = null;
-      }
-      try {
-        api5 = new TeensyAPI(
-          this.config.domeTeensyUSBPort5,
-          this.config.domeOutputInSeparateThread,
-          newFPS => this.config.domeTeensyFPS5 = newFPS
-        );
-        api5.Active = active;
-      } catch (Exception) {
-        api5 = null;
-      }
-      this.teensies = new TeensyAPI[] { api1, api2, api3, api4, api5 };
+      this.initializeOPCAPI();
     }
 
     private void initializeOPCAPI() {
@@ -335,18 +227,12 @@ namespace Spectrum.LEDs {
       if (parts.Length < 3) {
         opcAddress += ":0"; // default to channel 0
       }
-      this.opcAPIs = new OPCAPI[] {
-        new OPCAPI(
-          opcAddress,
-          this.config.domeOutputInSeparateThread,
-          newFPS => this.config.domeBeagleboneOPCFPS = newFPS
-        ),
-      };
-      foreach (var opcAPI in this.opcAPIs) {
-        if (opcAPI != null) {
-          opcAPI.Active = this.active && this.config.domeHardwareSetup == 1;
-        }
-      }
+      this.opcAPI = new OPCAPI(
+        opcAddress,
+        this.config.domeOutputInSeparateThread,
+        newFPS => this.config.domeBeagleboneOPCFPS = newFPS
+      );
+      this.opcAPI.Active = this.active;
     }
 
     private bool active = false;
@@ -363,26 +249,9 @@ namespace Spectrum.LEDs {
           return;
         }
         if (value) {
-          if (this.config.domeHardwareSetup == 0) {
-            this.initializeTeensies();
-          } else if (this.config.domeHardwareSetup == 1) {
-            this.initializeOPCAPI();
-          }
+          this.initializeOPCAPI();
         } else {
-          if (this.teensies != null) {
-            foreach (var teensy in this.teensies) {
-              if (teensy != null) {
-                teensy.Active = false;
-              }
-            }
-          }
-          if (this.opcAPIs != null) {
-            foreach (var opcAPI in this.opcAPIs) {
-              if (opcAPI != null) {
-                opcAPI.Active = false;
-              }
-            }
-          }
+          this.opcAPI.Active = false;
         }
       }
     }
@@ -394,36 +263,14 @@ namespace Spectrum.LEDs {
     }
 
     public void OperatorUpdate() {
-      if (this.config.domeHardwareSetup == 0 && this.teensies != null) {
-        foreach (var teensy in this.teensies) {
-          if (teensy != null) {
-            teensy.OperatorUpdate();
-          }
-        }
-      }
-      if (this.config.domeHardwareSetup == 1 && this.opcAPIs != null) {
-        foreach (var opcAPI in this.opcAPIs) {
-          if (opcAPI != null) {
-            opcAPI.OperatorUpdate();
-          }
-        }
+      if (this.opcAPI != null) {
+         this.opcAPI.OperatorUpdate();
       }
     }
 
     public void Flush() {
-      if (this.config.domeHardwareSetup == 0 && this.teensies != null) {
-        foreach (var teensy in this.teensies) {
-          if (teensy != null) {
-            teensy.Flush();
-          }
-        }
-      }
-      if (this.config.domeHardwareSetup == 1 && this.opcAPIs != null) {
-        foreach (var opcAPI in this.opcAPIs) {
-          if (opcAPI != null) {
-            opcAPI.Flush();
-          }
-        }
+      if (this.opcAPI != null) {
+         this.opcAPI.Flush();
       }
       if (this.config.domeSimulationEnabled) {
         this.config.domeCommandQueue.Enqueue(
@@ -432,19 +279,16 @@ namespace Spectrum.LEDs {
       }
     }
 
-    private void SetDevicePixel(int teensyIndex, int pixelIndex, int color) {
+    private void SetDevicePixel(int controlBoxIndex, int pixelIndex, int color) {
       lock (this.visualizers) {
-        if (this.teensies != null && this.teensies[teensyIndex] != null) {
-          this.teensies[teensyIndex].SetPixel(pixelIndex, color);
-        }
-        if (this.opcAPIs != null && this.opcAPIs[0] != null) {
-          int totalPixelIndex = teensyIndex * (maxStripLength * 8) + pixelIndex;
-          if (teensyIndex > 3) {
+        if (this.opcAPI != null) {
+          int totalPixelIndex = controlBoxIndex * (maxStripLength * 8) + pixelIndex;
+          if (controlBoxIndex > 3) {
             // NatShip rev A seems to have a design defect where "channels" 34
             // and 45 are broken. To get around this, we are skipping 4 channels
             totalPixelIndex += maxStripLength * 4;
           }
-          this.opcAPIs[0].SetPixel(totalPixelIndex, color);
+          this.opcAPI.SetPixel(totalPixelIndex, color);
         }
       }
     }
@@ -455,19 +299,13 @@ namespace Spectrum.LEDs {
       Tuple<int, int> strutPosition = strutPositions[strutIndex];
       int strutsLeft = strutPosition.Item2;
       int i = 0;
-      while (teensyStrutOrder[i].Length <= strutsLeft) {
-        strutsLeft -= teensyStrutOrder[i].Length;
+      while (controlBoxStrutOrder[i].Length <= strutsLeft) {
+        strutsLeft -= controlBoxStrutOrder[i].Length;
         i++;
-        if (this.config.domeHardwareSetup == 0) {
-          foreach (LEDDomeStrutTypes type in teensyStrutOrder[i]) {
-            pixelIndex += strutLengths[type];
-          }
-        } else {
-          pixelIndex += maxStripLength;
-        }
+        pixelIndex += maxStripLength;
       }
       for (int j = 0; j < strutsLeft; j++) {
-        pixelIndex += strutLengths[teensyStrutOrder[i][j]];
+        pixelIndex += strutLengths[controlBoxStrutOrder[i][j]];
       }
       this.SetDevicePixel(strutPosition.Item1, pixelIndex, color);
       if (this.config.domeSimulationEnabled) {
@@ -502,20 +340,24 @@ namespace Spectrum.LEDs {
     }
 
     /**
-     * This function takes as input a teensyIndex, and a special index called
-     * teensyStrutIndex. This second index goes from 0-37, and it identifies a
-     * strut uniquely for a given Teensy. (There are currently 190 struts and 5
-     * Teensies). The order is such so that the struts appear in the order they
-     * are plugged into the Teensy, eg. all of the struts plugged into the first
-     * of the eight outputs on the Teensy, and then all of the struts plugged
-     * into the second, etc. This method is primarily useful for debugging.
+     * This function takes as input a controlBoxIndex, and a special index
+     * called controlBoxStrutIndex. This second index goes from 0-37, and it
+     * identifies a strut uniquely for a given control box. (There are currently
+     * 190 struts and 5 control boxes). The order is such so that the struts
+     * appear in the order they are plugged into the control box, eg. all of the
+     * struts plugged into the first of the eight outputs on the control box,
+     * and then all of the struts plugged into the second, etc. This method is
+     * primarily useful for debugging.
      */
-    public static int FindStrutIndex(int teensyIndex, int teensyStrutIndex) {
+    public static int FindStrutIndex(
+      int controlBoxIndex,
+      int controlBoxStrutIndex
+    ) {
       for (int i = 0; i < strutPositions.Length; i++) {
         var strutPosition = strutPositions[i];
         if (
-          teensyIndex == strutPosition.Item1 &&
-          teensyStrutIndex == strutPosition.Item2
+          controlBoxIndex == strutPosition.Item1 &&
+          controlBoxStrutIndex == strutPosition.Item2
         ) {
           return i;
         }
@@ -535,11 +377,11 @@ namespace Spectrum.LEDs {
       var strutPosition = strutPositions[strutIndex];
       int strutsLeft = strutPosition.Item2;
       int i = 0;
-      while (teensyStrutOrder[i].Length <= strutsLeft) {
-        strutsLeft -= teensyStrutOrder[i].Length;
+      while (controlBoxStrutOrder[i].Length <= strutsLeft) {
+        strutsLeft -= controlBoxStrutOrder[i].Length;
         i++;
       }
-      return strutLengths[teensyStrutOrder[i][strutsLeft]];
+      return strutLengths[controlBoxStrutOrder[i][strutsLeft]];
     }
 
     public int GetSingleColor(int index) {

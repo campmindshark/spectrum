@@ -23,7 +23,7 @@ namespace Spectrum {
     private LEDDomeOutput dome;
     private Stopwatch stopwatch;
     private int lastIndex = 37;
-    private int lastTeensy = 4;
+    private int lastControlBox = 4;
     private int color = 0xFF0000;
 
     public LEDDomeStrutIterationDiagnosticVisualizer(
@@ -54,7 +54,7 @@ namespace Spectrum {
         }
         if (value) {
           this.lastIndex = 37;
-          this.lastTeensy = 4;
+          this.lastControlBox = 4;
           this.color = 0xFF0000;
         }
         this.enabled = value;
@@ -80,7 +80,7 @@ namespace Spectrum {
         | brightnessByte;
       if (this.lastIndex == 38) {
         this.lastIndex = 0;
-        this.lastTeensy = (this.lastTeensy + 1) % 5;
+        this.lastControlBox = (this.lastControlBox + 1) % 5;
 
         // Reset every LED to blue
         for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
@@ -90,7 +90,7 @@ namespace Spectrum {
           }
         }
 
-        if (this.lastTeensy == 0) {
+        if (this.lastControlBox == 0) {
           if (this.color == 0xFF0000) {
             this.color = 0x00FF00;
           } else if (this.color == 0x00FF00) {
@@ -103,7 +103,7 @@ namespace Spectrum {
         }
       }
       var strutIndex = LEDDomeOutput.FindStrutIndex(
-        this.lastTeensy,
+        this.lastControlBox,
         this.lastIndex
       );
       Strut strut = Strut.FromIndex(this.config, strutIndex);

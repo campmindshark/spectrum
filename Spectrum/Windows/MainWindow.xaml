@@ -345,46 +345,9 @@
                         <Label Content="Hardware" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
                         <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
                             <Grid>
-                                <Label Content="Setup" Margin="0,3,0,0" Padding="0" />
-                                <ComboBox x:Name="domeHardwareSetup" HorizontalAlignment="Left" VerticalAlignment="Top" Width="140" Margin="80,0,0,0">
-                                    <ComboBoxItem x:Name="fiveTeensies" Content="Five Teensies" IsSelected="True" />
-                                    <ComboBoxItem x:Name="beagleboneViaOPC" Content="Beaglebone via OPC" />
-                                    <ComboBoxItem x:Name="beagleboneViaCAMP" Content="Beaglebone via CAMP" />
-                                </ComboBox>
-                                <WrapPanel x:Name="domeTeensies" Margin="0,25,0,0">
-                                    <Grid Height="24">
-                                        <Label Content="USB ports" Margin="0,3,0,0" Padding="0" />
-                                        <ComboBox x:Name="domeTeensy1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="80,0,0,0" Width="115" SelectionChanged="DomePortChanged" />
-                                        <Label x:Name="domeTeensyFPS1Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="197,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                                    </Grid>
-                                    <Grid Height="24">
-                                        <ComboBox x:Name="domeTeensy2" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="80,0,0,0" Width="115" SelectionChanged="DomePortChanged" />
-                                        <Label x:Name="domeTeensyFPS2Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="197,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                                    </Grid>
-                                    <Grid Height="24">
-                                        <ComboBox x:Name="domeTeensy3" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="80,0,0,0" Width="115" SelectionChanged="DomePortChanged" />
-                                        <Label x:Name="domeTeensyFPS3Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="197,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                                    </Grid>
-                                    <Grid Height="24">
-                                        <ComboBox x:Name="domeTeensy4" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="80,0,0,0" Width="115" SelectionChanged="DomePortChanged" />
-                                        <Label x:Name="domeTeensyFPS4Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="197,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                                    </Grid>
-                                    <Grid Height="24">
-                                        <ComboBox x:Name="domeTeensy5" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="80,0,0,0" Width="115" SelectionChanged="DomePortChanged" />
-                                        <Label x:Name="domeTeensyFPS5Label" Content="0" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="197,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                                    </Grid>
-                                    <Button Content="Refresh USB ports" VerticalAlignment="Top" HorizontalAlignment="Left" Style="{StaticResource HyperlinkButton}" Margin="83,4,0,1" FontStyle="Italic" Click="RefreshDomePorts" />
-                                </WrapPanel>
-                                <Grid x:Name="domeBeagleboneOPCPanel" Margin="0,28,0,2" Visibility="Collapsed">
-                                    <Label Content="Host and port" Padding="0" />
-                                    <TextBox x:Name="domeBeagleboneOPCHostAndPort" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="115" />
-                                    <Label x:Name="domeBeagleboneOPCFPSLabel" Content="0" VerticalAlignment="Top" Margin="197,0,-0.6,-0.6" Padding="5,2,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                                </Grid>
-                                <Grid x:Name="domeBeagleboneCAMPPanel" Margin="0,28,0,2" Visibility="Collapsed">
-                                    <Label Content="Host and port" Padding="0" />
-                                    <TextBox x:Name="domeBeagleboneCAMPHostAndPort" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="115" />
-                                    <Label x:Name="domeBeagleboneCAMPFPSLabel" Content="0" VerticalAlignment="Top" Margin="197,0,-0.6,-0.6" Padding="5,2,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                                </Grid>
+                                <Label Content="Host and port" Padding="0" />
+                                <TextBox x:Name="domeBeagleboneOPCHostAndPort" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="115" />
+                                <Label x:Name="domeBeagleboneOPCFPSLabel" Content="0" VerticalAlignment="Top" Margin="197,0,-0.6,-0.6" Padding="5,2,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
                             </Grid>
                         </Border>
                         <Label Content="Diagnostics" HorizontalAlignment="Left" Margin="4,1,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />

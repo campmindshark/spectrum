@@ -13,18 +13,18 @@ namespace Spectrum {
 
     private Configuration config;
     private MidiInput midi;
-    private LEDBoardOutput teensy;
+    private LEDBoardOutput board;
     private List<KeyValuePair<int, double>> currentlyOn;
 
     public LEDPanelMidiVisualizer(
       Configuration config,
       MidiInput midi,
-      LEDBoardOutput teensy
+      LEDBoardOutput board
     ) {
       this.config = config;
       this.midi = midi;
-      this.teensy = teensy;
-      this.teensy.RegisterVisualizer(this);
+      this.board = board;
+      this.board.RegisterVisualizer(this);
       this.currentlyOn = new List<KeyValuePair<int, double>>();
     }
 
@@ -78,10 +78,10 @@ namespace Spectrum {
 
       for (int j = 0; j < this.config.boardRowsPerStrip * 8; j++) {
         for (int i = 0; i < this.config.boardRowLength; i++) {
-          this.teensy.SetPixel(i, j, color);
+          this.board.SetPixel(i, j, color);
         }
       }
-      this.teensy.Flush();
+      this.board.Flush();
     }
 
   }

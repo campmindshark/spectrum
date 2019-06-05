@@ -36,19 +36,13 @@ namespace Spectrum.Base {
     bool stageOutputInSeparateThread { get; set; }
 
     int operatorFPS { get; set; }
-    int domeTeensyFPS1 { get; set; }
-    int domeTeensyFPS2 { get; set; }
-    int domeTeensyFPS3 { get; set; }
-    int domeTeensyFPS4 { get; set; }
-    int domeTeensyFPS5 { get; set; }
     int domeBeagleboneOPCFPS { get; set; }
-    int domeBeagleboneCAMPFPS { get; set; }
     int boardBeagleboneOPCFPS { get; set; }
     int barBeagleboneOPCFPS { get; set; }
     int stageBeagleboneOPCFPS { get; set; }
 
     string boardBeagleboneOPCAddress { get; set; }
-    // Parameters to SquareTeensyOutput (LED Board)
+
     int boardRowLength { get; set; }
     int boardRowsPerStrip { get; set; }
     // Brightness of the LED Board
@@ -75,15 +69,8 @@ namespace Spectrum.Base {
     // Config params for animations
     double stageTracerSpeed { get; set; }
 
-    // 0 - 5 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
-    int domeHardwareSetup { get; set; }
-    string domeTeensyUSBPort1 { get; set; }
-    string domeTeensyUSBPort2 { get; set; }
-    string domeTeensyUSBPort3 { get; set; }
-    string domeTeensyUSBPort4 { get; set; }
-    string domeTeensyUSBPort5 { get; set; }
     string domeBeagleboneOPCAddress { get; set; }
-    string domeBeagleboneCAMPAddress { get; set; }
+
     // Configuration params for the dome
     bool domeSimulationEnabled { get; set; }
     double domeMaxBrightness { get; set; }
