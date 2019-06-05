@@ -92,6 +92,7 @@ namespace Spectrum {
     public double domeGradientSpeed { get; set; } = 1.0;
     public int domeSkipLEDs { get; set; } = 0;
     public int domeTestPattern { get; set; } = 0;
+    public int domeActiveVis { get; set; } = 0;
 
     public int hueDelay { get; set; } = 125;
     public bool hueIdleOnSilent { get; set; } = true;

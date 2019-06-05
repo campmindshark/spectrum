@@ -88,6 +88,7 @@
   <domeGradientSpeed>0.25</domeGradientSpeed>
   <domeSkipLEDs>0</domeSkipLEDs>
   <domeTestPattern>0</domeTestPattern>
+  <domeActiveVis>0</domeActiveVis>
   <hueDelay>125</hueDelay>
   <hueIdleOnSilent>true</hueIdleOnSilent>
   <lightsOff>false</lightsOff>

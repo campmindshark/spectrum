@@ -109,7 +109,10 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return this.audio.isQuiet ? 0 : 2;
+        if (this.config.domeActiveVis != 0 || this.audio.isQuiet) {
+          return 0;
+        }
+        return 2;
       }
     }
 

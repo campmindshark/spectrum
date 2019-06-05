@@ -82,6 +82,7 @@ namespace Spectrum.Base {
     int domeSkipLEDs { get; set; }
     // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts, 3 - Strip test
     int domeTestPattern { get; set; }
+    int domeActiveVis { get; set; }
 
     // This is the delay in milliseconds between consecutive commands we give
     // the Hue hub
