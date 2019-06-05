@@ -206,19 +206,19 @@ namespace Spectrum.LEDs {
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (!this.active || !this.config.domeEnabled) {
-        return;
-      }
       if (
         e.PropertyName != "domeBeagleboneOPCAddress" &&
-        e.PropertyName != "domeOutputInSeparateThread"
+        e.PropertyName != "domeOutputInSeparateThread" &&
+        e.PropertyName != "domeEnabled"
       ) {
         return;
       }
       if (this.opcAPI != null) {
         this.opcAPI.Active = false;
       }
-      this.initializeOPCAPI();
+      if (this.active && this.config.domeEnabled) {
+        this.initializeOPCAPI();
+      }
     }
 
     private void initializeOPCAPI() {
@@ -245,12 +245,9 @@ namespace Spectrum.LEDs {
           return;
         }
         this.active = value;
-        if (!this.config.domeEnabled) {
-          return;
-        }
-        if (value) {
+        if (value && this.config.domeEnabled) {
           this.initializeOPCAPI();
-        } else {
+        } else if (this.opcAPI != null) {
           this.opcAPI.Active = false;
         }
       }
