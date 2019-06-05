@@ -339,6 +339,9 @@ namespace Spectrum.Audio {
       if (midiLevel.HasValue) {
         return midiLevel.Value;
       }
+      if (!this.config.channelToAudioLevelDriverPreset.ContainsKey(channelIndex)) {
+        return this.Volume;
+      }
       string audioPreset =
         this.config.channelToAudioLevelDriverPreset[channelIndex];
       if (
