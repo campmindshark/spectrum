@@ -45,10 +45,7 @@ namespace Spectrum.Base {
     int domeBeagleboneCAMPFPS { get; set; }
     int boardBeagleboneOPCFPS { get; set; }
     int barBeagleboneOPCFPS { get; set; }
-    int stageTeensyFPS1 { get; set; }
-    int stageTeensyFPS2 { get; set; }
     int stageBeagleboneOPCFPS { get; set; }
-    int stageBeagleboneCAMPFPS { get; set; }
 
     string boardBeagleboneOPCAddress { get; set; }
     // Parameters to SquareTeensyOutput (LED Board)
@@ -67,12 +64,7 @@ namespace Spectrum.Base {
     // 0 - None, 1 - Flash colors
     int barTestPattern { get; set; }
 
-    // 0 - 2 Teensies, 1 - Beaglebone via OPC, 2 - Beaglebone via CAMP
-    int stageHardwareSetup { get; set; }
     string stageBeagleboneOPCAddress { get; set; }
-    string stageBeagleboneCAMPAddress { get; set; }
-    string stageTeensyUSBPort1 { get; set; }
-    string stageTeensyUSBPort2 { get; set; }
     bool stageSimulationEnabled { get; set; }
     // 48 individual side lengths (in LED count)
     int[] stageSideLengths { get; set; }

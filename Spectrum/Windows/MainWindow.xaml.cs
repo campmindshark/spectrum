@@ -62,10 +62,7 @@ namespace Spectrum {
       "domeBeagleboneCAMPFPS",
       "boardBeagleboneOPCFPS",
       "barBeagleboneOPCFPS",
-      "stageTeensyFPS1",
-      "stageTeensyFPS2",
       "stageBeagleboneOPCFPS",
-      "stageBeagleboneCAMPFPS",
       "beatBroadcaster",
       "domeCommandQueue",
       "barCommandQueue",
@@ -180,7 +177,6 @@ namespace Spectrum {
       this.RefreshAudioDevices(null, null);
       this.RefreshMidiDevices(null, null);
       this.RefreshDomePorts(null, null);
-      this.RefreshStageUSBPorts(null, null);
       this.LoadPresets();
 
       this.Bind("huesEnabled", this.hueEnabled, CheckBox.IsCheckedProperty);
@@ -240,24 +236,11 @@ namespace Spectrum {
       this.Bind("barOutputInSeparateThread", this.barBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
       this.Bind("barOutputInSeparateThread", this.barBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("barTestPattern", this.barTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.barTestPatternNone, [1] = this.barTestPatternFlashColors }, true));
-      this.Bind("stageTeensyFPS1", this.stageTeensyFPS1Label, Label.ContentProperty);
-      this.Bind("stageTeensyFPS1", this.stageTeensyFPS1Label, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("stageTeensyFPS2", this.stageTeensyFPS2Label, Label.ContentProperty);
-      this.Bind("stageTeensyFPS2", this.stageTeensyFPS2Label, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("stageOutputInSeparateThread", this.stageTeensyFPS1Label, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("stageOutputInSeparateThread", this.stageTeensyUSBPorts1, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
-      this.Bind("stageOutputInSeparateThread", this.stageTeensyFPS2Label, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("stageOutputInSeparateThread", this.stageTeensyUSBPorts2, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("stageBeagleboneOPCAddress", this.stageBeagleboneOPCHostAndPort, TextBox.TextProperty);
       this.Bind("stageBeagleboneOPCFPS", this.stageBeagleboneOPCFPSLabel, Label.ContentProperty);
       this.Bind("stageBeagleboneOPCFPS", this.stageBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
       this.Bind("stageOutputInSeparateThread", this.stageBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
       this.Bind("stageOutputInSeparateThread", this.stageBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
-      this.Bind("stageBeagleboneCAMPAddress", this.stageBeagleboneCAMPHostAndPort, TextBox.TextProperty);
-      this.Bind("stageBeagleboneCAMPFPS", this.stageBeagleboneCAMPFPSLabel, Label.ContentProperty);
-      this.Bind("stageBeagleboneCAMPFPS", this.stageBeagleboneCAMPFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("stageOutputInSeparateThread", this.stageBeagleboneCAMPFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("stageOutputInSeparateThread", this.stageBeagleboneCAMPHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("stageTestPattern", this.stageTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.stageTestPatternNone, [1] = this.stageTestPatternFlashColors }, true));
       this.Bind("hueDelay", this.hueCommandDelay, TextBox.TextProperty);
       this.Bind("hueIdleOnSilent", this.hueIdleOnSilent, CheckBox.IsCheckedProperty);
@@ -305,10 +288,6 @@ namespace Spectrum {
       this.Bind("barBrightness", this.barBrightnessLabel, Label.ContentProperty);
       this.Bind("stageEnabled", this.stageEnabled, CheckBox.IsCheckedProperty);
       this.Bind("stageSimulationEnabled", this.stageSimulationEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("stageHardwareSetup", this.stageHardwareSetup, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.stageHardwareSetupTwoTeensies, [1] = this.stageHardwareSetupBeagleboneViaOPC, [2] = this.stageHardwareSetupBeagleboneViaCAMP }, true));
-      this.Bind("stageHardwareSetup", this.stageTeensyPanel, WrapPanel.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Visible, [1] = Visibility.Collapsed, [2] = Visibility.Collapsed }));
-      this.Bind("stageHardwareSetup", this.stageBeagleboneOPCPanel, Grid.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Visible, [2] = Visibility.Collapsed }));
-      this.Bind("stageHardwareSetup", this.stageBeagleboneCAMPPanel, Grid.VisibilityProperty, BindingMode.OneWay, new SpecificValuesConverter<int, Visibility>(new Dictionary<int, Visibility> { [0] = Visibility.Collapsed, [1] = Visibility.Collapsed, [2] = Visibility.Visible }));
       this.Bind("stageSideLengths", this.stageSideLengths, TextBox.TextProperty, BindingMode.TwoWay, new StringJoinConverter());
       this.Bind("stageBrightness", this.stageBrightnessSlider, Slider.ValueProperty);
       this.Bind("stageBrightness", this.stageBrightnessLabel, Label.ContentProperty);
@@ -1375,33 +1354,6 @@ namespace Spectrum {
 
     private void StageSimulatorClosed(object sender, EventArgs e) {
       this.config.stageSimulationEnabled = false;
-    }
-
-    private void RefreshStageUSBPorts(object sender, RoutedEventArgs e) {
-      this.stageEnabled.IsChecked = false;
-
-      this.stageTeensyUSBPorts1.Items.Clear();
-      this.stageTeensyUSBPorts2.Items.Clear();
-      foreach (string portName in System.IO.Ports.SerialPort.GetPortNames()) {
-        this.stageTeensyUSBPorts1.Items.Add(portName);
-        this.stageTeensyUSBPorts2.Items.Add(portName);
-      }
-
-      this.stageTeensyUSBPorts1.SelectedValue = this.config.stageTeensyUSBPort1;
-      this.stageTeensyUSBPorts2.SelectedValue = this.config.stageTeensyUSBPort1;
-    }
-
-    private void StageUSBPortsChanged(
-      object sender,
-      SelectionChangedEventArgs e
-    ) {
-      if (this.stageTeensyUSBPorts1.SelectedIndex != -1) {
-        this.config.stageTeensyUSBPort1 = this.stageTeensyUSBPorts1.SelectedItem as string;
-      }
-      if (this.stageTeensyUSBPorts2.SelectedIndex != -1) {
-        this.config.stageTeensyUSBPort2 = this.stageTeensyUSBPorts2.SelectedItem as string;
-      }
-      this.op.Reboot();
     }
 
   }
