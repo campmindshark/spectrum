@@ -116,16 +116,20 @@ namespace Spectrum.LEDs {
         }
         var asyncResult = this.socket.BeginConnect(this.host, this.port, null, null);
         bool result = asyncResult.AsyncWaitHandle.WaitOne(2000, true);
-        if (result) {
+        if (result && this.socket.Connected) {
           return;
         }
-        this.socket.Close();
+        try {
+          this.socket.Close();
+        } catch { }
         this.InitializeSocket();
       }
     }
 
     private void DisconnectSocket() {
-      this.socket.Disconnect(true);
+      try {
+        this.socket.Disconnect(true);
+      } catch { }
       this.currentPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
       this.nextPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
       this.currentFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
@@ -133,7 +137,7 @@ namespace Spectrum.LEDs {
     }
 
     private void Update() {
-      if (!this.flushHappened) {
+      if (!this.flushHappened || this.socket == null || !this.socket.Connected) {
         return;
       }
       lock (this.lockObject) {
@@ -168,8 +172,12 @@ namespace Spectrum.LEDs {
         byte[] bytes = messages.SelectMany(a => a).ToArray();
         try {
           this.socket.Send(bytes);
-        } catch (Exception) { }
-        this.flushHappened = false;
+          this.flushHappened = false;
+        } catch {
+          this.DisconnectSocket();
+          this.InitializeSocket();
+          this.ConnectSocket();
+        }
       }
     }
 
