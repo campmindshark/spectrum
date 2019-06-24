@@ -154,9 +154,6 @@ namespace Spectrum {
         uint color = (uint)SimulatorUtils.GetComputerColor(command.color)
           | (uint)0xFF000000;
         this.SetPixelColor(this.pixels, x, y, color);
-        //this.SetPixelColor(this.pixels, x + 1, y, color);
-        //this.SetPixelColor(this.pixels, x, y + 1, color);
-        //this.SetPixelColor(this.pixels, x + 1, y + 1, color);
       }
 
       if (shouldRedraw && !this.keyMode) {

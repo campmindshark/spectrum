@@ -120,12 +120,13 @@ namespace Spectrum.Audio {
         throw new Exception("audioDeviceID not set!");
       }
       this.recordingDevice = device;
-
-      // Windows audio format available in the Sounds control panel (mmsys.cpl)
-      // We standardize around 44.1 kHz, 16-bit PCM (signed) 2 channel audio
-      this.captureStream = new WasapiCapture(device, false, 16);
-      this.captureStream.WaveFormat = new WaveFormat(audioFormatSampleFrequency, 16, 2); //JKMD: had to change this from 2 to 1 channels
-
+      var bitrate = device.AudioClient.MixFormat.BitsPerSample;
+      this.captureStream = new WasapiCapture(device, false, bitrate);
+      this.captureStream.WaveFormat = new WaveFormat(
+        audioFormatSampleFrequency,
+        bitrate,
+        device.AudioClient.MixFormat.Channels
+      );
       this.captureStream.DataAvailable += Update;
       this.captureStream.StartRecording();
       this.quietSince = -1;
@@ -359,14 +360,11 @@ namespace Spectrum.Audio {
       if (midiLevel.HasValue) {
         return midiLevel.Value;
       }
-
       if (!this.config.channelToAudioLevelDriverPreset.ContainsKey(channelIndex)) {
         return this.Volume;
       }
-
       string audioPreset =
-        this.config.channelToAudioLevelDriverPreset.ContainsKey(channelIndex) ?
-        this.config.channelToAudioLevelDriverPreset[channelIndex] : null;
+        this.config.channelToAudioLevelDriverPreset[channelIndex];
       if (
         audioPreset == null ||
         !this.config.levelDriverPresets.ContainsKey(audioPreset) ||

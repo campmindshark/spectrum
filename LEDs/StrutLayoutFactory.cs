@@ -50,8 +50,7 @@ namespace Spectrum.LEDs {
     private static readonly EdgeDictionary edgeDictionary;
 
     // JKMD: these are all the points of the dome, mapped into 2d space
-    // TODO: possibly move this information into StrutLayoutFactory
-    // TODO: normalize these (to 0-1 or -1-1) and add parametric coordinates
+    // JKMD: these are normalized to -1 to 1 coordinates in InitPoints
     // What has become of my life
     private static int[,] handDrawnPoints = new int[,] {
       { 395, 86  }, { 477, 107 }, { 545, 157 }, { 591, 229 }, { 623, 319 }, // 1
