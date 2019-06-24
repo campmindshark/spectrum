@@ -1,12 +1,9 @@
+using Spectrum.Audio;
+using Spectrum.Base;
+using Spectrum.LEDs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Spectrum.Base;
-using Spectrum.LEDs;
-using Spectrum.Audio;
-using System.Diagnostics;
 
 namespace Spectrum {
 
@@ -128,7 +125,7 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return 22;
+        return 0;
       }
     }
 
@@ -243,8 +240,8 @@ namespace Spectrum {
       }
 
 
-      //this.StaticRingsAnimated();
-      this.ParametricTest();
+      this.Static();
+      //this.ParametricTest();
 
 
       //this.wipeStrutsNextCycle = true;
