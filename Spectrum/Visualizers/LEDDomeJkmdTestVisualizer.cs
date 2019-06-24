@@ -53,46 +53,7 @@ namespace Spectrum {
         new int [] { 55,56,57,58,59,60,61,62,63,64 },
         new int [] { 65,66,67,68,69 }
       };
-      /*
-      int[][] strutsBySpoke = new int[][] {
-        new int[] {
-          73, 81, 89, 97, 105, 74, 82, 90, 98, 106, 0, 2, 4, 6, 8, 10, 12, 14,
-          16, 18,
-        },
-        new int[] {
-          21, 26, 29, 34, 37, 71, 20, 111, 122, 27, 84, 125, 28, 87, 100, 35,
-          136, 103, 36, 139,
-        },
-        new int[] {
-          22, 25, 30, 33, 38, 76, 23, 115, 118, 24, 79, 92, 31, 129, 132, 32,
-          95, 108, 39, 143,
-        },
-        new int[] {
-          113, 120, 127, 134, 141, 185, 186, 187, 188, 189, 147, 171, 152, 174,
-          157, 177, 162, 180, 183, 167, 146, 148, 55, 56, 151, 153, 57, 58, 156,
-          158, 59, 60, 161, 163, 61, 62, 166, 168, 63, 64, 40, 41, 43, 44, 46,
-          47, 49, 50, 52, 53, 170, 172, 173, 175, 176, 178, 179, 181, 182, 184,
-        },
-      };
-      HashSet<int> reversedStruts = new HashSet<int>() {
-        71, 73, 74, 22, 81, 82, 26, 90, 30, 89, 97, 98, 34, 38, 106, 105, 185,
-        189, 188, 187, 186, 0, 20, 41, 115, 23, 2, 4, 79, 24, 44, 122, 27, 6, 8,
-        87, 28, 47, 129, 31, 10, 12, 95, 32, 50, 136, 35, 14, 16, 103, 36, 53,
-        143, 39, 18, 183, 184, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179,
-        180, 181, 182,
-      };
-      StrutLayoutSegment[] segments =
-        new StrutLayoutSegment[strutsBySpoke.Length];
-      for (int i = 0; i < strutsBySpoke.Length; i++) {
-        segments[i] = new StrutLayoutSegment(new HashSet<Strut>(
-          strutsBySpoke[i].Select(
-            strut => reversedStruts.Contains(strut)
-              ? Strut.ReversedFromIndex(this.config, strut)
-              : Strut.FromIndex(this.config, strut)
-          )
-        ));
-      }
-      */
+
       StrutLayoutSegment[] segments =
         new StrutLayoutSegment[strutsByRing.Length];
       for (int i = 0; i < strutsByRing.Length; i++) {
@@ -125,7 +86,7 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return 0;
+        return 222;
       }
     }
 
@@ -148,8 +109,6 @@ namespace Spectrum {
     public Input[] GetInputs() {
       return new Input[] { this.audio };
     }
-
-    // TODO: make visualizer where 2d coordinates of points are used!
 
     public void Static() {
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
@@ -240,56 +199,10 @@ namespace Spectrum {
       }
 
 
-      this.Static();
-      //this.ParametricTest();
-
+      //this.Static();
+      this.ParametricTest();
 
       //this.wipeStrutsNextCycle = true;
-      this.dome.Flush();
-
-      return;
-      this.UpdateCenter();
-      this.UpdateAnimationSize(this.config.domeVolumeAnimationSize);
-
-      int subdivisions = this.partLayout.NumSegments / 2;
-      int totalParts = this.config.domeVolumeAnimationSize;
-      int volumeSplitInto = 2 * ((totalParts - 1) / 2 + 1);
-      for (int part = 0; part < totalParts; part += 2) {
-        var outwardSegment = this.partLayout.GetSegment(part);
-        double startRange = (double)part / volumeSplitInto;
-        double endRange = (double)(part + 2) / volumeSplitInto;
-        double level = this.audio.LevelForChannel(0);
-        double scaled = (level - startRange) /
-          (endRange - startRange);
-        scaled = Math.Max(Math.Min(scaled, 1.0), 0.0);
-        startRange = Math.Min(startRange / level, 1.0);
-        endRange = Math.Min(endRange / level, 1.0);
-
-        foreach (Strut strut in outwardSegment.GetStruts()) {
-          this.UpdateStrut(strut, scaled, startRange, endRange);
-        }
-
-        if (part + 1 == totalParts) {
-          break;
-        }
-
-        for (int i = 0; i < 6; i++) {
-          StrutLayoutSegment segment =
-            this.sectionLayout.GetSegment(i + part * 3);
-          double gradientStartPos = 0.0;
-          double gradientStep = 1.0 / segment.GetStruts().Count;
-          foreach (Strut strut in segment.GetStruts()) {
-            double gradientEndPos = gradientStartPos + gradientStep;
-            this.UpdateStrut(
-              strut,
-              scaled == 1.0 ? 1.0 : 0.0,
-              gradientStartPos,
-              gradientEndPos
-            );
-            gradientStartPos = gradientEndPos;
-          }
-        }
-      }
       this.dome.Flush();
     }
 
@@ -431,38 +344,6 @@ namespace Spectrum {
       }
       return color;
     }
-
-
-
-    /*
-    private int ColorFromPartAndSpoke(int strut, double pixelPos) {
-      int colorIndex;
-      if (this.partLayout.SegmentIndexOfStrutIndex(strut) == 1) {
-        colorIndex = 1;
-      } else if (this.partLayout.SegmentIndexOfStrutIndex(strut) == 3) {
-        colorIndex = 2;
-      } else if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 0) {
-        colorIndex = 3;
-      } else if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 1) {
-        colorIndex = 4;
-      } else if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 2) {
-        colorIndex = 5;
-      } else if (spokeLayout.SegmentIndexOfStrutIndex(strut) == 3) {
-        colorIndex = 0;
-      } else {
-        throw new Exception("unsupported value");
-      }
-      return this.dome.GetGradientColor(
-        colorIndex,
-        pixelPos,
-        this.config.beatBroadcaster.ProgressThroughBeat(
-          this.config.domeGradientSpeed
-        ),
-        true
-      );
-    }
-    */
-
   }
 
 }
