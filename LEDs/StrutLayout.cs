@@ -88,17 +88,12 @@ namespace Spectrum.LEDs {
 
     public StrutLayoutSegment(HashSet<Strut> struts) {
       this.struts = struts;
+      if (struts.Count > 0) this.AverageStrutLength = struts.Average(strut => strut.Length);
+      this.TotalLength = struts.Sum(strut => strut.Length);
     }
 
-    private double averageStrutLength = 0;
-    public double AverageStrutLength {
-      get {
-        if (this.averageStrutLength == 0) {
-          this.averageStrutLength = struts.Average(strut => strut.Length);
-        }
-        return this.averageStrutLength;
-      }
-    }
+    public double AverageStrutLength { get; } = 0;
+    public double TotalLength { get; } = 0;
 
     public HashSet<Strut> GetStruts() {
       return this.struts;
