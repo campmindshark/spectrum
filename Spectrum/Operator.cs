@@ -102,6 +102,10 @@ namespace Spectrum {
         audio,
         dome
       ));
+      this.visualizers.Add(new LEDDomeTVStaticVisualizer(
+        this.config,
+        dome
+      ));
       this.visualizers.Add(new LEDDomeFlashVisualizer(
         this.config,
         audio,
@@ -171,7 +175,7 @@ namespace Spectrum {
 
     private void OperatorThread() {
       while (true) {
-        if (this.operatorThreadBlockingStopwatch.ElapsedMilliseconds < 1) {
+        if (this.operatorThreadBlockingStopwatch.ElapsedMilliseconds < 8) {
           Thread.Sleep(1);
         }
         this.operatorThreadBlockingStopwatch.Restart();

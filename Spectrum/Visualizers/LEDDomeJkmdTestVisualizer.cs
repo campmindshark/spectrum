@@ -3,6 +3,7 @@ using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Spectrum {
@@ -132,13 +133,6 @@ namespace Spectrum {
       }
     }
 
-    public int RGB(double r, double g, double b) {
-      int x = (int)(r * 255);
-      int y = (int)(g * 255);
-      int z = (int)(b * 255);
-      return (x << 16) + (y << 8) + z;
-
-    }
     public void StaticRingsAnimated() {
       
       double progress = this.config.beatBroadcaster.ProgressThroughBeat(
@@ -159,7 +153,7 @@ namespace Spectrum {
           dist = dist > 0.5 ? 1.0 - dist : dist;
           dist *= 2;
           double d = dist * dist * level * progress;
-          int c = RGB(d, d, d);
+          int c = LEDColor.FromDoubles(d, d, d);
 
           for (int j = 0; j < strut.Length; j++, totalPos+=1) {
             this.dome.SetPixel(strut.Index, j, c);
@@ -180,7 +174,7 @@ namespace Spectrum {
           r = (p.Item3 + 1) / 2;
           //var g = (int)(p.Item1 * p.Item2 * 255);
           //b = p.Item4 > 1 ? 1 : p.Item4;
-          this.dome.SetPixel(i, j, this.RGB(r,g,b));
+          this.dome.SetPixel(i, j, LEDColor.FromDoubles(r,g,b));
 
           //test
         }
@@ -198,9 +192,8 @@ namespace Spectrum {
         this.wipeStrutsNextCycle = false;
       }
 
-
-      //this.Static();
-      this.ParametricTest();
+      this.StaticRingsAnimated();
+      //this.ParametricTest();
 
       //this.wipeStrutsNextCycle = true;
       this.dome.Flush();

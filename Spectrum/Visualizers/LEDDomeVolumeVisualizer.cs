@@ -97,7 +97,7 @@ namespace Spectrum {
       if (points[4] >= 40) {
         points[4] -= 20;
       }
-      StrutLayout[] layouts = StrutLayoutFactory.ConcentricFromStartingPoints(
+        StrutLayout[] layouts = StrutLayoutFactory.ConcentricFromStartingPoints(
         this.config,
         new HashSet<int>(points),
         4
