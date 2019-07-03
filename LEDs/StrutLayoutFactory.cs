@@ -49,8 +49,8 @@ namespace Spectrum.LEDs {
     };
     private static readonly EdgeDictionary edgeDictionary;
 
-    // JKMD: these are all the points of the dome, mapped into 2d space
-    // JKMD: these are normalized to -1 to 1 coordinates in InitPoints
+    // these are all the points of the dome, mapped into 2d space ("azimuthal equidistant" projection)
+    // these are normalized to -1 to 1 coordinates in InitPoints
     // What has become of my life
     private static int[,] handDrawnPoints = new int[,] {
       { 395, 86  }, { 477, 107 }, { 545, 157 }, { 591, 229 }, { 623, 319 }, // 1
@@ -72,17 +72,10 @@ namespace Spectrum.LEDs {
 
     private static double[,] points;
     private static void InitPoints() {
-      points = new double[handDrawnPoints.GetLength(0), 4];
+      points = new double[handDrawnPoints.GetLength(0), 2];
       for (int i = 0; i < handDrawnPoints.GetLength(0); i++) {
-        var x = points[i,0] = (((double)handDrawnPoints[i,0])-70.0)/557.0;
-        var y = points[i, 1] = (((double)handDrawnPoints[i, 1]) - 86) / 551.0;
-
-        x = x * 2 - 1;
-        if (x == 0) x += 0.00001;
-        y = y * 2 - 1;
-
-        var angle = points[i, 2] = Math.Tanh(y / x);
-        var dist = points[i, 3] = Math.Sqrt(x * x + y * y);
+        points[i, 0] = (((double)handDrawnPoints[i,0])-70.0)/557.0;
+        points[i, 1] = (((double)handDrawnPoints[i, 1]) - 86) / 551.0;
       }
     }
 

@@ -86,7 +86,7 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return 222;
+        return this.config.domeActiveVis == 1 ? 222 : 0;
       }
     }
 
