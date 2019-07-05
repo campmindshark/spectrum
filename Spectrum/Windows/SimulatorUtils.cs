@@ -9,6 +9,7 @@ namespace Spectrum {
   static class SimulatorUtils {
 
     public static int GetComputerColor(int ledColor) {
+      if (ledColor == 0) return 0;
       byte red = (byte)(ledColor >> 16);
       byte green = (byte)(ledColor >> 8);
       byte blue = (byte)ledColor;

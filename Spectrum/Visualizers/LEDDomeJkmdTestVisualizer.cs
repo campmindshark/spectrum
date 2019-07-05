@@ -162,6 +162,13 @@ namespace Spectrum {
       }
     }
     public void ParametricTest() {
+
+      double progress = this.config.beatBroadcaster.ProgressThroughBeat(
+        this.config.domeVolumeRotationSpeed
+      );
+
+      double level = this.audio.LevelForChannel(0);
+
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
         Strut strut = Strut.FromIndex(this.config, i);
         var leds = LEDDomeOutput.GetNumLEDs(i);
@@ -171,12 +178,25 @@ namespace Spectrum {
           double g = 0;
           double b = 0;
 
-          r = (p.Item3 + 1) / 2;
-          //var g = (int)(p.Item1 * p.Item2 * 255);
-          //b = p.Item4 > 1 ? 1 : p.Item4;
-          this.dome.SetPixel(i, j, LEDColor.FromDoubles(r,g,b));
+          //radar effect
+          double a = (p.Item3 + Math.PI) / (Math.PI * 2);
+          r = progress - a;
+          if (r < 0) r += 1;
+          if (r > 1) r = 1;
 
-          //test
+          //pulse effect
+          double dist = Math.Abs(progress - p.Item4);
+          r = 1 - dist;
+          if (r < 0.9) r = 0;
+
+          //spiral effect
+          double m = p.Item4 - a;
+          if (m < 0) m += 1;
+          double n = progress - m;
+          if (n < 0) n += 1;
+          r = n;
+
+          this.dome.SetPixel(i, j, LEDColor.FromDoubles(r,g,b));
         }
       }
     }
@@ -192,8 +212,8 @@ namespace Spectrum {
         this.wipeStrutsNextCycle = false;
       }
 
-      this.StaticRingsAnimated();
-      //this.ParametricTest();
+      //this.StaticRingsAnimated();
+      this.ParametricTest();
 
       //this.wipeStrutsNextCycle = true;
       this.dome.Flush();

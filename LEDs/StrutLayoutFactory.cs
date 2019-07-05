@@ -50,7 +50,7 @@ namespace Spectrum.LEDs {
     private static readonly EdgeDictionary edgeDictionary;
 
     // these are all the points of the dome, mapped into 2d space ("azimuthal equidistant" projection)
-    // these are normalized to -1 to 1 coordinates in InitPoints
+    // these are normalized to 0 to 1 coordinates in InitPoints
     // What has become of my life
     private static int[,] handDrawnPoints = new int[,] {
       { 395, 86  }, { 477, 107 }, { 545, 157 }, { 591, 229 }, { 623, 319 }, // 1
@@ -123,11 +123,11 @@ namespace Spectrum.LEDs {
       var y = p.Item2;
 
       x = x * 2 - 1;
-      if (x == 0) x += 0.00001;
       y = y * 2 - 1;
 
-      var angle = Math.Tanh(y / x);
+      var angle = Math.Atan2(y, x);
       var dist = Math.Sqrt(x * x + y * y);
+      dist = dist > 1 ? 1 : dist;
 
       return new Tuple<double, double, double, double>(
         x, y, angle, dist

@@ -151,8 +151,7 @@ namespace Spectrum {
         double deltaY = (pt1.Item2 - pt2.Item2) / (numLEDs + 2.0);
         int x = pt1.Item1 - (int)(deltaX * (command.ledIndex + 1));
         int y = pt1.Item2 - (int)(deltaY * (command.ledIndex + 1));
-        uint color = (uint)SimulatorUtils.GetComputerColor(command.color)
-          | (uint)0xFF000000;
+        uint color = (uint)SimulatorUtils.GetComputerColor(command.color) | (uint)0xFF000000;
         this.SetPixelColor(this.pixels, x, y, color);
       }
 

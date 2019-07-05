@@ -205,7 +205,8 @@ namespace Spectrum.Base {
       int x = (int)(r * 255);
       int y = (int)(g * 255);
       int z = (int)(b * 255);
-      return (x << 16) + (y << 8) + z;
+      int color = (x << 16) | (y << 8) | z;
+      return color;
     }
 
   }
