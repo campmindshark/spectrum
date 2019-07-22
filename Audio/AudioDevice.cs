@@ -9,6 +9,7 @@ namespace Spectrum.Audio {
   public struct AudioDevice {
     public string id { get; set; }
     public string name { get; set; }
+    public int index { get; set; }
   }
 
 }

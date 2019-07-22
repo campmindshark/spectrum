@@ -338,11 +338,25 @@ namespace Spectrum.Audio {
       get {
         var audioDeviceList = new List<AudioDevice>();
         var iterator = new MMDeviceEnumerator().EnumerateAudioEndPoints(
-          DataFlow.Capture,
+          // We avoid filtering in the call here so we can get the right device
+          // index, which we need in our call to madmom. madmom uses PyAudio,
+          // which in turn uses PortAudio, which doesn't support the use of the
+          // "Endpoint ID string" (audioDevice.ID) to identify an audio device.
+          DataFlow.All,
           DeviceState.Active
         );
+        int i = 0;
         foreach (var audioDevice in iterator) {
-          audioDeviceList.Add(new AudioDevice() { id = audioDevice.ID, name = audioDevice.FriendlyName });
+          int index = i;
+          i++;
+          if (audioDevice.DataFlow != DataFlow.Capture) {
+            continue;
+          }
+          audioDeviceList.Add(new AudioDevice() {
+            id = audioDevice.ID,
+            name = audioDevice.FriendlyName,
+            index = index,
+          });
         }
         return audioDeviceList;
       }
