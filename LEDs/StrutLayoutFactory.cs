@@ -49,7 +49,8 @@ namespace Spectrum.LEDs {
     };
     private static readonly EdgeDictionary edgeDictionary;
 
-    // these are all the points of the dome, mapped into 2d space ("azimuthal equidistant" projection)
+    // these are all the points of the dome, mapped into 2d space ("azimuthal
+    // equidistant" projection)
     // these are normalized to 0 to 1 coordinates in InitPoints
     // What has become of my life
     private static int[,] handDrawnPoints = new int[,] {
@@ -97,14 +98,20 @@ namespace Spectrum.LEDs {
       InitPoints();
     }
 
-    public static Tuple<double, double> GetProjectedPoint(int strutIndex, int point) {
+    public static Tuple<double, double> GetProjectedPoint(
+      int strutIndex,
+      int point
+    ) {
       int index = StrutLayoutFactory.lines[strutIndex, point];
       return new Tuple<double, double>(
         points[index, 0], points[index, 1]
        );
     }
 
-    public static Tuple<double, double> GetProjectedLEDPoint(int strutIndex, int ledIndex) {
+    public static Tuple<double, double> GetProjectedLEDPoint(
+      int strutIndex,
+      int ledIndex
+    ) {
       var p1 = GetProjectedPoint(strutIndex, 0);
       var p2 = GetProjectedPoint(strutIndex, 1);
       var leds = LEDDomeOutput.GetNumLEDs(strutIndex);
@@ -116,7 +123,12 @@ namespace Spectrum.LEDs {
       return new Tuple<double, double>(x, y);
     }
 
-    public static Tuple<double, double, double, double> GetProjectedLEDPointParametric(int strutIndex, int ledIndex) {
+    public static Tuple<
+      double,
+      double,
+      double,
+      double
+    > GetProjectedLEDPointParametric(int strutIndex, int ledIndex) {
       var p = GetProjectedLEDPoint(strutIndex, ledIndex);
 
       var x = p.Item1;
@@ -133,7 +145,6 @@ namespace Spectrum.LEDs {
         x, y, angle, dist
       );
     }
-
     public static StrutLayout[] ConcentricFromStartingPoints(
       Configuration config,
       HashSet<int> startingPoints,
