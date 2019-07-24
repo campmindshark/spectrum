@@ -112,6 +112,12 @@ namespace Spectrum {
         midi,
         dome
       ));
+      this.visualizers.Add(new LEDDomeExampleVisualizer(
+        this.config,
+        audio,
+        midi,
+        dome
+      ));
       this.visualizers.Add(new LEDBarFlashColorsDiagnosticVisualizer(
         this.config,
         bar
