@@ -84,6 +84,10 @@ namespace Spectrum.Base {
     int domeTestPattern { get; set; }
     int domeActiveVis { get; set; }
 
+    // Dome Visualizer settings
+    // TODO: move "volume" settings down here?
+    double domeRadialSize { get; set; }
+
     // This is the delay in milliseconds between consecutive commands we give
     // the Hue hub
     int hueDelay { get; set; }
