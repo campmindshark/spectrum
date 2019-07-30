@@ -7,7 +7,7 @@
   xmlns:local="clr-namespace:Spectrum"
   xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
   mc:Ignorable="d"
-  Title="MIDI Heads-Up Display"
+  Title="VJ Heads-Up Display"
   Icon="pack://siteoforigin:,,,/Resources/s.PNG"
   Height="850"
   Width="900"
@@ -340,12 +340,12 @@
                 </Border>
             </Grid>
             <Grid Width="135" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Right">
-                <Label Content="Rotation speeds" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
+                <Label Content="Visualizer Settings" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,-145,0" Padding="5" VerticalAlignment="Top">
                     <WrapPanel Margin="0,0,0,0">
                         <Grid Height="24">
-                            <Label Content="Dome 1" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="domePrimaryRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="60,0,0,0" Width="56">
+                            <Label Content="Rotation Speed" Margin="0,3,0,0" Padding="0" />
+                            <ComboBox x:Name="domeVolumeRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
                                 <ComboBoxItem x:Name="dprs0" Content="0" IsSelected="True" />
                                 <ComboBoxItem x:Name="dprs1" Content="1/8" />
                                 <ComboBoxItem x:Name="dprs2" Content="1/4" />
@@ -356,8 +356,8 @@
                             </ComboBox>
                         </Grid>
                         <Grid Height="24">
-                            <Label Content="Dome 2" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="domeSecondaryRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="60,0,0,0" Width="56">
+                            <Label Content="Gradient Speed" Margin="0,3,0,0" Padding="0" />
+                            <ComboBox x:Name="domeGradientSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
                                 <ComboBoxItem x:Name="dsrs0" Content="0" IsSelected="True" />
                                 <ComboBoxItem x:Name="dsrs1" Content="1/8" />
                                 <ComboBoxItem x:Name="dsrs2" Content="1/4" />
@@ -369,7 +369,7 @@
                         </Grid>
                         <Grid Height="24">
                             <Label Content="Stage 1" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="stagePrimaryRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="60,0,0,0" Width="56">
+                            <ComboBox x:Name="stagePrimaryRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="56">
                                 <ComboBoxItem x:Name="sprs0" Content="0" IsSelected="True" />
                                 <ComboBoxItem x:Name="sprs1" Content="1/8" />
                                 <ComboBoxItem x:Name="sprs2" Content="1/4" />
@@ -381,7 +381,7 @@
                         </Grid>
                         <Grid Height="24">
                             <Label Content="Flash" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="flashRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="60,0,0,0" Width="56">
+                            <ComboBox x:Name="flashRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="56">
                                 <ComboBoxItem x:Name="frs0" Content="0" IsSelected="True" />
                                 <ComboBoxItem x:Name="frs1" Content="1/2" />
                                 <ComboBoxItem x:Name="frs2" Content="1" />
