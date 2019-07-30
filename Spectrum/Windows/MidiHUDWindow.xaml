@@ -369,7 +369,7 @@
                         </Grid>
                         <Grid Height="24">
                             <Label Content="Stage 1" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="stagePrimaryRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="56">
+                            <ComboBox x:Name="stagePrimaryRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
                                 <ComboBoxItem x:Name="sprs0" Content="0" IsSelected="True" />
                                 <ComboBoxItem x:Name="sprs1" Content="1/8" />
                                 <ComboBoxItem x:Name="sprs2" Content="1/4" />
@@ -381,7 +381,7 @@
                         </Grid>
                         <Grid Height="24">
                             <Label Content="Flash" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="flashRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="56">
+                            <ComboBox x:Name="flashRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
                                 <ComboBoxItem x:Name="frs0" Content="0" IsSelected="True" />
                                 <ComboBoxItem x:Name="frs1" Content="1/2" />
                                 <ComboBoxItem x:Name="frs2" Content="1" />
