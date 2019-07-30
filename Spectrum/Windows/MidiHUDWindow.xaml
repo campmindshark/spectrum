@@ -13,389 +13,389 @@
   Width="900"
   WindowState="Maximized"
 >
-    <DockPanel>
-        <DockPanel Height="620" DockPanel.Dock="Top">
-            <Grid HorizontalAlignment="Left" VerticalAlignment="Top">
-                <Label Content="Colors" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
-                    <Grid>
-                        <Grid>
-                            <RadioButton Name="colorPalette1" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,56,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color0_0" Margin="20,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color0_1" Margin="48,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color1_0" Margin="76,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color1_1" Margin="104,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color2_0" Margin="20,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color2_1" Margin="48,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color3_0" Margin="76,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color3_1" Margin="104,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color4_0" Margin="20,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color4_1" Margin="48,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color5_0" Margin="76,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color5_1" Margin="104,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color6_0" Margin="20,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color6_1" Margin="48,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color7_0" Margin="76,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color7_1" Margin="104,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <Separator Margin="4,119,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="2" Background="Gainsboro" />
-                            <RadioButton Name="colorPalette2" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,181,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color8_0" Margin="20,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color8_1" Margin="48,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color9_0" Margin="76,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color9_1" Margin="104,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color10_0" Margin="20,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color10_1" Margin="48,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color11_0" Margin="76,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color11_1" Margin="104,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color12_0" Margin="20,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color12_1" Margin="48,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color13_0" Margin="76,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color13_1" Margin="104,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color14_0" Margin="20,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color14_1" Margin="48,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color15_0" Margin="76,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color15_1" Margin="104,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <Separator Margin="4,244,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="1" Background="Gainsboro" />
-                            <RadioButton Name="colorPalette3" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,306,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color16_0" Margin="20,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color16_1" Margin="48,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color17_0" Margin="76,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color17_1" Margin="104,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color18_0" Margin="20,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color18_1" Margin="48,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color19_0" Margin="76,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color19_1" Margin="104,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color20_0" Margin="20,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color20_1" Margin="48,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color21_0" Margin="76,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color21_1" Margin="104,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color22_0" Margin="20,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color22_1" Margin="48,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color23_0" Margin="76,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color23_1" Margin="104,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <Separator Margin="4,369,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="1" Background="Gainsboro" />
-                            <RadioButton Name="colorPalette4" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,431,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color24_0" Margin="20,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color24_1" Margin="48,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color25_0" Margin="76,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color25_1" Margin="104,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color26_0" Margin="20,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color26_1" Margin="48,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color27_0" Margin="76,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color27_1" Margin="104,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color28_0" Margin="20,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color28_1" Margin="48,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color29_0" Margin="76,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color29_1" Margin="104,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color30_0" Margin="20,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color30_1" Margin="48,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color31_0" Margin="76,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color31_1" Margin="104,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                        </Grid>
-                        <Separator Margin="137,5,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Height="105" Background="Gainsboro" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
-                        <Separator Margin="137,130,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Height="105" Background="Gainsboro" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
-                        <Separator Margin="137,255,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Height="105" Background="Gainsboro" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
-                        <Separator Margin="137,380,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Height="105" Background="Gainsboro" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
-                        <Grid Margin="145,0,0,0">
-                            <RadioButton Name="colorPalette5" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,56,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color32_0" Margin="20,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color32_1" Margin="48,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color33_0" Margin="76,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color33_1" Margin="104,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color34_0" Margin="20,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color34_1" Margin="48,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color35_0" Margin="76,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color35_1" Margin="104,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color36_0" Margin="20,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color36_1" Margin="48,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color37_0" Margin="76,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color37_1" Margin="104,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color38_0" Margin="20,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color38_1" Margin="48,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color39_0" Margin="76,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color39_1" Margin="104,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <Separator Margin="4,119,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="2" Background="Gainsboro" />
-                            <RadioButton Name="colorPalette6" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,181,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color40_0" Margin="20,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color40_1" Margin="48,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color41_0" Margin="76,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color41_1" Margin="104,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color42_0" Margin="20,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color42_1" Margin="48,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color43_0" Margin="76,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color43_1" Margin="104,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color44_0" Margin="20,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color44_1" Margin="48,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color45_0" Margin="76,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color45_1" Margin="104,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color46_0" Margin="20,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color46_1" Margin="48,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color47_0" Margin="76,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color47_1" Margin="104,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <Separator Margin="4,244,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="1" Background="Gainsboro" />
-                            <RadioButton Name="colorPalette7" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,306,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color48_0" Margin="20,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color48_1" Margin="48,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color49_0" Margin="76,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color49_1" Margin="104,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color50_0" Margin="20,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color50_1" Margin="48,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color51_0" Margin="76,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color51_1" Margin="104,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color52_0" Margin="20,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color52_1" Margin="48,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color53_0" Margin="76,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color53_1" Margin="104,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color54_0" Margin="20,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color54_1" Margin="48,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color55_0" Margin="76,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color55_1" Margin="104,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <Separator Margin="4,369,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="1" Background="Gainsboro" />
-                            <RadioButton Name="colorPalette8" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,431,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color56_0" Margin="20,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color56_1" Margin="48,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color57_0" Margin="76,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color57_1" Margin="104,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color58_0" Margin="20,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color58_1" Margin="48,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color59_0" Margin="76,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color59_1" Margin="104,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color60_0" Margin="20,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color60_1" Margin="48,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color61_0" Margin="76,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color61_1" Margin="104,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color62_0" Margin="20,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color62_1" Margin="48,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color63_0" Margin="76,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <xctk:ColorPicker ShowDropDownButton="False" Name="color63_1" Margin="104,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                        </Grid>
-                    </Grid>
-                </Border>
+  <DockPanel>
+    <DockPanel Height="620" DockPanel.Dock="Top">
+      <Grid HorizontalAlignment="Left" VerticalAlignment="Top">
+        <Label Content="Colors" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
+          <Grid>
+            <Grid>
+              <RadioButton Name="colorPalette1" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,56,0,0" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="16,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="44,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="72,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="100,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color0_0" Margin="20,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color0_1" Margin="48,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color1_0" Margin="76,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color1_1" Margin="104,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color2_0" Margin="20,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color2_1" Margin="48,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color3_0" Margin="76,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color3_1" Margin="104,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color4_0" Margin="20,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color4_1" Margin="48,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color5_0" Margin="76,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color5_1" Margin="104,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color6_0" Margin="20,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color6_1" Margin="48,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color7_0" Margin="76,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color7_1" Margin="104,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <Separator Margin="4,119,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="2" Background="Gainsboro" />
+              <RadioButton Name="colorPalette2" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,181,0,0" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="16,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="44,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="72,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="100,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color8_0" Margin="20,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color8_1" Margin="48,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color9_0" Margin="76,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color9_1" Margin="104,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color10_0" Margin="20,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color10_1" Margin="48,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color11_0" Margin="76,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color11_1" Margin="104,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color12_0" Margin="20,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color12_1" Margin="48,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color13_0" Margin="76,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color13_1" Margin="104,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color14_0" Margin="20,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color14_1" Margin="48,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color15_0" Margin="76,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color15_1" Margin="104,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <Separator Margin="4,244,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="1" Background="Gainsboro" />
+              <RadioButton Name="colorPalette3" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,306,0,0" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="16,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="44,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="72,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="100,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color16_0" Margin="20,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color16_1" Margin="48,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color17_0" Margin="76,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color17_1" Margin="104,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color18_0" Margin="20,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color18_1" Margin="48,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color19_0" Margin="76,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color19_1" Margin="104,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color20_0" Margin="20,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color20_1" Margin="48,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color21_0" Margin="76,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color21_1" Margin="104,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color22_0" Margin="20,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color22_1" Margin="48,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color23_0" Margin="76,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color23_1" Margin="104,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <Separator Margin="4,369,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="1" Background="Gainsboro" />
+              <RadioButton Name="colorPalette4" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,431,0,0" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="16,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="44,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="72,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="100,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color24_0" Margin="20,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color24_1" Margin="48,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color25_0" Margin="76,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color25_1" Margin="104,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color26_0" Margin="20,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color26_1" Margin="48,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color27_0" Margin="76,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color27_1" Margin="104,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color28_0" Margin="20,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color28_1" Margin="48,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color29_0" Margin="76,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color29_1" Margin="104,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color30_0" Margin="20,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color30_1" Margin="48,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color31_0" Margin="76,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color31_1" Margin="104,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
             </Grid>
-            <DockPanel>
-                <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
-                    <Label Content="Channel config" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                    <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top" Width="312">
-                        <WrapPanel>
-                            <Grid>
-                                <Label Content="Audio" Margin="72,0,0,0" Padding="0" VerticalAlignment="Bottom" />
-                                <Label Content="MIDI" Margin="192,0,0,0" Padding="0" VerticalAlignment="Bottom" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 0" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel0Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="0" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel0Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="0" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 1" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel1Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="1" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel1Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="1" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 2" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel2Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="2" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel2Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="2" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 3" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel3Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="3" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel3Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="3" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 4" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel4Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="4" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel4Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="4" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 5" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel5Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="5" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel5Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="5" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 6" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel6Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="6" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel6Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="6" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 7" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel7Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="7" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel7Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="7" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                        </WrapPanel>
-                    </Border>
-                </WrapPanel>
-                <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
-                    <Label Content="Level driver presets" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                    <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
-                        <Grid Width="300">
-                            <ListView x:Name="levelDriverPresetList" Width="298" Height="66" VerticalAlignment="Top" Margin="1,0,1,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="LevelDriverPresetListSelectionChanged">
-                                <ListView.View>
-                                    <GridView>
-                                        <GridViewColumn Header="Name" Width="139" DisplayMemberBinding="{Binding Name}" />
-                                        <GridViewColumn Header="Source" Width="139" DisplayMemberBinding="{Binding SourceName}" />
-                                    </GridView>
-                                </ListView.View>
-                            </ListView>
-                            <Button x:Name="levelDriverEditPreset" Content="Edit" HorizontalAlignment="Left" Margin="2,71,0,0" VerticalAlignment="Top" Click="LevelDriverEditClicked" Padding="6,2" IsEnabled="False" />
-                            <Button x:Name="levelDriverDeletePreset" Content="Delete" HorizontalAlignment="Right" Margin="0,71,2,0" VerticalAlignment="Top" Click="LevelDriverDeleteClicked" Padding="6,2" IsEnabled="False" />
-                        </Grid>
-                    </Border>
-                </WrapPanel>
-                <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
-                    <Label x:Name="levelDriverMutateLabel" Content="Add level driver preset" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                    <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
-                        <WrapPanel>
-                            <Grid>
-                                <Label Content="Name" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                <TextBox x:Name="levelDriverName" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Source" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                <ComboBox x:Name="levelDriverSource" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,0,0,0" Width="140" SelectionChanged="LevelDriverSourceChanged">
-                                    <ComboBoxItem>Audio</ComboBoxItem>
-                                    <ComboBoxItem>MIDI</ComboBoxItem>
-                                </ComboBox>
-                            </Grid>
-                            <WrapPanel x:Name="levelDriverAudioPresetConfig" Visibility="Collapsed">
-                                <Grid Margin="0,4,0,0">
-                                    <Label Content="Filter range" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                    <TextBox x:Name="levelDriverAudioFilterRangeStart" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="57" Height="20" LostFocus="LevelDriverAudioFilterRangeStartValueLostFocus" />
-                                    <Label Content="to" Margin="144,0,0,2" Padding="0" VerticalAlignment="Center" />
-                                    <TextBox x:Name="levelDriverAudioFilterRangeEnd" Margin="163,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="57" Height="20" LostFocus="LevelDriverAudioFilterRangeEndValueLostFocus" />
-                                </Grid>
-                            </WrapPanel>
-                            <WrapPanel x:Name="levelDriverMidiPresetConfig" Visibility="Collapsed">
-                                <Grid Margin="0,4,0,0">
-                                    <Label Content="Attack (ms)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                    <TextBox x:Name="levelDriverMidiAttack" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiAttackLostFocus" />
-                                </Grid>
-                                <Grid Margin="0,4,0,0">
-                                    <Label Content="Peak (level)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                    <TextBox x:Name="levelDriverMidiPeak" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiPeakLostFocus" />
-                                </Grid>
-                                <Grid Margin="0,4,0,0">
-                                    <Label Content="Decay (ms)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                    <TextBox x:Name="levelDriverMidiDecay" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiDecayLostFocus" />
-                                </Grid>
-                                <Grid Margin="0,4,0,0">
-                                    <Label Content="Sustain (level)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                    <TextBox x:Name="levelDriverMidiSustain" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiSustainLostFocus" />
-                                </Grid>
-                                <Grid Margin="0,4,0,0">
-                                    <Label Content="Release (ms)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                    <TextBox x:Name="levelDriverMidiRelease" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiReleaseLostFocus" />
-                                </Grid>
-                            </WrapPanel>
-                            <Grid Width="220" Margin="0,5,0,0">
-                                <Button x:Name="levelDriverCancelEditButton" Content="Cancel" HorizontalAlignment="Left" VerticalAlignment="Center" Click="LevelDriverCancelEditClicked" Padding="6,2" Visibility="Collapsed" />
-                                <Button x:Name="levelDriverSavePresetButton" Content="Add preset" HorizontalAlignment="Right" VerticalAlignment="Center" Click="LevelDriverSaveClicked" Padding="6,2" />
-                            </Grid>
-                        </WrapPanel>
-                    </Border>
-                </WrapPanel>
+            <Separator Margin="137,5,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Height="105" Background="Gainsboro" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+            <Separator Margin="137,130,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Height="105" Background="Gainsboro" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+            <Separator Margin="137,255,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Height="105" Background="Gainsboro" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+            <Separator Margin="137,380,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Height="105" Background="Gainsboro" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+            <Grid Margin="145,0,0,0">
+              <RadioButton Name="colorPalette5" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,56,0,0" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="16,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="44,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="72,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="100,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color32_0" Margin="20,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color32_1" Margin="48,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color33_0" Margin="76,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color33_1" Margin="104,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color34_0" Margin="20,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color34_1" Margin="48,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color35_0" Margin="76,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color35_1" Margin="104,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color36_0" Margin="20,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color36_1" Margin="48,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color37_0" Margin="76,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color37_1" Margin="104,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color38_0" Margin="20,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color38_1" Margin="48,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color39_0" Margin="76,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color39_1" Margin="104,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <Separator Margin="4,119,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="2" Background="Gainsboro" />
+              <RadioButton Name="colorPalette6" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,181,0,0" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="16,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="44,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="72,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="100,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color40_0" Margin="20,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color40_1" Margin="48,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color41_0" Margin="76,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color41_1" Margin="104,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color42_0" Margin="20,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color42_1" Margin="48,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color43_0" Margin="76,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color43_1" Margin="104,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color44_0" Margin="20,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color44_1" Margin="48,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color45_0" Margin="76,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color45_1" Margin="104,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color46_0" Margin="20,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color46_1" Margin="48,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color47_0" Margin="76,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color47_1" Margin="104,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <Separator Margin="4,244,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="1" Background="Gainsboro" />
+              <RadioButton Name="colorPalette7" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,306,0,0" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="16,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="44,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="72,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="100,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color48_0" Margin="20,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color48_1" Margin="48,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color49_0" Margin="76,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color49_1" Margin="104,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color50_0" Margin="20,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color50_1" Margin="48,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color51_0" Margin="76,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color51_1" Margin="104,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color52_0" Margin="20,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color52_1" Margin="48,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color53_0" Margin="76,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color53_1" Margin="104,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color54_0" Margin="20,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color54_1" Margin="48,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color55_0" Margin="76,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color55_1" Margin="104,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <Separator Margin="4,369,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="1" Background="Gainsboro" />
+              <RadioButton Name="colorPalette8" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,431,0,0" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="16,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="44,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="Start" HorizontalAlignment="Left" Margin="72,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <Label Content="End" HorizontalAlignment="Left" Margin="100,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color56_0" Margin="20,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color56_1" Margin="48,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color57_0" Margin="76,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color57_1" Margin="104,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color58_0" Margin="20,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color58_1" Margin="48,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color59_0" Margin="76,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color59_1" Margin="104,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color60_0" Margin="20,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color60_1" Margin="48,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color61_0" Margin="76,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color61_1" Margin="104,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color62_0" Margin="20,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color62_1" Margin="48,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color63_0" Margin="76,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              <xctk:ColorPicker ShowDropDownButton="False" Name="color63_1" Margin="104,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
+            </Grid>
+          </Grid>
+        </Border>
+      </Grid>
+      <DockPanel>
+        <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
+          <Label Content="Channel config" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+          <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top" Width="312">
+            <WrapPanel>
+              <Grid>
+                <Label Content="Audio" Margin="72,0,0,0" Padding="0" VerticalAlignment="Bottom" />
+                <Label Content="MIDI" Margin="192,0,0,0" Padding="0" VerticalAlignment="Bottom" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 0" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel0Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="0" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel0Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="0" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 1" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel1Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="1" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel1Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="1" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 2" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel2Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="2" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel2Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="2" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 3" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel3Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="3" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel3Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="3" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 4" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel4Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="4" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel4Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="4" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 5" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel5Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="5" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel5Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="5" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 6" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel6Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="6" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel6Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="6" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Channel 7" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
+                <ComboBox x:Name="channel7Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="7" SelectionChanged="ChannelAudioSelectionChanged" />
+                <ComboBox x:Name="channel7Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="7" SelectionChanged="ChannelMidiSelectionChanged" />
+              </Grid>
+            </WrapPanel>
+          </Border>
+        </WrapPanel>
+        <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
+          <Label Content="Level driver presets" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+          <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+            <Grid Width="300">
+              <ListView x:Name="levelDriverPresetList" Width="298" Height="66" VerticalAlignment="Top" Margin="1,0,1,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="LevelDriverPresetListSelectionChanged">
+                <ListView.View>
+                  <GridView>
+                    <GridViewColumn Header="Name" Width="139" DisplayMemberBinding="{Binding Name}" />
+                    <GridViewColumn Header="Source" Width="139" DisplayMemberBinding="{Binding SourceName}" />
+                  </GridView>
+                </ListView.View>
+              </ListView>
+              <Button x:Name="levelDriverEditPreset" Content="Edit" HorizontalAlignment="Left" Margin="2,71,0,0" VerticalAlignment="Top" Click="LevelDriverEditClicked" Padding="6,2" IsEnabled="False" />
+              <Button x:Name="levelDriverDeletePreset" Content="Delete" HorizontalAlignment="Right" Margin="0,71,2,0" VerticalAlignment="Top" Click="LevelDriverDeleteClicked" Padding="6,2" IsEnabled="False" />
+            </Grid>
+          </Border>
+        </WrapPanel>
+        <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
+          <Label x:Name="levelDriverMutateLabel" Content="Add level driver preset" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+          <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+            <WrapPanel>
+              <Grid>
+                <Label Content="Name" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                <TextBox x:Name="levelDriverName" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" />
+              </Grid>
+              <Grid Margin="0,4,0,0">
+                <Label Content="Source" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                <ComboBox x:Name="levelDriverSource" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,0,0,0" Width="140" SelectionChanged="LevelDriverSourceChanged">
+                  <ComboBoxItem>Audio</ComboBoxItem>
+                  <ComboBoxItem>MIDI</ComboBoxItem>
+                </ComboBox>
+              </Grid>
+              <WrapPanel x:Name="levelDriverAudioPresetConfig" Visibility="Collapsed">
+                <Grid Margin="0,4,0,0">
+                  <Label Content="Filter range" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <TextBox x:Name="levelDriverAudioFilterRangeStart" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="57" Height="20" LostFocus="LevelDriverAudioFilterRangeStartValueLostFocus" />
+                  <Label Content="to" Margin="144,0,0,2" Padding="0" VerticalAlignment="Center" />
+                  <TextBox x:Name="levelDriverAudioFilterRangeEnd" Margin="163,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="57" Height="20" LostFocus="LevelDriverAudioFilterRangeEndValueLostFocus" />
+                </Grid>
+              </WrapPanel>
+              <WrapPanel x:Name="levelDriverMidiPresetConfig" Visibility="Collapsed">
+                <Grid Margin="0,4,0,0">
+                  <Label Content="Attack (ms)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <TextBox x:Name="levelDriverMidiAttack" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiAttackLostFocus" />
+                </Grid>
+                <Grid Margin="0,4,0,0">
+                  <Label Content="Peak (level)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <TextBox x:Name="levelDriverMidiPeak" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiPeakLostFocus" />
+                </Grid>
+                <Grid Margin="0,4,0,0">
+                  <Label Content="Decay (ms)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <TextBox x:Name="levelDriverMidiDecay" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiDecayLostFocus" />
+                </Grid>
+                <Grid Margin="0,4,0,0">
+                  <Label Content="Sustain (level)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <TextBox x:Name="levelDriverMidiSustain" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiSustainLostFocus" />
+                </Grid>
+                <Grid Margin="0,4,0,0">
+                  <Label Content="Release (ms)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
+                  <TextBox x:Name="levelDriverMidiRelease" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiReleaseLostFocus" />
+                </Grid>
+              </WrapPanel>
+              <Grid Width="220" Margin="0,5,0,0">
+                <Button x:Name="levelDriverCancelEditButton" Content="Cancel" HorizontalAlignment="Left" VerticalAlignment="Center" Click="LevelDriverCancelEditClicked" Padding="6,2" Visibility="Collapsed" />
+                <Button x:Name="levelDriverSavePresetButton" Content="Add preset" HorizontalAlignment="Right" VerticalAlignment="Center" Click="LevelDriverSaveClicked" Padding="6,2" />
+              </Grid>
+            </WrapPanel>
+          </Border>
+        </WrapPanel>
+      </DockPanel>
+      <Grid Width="100" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
+        <Label Content="Tempo" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
+          <DockPanel>
+            <DockPanel DockPanel.Dock="Bottom">
+              <Button x:Name="clearBPMButton" Content="Clear" Padding="5,2" DockPanel.Dock="Left" Margin="0,0,0,5" Click="ClearTempoButtonClicked" HorizontalAlignment="Left" />
+              <Button x:Name="tapTempoButton" Content="Tap" Padding="5,2" DockPanel.Dock="Right" Margin="0,0,0,5" Click="TapTempoButtonClicked" Width="30" HorizontalAlignment="Right" />
             </DockPanel>
-            <Grid Width="100" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
-                <Label Content="Tempo" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
-                    <DockPanel>
-                        <DockPanel DockPanel.Dock="Bottom">
-                            <Button x:Name="clearBPMButton" Content="Clear" Padding="5,2" DockPanel.Dock="Left" Margin="0,0,0,5" Click="ClearTempoButtonClicked" HorizontalAlignment="Left" />
-                            <Button x:Name="tapTempoButton" Content="Tap" Padding="5,2" DockPanel.Dock="Right" Margin="0,0,0,5" Click="TapTempoButtonClicked" Width="30" HorizontalAlignment="Right" />
-                        </DockPanel>
-                        <Label Content="BPM:" FontSize="12" FontFamily="Segoe UI Semilight" DockPanel.Dock="Left" HorizontalAlignment="Left" Margin="0,-4,0,2" Padding="1,5" />
-                        <Label x:Name="bpmLabel" Content="[none]" FontSize="12" FontFamily="Segoe UI Semilight" DockPanel.Dock="Right" HorizontalAlignment="Right" Margin="0,-4,0,2" Padding="1,5" />
-                    </DockPanel>
-                </Border>
+            <Label Content="BPM:" FontSize="12" FontFamily="Segoe UI Semilight" DockPanel.Dock="Left" HorizontalAlignment="Left" Margin="0,-4,0,2" Padding="1,5" />
+            <Label x:Name="bpmLabel" Content="[none]" FontSize="12" FontFamily="Segoe UI Semilight" DockPanel.Dock="Right" HorizontalAlignment="Right" Margin="0,-4,0,2" Padding="1,5" />
+          </DockPanel>
+        </Border>
+      </Grid>
+      <Grid Width="135" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Right">
+        <Label Content="Visualizer Settings" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,-145,0" Padding="5" VerticalAlignment="Top">
+          <WrapPanel Margin="0,0,0,0">
+            <Grid Height="24">
+              <Label Content="Rotation Speed" Margin="0,3,0,0" Padding="0" />
+              <ComboBox x:Name="domeVolumeRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
+                <ComboBoxItem x:Name="dprs0" Content="0" IsSelected="True" />
+                <ComboBoxItem x:Name="dprs1" Content="1/8" />
+                <ComboBoxItem x:Name="dprs2" Content="1/4" />
+                <ComboBoxItem x:Name="dprs3" Content="1/2" />
+                <ComboBoxItem x:Name="dprs4" Content="1" />
+                <ComboBoxItem x:Name="dprs5" Content="2" />
+                <ComboBoxItem x:Name="dprs6" Content="4" />
+              </ComboBox>
             </Grid>
-            <Grid Width="135" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Right">
-                <Label Content="Visualizer Settings" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,-145,0" Padding="5" VerticalAlignment="Top">
-                    <WrapPanel Margin="0,0,0,0">
-                        <Grid Height="24">
-                            <Label Content="Rotation Speed" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="domeVolumeRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
-                                <ComboBoxItem x:Name="dprs0" Content="0" IsSelected="True" />
-                                <ComboBoxItem x:Name="dprs1" Content="1/8" />
-                                <ComboBoxItem x:Name="dprs2" Content="1/4" />
-                                <ComboBoxItem x:Name="dprs3" Content="1/2" />
-                                <ComboBoxItem x:Name="dprs4" Content="1" />
-                                <ComboBoxItem x:Name="dprs5" Content="2" />
-                                <ComboBoxItem x:Name="dprs6" Content="4" />
-                            </ComboBox>
-                        </Grid>
-                        <Grid Height="24">
-                            <Label Content="Gradient Speed" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="domeGradientSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
-                                <ComboBoxItem x:Name="dsrs0" Content="0" IsSelected="True" />
-                                <ComboBoxItem x:Name="dsrs1" Content="1/8" />
-                                <ComboBoxItem x:Name="dsrs2" Content="1/4" />
-                                <ComboBoxItem x:Name="dsrs3" Content="1/2" />
-                                <ComboBoxItem x:Name="dsrs4" Content="1" />
-                                <ComboBoxItem x:Name="dsrs5" Content="2" />
-                                <ComboBoxItem x:Name="dsrs6" Content="4" />
-                            </ComboBox>
-                        </Grid>
-                        <Grid Height="24">
-                            <Label Content="Stage 1" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="stagePrimaryRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
-                                <ComboBoxItem x:Name="sprs0" Content="0" IsSelected="True" />
-                                <ComboBoxItem x:Name="sprs1" Content="1/8" />
-                                <ComboBoxItem x:Name="sprs2" Content="1/4" />
-                                <ComboBoxItem x:Name="sprs3" Content="1/2" />
-                                <ComboBoxItem x:Name="sprs4" Content="1" />
-                                <ComboBoxItem x:Name="sprs5" Content="2" />
-                                <ComboBoxItem x:Name="sprs6" Content="4" />
-                            </ComboBox>
-                        </Grid>
-                        <Grid Height="24">
-                            <Label Content="Flash" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="flashRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
-                                <ComboBoxItem x:Name="frs0" Content="0" IsSelected="True" />
-                                <ComboBoxItem x:Name="frs1" Content="1/2" />
-                                <ComboBoxItem x:Name="frs2" Content="1" />
-                                <ComboBoxItem x:Name="frs3" Content="2" />
-                                <ComboBoxItem x:Name="frs4" Content="4" />
-                                <ComboBoxItem x:Name="frs5" Content="8" />
-                                <ComboBoxItem x:Name="frs6" Content="16" />
-                                <ComboBoxItem x:Name="frs7" Content="32" />
-                            </ComboBox>
-                        </Grid>
-                    </WrapPanel>
-                </Border>
+            <Grid Height="24">
+              <Label Content="Gradient Speed" Margin="0,3,0,0" Padding="0" />
+              <ComboBox x:Name="domeGradientSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
+                <ComboBoxItem x:Name="dsrs0" Content="0" IsSelected="True" />
+                <ComboBoxItem x:Name="dsrs1" Content="1/8" />
+                <ComboBoxItem x:Name="dsrs2" Content="1/4" />
+                <ComboBoxItem x:Name="dsrs3" Content="1/2" />
+                <ComboBoxItem x:Name="dsrs4" Content="1" />
+                <ComboBoxItem x:Name="dsrs5" Content="2" />
+                <ComboBoxItem x:Name="dsrs6" Content="4" />
+              </ComboBox>
             </Grid>
-        </DockPanel>
-        <RichTextBox x:Name="logBox" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Black" Foreground="White" FontFamily="Consolas" VerticalScrollBarVisibility="Visible" IsReadOnly="True" DockPanel.Dock="Bottom" />
+            <Grid Height="24">
+              <Label Content="Stage 1" Margin="0,3,0,0" Padding="0" />
+              <ComboBox x:Name="stagePrimaryRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
+                <ComboBoxItem x:Name="sprs0" Content="0" IsSelected="True" />
+                <ComboBoxItem x:Name="sprs1" Content="1/8" />
+                <ComboBoxItem x:Name="sprs2" Content="1/4" />
+                <ComboBoxItem x:Name="sprs3" Content="1/2" />
+                <ComboBoxItem x:Name="sprs4" Content="1" />
+                <ComboBoxItem x:Name="sprs5" Content="2" />
+                <ComboBoxItem x:Name="sprs6" Content="4" />
+              </ComboBox>
+            </Grid>
+            <Grid Height="24">
+              <Label Content="Flash" Margin="0,3,0,0" Padding="0" />
+              <ComboBox x:Name="flashRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
+                <ComboBoxItem x:Name="frs0" Content="0" IsSelected="True" />
+                <ComboBoxItem x:Name="frs1" Content="1/2" />
+                <ComboBoxItem x:Name="frs2" Content="1" />
+                <ComboBoxItem x:Name="frs3" Content="2" />
+                <ComboBoxItem x:Name="frs4" Content="4" />
+                <ComboBoxItem x:Name="frs5" Content="8" />
+                <ComboBoxItem x:Name="frs6" Content="16" />
+                <ComboBoxItem x:Name="frs7" Content="32" />
+              </ComboBox>
+            </Grid>
+          </WrapPanel>
+        </Border>
+      </Grid>
     </DockPanel>
+    <RichTextBox x:Name="logBox" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Black" Foreground="White" FontFamily="Consolas" VerticalScrollBarVisibility="Visible" IsReadOnly="True" DockPanel.Dock="Bottom" />
+  </DockPanel>
 </Window>
