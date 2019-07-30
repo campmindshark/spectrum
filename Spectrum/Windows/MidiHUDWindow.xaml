@@ -341,7 +341,7 @@
       </Grid>
       <Grid Width="135" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Right">
         <Label Content="Visualizer Settings" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,-145,0" Padding="5" VerticalAlignment="Top">
+        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,-123,0" Padding="5" VerticalAlignment="Top">
           <WrapPanel Margin="0,0,0,0">
             <Grid Height="24">
               <Label Content="Rotation Speed" Margin="0,3,0,0" Padding="0" />
