@@ -112,7 +112,7 @@
     <Int32>5</Int32>
     <Int32>6</Int32>
   </hueIndices>
-  <midiHUDEnabled>false</midiHUDEnabled>
+  <midiHUDEnabled>true</midiHUDEnabled>
   <midiDevices>
     <Item>
       <Key>0</Key>
