@@ -138,7 +138,7 @@ namespace Spectrum.Base {
     public string TapCounterText {
       get {
         if (this.TapTempoConcluded()) {
-          return "Tap tempo";
+          return "Tap";
         }
         return this.currentTaps.Count.ToString();
       }

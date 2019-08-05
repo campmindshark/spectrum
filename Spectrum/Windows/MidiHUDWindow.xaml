@@ -326,22 +326,42 @@
           </Border>
         </WrapPanel>
       </DockPanel>
-      <Grid Width="100" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
+      <Grid Width="258" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
         <Label Content="Tempo" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
         <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
-          <DockPanel>
-            <DockPanel DockPanel.Dock="Bottom">
-              <Button x:Name="clearBPMButton" Content="Clear" Padding="5,2" DockPanel.Dock="Left" Margin="0,0,0,5" Click="ClearTempoButtonClicked" HorizontalAlignment="Left" />
-              <Button x:Name="tapTempoButton" Content="Tap" Padding="5,2" DockPanel.Dock="Right" Margin="0,0,0,5" Click="TapTempoButtonClicked" Width="30" HorizontalAlignment="Right" />
+          <WrapPanel>
+            <DockPanel Width="237">
+              <Label Content="BPM:" FontSize="12" FontFamily="Segoe UI Semilight" DockPanel.Dock="Left" HorizontalAlignment="Left" Margin="0,-4,0,2" Padding="1,5" />
+              <Label x:Name="bpmLabel" Content="[none]" FontSize="12" FontFamily="Segoe UI Semilight" DockPanel.Dock="Right" HorizontalAlignment="Left" Margin="5,-4,0,2" Padding="1,5" />
             </DockPanel>
-            <Label Content="BPM:" FontSize="12" FontFamily="Segoe UI Semilight" DockPanel.Dock="Left" HorizontalAlignment="Left" Margin="0,-4,0,2" Padding="1,5" />
-            <Label x:Name="bpmLabel" Content="[none]" FontSize="12" FontFamily="Segoe UI Semilight" DockPanel.Dock="Right" HorizontalAlignment="Right" Margin="0,-4,0,2" Padding="1,5" />
-          </DockPanel>
+            <DockPanel Width="237">
+              <RadioButton DockPanel.Dock="Left" Name="tempoSelectorHuman" HorizontalAlignment="Left" VerticalAlignment="Center" GroupName="TempoSelector" />
+              <Label Content="Human" FontSize="12" FontFamily="Segoe UI Semilight" Margin="0,0,0,2" Padding="1,5" />
+              <Button x:Name="clearBPMButton" Content="Clear" Padding="5,2" Margin="5,0" Click="ClearTempoButtonClicked" />
+              <Button x:Name="tapTempoButton" Content="Tap" Padding="5,2" Margin="5,0" Click="TapTempoButtonClicked" />
+              <DockPanel DockPanel.Dock="Right" HorizontalAlignment="Right">
+                <CheckBox x:Name="tempoHumanLink" IsChecked="False" Margin="5,0" VerticalAlignment="Center" />
+                <Label Content="Link Export" FontSize="12" FontFamily="Segoe UI Semilight" Margin="0,0,0,2" Padding="1,5" />
+              </DockPanel>
+            </DockPanel>
+            <DockPanel Width="237">
+              <RadioButton DockPanel.Dock="Left" Name="tempoSelectorMadmom" HorizontalAlignment="Left" VerticalAlignment="Center" GroupName="TempoSelector" />
+              <Label Content="Madmom" FontSize="12" FontFamily="Segoe UI Semilight" Margin="0,0,0,2" Padding="1,5" />
+              <DockPanel DockPanel.Dock="Right" HorizontalAlignment="Right">
+                <CheckBox x:Name="tempoMadmomLink" IsChecked="False" Margin="5,0" VerticalAlignment="Center" />
+                <Label Content="Link Export" FontSize="12" FontFamily="Segoe UI Semilight" Margin="0,0,0,2" Padding="1,5" />
+              </DockPanel>
+            </DockPanel>
+            <DockPanel Width="237">
+              <RadioButton DockPanel.Dock="Left" Name="tempoSelectorLink" HorizontalAlignment="Left" VerticalAlignment="Center" GroupName="TempoSelector" />
+              <Label Content="Ableton Link" FontSize="12" FontFamily="Segoe UI Semilight" Margin="0,0,0,2" Padding="1,5" />
+            </DockPanel>
+          </WrapPanel>
         </Border>
       </Grid>
-      <Grid Width="135" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Right">
+      <Grid Width="258" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Right">
         <Label Content="Visualizer Settings" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,-123,0" Padding="5" VerticalAlignment="Top">
+        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
           <WrapPanel Margin="0,0,0,0">
             <Grid Height="24">
               <Label Content="Rotation Speed" Margin="0,3,0,0" Padding="0" />
