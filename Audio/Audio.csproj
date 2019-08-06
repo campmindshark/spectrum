@@ -46,6 +46,7 @@
   <ItemGroup>
     <Compile Include="AudioDevice.cs" />
     <Compile Include="AudioInput.cs" />
+    <Compile Include="MadmomHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

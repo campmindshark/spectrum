@@ -53,6 +53,8 @@ namespace Spectrum.Audio {
     private readonly Dictionary<AudioDetectorType, long> lastEventTime;
     private long quietSince = -1;
 
+    private readonly MadmomHandler madmomHandler;
+
     public AudioInput(Configuration config) {
       this.config = config;
 
@@ -65,6 +67,8 @@ namespace Spectrum.Audio {
         this.energyHistory[key] = new double[historyLength];
         this.lastEventTime[key] = 0;
       }
+
+      this.madmomHandler = new MadmomHandler(config, this);
     }
 
     private bool active;
@@ -85,6 +89,7 @@ namespace Spectrum.Audio {
             this.TerminateAudio();
           }
           this.active = value;
+          this.madmomHandler.Active = value;
         }
       }
     }
@@ -359,6 +364,20 @@ namespace Spectrum.Audio {
           });
         }
         return audioDeviceList;
+      }
+    }
+
+    public int CurrentAudioDeviceIndex {
+      get {
+        if (this.config.audioDeviceID == null) {
+          return -1;
+        }
+        foreach (var audioDevice in AudioInput.AudioDevices) {
+          if (audioDevice.id == this.config.audioDeviceID) {
+            return audioDevice.index;
+          }
+        }
+        return -1;
       }
     }
 

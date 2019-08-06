@@ -78,7 +78,7 @@ namespace Spectrum.Base {
       this.TapTempoConcluded(null, null);
       this.tapTempoConclusionTimer.Start();
       if (this.currentTaps.Count >= 3) {
-        this.UpdateBeat();
+        this.UpdateBeatFromTaps();
       }
     }
 
@@ -104,7 +104,7 @@ namespace Spectrum.Base {
       );
     }
 
-    private void UpdateBeat() {
+    private void UpdateBeatFromTaps() {
       int[] measureLengths = new int[this.currentTaps.Count - 1];
       for (int i = 0; i < this.currentTaps.Count - 1; i++) {
         measureLengths[i] =
@@ -118,7 +118,7 @@ namespace Spectrum.Base {
       );
     }
 
-    private bool TapTempoConcluded() {
+    private bool IsTapTempoConcluded() {
       if (this.currentTaps.Count == 0) {
         return true;
       }
@@ -128,7 +128,7 @@ namespace Spectrum.Base {
 
     public Brush TapCounterBrush {
       get {
-        if (this.TapTempoConcluded()) {
+        if (this.IsTapTempoConcluded()) {
           return new SolidColorBrush(Colors.Black);
         }
         return new SolidColorBrush(Colors.ForestGreen);
@@ -137,7 +137,7 @@ namespace Spectrum.Base {
 
     public string TapCounterText {
       get {
-        if (this.TapTempoConcluded()) {
+        if (this.IsTapTempoConcluded()) {
           return "Tap";
         }
         return this.currentTaps.Count.ToString();
@@ -250,6 +250,30 @@ namespace Spectrum.Base {
         );
       return levelAtRelease * (preset.ReleaseTime - timeSinceRelease)
         / preset.ReleaseTime;
+    }
+
+    public void ReportMadmomBeat(int millisecondsSinceLast) {
+      long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+
+      if (this.startingTime < 0) {
+        this.measureLength = millisecondsSinceLast;
+        this.startingTime = timestamp;
+      } else {
+        double totalMeasures = (double)(timestamp - this.startingTime)
+          / this.measureLength;
+        if (totalMeasures > 8.0) {
+          totalMeasures -= 8.0;
+        }
+        totalMeasures = Math.Round(totalMeasures);
+        this.measureLength = millisecondsSinceLast;
+        this.startingTime = timestamp
+          - (long)(totalMeasures * this.measureLength);
+      }
+
+      this.PropertyChanged?.Invoke(
+        this,
+        new PropertyChangedEventArgs("BPMString")
+      );
     }
 
   }
