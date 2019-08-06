@@ -99,8 +99,8 @@
     <Compile Include="Windows\BarSimulatorWindow.xaml.cs">
       <DependentUpon>BarSimulatorWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Windows\MidiHUDWindow.xaml.cs">
-      <DependentUpon>MidiHUDWindow.xaml</DependentUpon>
+    <Compile Include="Windows\VJHUDWindow.xaml.cs">
+      <DependentUpon>VJHUDWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Windows\StageSimulatorWindow.xaml.cs">
       <DependentUpon>StageSimulatorWindow.xaml</DependentUpon>
@@ -132,7 +132,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Windows\MidiHUDWindow.xaml">
+    <Page Include="Windows\VJHUDWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

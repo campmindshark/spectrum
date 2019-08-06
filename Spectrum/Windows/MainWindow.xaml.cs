@@ -71,7 +71,7 @@ namespace Spectrum {
     private DomeSimulatorWindow domeSimulatorWindow;
     private BarSimulatorWindow barSimulatorWindow;
     private StageSimulatorWindow stageSimulatorWindow;
-    private MidiHUDWindow midiHUDWindow;
+    private VJHUDWindow vjHUDWindow;
     private int? currentlyEditingPreset = null;
     private int? currentlyEditingBinding = null;
     private Timer configSaveTimer = null;
@@ -256,7 +256,7 @@ namespace Spectrum {
       this.Bind("stageSideLengths", this.stageSideLengths, TextBox.TextProperty, BindingMode.TwoWay, new StringJoinConverter());
       this.Bind("stageBrightness", this.stageBrightnessSlider, Slider.ValueProperty);
       this.Bind("stageBrightness", this.stageBrightnessLabel, Label.ContentProperty);
-      this.Bind("midiHUDEnabled", this.midiHUDEnabled, CheckBox.IsCheckedProperty);
+      this.Bind("vjHUDEnabled", this.vjHUDEnabled, CheckBox.IsCheckedProperty);
 
       this.loadingConfig = false;
     }
@@ -1216,19 +1216,19 @@ namespace Spectrum {
       }
     }
 
-    private void OpenMidiHUD(object sender, RoutedEventArgs e) {
-      this.midiHUDWindow = new MidiHUDWindow(this.config);
-      this.midiHUDWindow.Closed += MidiHUDClosed;
-      this.midiHUDWindow.Show();
+    private void OpenVJHUD(object sender, RoutedEventArgs e) {
+      this.vjHUDWindow = new VJHUDWindow(this.config);
+      this.vjHUDWindow.Closed += VJHUDClosed;
+      this.vjHUDWindow.Show();
     }
 
-    private void CloseMidiHUD(object sender, RoutedEventArgs e) {
-      this.midiHUDWindow.Close();
-      this.midiHUDWindow = null;
+    private void CloseVJHUD(object sender, RoutedEventArgs e) {
+      this.vjHUDWindow.Close();
+      this.vjHUDWindow = null;
     }
 
-    private void MidiHUDClosed(object sender, EventArgs e) {
-      this.config.midiHUDEnabled = false;
+    private void VJHUDClosed(object sender, EventArgs e) {
+      this.config.vjHUDEnabled = false;
     }
 
     private void OpenDomeSimulator(object sender, RoutedEventArgs e) {

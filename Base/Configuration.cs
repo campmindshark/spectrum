@@ -116,7 +116,7 @@ namespace Spectrum.Base {
     int[] hueIndices { get; set; }
 
     // maps from device ID to preset ID
-    bool midiHUDEnabled { get; set; }
+    bool vjHUDEnabled { get; set; }
     Dictionary<int, int> midiDevices { get; set; }
     Dictionary<int, MidiPreset> midiPresets { get; set; }
     ObservableMidiLog midiLog { get; set; }

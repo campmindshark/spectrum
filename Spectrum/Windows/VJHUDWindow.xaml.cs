@@ -17,7 +17,7 @@ using Xceed.Wpf.Toolkit;
 
 namespace Spectrum {
 
-  public partial class MidiHUDWindow : Window {
+  public partial class VJHUDWindow : Window {
 
     private class LevelDriverPresetEntry {
       public string Name { get; set; }
@@ -39,7 +39,7 @@ namespace Spectrum {
     private string currentlyEditingLevelDriverPreset;
     private readonly Dictionary<LevelDriverSource, ComboBox[]> channelComboBoxes;
 
-    public MidiHUDWindow(Configuration config) {
+    public VJHUDWindow(Configuration config) {
       this.InitializeComponent();
       this.config = config;
       this.config.PropertyChanged += ConfigUpdated;
