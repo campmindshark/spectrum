@@ -156,6 +156,11 @@ namespace Spectrum {
     public ConcurrentQueue<StageLEDCommand> stageCommandQueue { get; } =
       new ConcurrentQueue<StageLEDCommand>();
 
+    // 0 = human, 1 = Madmom, 2 = Ableton Link
+    public int beatInput { get; set; } = 0;
+    public bool humanLinkOutput { get; set; } = false;
+    public bool madmomLinkOutput { get; set; } = false;
+
     // The rest is not on Configuration
     // Just convenience properties for data binding
 

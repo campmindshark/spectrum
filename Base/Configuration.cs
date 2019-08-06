@@ -138,6 +138,11 @@ namespace Spectrum.Base {
     ConcurrentQueue<BarLEDCommand> barCommandQueue { get; }
     ConcurrentQueue<StageLEDCommand> stageCommandQueue { get; }
 
+    // 0 = human, 1 = Madmom, 2 = Ableton Link
+    int beatInput { get; set; }
+    bool humanLinkOutput { get; set; }
+    bool madmomLinkOutput { get; set; }
+
   }
 
 }

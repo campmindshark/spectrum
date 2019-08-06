@@ -233,6 +233,11 @@ namespace Spectrum {
       this.Bind("colorPaletteIndex", this.colorPalette6, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(5));
       this.Bind("colorPaletteIndex", this.colorPalette7, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(6));
       this.Bind("colorPaletteIndex", this.colorPalette8, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(7));
+      this.Bind("beatInput", this.tempoSelectorHuman, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(0));
+      this.Bind("beatInput", this.tempoSelectorMadmom, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(1));
+      this.Bind("beatInput", this.tempoSelectorLink, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(2));
+      this.Bind("humanLinkOutput", this.tempoHumanLink, CheckBox.IsCheckedProperty);
+      this.Bind("madmomLinkOutput", this.tempoMadmomLink, CheckBox.IsCheckedProperty);
     }
 
     private void Bind(
@@ -284,6 +289,7 @@ namespace Spectrum {
     }
 
     private void TapTempoButtonClicked(object sender, RoutedEventArgs e) {
+      this.config.beatInput = 0;
       this.config.beatBroadcaster.AddTap();
     }
 
