@@ -65,7 +65,7 @@ namespace Spectrum {
 
     private Operator op;
     private SpectrumConfiguration config;
-    private bool loadingConfig = false;
+    public static bool LoadingConfig { get; set; } = false;
     private List<int> midiDeviceIndices;
     private List<int> midiPresetIndices;
     private DomeSimulatorWindow domeSimulatorWindow;
@@ -108,7 +108,7 @@ namespace Spectrum {
     }
 
     private void SaveConfig() {
-      if (this.loadingConfig) {
+      if (MainWindow.LoadingConfig) {
         return;
       }
       // We keep around the old config in case the new config causes a crash
@@ -149,7 +149,7 @@ namespace Spectrum {
     }
 
     private void LoadConfig() {
-      this.loadingConfig = true;
+      MainWindow.LoadingConfig = true;
 
       string loadFile = null;
       if (File.Exists("spectrum_config.xml")) {
@@ -261,7 +261,7 @@ namespace Spectrum {
       this.Bind("stageBrightness", this.stageBrightnessLabel, Label.ContentProperty);
       this.Bind("vjHUDEnabled", this.vjHUDEnabled, CheckBox.IsCheckedProperty);
 
-      this.loadingConfig = false;
+      MainWindow.LoadingConfig = false;
     }
 
     private void Bind(
@@ -282,11 +282,11 @@ namespace Spectrum {
     }
 
     private void SliderStarted(object sender, DragStartedEventArgs e) {
-      this.loadingConfig = true;
+      MainWindow.LoadingConfig = true;
     }
 
     private void SliderCompleted(object sender, DragCompletedEventArgs e) {
-      this.loadingConfig = false;
+      MainWindow.LoadingConfig = false;
     }
 
     private void OnHotKeyHandler(HotKey hotKey) {

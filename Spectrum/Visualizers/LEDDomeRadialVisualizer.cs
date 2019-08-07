@@ -14,6 +14,10 @@ namespace Spectrum {
     private AudioInput audio;
     private LEDDomeOutput dome;
 
+    private double currentAngle;
+    private double currentGradient;
+    private double lastProgress;
+
     public LEDDomeRadialVisualizer(
       Configuration config,
       AudioInput audio,
@@ -79,11 +83,15 @@ namespace Spectrum {
 
     public void Render() {
 
-      double progress = this.config.beatBroadcaster.ProgressThroughBeat(
-        this.config.domeVolumeRotationSpeed
-      );
+      double progress = this.config.beatBroadcaster.ProgressThroughBeat(1.0);
+      currentAngle += this.config.domeVolumeRotationSpeed * Wrap(progress - this.lastProgress, 0, 1);
+      currentAngle = Wrap(currentAngle, 0, 1);
+      currentGradient += this.config.domeGradientSpeed * Wrap(progress - this.lastProgress, 0, 1);
+      currentGradient = Wrap(currentGradient, 0, 1);
+      this.lastProgress = progress;
 
       double level = this.audio.LevelForChannel(0);
+      double adjustedLevel = Map(level, 0, 1, 0.02, 1);
 
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
         Strut strut = Strut.FromIndex(this.config, i);
@@ -91,11 +99,43 @@ namespace Spectrum {
         for (int j = 0; j < leds; j++) {
           var p = StrutLayoutFactory.GetProjectedLEDPointParametric(i, j);
 
-          //map angle to 0-1
+          // map angle to 0-1
           var angle = MapWrap(p.Item3, -Math.PI, Math.PI, 0.0, 1.0);
-          var val = MapWrap(angle, progress, 1 + progress, 0, 1);
+          var dist = p.Item4;
 
-          this.dome.SetPixel(i, j, LEDColor.FromDoubles(val, 0, 0));
+          double val = 0;
+          double gradientVal = 0;
+
+          switch (this.config.domeRadialEffect) {
+            case 0:
+              // radar mapping
+              val = MapWrap(angle, currentAngle, 1 + currentAngle, 0, 1);
+              gradientVal = dist;
+              break;
+            case 1:
+              // pulse mapping
+              val = MapWrap(dist, currentAngle, 1 + currentAngle, 0, 1);
+              gradientVal = Math.Abs(Map(angle, 0, 1, -1, 1));
+              break;
+            case 2:
+              // spiral mapping
+              val = MapWrap(angle + dist / this.config.domeRadialFrequency, currentAngle, 1 + currentAngle, 0, 1);
+              gradientVal = dist;
+              break;
+          }
+
+          // scale val according to radial frequency
+          val = Wrap(val * this.config.domeRadialFrequency, 0, 1);
+          // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
+          var centeredVal = Math.Abs(Map(val, 0, 1, -1, 1));
+
+          // size limit is scaled according the size slider and the current level
+          var sizeLimit = this.config.domeRadialSize * adjustedLevel;
+          bool on = centeredVal <= sizeLimit;
+
+          var color = on ? this.dome.GetGradientColor(0, gradientVal, currentGradient, true) : 0;
+
+          this.dome.SetPixel(i, j, color);
         }
       }
     }
@@ -116,9 +156,23 @@ namespace Spectrum {
     // Map value x from range a-b to range c-d, wrap values outside or range c-d
     // Example: if we map to range 0-10, but get result 11.3, this is wrapped to 1.3
     private static double MapWrap(double x, double a, double b, double c, double d) {
+      return Wrap(Map(x, a, b, c, d), c, d);
       double mapped = (x - a) * (d - c) / (b - a); //map to final range but don't add the lower value c
       double wrapped = mapped % (d - c); // modulus across final range
       return wrapped + c; // add c and return
+    }
+
+    private static double Clamp(double x, double a, double b) {
+      if (x < a) return a;
+      if (x > b) return b;
+      return x;
+    }
+
+    private static double Wrap(double x, double a, double b) {
+      var range = b - a;
+      while (x < a) x += range;
+      while (x > b) x -= range;
+      return x;
     }
 
     public void Visualize() {

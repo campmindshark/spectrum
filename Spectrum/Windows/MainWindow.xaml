@@ -372,23 +372,6 @@
                                 </Grid>
                             </WrapPanel>
                         </Border>
-                        <Label Content="Radial Effects" HorizontalAlignment="Left" Margin="4,1,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
-                            <WrapPanel>
-                                <Grid>
-                                    <Label Content="Size" Margin="0,3,0,0" Padding="0" />
-                                    <Slider x:Name="domeRadialSize" Value="0.1" HorizontalAlignment="Left" Margin="90,0,0,0" VerticalAlignment="Top" Height="20" Width="140" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                                </Grid>
-                                <!--
-                                <Grid Margin="0,4,0,0">
-                                    <Label Content="Active vis" Margin="0,3,0,0" Padding="0" />
-                                    <ComboBox x:Name="domeAasdfsdafdsactiveVisualizer" HorizontalAlignment="Left" VerticalAlignment="Top" Width="140" Margin="80,0,0,0">
-                      
-                                    </ComboBox>
-                                </Grid>
-                                -->
-                            </WrapPanel>
-                        </Border>
                     </WrapPanel>
                     <CheckBox x:Name="domeThreadCheckbox" Content="Call LED dome in separate thread(s)" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
                 </Grid>
