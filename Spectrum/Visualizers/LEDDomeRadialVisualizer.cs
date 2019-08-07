@@ -107,27 +107,24 @@ namespace Spectrum {
 
     // Map value x from range a-b to range c-d, clamp values outside of range c-d to c or d
     private static double MapClamp(double x, double a, double b, double c, double d) {
-      double y = (x - a) * (d - c) / (b - a) + c;
-      if (y < c) return c;
-      if (y > d) return d;
-      return y;
+      return Clamp(Map(x, a, b, c, d), c, d));
     }
 
     // Map value x from range a-b to range c-d, wrap values outside or range c-d
     // Example: if we map to range 0-10, but get result 11.3, this is wrapped to 1.3
     private static double MapWrap(double x, double a, double b, double c, double d) {
       return Wrap(Map(x, a, b, c, d), c, d);
-      double mapped = (x - a) * (d - c) / (b - a); //map to final range but don't add the lower value c
-      double wrapped = mapped % (d - c); // modulus across final range
-      return wrapped + c; // add c and return
     }
 
+    // Clamp value x inside range a-b
     private static double Clamp(double x, double a, double b) {
       if (x < a) return a;
       if (x > b) return b;
       return x;
     }
 
+    // Wrap value x around range a-b
+    // Example, 2.5 wrapped to 0-1 becomes 0.5
     private static double Wrap(double x, double a, double b) {
       var range = b - a;
       while (x < a) x += range;
