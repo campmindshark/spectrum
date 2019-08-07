@@ -41,46 +41,6 @@ namespace Spectrum {
       return new Input[] { this.audio };
     }
 
-    public void ParametricTest() {
-
-      double progress = this.config.beatBroadcaster.ProgressThroughBeat(
-        this.config.domeVolumeRotationSpeed
-      );
-
-      double level = this.audio.LevelForChannel(0);
-
-      for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-        Strut strut = Strut.FromIndex(this.config, i);
-        var leds = LEDDomeOutput.GetNumLEDs(i);
-        for (int j = 0; j < leds; j++) {
-          var p = StrutLayoutFactory.GetProjectedLEDPointParametric(i, j);
-          double r = 0;
-          double g = 0;
-          double b = 0;
-
-          //radar effect
-          double a = (p.Item3 + Math.PI) / (Math.PI * 2);
-          r = progress - a;
-          if (r < 0) r += 1;
-          if (r > 1) r = 1;
-          /*
-          //pulse effect
-          double dist = Math.Abs(progress - p.Item4);
-          r = 1 - dist;
-          if (r < 0.9) r = 0;
-
-          //spiral effect
-          double m = p.Item4 - a;
-          if (m < 0) m += 1;
-          double n = progress - m;
-          if (n < 0) n += 1;
-          r = 1 - n;
-          */
-          this.dome.SetPixel(i, j, LEDColor.FromDoubles(r,g,b));
-        }
-      }
-    }
-
     public void Render() {
 
       double progress = this.config.beatBroadcaster.ProgressThroughBeat(1.0);
