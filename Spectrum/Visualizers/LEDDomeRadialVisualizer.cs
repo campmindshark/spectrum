@@ -41,9 +41,9 @@ namespace Spectrum {
       return new Input[] { this.audio };
     }
 
-    public void Render() {
+    void Render() {
 
-      double progress = this.config.beatBroadcaster.ProgressThroughBeat(1.0);
+      double progress = this.config.beatBroadcaster.ProgressThroughMeasure;
       currentAngle += this.config.domeVolumeRotationSpeed * Wrap(progress - this.lastProgress, 0, 1);
       currentAngle = Wrap(currentAngle, 0, 1);
       currentGradient += this.config.domeGradientSpeed * Wrap(progress - this.lastProgress, 0, 1);
@@ -107,7 +107,7 @@ namespace Spectrum {
 
     // Map value x from range a-b to range c-d, clamp values outside of range c-d to c or d
     private static double MapClamp(double x, double a, double b, double c, double d) {
-      return Clamp(Map(x, a, b, c, d), c, d));
+      return Clamp(Map(x, a, b, c, d), c, d);
     }
 
     // Map value x from range a-b to range c-d, wrap values outside or range c-d

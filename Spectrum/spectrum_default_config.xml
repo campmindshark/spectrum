@@ -89,6 +89,8 @@
   <domeSkipLEDs>0</domeSkipLEDs>
   <domeTestPattern>0</domeTestPattern>
   <domeActiveVis>0</domeActiveVis>
+  <domeRadialSize>1.0</domeRadialSize>
+  <domeRadialFrequency>1</domeRadialFrequency>
   <hueDelay>125</hueDelay>
   <hueIdleOnSilent>true</hueIdleOnSilent>
   <lightsOff>false</lightsOff>
