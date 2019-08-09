@@ -65,7 +65,7 @@ namespace Spectrum {
 
     private Operator op;
     private SpectrumConfiguration config;
-    private bool loadingConfig = false;
+    public static bool LoadingConfig { get; set; } = false;
     private List<int> midiDeviceIndices;
     private List<int> midiPresetIndices;
     private DomeSimulatorWindow domeSimulatorWindow;
@@ -108,7 +108,7 @@ namespace Spectrum {
     }
 
     private void SaveConfig() {
-      if (this.loadingConfig) {
+      if (MainWindow.LoadingConfig) {
         return;
       }
       // We keep around the old config in case the new config causes a crash
@@ -149,7 +149,7 @@ namespace Spectrum {
     }
 
     private void LoadConfig() {
-      this.loadingConfig = true;
+      MainWindow.LoadingConfig = true;
 
       string loadFile = null;
       if (File.Exists("spectrum_config.xml")) {
@@ -189,7 +189,10 @@ namespace Spectrum {
       this.Bind("domeOutputInSeparateThread", this.domeBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
       this.Bind("domeOutputInSeparateThread", this.domeBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("domeTestPattern", this.domeTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.domeTestPatternNone, [1] = this.domeTestPatternFlashColorsByStrut, [2] = this.domeTestPatternIterateThroughStruts, [3] = this.domeTestPatternStripTest }, true));
-      this.Bind("domeActiveVis", this.domeActiveVisualizer, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.domeActiveVisualizerVolume, [1] = this.domeActiveVisualizerJkTest }, true));
+      this.Bind("domeActiveVis", this.domeActiveVisualizer, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> {
+        [0] = this.domeActiveVisualizerVolume,
+        [1] = this.domeActiveVisualizerRadial,
+        [999] = this.domeActiveVisualizerJkTest }, true));
       this.Bind("boardBeagleboneOPCAddress", this.boardBeagleboneOPCHostAndPort, TextBox.TextProperty);
       this.Bind("boardBeagleboneOPCFPS", this.boardBeagleboneOPCFPSLabel, Label.ContentProperty);
       this.Bind("boardBeagleboneOPCFPS", this.boardBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
@@ -258,7 +261,7 @@ namespace Spectrum {
       this.Bind("stageBrightness", this.stageBrightnessLabel, Label.ContentProperty);
       this.Bind("vjHUDEnabled", this.vjHUDEnabled, CheckBox.IsCheckedProperty);
 
-      this.loadingConfig = false;
+      MainWindow.LoadingConfig = false;
     }
 
     private void Bind(
@@ -279,11 +282,11 @@ namespace Spectrum {
     }
 
     private void SliderStarted(object sender, DragStartedEventArgs e) {
-      this.loadingConfig = true;
+      MainWindow.LoadingConfig = true;
     }
 
     private void SliderCompleted(object sender, DragCompletedEventArgs e) {
-      this.loadingConfig = false;
+      MainWindow.LoadingConfig = false;
     }
 
     private void OnHotKeyHandler(HotKey hotKey) {

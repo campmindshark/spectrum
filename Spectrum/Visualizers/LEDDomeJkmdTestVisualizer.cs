@@ -87,7 +87,7 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return this.config.domeActiveVis == 1 ? 222 : 0;
+        return this.config.domeActiveVis == 999 ? 2 : 0;
       }
     }
 
@@ -194,7 +194,7 @@ namespace Spectrum {
           if (m < 0) m += 1;
           double n = progress - m;
           if (n < 0) n += 1;
-          r = n;
+          r = 1 - n;
 
           this.dome.SetPixel(i, j, LEDColor.FromDoubles(r,g,b));
         }

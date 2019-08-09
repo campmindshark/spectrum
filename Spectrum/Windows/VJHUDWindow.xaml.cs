@@ -14,6 +14,7 @@ using System.Windows.Shapes;
 using Spectrum.Base;
 using System.ComponentModel;
 using Xceed.Wpf.Toolkit;
+using System.Windows.Controls.Primitives;
 
 namespace Spectrum {
 
@@ -221,8 +222,21 @@ namespace Spectrum {
       this.Bind("TapCounterBrush", this.tapTempoButton, Button.ForegroundProperty, BindingMode.OneWay, null, this.config.beatBroadcaster);
       this.Bind("TapCounterText", this.tapTempoButton, Button.ContentProperty, BindingMode.OneWay, null, this.config.beatBroadcaster);
       this.Bind("BPMString", this.bpmLabel, Label.ContentProperty, BindingMode.OneWay, null, this.config.beatBroadcaster);
+
+      this.Bind("domeActiveVis", this.domeActiveVisualizer, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> {
+        [0] = this.domeActiveVisualizerVolume,
+        [1] = this.domeActiveVisualizerRadial,
+        [999] = this.domeActiveVisualizerJkTest
+      }, true));
       this.Bind("domeVolumeRotationSpeed", this.domeVolumeRotationSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.dprs0, [0.125] = this.dprs1, [0.25] = this.dprs2, [0.5] = this.dprs3, [1.0] = this.dprs4, [2.0] = this.dprs5, [4.0] = this.dprs6 }, true));
       this.Bind("domeGradientSpeed", this.domeGradientSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.dsrs0, [0.125] = this.dsrs1, [0.25] = this.dsrs2, [0.5] = this.dsrs3, [1.0] = this.dsrs4, [2.0] = this.dsrs5, [4.0] = this.dsrs6 }, true));
+
+      this.Bind("domeRadialEffect", this.domeRadialEffect, ComboBox.SelectedIndexProperty, BindingMode.TwoWay);
+      this.Bind("domeRadialSize", this.domeRadialSizeSlider, Slider.ValueProperty);
+      this.Bind("domeRadialSize", this.domeRadialSizeLabel, Label.ContentProperty);
+      this.Bind("domeRadialFrequency", this.domeRadialFrequencySlider, Slider.ValueProperty);
+      this.Bind("domeRadialFrequency", this.domeRadialFrequencyLabel, Label.ContentProperty);
+
       this.Bind("stageTracerSpeed", this.stagePrimaryRotationSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.sprs0, [0.125] = this.sprs1, [0.25] = this.sprs2, [0.5] = this.sprs3, [1.0] = this.sprs4, [2.0] = this.sprs5, [4.0] = this.sprs6 }, true));
       this.Bind("flashSpeed", this.flashRotationSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.frs0, [0.5] = this.frs1, [1] = this.frs2, [2] = this.frs3, [4] = this.frs4, [8] = this.frs5, [16] = this.frs6, [32] = this.frs7 }, true));
       this.Bind("colorPaletteIndex", this.colorPalette1, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(0));
@@ -255,6 +269,13 @@ namespace Spectrum {
         binding.Converter = converter;
       }
       element.SetBinding(property, binding);
+    }
+    private void SliderStarted(object sender, DragStartedEventArgs e) {
+      MainWindow.LoadingConfig = true;
+    }
+
+    private void SliderCompleted(object sender, DragCompletedEventArgs e) {
+      MainWindow.LoadingConfig = false;
     }
 
     private Dictionary<LevelDriverSource, ComboBox[]> InitializeChannelComboBoxes() {

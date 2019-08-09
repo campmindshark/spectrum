@@ -364,6 +364,14 @@
         <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
           <WrapPanel Margin="0,0,0,0">
             <Grid Height="24">
+              <Label Content="Active Visualizer" Margin="0,3,0,0" Padding="0" />
+              <ComboBox x:Name="domeActiveVisualizer" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
+                <ComboBoxItem x:Name="domeActiveVisualizerVolume" Content='"Volume" (OG)' IsSelected="True" />
+                <ComboBoxItem x:Name="domeActiveVisualizerRadial" Content='Radial Effects' />
+                <ComboBoxItem x:Name="domeActiveVisualizerJkTest" Content='JK TEST' />
+              </ComboBox>
+            </Grid>
+            <Grid Height="24">
               <Label Content="Rotation Speed" Margin="0,3,0,0" Padding="0" />
               <ComboBox x:Name="domeVolumeRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
                 <ComboBoxItem x:Name="dprs0" Content="0" IsSelected="True" />
@@ -386,6 +394,24 @@
                 <ComboBoxItem x:Name="dsrs5" Content="2" />
                 <ComboBoxItem x:Name="dsrs6" Content="4" />
               </ComboBox>
+            </Grid>
+            <Grid Height="24">
+              <Label Content="Radial Effect" Margin="0,3,0,0" Padding="0" />
+              <ComboBox x:Name="domeRadialEffect" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
+                <ComboBoxItem x:Name="dre0" Content="Radar" IsSelected="True" />
+                <ComboBoxItem x:Name="dre1" Content="Pulse" />
+                <ComboBoxItem x:Name="dre2" Content="Spiral" />
+              </ComboBox>
+            </Grid>
+            <Grid Height="24">
+              <Label Content="Radial Size" Margin="0,3,0,0" Padding="0" />
+              <Slider x:Name="domeRadialSizeSlider" Value="0.1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Maximum="4.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+              <Label x:Name="domeRadialSizeLabel" Content="0.1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
+            </Grid>
+            <Grid Height="24">
+              <Label Content="Radial Frequency" Margin="0,3,0,0" Padding="0" />
+              <Slider x:Name="domeRadialFrequencySlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="1" Maximum="12" LargeChange="1" SmallChange="1" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+              <Label x:Name="domeRadialFrequencyLabel" Content="1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
             </Grid>
             <Grid Height="24">
               <Label Content="Stage 1" Margin="0,3,0,0" Padding="0" />
