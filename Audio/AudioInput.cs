@@ -54,6 +54,7 @@ namespace Spectrum.Audio {
     private long quietSince = -1;
 
     private readonly MadmomHandler madmomHandler;
+    private readonly CarabinerHandler carabinerHandler;
 
     public AudioInput(Configuration config) {
       this.config = config;
@@ -69,6 +70,7 @@ namespace Spectrum.Audio {
       }
 
       this.madmomHandler = new MadmomHandler(config, this);
+      this.carabinerHandler = new CarabinerHandler(config);
     }
 
     private bool active;
@@ -90,6 +92,7 @@ namespace Spectrum.Audio {
           }
           this.active = value;
           this.madmomHandler.Active = value;
+          this.carabinerHandler.Active = value;
         }
       }
     }
