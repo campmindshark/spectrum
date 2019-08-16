@@ -381,7 +381,7 @@ namespace Spectrum.LEDs {
       return strutLengths[controlBoxStrutOrder[i][strutsLeft]];
     }
 
-    public int GetSingleColor(int index) {
+    public int GetSingleColor(int index, double intensity = 1.0) {
       if (this.config.beatBroadcaster.CurrentlyFlashedOff) {
         return 0x000000;
       }
@@ -391,7 +391,7 @@ namespace Spectrum.LEDs {
       );
       return LEDColor.ScaleColor(
         this.config.colorPalette.GetSingleColor(absoluteIndex),
-        this.config.domeMaxBrightness * this.config.domeBrightness
+        this.config.domeMaxBrightness * this.config.domeBrightness * intensity
       );
     }
 
@@ -425,6 +425,62 @@ namespace Spectrum.LEDs {
           focusPos,
           wrap
         ),
+        this.config.domeMaxBrightness * this.config.domeBrightness
+      );
+    }
+    public int GetGradientBetweenColors(
+      int min_index,
+      int max_index,
+      double pixelPos,
+      double focusPos,
+      bool wrap
+    ) {
+      // Return a color evenly scaled between min index and max index, based on the pixel position.
+      if(pixelPos < 0 || pixelPos > 1) {
+        throw new ArgumentException("Pixel Position out of range: " + pixelPos.ToString());
+      }
+      if (this.config.beatBroadcaster.CurrentlyFlashedOff) {
+        return 0x000000;
+      }
+      var num_colors = max_index - min_index;
+      int min_color_idx = (int)(pixelPos * num_colors);
+      int max_color_idx = (int)(pixelPos * num_colors + 1);
+      // Rescale the position, so it's between the colors
+      // (pixelPos - min_color_idx/num_colors)*num_colors
+      double scaledPixelPos = (pixelPos - 1.0*min_color_idx/num_colors)*num_colors;
+      if(scaledPixelPos < 0 || scaledPixelPos > 1) {
+        throw new ArgumentException("Pixel Position out of range: " + pixelPos.ToString());
+      }
+      int absoluteIndexMin = LEDColor.GetAbsoluteColorIndex(
+        min_color_idx,
+        this.config.colorPaletteIndex
+      );
+      int absoluteIndexMax = LEDColor.GetAbsoluteColorIndex(
+        max_color_idx,
+        this.config.colorPaletteIndex
+      );
+      if (
+        this.config.colorPalette.colors == null ||
+        this.config.colorPalette.colors.Length <= absoluteIndexMin ||
+        this.config.colorPalette.colors[absoluteIndexMin] == null
+      ) {
+        return 0x000000;
+      }
+      if (
+        this.config.colorPalette.colors == null ||
+        this.config.colorPalette.colors.Length <= absoluteIndexMax ||
+        this.config.colorPalette.colors[absoluteIndexMax] == null
+      ) {
+        return 0x000000;
+      }
+      if (!this.config.colorPalette.colors[absoluteIndexMin].IsGradient) {
+        return this.GetSingleColor(absoluteIndexMin);
+      }
+      LEDColor color = new LEDColor(
+        this.GetSingleColor(min_color_idx), 
+        this.GetSingleColor(max_color_idx));
+      return LEDColor.ScaleColor(
+        color.GradientColor(scaledPixelPos, focusPos, wrap),
         this.config.domeMaxBrightness * this.config.domeBrightness
       );
     }
