@@ -22,7 +22,8 @@ namespace Spectrum.Audio {
   public class AudioInput : Input {
 
     private static readonly int fftSize = 32768;
-    private static readonly int audioFormatSampleFrequency = 44100;
+    // Read this value from the sound card later.
+    private static int audioFormatSampleFrequency = -1;
     private static readonly Dictionary<AudioDetectorType, double[]> bins =
       new Dictionary<AudioDetectorType, double[]>() {
         { AudioDetectorType.Kick, new double[] { 40, 50 } },
@@ -129,6 +130,7 @@ namespace Spectrum.Audio {
       }
       this.recordingDevice = device;
       var bitrate = device.AudioClient.MixFormat.BitsPerSample;
+      audioFormatSampleFrequency = device.AudioClient.MixFormat.SampleRate;
       this.captureStream = new WasapiCapture(device, false, bitrate);
       this.captureStream.WaveFormat = new WaveFormat(
         audioFormatSampleFrequency,
