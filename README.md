@@ -29,9 +29,3 @@ To test out the dome, enable the simulator under the LED Dome tab:
 When it's working, you should see something like the following:
 
 <img alt="SDome Simulator" src="https://user-images.githubusercontent.com/671052/63136574-9c550180-bfa0-11e9-9d50-6d1cf4cc347c.png" height=500>
-
-## Troubleshooting
-- **Unsupported Wave Format**: This message may mean that the hardcoded 
-  `audioFormatSampleFrequency` in `AudioInput.cs` is not set to the sample frequency of 
-  your audio card. Lookup the frequency of your audio card with "Windows Search -> 
-  Sound -> Properties -> Advanced" and set `audioFormatSampleFrequency` to it.
