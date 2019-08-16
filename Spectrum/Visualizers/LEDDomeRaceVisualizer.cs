@@ -43,7 +43,7 @@ namespace Spectrum
     public RacerConfig[] racerConfig = { 
       new RacerConfig(Rotation.VolumeSquared, Size.Full, Coloring.Multi),
       new RacerConfig(Rotation.VolumeSquared, Size.Medium, Coloring.FadeExp),
-      new RacerConfig(Rotation.Beat, Size.Medium, Coloring.Fade),
+      new RacerConfig(Rotation.Beat, Size.Small, Coloring.FadeExp),
       new RacerConfig(Rotation.Constant, Size.Full, Coloring.Multi),
     };
 
@@ -122,8 +122,10 @@ namespace Spectrum
         if(config.beatBroadcaster.MeasureLength == -1) {
           return 0;
         }
-        int maxBPM = 500;
-        return 1.0 * config.beatBroadcaster.MeasureLength / maxBPM / 3;
+        // Taken from the BPM toString method, and multiply by 60 for seconds.
+        double BPS = 1000.0 / config.beatBroadcaster.MeasureLength;
+        // Make a full revolution after 4 beats.
+        return 1.0 * BPS / 4;
       }
       public double RevsPerSecondConstant(AudioInput audio, Configuration config) {
         return 1.0 * config.domeVolumeRotationSpeed / 4;
