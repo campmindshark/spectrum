@@ -10,34 +10,97 @@ namespace Spectrum
 
   class LEDDomeRaceVisualizer : Visualizer
   {
-
+    /**
+     * Visualizes spinning bands (racers) going around the dome. Each moves at a speed proportional 
+     * to volume, beats, constant, or still. See RacerConfig below to configure the bands.
+     */
     private readonly Configuration config;
     private readonly AudioInput audio;
     private readonly MidiInput midi;
     private readonly LEDDomeOutput dome;
+ 
+    public enum Rotation { Still, Constant, Volume, VolumeSquared, Beat, };
+    public enum Size { Small, Medium, Large, Full };
+    public enum Coloring { Constant, Fade, FadeExp, Multi };
+    public class RacerConfig {
+      public Rotation rotation;
+      public Size size;
+      public Coloring coloring;
+      public RacerConfig(Rotation r, Size s, Coloring c) {
+        rotation = r;
+        size = s;
+        coloring = c;
+      }
+    }
     
+    /**
+     * The Configuration Settings. Each item is an can add as many bands as you would like.
+     * The first will always be closest to the ground, and the last will be at the north pole.
+     * Rotation: How does the racer rotate around the center.
+     * Size: How large will it be, small, medium, large, or full (complete circle)
+     * Coloring: How it will be colored, multiple colors, fading out, expoenential fade out, or constant.
+     */
+    public RacerConfig[] racerConfig = { 
+      new RacerConfig(Rotation.VolumeSquared, Size.Full, Coloring.Multi),
+      new RacerConfig(Rotation.VolumeSquared, Size.Medium, Coloring.FadeExp),
+      new RacerConfig(Rotation.Beat, Size.Medium, Coloring.Fade),
+      new RacerConfig(Rotation.Constant, Size.Full, Coloring.Multi),
+    };
+
     // How much spacing should be in between each racer. 
     // Determines racer size. 
     // 0 means right next to eachother. 1 means they have a size of 0.
-    private double racer_spacing = .3;
+    private double racer_spacing = 0;
 
     private class Racer
     {
-      public double Y { get; set; }  // Location in height 1 is top, 0 is bottom.
+      public double Y { get; protected set; }  // Location in height 1 is top, 0 is bottom.
       public double Angle { get; protected set; } // Location of the Racer in Radians, -pi to pi
       public double Radians { get; protected set; } // Length of the Racer in Radians, 0 to 2*pi
+      private int idx; // Length of the Racer in Radians, 0 to 2*pi
       private double AccumulatedSeconds;
-      public Racer(int idx, int num_racers)
+      private RacerConfig conf;
+      public Racer(int idx, int num_racers, RacerConfig racer_config)
       {
+        conf = racer_config;
+        double width = conf.size == Size.Small ? 1.0 / 8: 
+          conf.size == Size.Medium ? 1.0 / 4:
+          conf.size == Size.Large ? 3.0 / 4:
+          1;
         this.Y = 1.0 * idx / num_racers + .5;
         this.Angle = 0;
-        this.Radians = 2*Math.PI * 1/4;
+        this.Radians = 2*Math.PI * width;
         AccumulatedSeconds = 0;
+      }
+      public void Move(double numSeconds, AudioInput audio, Configuration config) {
+        // Could use classes for this, but eh.
+        double revsPerSec = 
+          conf.rotation == Rotation.Volume ? RevsPerSecondVolume(audio, config):
+          conf.rotation == Rotation.VolumeSquared ? RevsPerSecondVolumeSquared(audio, config):
+          conf.rotation == Rotation.Beat ? RevsPerSecondBeats(audio, config):
+          conf.rotation == Rotation.Constant ? RevsPerSecondConstant(audio, config):
+          0;
+        double radsPerSecond = Math.PI * 2 * revsPerSec;
+        MoveRads(numSeconds, radsPerSecond);
+      }
+      public int Color(LEDDomeOutput dome, Configuration config, double loc_y, double loc_ang) {
+        if(conf.coloring == Coloring.Fade) {
+          return dome.GetSingleColor(this.idx, loc_ang);
+        } else if(conf.coloring == Coloring.FadeExp) {
+          var s = 4*loc_ang - 4;
+          return dome.GetSingleColor(this.idx, 1.0 / (1 + Math.Pow(Math.E, -s)));
+        } else if(conf.coloring == Coloring.Multi) {
+          var end_index = config.colorPalette.colors.Length - 1;
+          return dome.GetGradientBetweenColors(end_index - 4, end_index, loc_ang, 0.0, false);
+        }
+        return dome.GetSingleColor(this.idx);
       }
 
       private void MoveRads(double numSeconds, double radsPerSecond) {
         double rads = (numSeconds + AccumulatedSeconds) * radsPerSecond;
-        if(rads < .001) {
+        if(rads < .0001) {
+          // If radians are too small, we may not have enough precision to move anything.
+          // Instead, accumulate the movement and try next time.
           AccumulatedSeconds += numSeconds;
           return;
         }
@@ -47,42 +110,44 @@ namespace Spectrum
         }
         AccumulatedSeconds = 0;
       }
-      public void Move(double numSeconds, AudioInput audio, Configuration config) {
-        double radsPerSecond = RadsPerSecondVolume(audio, config);
-        MoveRads(numSeconds, radsPerSecond);
+      public double RevsPerSecondVolume(AudioInput audio, Configuration config) {
+        // Square the volume to give a bigger umph.
+        return audio.Volume + config.domeVolumeRotationSpeed / 12;
       }
-      public double RadsPerSecondVolume(AudioInput audio, Configuration config) {
-        return 2*Math.PI * audio.Volume * audio.Volume + 2*Math.PI * config.domeVolumeRotationSpeed / 12;
+      public double RevsPerSecondVolumeSquared(AudioInput audio, Configuration config) {
+        // Square the volume to give a bigger umph.
+        return audio.Volume * audio.Volume + config.domeVolumeRotationSpeed / 12;
       }
-      public double RadsPerSecondBeats(Configuration config) {
-        return Math.PI/4 * config.beatBroadcaster.MeasureLength / 500;
+      public double RevsPerSecondBeats(AudioInput audio, Configuration config) {
+        if(config.beatBroadcaster.MeasureLength == -1) {
+          return 0;
+        }
+        int maxBPM = 500;
+        return 1.0 * config.beatBroadcaster.MeasureLength / maxBPM / 3;
+      }
+      public double RevsPerSecondConstant(AudioInput audio, Configuration config) {
+        return 1.0 * config.domeVolumeRotationSpeed / 4;
       }
     }
 
     private Racer[] Racers { get; set; }
     private long lastTicks { get; set; }
-    private int numRacers { get; set; }
-
-    private Tuple<Racer, double, int> GetRacer(double Y, double ang) {
+    
+    private Tuple<Racer, double, double, Racer> GetRacer(double Y, double ang) {
       // e.g., say 2 racers, racer0 centered on .25; racer1 centered on .75.
       // Y = .4. We should return the first racer if in spacing.
       if(Y > .9999) {
          Y = .9999;
       }
-      double racer_loc = Y * numRacers; // Scale from 0 to num_racers
-      int racer_idx = (int)(racer_loc);
-      racer_loc -= racer_idx; // Scale from 0 to 1, same as  
-      racer_loc -= .5; // Scale from -.5 to .5
-      racer_loc = Math.Abs(racer_loc);
-      if(racer_loc > racer_spacing) {
+      double racer_loc_y = Y * racerConfig.Length; // Scale from 0 to num_racers
+      int racer_idx = (int)(racer_loc_y);
+      racer_loc_y -= racer_idx; // Scale from 0 to 1, same as  
+      racer_loc_y -= .5; // Scale from -.5 to .5
+      racer_loc_y = Math.Abs(racer_loc_y);
+      if(racer_loc_y > racer_spacing) {
         return null;
       }
       Racer r = this.Racers[racer_idx];
-      if(racer_idx == 0){
-        if(r.Angle > .1) {
-          var q = 2;
-        }
-      }
       // Offset is how many radians ahead of the start angle.
       double start_angle = r.Angle;
       if(start_angle < 0) {
@@ -95,11 +160,15 @@ namespace Spectrum
       if(offset < 0) {
         offset += Math.PI*2;
       }
-      var doShow = offset > 2*Math.PI - r.Radians;
-      if(!doShow) {
+      if(offset < 2*Math.PI - r.Radians) {
         return null;
       }
-      return new Tuple<Racer, double, int>(r, racer_loc, racer_idx);
+      // Some more manipulation to get the percentage in the range
+      //   offset > 2*Math.PI - r.Radians
+      //   r.Radians > 2*Math.PI - offset
+      //   1 > (2*Math.PI - offset) / r.Radians
+      double racer_loc_ang = 1 - (2*Math.PI - offset) / r.Radians;
+      return new Tuple<Racer, double, double, Racer>(r, racer_loc_y, racer_loc_ang, r);
     }
 
     public LEDDomeRaceVisualizer(
@@ -114,10 +183,10 @@ namespace Spectrum
       this.midi = midi;
       this.dome = dome;
       // Create new racers.
-      this.numRacers = this.config.domeVolumeAnimationSize;
-      this.Racers = new Racer[this.numRacers];
-      for (int i = 0; i < this.numRacers; i++) {
-        this.Racers[i] = new Racer(i, this.numRacers);
+      this.Racers = new Racer[racerConfig.Length];
+      for (int i = 0; i < racerConfig.Length; i++) {
+        var rconf = racerConfig[i];
+        this.Racers[i] = new Racer(i, racerConfig.Length, rconf);
       }
       this.lastTicks = -1;
       // This call is necessary to make sure the Operator considers this
@@ -343,50 +412,6 @@ namespace Spectrum
       //   LED as well as the last LED on the strut would both be a 50/50
       //   blend.
       int middleOfStrutColor = this.dome.GetGradientColor(0, 0.5, 0.0, false);
-
-      //-----------------------------------------------------------------------
-      // STRUT LAYOUTS
-      //-----------------------------------------------------------------------
-
-      // Notes on strut layout:
-      // (1) Each LED on the dome is uniquely identified by a pair of a strut
-      //   index and an LED index.
-      // (2) The "key" that shows how strut indices are assigned can be viewed
-      //   in the dome simulator window. To open the dome simulator window,
-      //   first run Spectrum, then go to the "LED Dome" tab and check the box
-      //   labelled "Simulate". The simulator window should pop up. Click
-      //   "Show Key" to see the key.
-      // (3) Each strut has a number of LEDs, as well as a direction that
-      //   determines how its LED indices are assigned. The key provides this
-      //   information.
-      // (4) If you want to create a list of struts that you want to animate
-      //   together, you can press a series of struts in the key view. The
-      //   text box on the upper right will populate with a comma-separated
-      //   list of strut indices.
-
-      // StrutLayoutFactory contains utilities for generating collections of
-      // Struts, known as StrutLayouts.
-      // (*) The Strut class simply represents a strut by a given strut index,
-      //   as well as including a boolean for whether or not to reverse the
-      //   direction.
-      // (*) The StrutLayoutSegment class represents an unordered set of Struts.
-      //   There is no order within a StrutLayoutSegment, as all the Struts
-      //   within are expected to be animated together, at the same time.
-      // (*) A StrutLayout is simply an array of StrutLayoutSegments.
-      // (*) StrutLayoutFactory also assigns each vertex an index (calling them
-      //   "points"), which it uses in certain cases as user inputs.
-
-      // If you've ever seen the default dome animation in past years, it's
-      // basically using this layout. It's pretty domain-specific, and probably
-      // not worth getting into too much. You won't be calling this method, but
-      // if you're finding yourself making a complex strut layout, you might end
-      // up writing someting similar.
-      StrutLayout[] layouts = StrutLayoutFactory.ConcentricFromStartingPoints(
-        this.config,
-        // This list of points was determined manually
-        new HashSet<int>(new int[] { 22, 26, 30, 34, 38, 70 }),
-        4
-      );
       
       //-----------------------------------------------------------------------
       // SETTING THE RACERS
@@ -398,9 +423,9 @@ namespace Spectrum
         this.lastTicks = curTicks;
       } else { 
         double numSeconds = ((double)(curTicks - this.lastTicks)) / (1000 * 1000 * 10);
-        
-        Racers[0].Move(numSeconds, audio, config);
-        Racers[2].Move(numSeconds, audio, config);
+        foreach(Racer r in Racers) {
+          r.Move(numSeconds, audio, config);
+        }
         this.lastTicks = curTicks;
       }
 
@@ -420,13 +445,14 @@ namespace Spectrum
           // Vertical height
           var y = 1.0 - pixel_p.Item4;
           var rad = pixel_p.Item3;
-          Tuple<Racer, double, int> loc = this.GetRacer(y, rad);
-          if(loc != null) {
-            var color = this.dome.GetSingleColor(loc.Item3);
-            this.dome.SetPixel(i, j, color);
-          } else {
+          Tuple<Racer, double, double, Racer> loc = this.GetRacer(y, rad);
+          if(loc == null) {
             // color = 0 is off.
             this.dome.SetPixel(i, j, 0);
+          } else {
+            // Let the racer choose its color
+            var color = loc.Item4.Color(dome, config, loc.Item2, loc.Item3);
+            this.dome.SetPixel(i, j, color);
           }
         }
       }
