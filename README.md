@@ -23,10 +23,12 @@ Note that it is currently only possible to build and run Spectrum on a 64-bit Wi
 
 ## Dome Simulator
 To test out the dome, enable the simulator under the LED Dome tab:
-![Simulator Settings ](https://user-images.githubusercontent.com/671052/63136544-847d7d80-bfa0-11e9-81e9-bba208a135fc.png)
+
+<img alt="Simulator Settings" src="https://user-images.githubusercontent.com/671052/63136544-847d7d80-bfa0-11e9-81e9-bba208a135fc.png" height=350>
 
 When it's working, you should see something like the following:
-![Dome Simulator](https://user-images.githubusercontent.com/671052/63136574-9c550180-bfa0-11e9-9d50-6d1cf4cc347c.png)
+
+<img alt="SDome Simulator" src="https://user-images.githubusercontent.com/671052/63136574-9c550180-bfa0-11e9-9d50-6d1cf4cc347c.png" height=500>
 
 ## Troubleshooting
 - **Unsupported Wave Format**: This message may mean that the hardcoded 
