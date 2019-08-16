@@ -192,6 +192,7 @@ namespace Spectrum {
       this.Bind("domeActiveVis", this.domeActiveVisualizer, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> {
         [0] = this.domeActiveVisualizerVolume,
         [1] = this.domeActiveVisualizerRadial,
+        [2] = this.domeActiveVisualizerRace,
         [999] = this.domeActiveVisualizerJkTest }, true));
       this.Bind("boardBeagleboneOPCAddress", this.boardBeagleboneOPCHostAndPort, TextBox.TextProperty);
       this.Bind("boardBeagleboneOPCFPS", this.boardBeagleboneOPCFPSLabel, Label.ContentProperty);
