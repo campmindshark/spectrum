@@ -20,3 +20,12 @@ Note that it is currently only possible to build and run Spectrum on a 64-bit Wi
 5. Recursively clone this repo: `git clone --recursive https://github.com/campmindshark/spectrum`
 6. Open the Spectrum solution in Visual Studio and run it!
     - You will need Internet access for the first build, so if you're heading to TTITD, please compile beforehand, once for Release and once for Debug.
+
+## Dome Simulator
+To test out the dome, enable the simulator under the LED Dome tab:
+
+<img alt="Simulator Settings" src="https://user-images.githubusercontent.com/671052/63136544-847d7d80-bfa0-11e9-81e9-bba208a135fc.png" height=350>
+
+When it's working, you should see something like the following:
+
+<img alt="SDome Simulator" src="https://user-images.githubusercontent.com/671052/63136574-9c550180-bfa0-11e9-9d50-6d1cf4cc347c.png" height=500>
