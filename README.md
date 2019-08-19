@@ -20,16 +20,3 @@ Note that it is currently only possible to build and run Spectrum on a 64-bit Wi
 5. Recursively clone this repo: `git clone --recursive https://github.com/campmindshark/spectrum`
 6. Open the Spectrum solution in Visual Studio and run it!
     - You will need Internet access for the first build, so if you're heading to TTITD, please compile beforehand, once for Release and once for Debug.
-
-## Dome Simulator
-To test out the dome, enable the simulator under the LED Dome tab:
-![Simulator Settings ](https://user-images.githubusercontent.com/671052/63136544-847d7d80-bfa0-11e9-81e9-bba208a135fc.png)
-
-When it's working, you should see something like the following:
-![Dome Simulator](https://user-images.githubusercontent.com/671052/63136574-9c550180-bfa0-11e9-9d50-6d1cf4cc347c.png)
-
-## Troubleshooting
-- **Unsupported Wave Format**: This message may mean that the hardcoded 
-  `audioFormatSampleFrequency` in `AudioInput.cs` is not set to the sample frequency of 
-  your audio card. Lookup the frequency of your audio card with "Windows Search -> 
-  Sound -> Properties -> Advanced" and set `audioFormatSampleFrequency` to it.
