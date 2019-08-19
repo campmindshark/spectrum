@@ -253,44 +253,7 @@ namespace Spectrum {
       return new Input[] { this.audio };
     }
 
-    // This is where the magic happens. As long as this Visualizer has the
-    // highest priority for LEDDomeOutput, the Operator thread will call
-    // Visualize once per tick
     public void Visualize() {
-
-      //-----------------------------------------------------------------------
-      // TRACKING THE LEVEL (VOLUME)
-      //-----------------------------------------------------------------------
-
-      // volume is a float from 0.0 to 1.0 that represents the current total
-      // output "level", aka volume
-      float volume = this.audio.Volume;
-
-      //-----------------------------------------------------------------------
-      // COLORS
-      //-----------------------------------------------------------------------
-
-      // Notes on colors:
-      // (1) We represent colors using RGB values stored as ints. Each int
-      //   consists of three concatenated bytes (red, green, and blue).
-      // (2) These RGB values should not be thought of in the same way as RGB
-      //   values in CSS or HTML. The important distinction is that point LEDs
-      //   cannot display composite colors such as brown and pink. Each LED
-      //   can only display a single wavelength of light at a given moment.
-      // (3) An easy way to imagine how a given RGB value will look: scale each
-      //   component (red, green, and blue) up equally until at least one of
-      //   the components is maxed out at 255. The scale factor represents the
-      //   brightness, and the scaled-up color is what you will see on the
-      //   LED. SimulatorUtils.GetComputerColor can take an RGB int and return
-      //   the scaled-up color.
-      // (4) The VJ is able to configure 8 distinct color palettes, each
-      //   consisting of 8 pairs of colors. Each pair represents a gradient,
-      //   meaning that for each color palette, the VJ has 16 color inputs.
-      // (5) By calling the methods below on this.dome instead of on
-      //   this.config.colorPalette, we make sure that the brightness is
-      //   scaled according to Spectrum's config. We never run the dome at
-      //   100% brightness, and our power supplies are not provisioned for it.
-
       //-----------------------------------------------------------------------
       // SETTING THE RACERS
       //-----------------------------------------------------------------------
