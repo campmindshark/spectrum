@@ -33,8 +33,9 @@ namespace Spectrum {
     }
 
     /**
-     * The Configuration Settings. Each item is an can add as many bands as you would like.
-     * The first will always be closest to the ground, and the last will be at the north pole.
+     * The Configuration Settings. Each item is a "racing" band, you can add as many bands 
+     * as you would like. The first will always be closest to the ground, and the last will 
+     * be at the north pole. The settings for each band:
      * Rotation: How does the racer rotate around the center.
      * Size: How large will it be, small, medium, large, or full (complete circle)
      * Coloring: How it will be colored, multiple colors, fading out, expoenential fade out, or constant.
@@ -47,7 +48,7 @@ namespace Spectrum {
     };
 
     // How much spacing should be in between each racer. 
-    // Determines racer size. 
+    // Determines racer "padding". 
     // 0 means right next to eachother. 1 means they have a size of 0.
     private double racer_spacing = 0;
 
