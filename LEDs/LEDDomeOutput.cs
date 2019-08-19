@@ -444,21 +444,19 @@ namespace Spectrum.LEDs {
         return 0x000000;
       }
       var num_colors = maxIndex - minIndex;
-      int min_color_idx = (int)(pixelPos * num_colors);
-      int max_color_idx = (int)(pixelPos * num_colors + 1);
+      int minColorIdx = (int)(pixelPos * num_colors);
+      int maxColorIdx = (int)(pixelPos * num_colors + 1);
       // Rescale the position, so it's between the colors
       // (pixelPos - min_color_idx/num_colors)*num_colors
-      double scaledPixelPos = (pixelPos - 1.0 * min_color_idx / num_colors) * num_colors;
+      double scaledPixelPos = (pixelPos - 1.0 * minColorIdx / num_colors) * num_colors;
       if (scaledPixelPos < 0 || scaledPixelPos > 1) {
         throw new ArgumentException("Pixel Position out of range: " + pixelPos.ToString());
       }
       int absoluteIndexMin = LEDColor.GetAbsoluteColorIndex(
-        min_color_idx,
-        this.config.colorPaletteIndex
+        minColorIdx, this.config.colorPaletteIndex
       );
       int absoluteIndexMax = LEDColor.GetAbsoluteColorIndex(
-        max_color_idx,
-        this.config.colorPaletteIndex
+        maxColorIdx, this.config.colorPaletteIndex
       );
       if (
         this.config.colorPalette.colors == null ||
@@ -478,8 +476,8 @@ namespace Spectrum.LEDs {
         return this.GetSingleColor(absoluteIndexMin);
       }
       LEDColor color = new LEDColor(
-        this.GetSingleColor(min_color_idx),
-        this.GetSingleColor(max_color_idx));
+        this.GetSingleColor(minColorIdx),
+        this.GetSingleColor(maxColorIdx));
       return LEDColor.ScaleColor(
         color.GradientColor(scaledPixelPos, focusPos, wrap),
         this.config.domeMaxBrightness * this.config.domeBrightness
