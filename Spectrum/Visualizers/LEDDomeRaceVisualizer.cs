@@ -24,6 +24,7 @@ namespace Spectrum {
       public Rotation rotation;
       public Size size;
       public Coloring coloring;
+
       public RacerConfig(Rotation r, Size s, Coloring c) {
         rotation = r;
         size = s;
@@ -57,6 +58,7 @@ namespace Spectrum {
       private int idx; // Length of the Racer in Radians, 0 to 2*pi
       private double AccumulatedSeconds;
       private RacerConfig conf;
+
       public Racer(int idx, int num_racers, RacerConfig racer_config) {
         conf = racer_config;
         double width = conf.size == Size.Small ? 1.0 / 8 :
@@ -68,6 +70,7 @@ namespace Spectrum {
         this.Radians = 2 * Math.PI * width;
         AccumulatedSeconds = 0;
       }
+
       public void Move(double numSeconds, AudioInput audio, Configuration config) {
         // Could use classes for this, but eh.
         double revsPerSec =
@@ -79,6 +82,7 @@ namespace Spectrum {
         double radsPerSecond = Math.PI * 2 * revsPerSec;
         MoveRads(numSeconds, radsPerSecond);
       }
+
       public int Color(LEDDomeOutput dome, Configuration config, double loc_y, double loc_ang) {
         if (conf.coloring == Coloring.Fade) {
           return LEDColor.ScaleColor(dome.GetSingleColor(this.idx), loc_ang);
@@ -109,14 +113,17 @@ namespace Spectrum {
         }
         AccumulatedSeconds = 0;
       }
+
       public double RevsPerSecondVolume(AudioInput audio, Configuration config) {
         // Square the volume to give a bigger umph.
         return audio.Volume + config.domeVolumeRotationSpeed / 12;
       }
+
       public double RevsPerSecondVolumeSquared(AudioInput audio, Configuration config) {
         // Square the volume to give a bigger umph.
         return audio.Volume * audio.Volume + config.domeVolumeRotationSpeed / 12;
       }
+
       public double RevsPerSecondBeats(AudioInput audio, Configuration config) {
         double BPS =
           // If we don't have a beet counter, fake it as 60 BPM.
