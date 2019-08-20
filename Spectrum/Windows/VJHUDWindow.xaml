@@ -401,6 +401,7 @@
                 <ComboBoxItem x:Name="dre0" Content="Radar" IsSelected="True" />
                 <ComboBoxItem x:Name="dre1" Content="Pulse" />
                 <ComboBoxItem x:Name="dre2" Content="Spiral" />
+                <ComboBoxItem x:Name="dre3" Content="Bubbles" />
               </ComboBox>
             </Grid>
             <Grid Height="24">
