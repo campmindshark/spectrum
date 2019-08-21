@@ -43,18 +43,19 @@ namespace Spectrum {
 
     void Render() {
 
+      double level = this.audio.LevelForChannel(0);
+      // Sqrt makes values larger and gives more resolution for lower values
+      double adjustedLevel = Clamp(Math.Sqrt(level), 0.02, 1);
+
       double progress = this.config.beatBroadcaster.ProgressThroughMeasure;
-      currentAngle += this.config.domeVolumeRotationSpeed * Wrap(progress - this.lastProgress, 0, 1);
+      // rotation is scaled by 1/4 - otherwise it is way too fast and will make people vomit
+      currentAngle += this.config.domeVolumeRotationSpeed * Wrap(progress - this.lastProgress, 0, 1) * 0.25;
       currentAngle = Wrap(currentAngle, 0, 1);
       currentGradient += this.config.domeGradientSpeed * Wrap(progress - this.lastProgress, 0, 1);
       currentGradient = Wrap(currentGradient, 0, 1);
       this.lastProgress = progress;
 
-      double level = this.audio.LevelForChannel(0);
-      double adjustedLevel = Map(level, 0, 1, 0.02, 1);
-
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-        Strut strut = Strut.FromIndex(this.config, i);
         var leds = LEDDomeOutput.GetNumLEDs(i);
         for (int j = 0; j < leds; j++) {
           var p = StrutLayoutFactory.GetProjectedLEDPointParametric(i, j);
@@ -70,30 +71,54 @@ namespace Spectrum {
             case 0:
               // radar mapping
               val = MapWrap(angle, currentAngle, 1 + currentAngle, 0, 1);
+              // scale val according to radial frequency
+              val = Wrap(val * this.config.domeRadialFrequency, 0, 1);
+              // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
+              val = Math.Abs(Map(val, 0, 1, -1, 1));
+
               gradientVal = dist;
               break;
             case 1:
               // pulse mapping
               val = MapWrap(dist, currentAngle, 1 + currentAngle, 0, 1);
+              // scale val according to radial frequency
+              val = Wrap(val * this.config.domeRadialFrequency, 0, 1);
+              // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
+              val = Math.Abs(Map(val, 0, 1, -1, 1));
+
               gradientVal = Math.Abs(Map(angle, 0, 1, -1, 1));
               break;
             case 2:
               // spiral mapping
               val = MapWrap(angle + dist / this.config.domeRadialFrequency, currentAngle, 1 + currentAngle, 0, 1);
+              // scale val according to radial frequency
+              val = Wrap(val * this.config.domeRadialFrequency, 0, 1);
+              // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
+              val = Math.Abs(Map(val, 0, 1, -1, 1));
+
+              gradientVal = dist;
+              break;
+            case 3:
+              // bubble mapping
+              var a = MapWrap(angle, currentAngle, 1 + currentAngle, 0, 1);
+              // scale val according to radial frequency
+              a = Wrap(a * this.config.domeRadialFrequency, 0, 1);
+              // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
+              a = Math.Abs(Map(a, 0, 1, -1, 1));
+              val = Clamp(dist - a, 0, 1);
+
               gradientVal = dist;
               break;
           }
 
-          // scale val according to radial frequency
-          val = Wrap(val * this.config.domeRadialFrequency, 0, 1);
-          // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
-          var centeredVal = Math.Abs(Map(val, 0, 1, -1, 1));
-
           // size limit is scaled according the size slider and the current level
           var sizeLimit = this.config.domeRadialSize * adjustedLevel;
-          bool on = centeredVal <= sizeLimit;
+          bool on = val <= sizeLimit;
 
-          var color = on ? this.dome.GetGradientColor(0, gradientVal, currentGradient, true) : 0;
+          // use level to determine which colors to use
+          int whichGradient = (int)(level * 8);
+
+          var color = on ? this.dome.GetGradientColor(whichGradient, gradientVal, currentGradient, true) : 0;
 
           this.dome.SetPixel(i, j, color);
         }
