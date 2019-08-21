@@ -369,6 +369,7 @@
                                         <ComboBoxItem x:Name="domeActiveVisualizerRadial" Content='Radial Effects' />
                                         <ComboBoxItem x:Name="domeActiveVisualizerRace" Content='Race' />
                                         <ComboBoxItem x:Name="domeActiveVisualizerJkTest" Content='JK TEST' />
+                                        <ComboBoxItem x:Name="domeActiveVisualizerSnakes" Content='Snakes' />
                                     </ComboBox>
                                 </Grid>
                             </WrapPanel>
