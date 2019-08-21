@@ -169,7 +169,7 @@ namespace Spectrum.Base {
         distance = Math.Min(
           Math.Abs(pixelPos - focusPos),
           1 - Math.Abs(pixelPos - focusPos)
-        );
+        ) * 2.0;
       } else {
         distance = Math.Abs(pixelPos - focusPos);
       }
