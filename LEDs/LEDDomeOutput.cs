@@ -429,6 +429,60 @@ namespace Spectrum.LEDs {
       );
     }
 
+    public int GetGradientBetweenColors(
+      int minIndex,
+      int maxIndex,
+      double pixelPos,
+      double focusPos,
+      bool wrap
+    ) {
+      // Return a color evenly scaled between min index and max index, based on the pixel position.
+      if (pixelPos < 0 || pixelPos > 1) {
+        throw new ArgumentException("Pixel Position out of range: " + pixelPos.ToString());
+      }
+      if (this.config.beatBroadcaster.CurrentlyFlashedOff) {
+        return 0x000000;
+      }
+      var num_colors = maxIndex - minIndex;
+      int minColorIdx = (int)(pixelPos * num_colors);
+      int maxColorIdx = (int)(pixelPos * num_colors + 1);
+      // Rescale the position, so it's between the colors
+      // (pixelPos - min_color_idx/num_colors)*num_colors
+      double scaledPixelPos = (pixelPos - 1.0 * minColorIdx / num_colors) * num_colors;
+      if (scaledPixelPos < 0 || scaledPixelPos > 1) {
+        throw new ArgumentException("Pixel Position out of range: " + pixelPos.ToString());
+      }
+      int absoluteIndexMin = LEDColor.GetAbsoluteColorIndex(
+        minColorIdx, this.config.colorPaletteIndex
+      );
+      int absoluteIndexMax = LEDColor.GetAbsoluteColorIndex(
+        maxColorIdx, this.config.colorPaletteIndex
+      );
+      if (
+        this.config.colorPalette.colors == null ||
+        this.config.colorPalette.colors.Length <= absoluteIndexMin ||
+        this.config.colorPalette.colors[absoluteIndexMin] == null
+      ) {
+        return 0x000000;
+      }
+      if (
+        this.config.colorPalette.colors == null ||
+        this.config.colorPalette.colors.Length <= absoluteIndexMax ||
+        this.config.colorPalette.colors[absoluteIndexMax] == null
+      ) {
+        return 0x000000;
+      }
+      if (!this.config.colorPalette.colors[absoluteIndexMin].IsGradient) {
+        return this.GetSingleColor(absoluteIndexMin);
+      }
+      LEDColor color = new LEDColor(
+        this.GetSingleColor(minColorIdx),
+        this.GetSingleColor(maxColorIdx));
+      return LEDColor.ScaleColor(
+        color.GradientColor(scaledPixelPos, focusPos, wrap),
+        this.config.domeMaxBrightness * this.config.domeBrightness
+      );
+    }
   }
 
 }

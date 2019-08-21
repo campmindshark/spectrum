@@ -368,6 +368,7 @@
               <ComboBox x:Name="domeActiveVisualizer" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
                 <ComboBoxItem x:Name="domeActiveVisualizerVolume" Content='"Volume" (OG)' IsSelected="True" />
                 <ComboBoxItem x:Name="domeActiveVisualizerRadial" Content='Radial Effects' />
+                <ComboBoxItem x:Name="domeActiveVisualizerRace" Content='Race' />
               </ComboBox>
             </Grid>
             <Grid Height="24">

@@ -102,6 +102,12 @@ namespace Spectrum {
         audio,
         dome
       ));
+      this.visualizers.Add(new LEDDomeRaceVisualizer(
+        this.config,
+        audio,
+        midi,
+        dome
+      ));
       this.visualizers.Add(new LEDDomeJkmdTestVisualizer(
         this.config,
         audio,
