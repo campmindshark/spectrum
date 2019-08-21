@@ -45,7 +45,7 @@ namespace Spectrum {
 
       double level = this.audio.LevelForChannel(0);
       // Sqrt makes values larger and gives more resolution for lower values
-      double adjustedLevel = Clamp(Math.Sqrt(level), 0.02, 1);
+      double adjustedLevel = Clamp(Math.Sqrt(level), 0.1, 1);
 
       double progress = this.config.beatBroadcaster.ProgressThroughMeasure;
       // rotation is scaled by 1/4 - otherwise it is way too fast and will make people vomit
