@@ -93,6 +93,7 @@
     <Compile Include="Converter\StringJoinConverter.cs" />
     <Compile Include="Visualizers\LEDDomeRaceVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeRadialVisualizer.cs" />
+    <Compile Include="Visualizers\LEDDomeSnakesVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeTVStaticVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeJkmdTestVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeStrandTestDiagnosticVisualizer.cs" />
