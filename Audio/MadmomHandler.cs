@@ -12,7 +12,6 @@ namespace Spectrum.Audio {
     private readonly AudioInput audio;
 
     private Process process;
-    private double lastTimestamp = 0.0;
 
     public MadmomHandler(Configuration config, AudioInput audio) {
       this.config = config;
@@ -77,11 +76,8 @@ namespace Spectrum.Audio {
         return;
       }
 
-      double timestamp = Convert.ToDouble(line.Substring(5));
-      int millisecondsSinceLast = (int)((timestamp - this.lastTimestamp) * 1000);
-      this.lastTimestamp = timestamp;
-
-      this.config.beatBroadcaster.ReportMadmomBeat(millisecondsSinceLast);
+      long msSinceBoot = (long)(Convert.ToDouble(line.Substring(5)) * 1000);
+      this.config.beatBroadcaster.ReportMadmomBeat(msSinceBoot);
     }
 
   }

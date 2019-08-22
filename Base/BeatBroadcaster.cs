@@ -19,12 +19,16 @@ namespace Spectrum.Base {
 
   public class BeatBroadcaster : INotifyPropertyChanged {
 
+    private enum TimeRelativeTo { Timestamp, SystemBoot };
+
     private static readonly int tapTempoConclusionTime = 2000;
 
     private readonly Configuration config;
     private List<long> currentTaps = new List<long>();
     private long startingTime = -1;
+    private long lastMadmomReport = -1;
     private int measureLength = -1;
+    private TimeRelativeTo timeRelativeTo = TimeRelativeTo.Timestamp;
     private readonly Timer tapTempoConclusionTimer = new Timer(tapTempoConclusionTime);
     private readonly MidiLevelDriverInstance[] driversByChannel = new MidiLevelDriverInstance[] {
       null, null, null, null, null, null, null, null,
@@ -44,6 +48,15 @@ namespace Spectrum.Base {
       }
     }
 
+    private long currentTime {
+      get {
+        if (this.timeRelativeTo == TimeRelativeTo.Timestamp) {
+          return DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+        }
+        return Environment.TickCount;
+      }
+    }
+
     public double ProgressThroughBeat(double factor) {
       if (
         this.startingTime == -1 ||
@@ -52,8 +65,7 @@ namespace Spectrum.Base {
       ) {
         return 0.0;
       }
-      long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-      int distance = (int)(timestamp - this.startingTime);
+      int distance = (int)(this.currentTime - this.startingTime);
       int beatLength = (int)(this.measureLength / factor);
       int progressThroughMeasure = distance % beatLength;
       return (double)progressThroughMeasure / beatLength;
@@ -97,6 +109,8 @@ namespace Spectrum.Base {
       this.currentTaps = new List<long>();
       this.startingTime = -1;
       this.measureLength = -1;
+      this.lastMadmomReport = -1;
+      this.timeRelativeTo = TimeRelativeTo.Timestamp;
       this.TapTempoConcluded(null, null);
       this.PropertyChanged?.Invoke(
         this,
@@ -112,6 +126,8 @@ namespace Spectrum.Base {
       }
       this.measureLength = (int)(measureLengths.Average());
       this.startingTime = this.currentTaps.Last();
+      this.lastMadmomReport = -1;
+      this.timeRelativeTo = TimeRelativeTo.Timestamp;
       this.PropertyChanged?.Invoke(
         this,
         new PropertyChangedEventArgs("BPMString")
@@ -252,23 +268,33 @@ namespace Spectrum.Base {
         / preset.ReleaseTime;
     }
 
-    public void ReportMadmomBeat(int millisecondsSinceLast) {
-      long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+    public void ReportMadmomBeat(long msSinceBoot) {
+      this.timeRelativeTo = TimeRelativeTo.SystemBoot;
 
-      if (this.startingTime < 0) {
-        this.measureLength = millisecondsSinceLast;
-        this.startingTime = timestamp;
-      } else {
-        double totalMeasures = (double)(timestamp - this.startingTime)
-          / this.measureLength;
-        if (totalMeasures > 8.0) {
-          totalMeasures -= 8.0;
-        }
-        totalMeasures = Math.Round(totalMeasures);
-        this.measureLength = millisecondsSinceLast;
-        this.startingTime = timestamp
-          - (long)(totalMeasures * this.measureLength);
+      if (this.startingTime < 0 || this.lastMadmomReport < 0) {
+        this.startingTime = msSinceBoot;
+        this.lastMadmomReport = msSinceBoot;
+        this.measureLength = -1;
+        return;
       }
+
+      var currentMsSinceBoot = Environment.TickCount;
+      var progressThroughMeasure = (currentMsSinceBoot - msSinceBoot)
+        % (msSinceBoot - this.lastMadmomReport);
+
+      double totalMeasures = (double)(currentMsSinceBoot - this.startingTime)
+        / this.measureLength;
+      if (totalMeasures > 8.0) {
+        totalMeasures -= 8.0;
+      }
+      totalMeasures = Math.Floor(totalMeasures);
+
+      this.measureLength = (int)(msSinceBoot - this.lastMadmomReport);
+      this.lastMadmomReport = msSinceBoot;
+
+      this.startingTime = currentMsSinceBoot
+        - (long)(totalMeasures * this.measureLength)
+        - progressThroughMeasure;
 
       this.PropertyChanged?.Invoke(
         this,
