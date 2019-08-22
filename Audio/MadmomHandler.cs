@@ -78,6 +78,8 @@ namespace Spectrum.Audio {
 
       long msSinceBoot = (long)(Convert.ToDouble(line.Substring(5)) * 1000);
       this.config.beatBroadcaster.ReportMadmomBeat(msSinceBoot);
+
+      Console.WriteLine(Environment.TickCount - msSinceBoot);
     }
 
   }
