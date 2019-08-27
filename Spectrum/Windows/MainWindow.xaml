@@ -360,6 +360,7 @@
                                         <ComboBoxItem x:Name="domeTestPatternFlashColorsByStrut" Content="Flash colors by strut" />
                                         <ComboBoxItem x:Name="domeTestPatternIterateThroughStruts" Content="Iterate through struts" />
                                         <ComboBoxItem x:Name="domeTestPatternStripTest" Content="Test strips" />
+                                        <ComboBoxItem x:Name="domeTestPatternFullColorFlash" Content="Full color flash" />
                                     </ComboBox>
                                 </Grid>
                                 <Grid Margin="0,4,0,0">

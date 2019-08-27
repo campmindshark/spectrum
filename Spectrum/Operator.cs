@@ -92,6 +92,10 @@ namespace Spectrum {
         this.config,
         dome
       ));
+      this.visualizers.Add(new LEDDomeFullColorFlashDiagnosticVisualizer(
+        this.config,
+        dome
+      ));
       this.visualizers.Add(new LEDDomeVolumeVisualizer(
         this.config,
         audio,
