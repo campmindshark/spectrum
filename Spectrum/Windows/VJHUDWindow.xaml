@@ -384,6 +384,19 @@
               </ComboBox>
             </Grid>
             <Grid Height="24">
+              <Label Content="Radial Center Speed" Margin="0,3,0,0" Padding="0" />
+              <ComboBox x:Name="domeRadialCenterSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
+                <ComboBoxItem x:Name="rcs0" Content="0" IsSelected="True" />
+                <ComboBoxItem x:Name="rcs1" Content="1/8" />
+                <ComboBoxItem x:Name="rcs2" Content="1/4" />
+                <ComboBoxItem x:Name="rcs3" Content="1/2" />
+                <ComboBoxItem x:Name="rcs4" Content="1" />
+                <ComboBoxItem x:Name="rcs5" Content="2" />
+                <ComboBoxItem x:Name="rcs6" Content="4" />
+              </ComboBox>
+            </Grid>
+
+            <Grid Height="24">
               <Label Content="Gradient Speed" Margin="0,3,0,0" Padding="0" />
               <ComboBox x:Name="domeGradientSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
                 <ComboBoxItem x:Name="dsrs0" Content="0" IsSelected="True" />
@@ -405,7 +418,7 @@
               </ComboBox>
             </Grid>
             <Grid Height="24">
-              <Label Content="Radial Size" Margin="0,3,0,0" Padding="0" />
+              <Label Content="Radial Size" Margin="-2,3,2.4,0" Padding="0" />
               <Slider x:Name="domeRadialSizeSlider" Value="0.1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Maximum="4.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
               <Label x:Name="domeRadialSizeLabel" Content="0.1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
             </Grid>
@@ -415,6 +428,17 @@
               <Label x:Name="domeRadialFrequencyLabel" Content="1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
             </Grid>
             <Grid Height="24">
+              <Label Content="Radial Center Angle" Margin="0,3,0,0" Padding="0" />
+              <Slider x:Name="domeRadialCenterAngleSlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="-3.14159" Maximum="3.14159" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+              <Label x:Name="domeRadialCenterAngleLabel" Content="1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
+            </Grid>
+            <Grid Height="24">
+              <Label Content="Radial Center Distance" Margin="0,3,0,0" Padding="0" />
+              <Slider x:Name="domeRadialCenterDistanceSlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="0" Maximum="1" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+              <Label x:Name="domeRadialCenterDistanceLabel" Content="1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
+            </Grid>
+            <Grid Height="24">
+
               <Label Content="Stage 1" Margin="0,3,0,0" Padding="0" />
               <ComboBox x:Name="stagePrimaryRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
                 <ComboBoxItem x:Name="sprs0" Content="0" IsSelected="True" />

@@ -96,6 +96,9 @@ namespace Spectrum {
     public int domeRadialEffect { get; set; } = 0;
     public double domeRadialSize { get; set; } = 0.1;
     public int domeRadialFrequency { get; set; } = 1;
+    public double domeRadialCenterAngle { get; set; } = 0.0;
+    public double domeRadialCenterDistance { get; set; } = 0.0;
+    public double domeRadialCenterSpeed { get; set; } = 0.0;
 
     public int hueDelay { get; set; } = 125;
     public bool hueIdleOnSilent { get; set; } = true;

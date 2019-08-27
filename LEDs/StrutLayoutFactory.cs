@@ -128,22 +128,28 @@ namespace Spectrum.LEDs {
       double,
       double,
       double
-    > GetProjectedLEDPointParametric(int strutIndex, int ledIndex) {
+    > GetProjectedLEDPointParametric(int strutIndex, int ledIndex, double offsetX = 0, double offsetY = 0) {
       var p = GetProjectedLEDPoint(strutIndex, ledIndex);
 
-      var x = p.Item1;
-      var y = p.Item2;
+      var x = p.Item1 + offsetX;
+      var y = p.Item2 + offsetY;
 
       x = x * 2 - 1;
       y = y * 2 - 1;
 
       var angle = Math.Atan2(y, x);
       var dist = Math.Sqrt(x * x + y * y);
-      dist = dist > 1 ? 1 : dist;
+      //dist = dist > 1 ? 1 : dist;
 
       return new Tuple<double, double, double, double>(
         x, y, angle, dist
       );
+    }
+
+    public static Tuple<double, double> PolarToCartesian(double angle, double distance) {
+      double x = Math.Cos(angle) * distance;
+      double y = Math.Sin(angle) * distance;
+      return new Tuple<double, double>(x, y);
     }
     public static StrutLayout[] ConcentricFromStartingPoints(
       Configuration config,

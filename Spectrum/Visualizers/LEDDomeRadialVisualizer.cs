@@ -16,6 +16,7 @@ namespace Spectrum {
 
     private double currentAngle;
     private double currentGradient;
+    private double currentCenterAngle;
     private double lastProgress;
 
     public LEDDomeRadialVisualizer(
@@ -53,12 +54,16 @@ namespace Spectrum {
       currentAngle = Wrap(currentAngle, 0, 1);
       currentGradient += this.config.domeGradientSpeed * Wrap(progress - this.lastProgress, 0, 1);
       currentGradient = Wrap(currentGradient, 0, 1);
+      currentCenterAngle += this.config.domeRadialCenterSpeed * Wrap(progress - this.lastProgress, 0, 1) * 0.25;
+      currentCenterAngle = Wrap(currentCenterAngle, 0, 1);
       this.lastProgress = progress;
+
+      var centerOffset = StrutLayoutFactory.PolarToCartesian(config.domeRadialCenterAngle + currentCenterAngle * 2 * Math.PI, config.domeRadialCenterDistance);
 
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
         var leds = LEDDomeOutput.GetNumLEDs(i);
         for (int j = 0; j < leds; j++) {
-          var p = StrutLayoutFactory.GetProjectedLEDPointParametric(i, j);
+          var p = StrutLayoutFactory.GetProjectedLEDPointParametric(i, j, centerOffset.Item1, centerOffset.Item2);
 
           // map angle to 0-1
           var angle = MapWrap(p.Item3, -Math.PI, Math.PI, 0.0, 1.0);

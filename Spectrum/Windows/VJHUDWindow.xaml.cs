@@ -229,12 +229,19 @@ namespace Spectrum {
       }, true));
       this.Bind("domeVolumeRotationSpeed", this.domeVolumeRotationSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.dprs0, [0.125] = this.dprs1, [0.25] = this.dprs2, [0.5] = this.dprs3, [1.0] = this.dprs4, [2.0] = this.dprs5, [4.0] = this.dprs6 }, true));
       this.Bind("domeGradientSpeed", this.domeGradientSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.dsrs0, [0.125] = this.dsrs1, [0.25] = this.dsrs2, [0.5] = this.dsrs3, [1.0] = this.dsrs4, [2.0] = this.dsrs5, [4.0] = this.dsrs6 }, true));
+       this.Bind("domeRadialCenterSpeed", this.domeRadialCenterSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.rcs0, [0.125] = this.rcs1, [0.25] = this.rcs2, [0.5] = this.rcs3, [1.0] = this.rcs4, [2.0] = this.rcs5, [4.0] = this.rcs6 }, true));
 
       this.Bind("domeRadialEffect", this.domeRadialEffect, ComboBox.SelectedIndexProperty, BindingMode.TwoWay);
       this.Bind("domeRadialSize", this.domeRadialSizeSlider, Slider.ValueProperty);
       this.Bind("domeRadialSize", this.domeRadialSizeLabel, Label.ContentProperty);
       this.Bind("domeRadialFrequency", this.domeRadialFrequencySlider, Slider.ValueProperty);
       this.Bind("domeRadialFrequency", this.domeRadialFrequencyLabel, Label.ContentProperty);
+      this.Bind("domeRadialCenterAngle", this.domeRadialCenterAngleSlider, Slider.ValueProperty);
+      this.Bind("domeRadialCenterAngle", this.domeRadialCenterAngleLabel, Label.ContentProperty);
+      this.Bind("domeRadialCenterDistance", this.domeRadialCenterDistanceSlider, Slider.ValueProperty);
+      this.Bind("domeRadialCenterDistance", this.domeRadialCenterDistanceLabel, Label.ContentProperty);
+
+
 
       this.Bind("stageTracerSpeed", this.stagePrimaryRotationSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.sprs0, [0.125] = this.sprs1, [0.25] = this.sprs2, [0.5] = this.sprs3, [1.0] = this.sprs4, [2.0] = this.sprs5, [4.0] = this.sprs6 }, true));
       this.Bind("flashSpeed", this.flashRotationSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.frs0, [0.5] = this.frs1, [1] = this.frs2, [2] = this.frs3, [4] = this.frs4, [8] = this.frs5, [16] = this.frs6, [32] = this.frs7 }, true));
