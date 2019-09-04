@@ -43,7 +43,9 @@ namespace Spectrum.Audio {
     private void UpdateEnabled() {
       if (this.process != null) {
         this.process.Kill();
-        this.process.Dispose();
+        try {
+          this.process.Dispose();
+        } catch { };
         this.process = null;
       }
 
