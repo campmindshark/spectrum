@@ -280,11 +280,6 @@ namespace Spectrum.LEDs {
       lock (this.visualizers) {
         if (this.opcAPI != null) {
           int totalPixelIndex = controlBoxIndex * (maxStripLength * 8) + pixelIndex;
-          if (controlBoxIndex > 3) {
-            // NatShip rev A seems to have a design defect where "channels" 34
-            // and 45 are broken. To get around this, we are skipping 4 channels
-            totalPixelIndex += maxStripLength * 4;
-          }
           this.opcAPI.SetPixel(totalPixelIndex, color);
         }
       }
