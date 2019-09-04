@@ -45,7 +45,7 @@ namespace Spectrum.Audio {
         this.process.Kill();
         try {
           this.process.Dispose();
-        } catch { };
+        } catch { }
         this.process = null;
       }
 
