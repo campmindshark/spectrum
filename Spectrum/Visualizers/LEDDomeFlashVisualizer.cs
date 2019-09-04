@@ -260,7 +260,10 @@ namespace Spectrum {
       );
       foreach (var animation in toRemove) {
         animation.shape.activeAnimation = null;
-        if (this.padsToLastAnimation[animation.pad] == animation) {
+        if (
+          this.padsToLastAnimation.ContainsKey(animation.pad) &&
+          this.padsToLastAnimation[animation.pad] == animation
+        ) {
           this.padsToLastAnimation.Remove(animation.pad);
         }
         // We only need to clear the LEDs on unreserved struts
@@ -356,8 +359,8 @@ namespace Spectrum {
         velocity,
         measureLength == -1 ? 400 : measureLength
       );
-      this.activeAnimations.Add(animation);
       this.padsToLastAnimation[pad] = animation;
+      this.activeAnimations.Add(animation);
       animation.shape.activeAnimation = animation;
       return animation;
     }
