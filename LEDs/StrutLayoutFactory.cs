@@ -144,7 +144,6 @@ namespace Spectrum.LEDs {
 
       var angle = Math.Atan2(y, x);
       var dist = Math.Sqrt(x * x + y * y);
-      //dist = dist > 1 ? 1 : dist;
 
       return new Tuple<double, double, double, double>(
         x, y, angle, dist

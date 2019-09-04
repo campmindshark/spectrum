@@ -9,15 +9,10 @@ namespace Spectrum {
 
   class LEDDomeTVStaticVisualizer : Visualizer {
 
-    private Configuration config;
-    private LEDDomeOutput dome;
-    private int animationSize;
-    private int centerOffset;
+    private readonly Configuration config;
+    private readonly LEDDomeOutput dome;
 
-    // For color-from-random mode, maps each strut to a color
-    private int[] randomStrutColors = new int[LEDDomeOutput.GetNumStruts()];
     private Random random = new Random();
-    private bool wipeStrutsNextCycle = false;
 
     public LEDDomeTVStaticVisualizer(
       Configuration config,

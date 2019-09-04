@@ -117,11 +117,6 @@ namespace Spectrum {
         audio,
         dome
       ));
-      this.visualizers.Add(new LEDDomeJkmdTestVisualizer(
-        this.config,
-        audio,
-        dome
-      ));
       this.visualizers.Add(new LEDDomeTVStaticVisualizer(
         this.config,
         dome

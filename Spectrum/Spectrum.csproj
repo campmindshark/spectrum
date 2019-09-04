@@ -96,7 +96,6 @@
     <Compile Include="Visualizers\LEDDomeRadialVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeSnakesVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeTVStaticVisualizer.cs" />
-    <Compile Include="Visualizers\LEDDomeJkmdTestVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeStrandTestDiagnosticVisualizer.cs" />
     <Compile Include="Visualizers\LEDStageDepthLevelVisualizer.cs" />
     <Compile Include="Visualizers\LEDStageTracerVisualizer.cs" />
