@@ -130,6 +130,10 @@ namespace Spectrum.LEDs {
       try {
         this.socket.Disconnect(true);
       } catch { }
+      try {
+        this.socket.Close();
+      } catch { }
+      this.InitializeSocket();
       this.currentPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
       this.nextPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
       this.currentFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
@@ -175,7 +179,6 @@ namespace Spectrum.LEDs {
           this.flushHappened = false;
         } catch {
           this.DisconnectSocket();
-          this.InitializeSocket();
           this.ConnectSocket();
         }
       }
