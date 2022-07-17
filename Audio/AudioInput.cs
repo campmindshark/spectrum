@@ -22,14 +22,12 @@ namespace Spectrum.Audio {
   public class AudioInput : Input {
 
     private static readonly int fftSize = 32768;
-    //private static readonly int audioFormatSampleFrequency = 44100;
+    private int audioFormatSampleFrequency = 44100;
     private static readonly Dictionary<AudioDetectorType, double[]> bins =
       new Dictionary<AudioDetectorType, double[]>() {
         { AudioDetectorType.Kick, new double[] { 40, 50 } },
         { AudioDetectorType.Snare, new double[] { 1500, 2500 } },
       };
-
-    private int audioFormatSampleFrequency = 44100;
 
 
     private readonly Configuration config;
