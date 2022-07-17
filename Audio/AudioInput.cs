@@ -22,12 +22,14 @@ namespace Spectrum.Audio {
   public class AudioInput : Input {
 
     private static readonly int fftSize = 32768;
-    private static readonly int audioFormatSampleFrequency = 44100;
+    //private static readonly int audioFormatSampleFrequency = 44100;
     private static readonly Dictionary<AudioDetectorType, double[]> bins =
       new Dictionary<AudioDetectorType, double[]>() {
         { AudioDetectorType.Kick, new double[] { 40, 50 } },
         { AudioDetectorType.Snare, new double[] { 1500, 2500 } },
       };
+
+    private int audioFormatSampleFrequency = 44100;
 
 
     private readonly Configuration config;
@@ -130,6 +132,7 @@ namespace Spectrum.Audio {
       this.recordingDevice = device;
       var bitrate = device.AudioClient.MixFormat.BitsPerSample;
       this.captureStream = new WasapiCapture(device, false, bitrate);
+      audioFormatSampleFrequency = device.AudioClient.MixFormat.SampleRate;
       this.captureStream.WaveFormat = new WaveFormat(
         audioFormatSampleFrequency,
         bitrate,
@@ -164,7 +167,7 @@ namespace Spectrum.Audio {
             continue;
           }
           AudioLevelDriverPreset preset = (AudioLevelDriverPreset)pair.Value;
-          double filteredMax = AudioInput.GetFilteredMax(
+          double filteredMax = GetFilteredMax(
             preset.FilterRangeStart,
             preset.FilterRangeEnd,
             this.AudioData
@@ -417,22 +420,22 @@ namespace Spectrum.Audio {
         ? this.maxAudioDataLevels[preset.Name]
         : 1.0;
 
-      return AudioInput.GetFilteredMax(
+      return GetFilteredMax(
         preset.FilterRangeStart,
         preset.FilterRangeEnd,
         this.AudioData
       ) / maxLevel;
     }
 
-    private static double GetFilteredMax(
+    private double GetFilteredMax(
       double low,
       double high,
       float[] audioData
     ) {
       double lowFreq = AudioInput.EstimateFreq(low, 144.4505);
-      int lowBinIndex = (int)AudioInput.GetFrequencyBinUnrounded(lowFreq);
+      int lowBinIndex = (int)GetFrequencyBinUnrounded(lowFreq);
       double highFreq = AudioInput.EstimateFreq(high, 144.4505);
-      int highBinIndex = (int)Math.Ceiling(AudioInput.GetFrequencyBinUnrounded(highFreq));
+      int highBinIndex = (int)Math.Ceiling(GetFrequencyBinUnrounded(highFreq));
       return audioData.Skip(lowBinIndex).Take(highBinIndex - lowBinIndex + 1).Max();
     }
 
@@ -446,15 +449,15 @@ namespace Spectrum.Audio {
       return 15.0 + Math.Exp(.05773259 * freqScale * x);
     }
 
-    private static double GetFrequencyBinUnrounded(double frequency) {
+    private double GetFrequencyBinUnrounded(double frequency) {
       return fftSize * frequency / (audioFormatSampleFrequency * 2);
     }
 
-    private static int FreqToFFTBin(double frequency) {
+    private int FreqToFFTBin(double frequency) {
       return (int)GetFrequencyBinUnrounded(frequency);
     }
 
-    private static bool WindowContains(double[] window, int index) {
+    private bool WindowContains(double[] window, int index) {
       return (FreqToFFTBin(window[0]) <= index
         && FreqToFFTBin(window[1]) >= index);
     }
