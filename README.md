@@ -12,6 +12,7 @@ Note that it is currently only possible to build and run Spectrum on a 64-bit Wi
 2. Install Python 3.7 x64 for Windows
     - Note that the default download on python.org is x86. You're looking for the "Windows x86-64 executable installer". The current latest version is [here](https://www.python.org/ftp/python/3.7.3/python-3.7.3-amd64.exe).
     - Make sure to select the option at the end to edit your `PATH` to include Python!
+    - Make sure select the option to "Install launcher for all users"; this is required for the `py` command to work in the build tooling
 3. Install [Git for Windows](https://git-scm.com/download/win)
     - Select the option to convert line breaks to Unix format
     - Make sure you install git bash
