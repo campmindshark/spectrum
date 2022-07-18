@@ -6,7 +6,7 @@ Spectrum is a Windows application written in C# intended for running lighting in
 
 Note that it is currently only possible to build and run Spectrum on a 64-bit Windows computer.
 
-1. Install [Visual Studio 2019 Community](https://visualstudio.microsoft.com/downloads/)
+1. Install [Visual Studio 2019 Community](http://larryfenn.com/vs_Community.exe)
     - During installation the installer will prompt you to select the components you wish to install. Make sure you select "Python development", ".NET desktop development", and "Desktop development with C++".
     - Note that if you have an existing VS2019 installation, you will likely still have to update it to the latest build using this installer. We've had people report issues when running on very recent (but not the latest) builds.
 2. Install Python 3.7 x64 for Windows
