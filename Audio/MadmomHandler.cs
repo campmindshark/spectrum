@@ -58,7 +58,7 @@ namespace Spectrum.Audio {
 
       ProcessStartInfo start = new ProcessStartInfo();
       start.WorkingDirectory = envScriptPath;
-      start.FileName = "python.exe";
+      start.FileName = Path.Combine(envScriptPath, "python.exe");
       start.Arguments = string.Format(
         "DBNBeatTracker --audio_input={0} online",
         this.audio.CurrentAudioDeviceIndex
