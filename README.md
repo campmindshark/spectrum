@@ -9,9 +9,9 @@ Note that it is currently only possible to build and run Spectrum on a 64-bit Wi
 1. Install [Visual Studio 2022 Community](https://visualstudio.microsoft.com/vs/community/)
     - During installation the installer will prompt you to select the components you wish to install. Make sure you select "Python development", ".NET desktop development", and "Desktop development with C++".
     - Note that if you have an existing VS2019 installation, you will likely still have to update it to the latest build using this installer. We've had people report issues when running on very recent (but not the latest) builds.
-    - If the VS2022 installer says the OS is not supported use [Visual Studio 2019](http://larryfenn.com/vs_Community.exe)
+    - If the VS2022 installer says the OS is not supported use [Visual Studio 2019](http://larryfenn.com/vs_Community.exe).
 2. Install Python 3.7 x64 for Windows
-    - Note that the default download on python.org is x86. You're looking for the "Windows x86-64 executable installer". The current latest version is [here](https://www.python.org/ftp/python/3.7.3/python-3.7.3-amd64.exe).
+    - Note that the default download on python.org is x86. You're looking for the "Windows x86-64 executable installer". The current latest version is [here](https://www.python.org/ftp/python/3.7.9/python-3.7.9-amd64.exe).
     - Make sure to select the option at the end to edit your `PATH` to include Python!
     - Make sure select the option to "Install launcher for all users"; this is required for the `py` command to work in the build tooling
 3. Install [Git for Windows](https://git-scm.com/download/win)
