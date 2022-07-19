@@ -17,10 +17,8 @@ Note that it is currently only possible to build and run Spectrum on a 64-bit Wi
 3. Install [Git for Windows](https://git-scm.com/download/win)
     - Select the option to convert line breaks to Unix format
     - Make sure you install git bash
-4. Install `virtualenv` for Python
-    - Open git bash and run `pip install virtualenv`
-5. Recursively clone this repo: `git clone --recursive https://github.com/campmindshark/spectrum`
-6. Open the Spectrum solution in Visual Studio and run it!
+4. Recursively clone this repo: `git clone --recursive https://github.com/campmindshark/spectrum`
+5. Open the Spectrum solution in Visual Studio and run it!
     - You will need Internet access for the first build, so if you're heading to TTITD, please compile beforehand, once for Release and once for Debug.
 
 ## Dome Simulator
