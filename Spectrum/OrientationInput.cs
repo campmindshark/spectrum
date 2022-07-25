@@ -12,10 +12,6 @@ namespace Spectrum {
     private Int32 timestamp = 0;
     private Thread listenThread;
     private UdpClient listenClient;
-    private short W;
-    private short X;
-    private short Y;
-    private short Z;
     private readonly object mLock = new object();
     private Quaternion sensorState;
     private Quaternion calibratedOrigin = new Quaternion(1, 0, 0, 0);
@@ -55,13 +51,13 @@ namespace Spectrum {
         var new_timestamp = BitConverter.ToInt32(buffer, 0);
         if (new_timestamp > timestamp || new_timestamp < timestamp - 1000) {
           timestamp = new_timestamp;
-          W = BitConverter.ToInt16(buffer, 4);
-          X = BitConverter.ToInt16(buffer, 6);
-          Y = BitConverter.ToInt16(buffer, 8);
-          Z = BitConverter.ToInt16(buffer, 10);
+          short W = BitConverter.ToInt16(buffer, 4);
+          short X = BitConverter.ToInt16(buffer, 6);
+          short Y = BitConverter.ToInt16(buffer, 8);
+          short Z = BitConverter.ToInt16(buffer, 10);
           lock (mLock) {
             sensorState = new Quaternion(W / 16384.0f, X / 16384.0f, Y / 16384.0f, Z / 16384.0f);
-            mRotation = Quaternion.Multiply(sensorState, Quaternion.Inverse(calibratedOrigin));
+            mRotation = Quaternion.Multiply(calibratedOrigin, Quaternion.Inverse(sensorState));
           }
         }
       }

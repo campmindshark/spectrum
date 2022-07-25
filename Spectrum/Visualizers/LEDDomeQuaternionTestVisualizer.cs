@@ -42,7 +42,6 @@ namespace Spectrum.Visualizers {
     void Render() {
       Vector4 newSpot = Vector4.Transform(spot, orientation.rotation);
       Tuple<double, double> projectedSpot = Convert3D(newSpot);
-
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
         var leds = LEDDomeOutput.GetNumLEDs(i);
         for (int j = 0; j < leds; j++) {
@@ -50,7 +49,6 @@ namespace Spectrum.Visualizers {
 
           double xdiff = p.Item1 - projectedSpot.Item1;
           double ydiff = p.Item2 - projectedSpot.Item2;
-
           double val = xdiff * xdiff + ydiff * ydiff;
           if(val < .25) {
             this.dome.SetPixel(i, j, 0xFFFFFF);
@@ -63,8 +61,8 @@ namespace Spectrum.Visualizers {
 
     private static Tuple<double, double> Convert3D(Vector4 vector) {
       // Lambert azimuthal equal-area projection
-      double x = Math.Sqrt(2 / (1 - vector.X)) * vector.Z * -1;
-      double y = Math.Sqrt(2 / (1 - vector.X)) * vector.Y;
+      double x = Math.Sqrt(2 / (1 + vector.X)) * vector.Y * -1;
+      double y = Math.Sqrt(2 / (1 + vector.X)) * vector.Z;
       // Dome coordinate space is [0, 1] x [0, 1] centered at (.5, .5)
       x = (x + 1) / 2;
       y = (y + 1) / 2;
