@@ -61,7 +61,7 @@ namespace Spectrum {
           Z = BitConverter.ToInt16(buffer, 10);
           lock (mLock) {
             sensorState = new Quaternion(W / 16384.0f, X / 16384.0f, Y / 16384.0f, Z / 16384.0f);
-            mRotation = Quaternion.Multiply(calibratedOrigin, Quaternion.Inverse(sensorState));
+            mRotation = Quaternion.Multiply(sensorState, Quaternion.Inverse(calibratedOrigin));
           }
         }
       }

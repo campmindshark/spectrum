@@ -107,7 +107,6 @@ namespace Spectrum {
       this.visualizers.Add(new LEDDomeRadialVisualizer(
         this.config,
         audio,
-        orientation,
         dome
       ));
       this.visualizers.Add(new LEDDomeQuaternionTestVisualizer(

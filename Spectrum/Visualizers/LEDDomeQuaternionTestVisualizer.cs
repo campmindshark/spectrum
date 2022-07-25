@@ -63,8 +63,8 @@ namespace Spectrum.Visualizers {
 
     private static Tuple<double, double> Convert3D(Vector4 vector) {
       // Lambert azimuthal equal-area projection
-      double x = Math.Sqrt(2 / (1 + vector.X)) * vector.Y * -1;
-      double y = Math.Sqrt(2 / (1 + vector.X)) * vector.Z;
+      double x = Math.Sqrt(2 / (1 - vector.X)) * vector.Z * -1;
+      double y = Math.Sqrt(2 / (1 - vector.X)) * vector.Y;
       // Dome coordinate space is [0, 1] x [0, 1] centered at (.5, .5)
       x = (x + 1) / 2;
       y = (y + 1) / 2;
