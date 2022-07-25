@@ -10,6 +10,7 @@ using Spectrum.MIDI;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
+using Spectrum.Visualizers;
 
 namespace Spectrum {
 
@@ -106,8 +107,14 @@ namespace Spectrum {
       this.visualizers.Add(new LEDDomeRadialVisualizer(
         this.config,
         audio,
+        orientation,
         dome
       ));
+      this.visualizers.Add(new LEDDomeQuaternionTestVisualizer(
+        this.config,
+        orientation,
+        dome
+        ));
       this.visualizers.Add(new LEDDomeRaceVisualizer(
         this.config,
         audio,

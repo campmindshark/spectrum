@@ -69,6 +69,7 @@
     <Compile Include="Converter\StringJoinConverter.cs" />
     <Compile Include="OrientationInput.cs" />
     <Compile Include="Visualizers\LEDDomeFullColorFlashDiagnosticVisualizer.cs" />
+    <Compile Include="Visualizers\LEDDomeQuaternionTestVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeRaceVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeRadialVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeSnakesVisualizer.cs" />
