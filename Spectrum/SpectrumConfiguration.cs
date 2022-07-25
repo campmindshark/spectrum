@@ -209,6 +209,8 @@ namespace Spectrum {
       }
     }
 
+    public bool orientationCalibrate { get; set; } = false;
+
   }
 
 }

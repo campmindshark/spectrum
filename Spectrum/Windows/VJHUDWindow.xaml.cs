@@ -758,6 +758,9 @@ namespace Spectrum {
       this.config.channelToMidiLevelDriverPreset[channelIndex] = (string)box.SelectedItem;
     }
 
+    private void OrientationCalibrationClicked(object sender, RoutedEventArgs e) {
+      this.config.orientationCalibrate = true;
+    }
   }
 
 }

@@ -37,6 +37,8 @@ namespace Spectrum {
       this.inputs.Add(audio);
       var midi = new MidiInput(config);
       this.inputs.Add(midi);
+      var orientation = new OrientationInput(config);
+      this.inputs.Add(orientation);
 
       this.outputs = new List<Output>();
       var hue = new HueOutput(config);
