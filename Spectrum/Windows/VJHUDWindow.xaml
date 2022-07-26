@@ -325,15 +325,15 @@
             </WrapPanel>
           </Border>
         </WrapPanel>
-                <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
-                    <Label x:Name="orientationLabel" Content="Orientation controls" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                    <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
-                        <WrapPanel Width="300" HorizontalAlignment="Left" VerticalAlignment="Top">
-                            <Button x:Name="orientationCalibrate" Content="Set calibration" HorizontalAlignment="Left" Margin="0,0,0,0" VerticalAlignment="Top" Click="OrientationCalibrationClicked" Padding="0,0" />
-                        </WrapPanel>
-                    </Border>
-                </WrapPanel>
-            </DockPanel>
+        <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
+          <Label x:Name="orientationLabel" Content="Orientation controls" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+          <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
+            <WrapPanel Width="300" HorizontalAlignment="Left" VerticalAlignment="Top">
+              <Button x:Name="orientationCalibrate" Content="Set calibration" HorizontalAlignment="Left" Margin="0,0,0,0" VerticalAlignment="Top" Click="OrientationCalibrationClicked" Padding="0,0" />
+            </WrapPanel>
+          </Border>
+        </WrapPanel>
+      </DockPanel>
       <Grid Width="258" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
         <Label Content="Tempo" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
         <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
@@ -378,8 +378,8 @@
                 <ComboBoxItem x:Name="domeActiveVisualizerRadial" Content='Radial Effects' />
                 <ComboBoxItem x:Name="domeActiveVisualizerRace" Content='Race' />
                 <ComboBoxItem x:Name="domeActiveVisualizerSnakes" Content='Snakes' />
-                                <ComboBoxItem x:Name="domeActiveVisualizerQuaternionTest" Content='Quaternion Test' />
-                            </ComboBox>
+                <ComboBoxItem x:Name="domeActiveVisualizerQuaternionTest" Content='Quaternion Test' />
+              </ComboBox>
             </Grid>
             <Grid Height="24">
               <Label Content="Rotation Speed" Margin="0,3,0,0" Padding="0" />
@@ -405,7 +405,6 @@
                 <ComboBoxItem x:Name="rcs6" Content="4" />
               </ComboBox>
             </Grid>
-
             <Grid Height="24">
               <Label Content="Gradient Speed" Margin="0,3,0,0" Padding="0" />
               <ComboBox x:Name="domeGradientSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
@@ -448,7 +447,6 @@
               <Label x:Name="domeRadialCenterDistanceLabel" Content="1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
             </Grid>
             <Grid Height="24">
-
               <Label Content="Stage 1" Margin="0,3,0,0" Padding="0" />
               <ComboBox x:Name="stagePrimaryRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
                 <ComboBoxItem x:Name="sprs0" Content="0" IsSelected="True" />
