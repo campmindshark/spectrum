@@ -45,16 +45,34 @@ namespace Spectrum.Visualizers {
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
         var leds = LEDDomeOutput.GetNumLEDs(i);
         for (int j = 0; j < leds; j++) {
-          var p = StrutLayoutFactory.GetProjectedLEDPoint(i, j);
-
+          var p = StrutLayoutFactory.GetProjectedLEDPoint(i, j); // centered on (.5, .5), [0, 1] x [0, 1]
+          var x = 2 * p.Item1 - 1; // now centered on (0, 0) and with range [0, 1]
+          var y = 1 - 2 * p.Item2;
+          float z = (float)Math.Sqrt(1 - x * x - y * y);
+          Vector3 pixelPoint = new Vector3((float)x, (float)y, z);
+          Vector3 pixelPointQuat = Vector3.Transform(pixelPoint, Quaternion.Inverse(orientation.rotation));
           double xdiff = p.Item1 - projectedSpot.Item1;
           double ydiff = p.Item2 - projectedSpot.Item2;
           double val = xdiff * xdiff + ydiff * ydiff;
+          /**
           if(val < .25) {
             this.dome.SetPixel(i, j, 0xFFFFFF);
           } else {
             this.dome.SetPixel(i, j, 0);
           }
+          **/
+          // Color maxes
+          int maxIndex = MaxBy(pixelPointQuat);
+          int color = 0;
+          if(maxIndex == 0) {
+            color = 0xFF0000;
+          } else if(maxIndex == 1) {
+            color = 0x00FF00;
+          } else if(maxIndex == 2) {
+            color = 0x0000FF;
+          }
+
+          this.dome.SetPixel(i, j, color);
         }
       }
     }
@@ -73,6 +91,14 @@ namespace Spectrum.Visualizers {
       this.Render();
 
       this.dome.Flush();
+    }
+    
+    // Returns the index of the maximum item in a vector
+    public int MaxBy(Vector3 v) {
+      if (Math.Abs(v.X) > Math.Abs(v.Y)) {
+        return Math.Abs(v.X) > Math.Abs(v.Z) ? 0 : 2;
+      }
+      return Math.Abs(v.Y) > Math.Abs(v.Z) ? 1 : 2;
     }
   }
 }
