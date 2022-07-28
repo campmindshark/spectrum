@@ -14,7 +14,7 @@ namespace Spectrum {
     private UdpClient listenClient;
     private readonly object mLock = new object();
     private Quaternion sensorState;
-    private Quaternion calibratedOrigin = new Quaternion(1, 0, 0, 0);
+    private Quaternion calibratedOrigin = new Quaternion(0, 0, 0, 1);
     private Quaternion mRotation;
 
     public OrientationInput(Configuration config) {
@@ -56,8 +56,8 @@ namespace Spectrum {
           short Y = BitConverter.ToInt16(buffer, 8);
           short Z = BitConverter.ToInt16(buffer, 10);
           lock (mLock) {
-            sensorState = new Quaternion(W / 16384.0f, X / 16384.0f, Y / 16384.0f, Z / 16384.0f);
-            mRotation = Quaternion.Multiply(calibratedOrigin, Quaternion.Inverse(sensorState));
+            sensorState = new Quaternion(X / 16384.0f, Y / 16384.0f, Z / 16384.0f, W / 16384.0f);
+            mRotation = Quaternion.Inverse(Quaternion.Multiply(Quaternion.Inverse(calibratedOrigin), sensorState));
           }
         }
       }
