@@ -13,6 +13,7 @@ namespace Spectrum {
     private Configuration config;
     private AudioInput audio;
     private LEDDomeOutput dome;
+    private LEDDomeOutputPixel[] buffer;
 
     private double currentAngle;
     private double currentGradient;
@@ -28,6 +29,7 @@ namespace Spectrum {
       this.audio = audio;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
+      this.buffer = this.dome.MakeDomeOutputBuffer();
     }
 
     public int Priority {
@@ -67,93 +69,93 @@ namespace Spectrum {
         config.domeRadialCenterDistance
       );
 
-      for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-        var leds = LEDDomeOutput.GetNumLEDs(i);
-        for (int j = 0; j < leds; j++) {
-          var p = StrutLayoutFactory.GetProjectedLEDPointParametric(
-            i,
-            j,
-            centerOffset.Item1,
-            centerOffset.Item2
-          );
+      for (int i = 0; i < buffer.Length; i++) {
+        var pixel = buffer[i];
 
-          // map angle to 0-1
-          var angle = MapWrap(p.Item3, -Math.PI, Math.PI, 0.0, 1.0);
-          var dist = p.Item4;
+        var p = StrutLayoutFactory.GetProjectedLEDPointParametric(
+          pixel.strutIndex,
+          pixel.strutLEDIndex,
+          centerOffset.Item1,
+          centerOffset.Item2
+        );
 
-          double val = 0;
-          double gradientVal = 0;
+        // map angle to 0-1
+        var angle = MapWrap(p.Item3, -Math.PI, Math.PI, 0.0, 1.0);
+        var dist = p.Item4;
 
-          switch (this.config.domeRadialEffect) {
-            case 0:
-              // radar mapping
-              val = MapWrap(angle, currentAngle, 1 + currentAngle, 0, 1);
-              // scale val according to radial frequency
-              val = Wrap(val * this.config.domeRadialFrequency, 0, 1);
-              // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
-              val = Math.Abs(Map(val, 0, 1, -1, 1));
+        double val = 0;
+        double gradientVal = 0;
 
-              gradientVal = dist;
-              break;
-            case 1:
-              // pulse mapping
-              val = MapWrap(dist, currentAngle, 1 + currentAngle, 0, 1);
-              // scale val according to radial frequency
-              val = Wrap(val * this.config.domeRadialFrequency, 0, 1);
-              // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
-              val = Math.Abs(Map(val, 0, 1, -1, 1));
+        switch (this.config.domeRadialEffect) {
+          case 0:
+            // radar mapping
+            val = MapWrap(angle, currentAngle, 1 + currentAngle, 0, 1);
+            // scale val according to radial frequency
+            val = Wrap(val * this.config.domeRadialFrequency, 0, 1);
+            // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
+            val = Math.Abs(Map(val, 0, 1, -1, 1));
 
-              gradientVal = Math.Abs(Map(angle, 0, 1, -1, 1));
-              break;
-            case 2:
-              // spiral mapping
-              val = MapWrap(
-                angle + dist / this.config.domeRadialFrequency,
-                currentAngle,
-                1 + currentAngle,
-                0,
-                1
-              );
-              // scale val according to radial frequency
-              val = Wrap(val * this.config.domeRadialFrequency, 0, 1);
-              // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
-              val = Math.Abs(Map(val, 0, 1, -1, 1));
+            gradientVal = dist;
+            break;
+          case 1:
+            // pulse mapping
+            val = MapWrap(dist, currentAngle, 1 + currentAngle, 0, 1);
+            // scale val according to radial frequency
+            val = Wrap(val * this.config.domeRadialFrequency, 0, 1);
+            // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
+            val = Math.Abs(Map(val, 0, 1, -1, 1));
 
-              gradientVal = dist;
-              break;
-            case 3:
-              // bubble mapping
-              var a = MapWrap(angle, currentAngle, 1 + currentAngle, 0, 1);
-              // scale val according to radial frequency
-              a = Wrap(a * this.config.domeRadialFrequency, 0, 1);
-              // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
-              a = Math.Abs(Map(a, 0, 1, -1, 1));
-              val = Clamp(dist - a, 0, 1);
+            gradientVal = Math.Abs(Map(angle, 0, 1, -1, 1));
+            break;
+          case 2:
+            // spiral mapping
+            val = MapWrap(
+              angle + dist / this.config.domeRadialFrequency,
+              currentAngle,
+              1 + currentAngle,
+              0,
+              1
+            );
+            // scale val according to radial frequency
+            val = Wrap(val * this.config.domeRadialFrequency, 0, 1);
+            // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
+            val = Math.Abs(Map(val, 0, 1, -1, 1));
 
-              gradientVal = dist;
-              break;
-          }
+            gradientVal = dist;
+            break;
+          case 3:
+            // bubble mapping
+            var a = MapWrap(angle, currentAngle, 1 + currentAngle, 0, 1);
+            // scale val according to radial frequency
+            a = Wrap(a * this.config.domeRadialFrequency, 0, 1);
+            // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
+            a = Math.Abs(Map(a, 0, 1, -1, 1));
+            val = Clamp(dist - a, 0, 1);
 
-          // size limit is scaled according the size slider and the current
-          // level
-          var sizeLimit = this.config.domeRadialSize * adjustedLevel;
-          bool on = val <= sizeLimit;
-
-          // use level to determine which colors to use
-          int whichGradient = (int)(level * 8);
-
-          var color = on
-            ? this.dome.GetGradientColor(
-                whichGradient,
-                gradientVal,
-                currentGradient,
-                true
-              )
-            : 0;
-
-          this.dome.SetPixel(i, j, color);
+            gradientVal = dist;
+            break;
         }
+
+        // size limit is scaled according the size slider and the current
+        // level
+        var sizeLimit = this.config.domeRadialSize * adjustedLevel;
+        bool on = val <= sizeLimit;
+
+        // use level to determine which colors to use
+        int whichGradient = (int)(level * 8);
+
+        var color = on
+          ? this.dome.GetGradientColor(
+              whichGradient,
+              gradientVal,
+              currentGradient,
+              true
+            )
+          : 0;
+        buffer[i].color = color;
       }
+
+      this.dome.WriteBuffer(buffer);
     }
 
     // Map value x from range a-b to range c-d
