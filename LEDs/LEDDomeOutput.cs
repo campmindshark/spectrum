@@ -285,8 +285,7 @@ namespace Spectrum.LEDs {
       }
     }
 
-    public void SetPixel(int strutIndex, int ledIndex, int color) {
-      ledIndex += this.config.domeSkipLEDs;
+    private Tuple<int, int> GetDeviceIndexes(int strutIndex, int ledIndex) {
       int pixelIndex = ledIndex;
       Tuple<int, int> strutPosition = strutPositions[strutIndex];
       int strutsLeft = strutPosition.Item2;
@@ -299,7 +298,16 @@ namespace Spectrum.LEDs {
       for (int j = 0; j < strutsLeft; j++) {
         pixelIndex += strutLengths[controlBoxStrutOrder[i][j]];
       }
-      this.SetDevicePixel(strutPosition.Item1, pixelIndex, color);
+      return Tuple.Create(strutPosition.Item1, pixelIndex);
+    }
+
+    public void SetPixel(int strutIndex, int ledIndex, int color) {
+      // TODO: remove domeSkipLEDs entirely unless it is useful
+      ledIndex += this.config.domeSkipLEDs;
+
+      Tuple<int, int> deviceIndexes = GetDeviceIndexes(strutIndex, ledIndex);
+
+      this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
       if (this.config.domeSimulationEnabled) {
         this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
           strutIndex = strutIndex,
