@@ -305,9 +305,26 @@ namespace Spectrum.LEDs {
       // TODO: remove domeSkipLEDs entirely unless it is useful
       ledIndex += this.config.domeSkipLEDs;
 
-      Tuple<int, int> deviceIndexes = GetDeviceIndexes(strutIndex, ledIndex);
+      // JK: leaving original code here since there's not really a way to test it off-playa
+      int pixelIndex = ledIndex;
+      Tuple<int, int> strutPosition = strutPositions[strutIndex];
+      int strutsLeft = strutPosition.Item2;
+      int i = 0;
+      while (controlBoxStrutOrder[i].Length <= strutsLeft) {
+        strutsLeft -= controlBoxStrutOrder[i].Length;
+        i++;
+        pixelIndex += maxStripLength;
+      }
+      for (int j = 0; j < strutsLeft; j++) {
+        pixelIndex += strutLengths[controlBoxStrutOrder[i][j]];
+      }
 
-      this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
+      this.SetDevicePixel(strutPosition.Item1, pixelIndex, color);
+
+      // JK: this is how i'd like the code to look
+      //Tuple<int, int> deviceIndexes = GetDeviceIndexes(strutIndex, ledIndex);
+      //this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
+
       if (this.config.domeSimulationEnabled) {
         this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
           strutIndex = strutIndex,
