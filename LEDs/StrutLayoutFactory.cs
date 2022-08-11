@@ -98,6 +98,9 @@ namespace Spectrum.LEDs {
       InitPoints();
     }
 
+    // gets x, y coordinates of one end of a strut
+    // returned coordinates are normalized to 0-1
+    // point: 0 for one end of the strut, 1 for other end of the strut
     public static Tuple<double, double> GetProjectedPoint(
       int strutIndex,
       int point
@@ -108,6 +111,8 @@ namespace Spectrum.LEDs {
        );
     }
 
+    // gets x, y coordinates of a given LED on a given strut
+    // returned coordinates are normalized to 0-1
     public static Tuple<double, double> GetProjectedLEDPoint(
       int strutIndex,
       int ledIndex
@@ -116,6 +121,8 @@ namespace Spectrum.LEDs {
       var p2 = GetProjectedPoint(strutIndex, 1);
       var leds = LEDDomeOutput.GetNumLEDs(strutIndex);
 
+      // we treat the endpoints of the strut as "invisible" LEDS,
+      // so that corner LEDS do not overlap
       var d = ((double)ledIndex + 1) / ((double)leds + 2);
       var x = (p2.Item1 - p1.Item1) * d + p1.Item1;
       var y = (p2.Item2 - p1.Item2) * d + p1.Item2;
@@ -123,6 +130,8 @@ namespace Spectrum.LEDs {
       return new Tuple<double, double>(x, y);
     }
 
+    // gets x, y coordinates of a given LED on a given strut
+    // also gets parametric coordinates using offsetX, offsetY as the center of the circle
     public static Tuple<
       double,
       double,
