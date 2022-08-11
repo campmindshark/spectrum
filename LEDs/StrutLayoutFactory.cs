@@ -132,6 +132,9 @@ namespace Spectrum.LEDs {
 
     // gets x, y coordinates of a given LED on a given strut
     // also gets parametric coordinates using offsetX, offsetY as the center of the circle
+    // TODO: this should probably be removed and done as a separate step, eg:
+    // x,y = GetProjectedLEDPoint()
+    // angle, dist = ConvertToParametric(x, y, centerX, centerY)
     public static Tuple<
       double,
       double,

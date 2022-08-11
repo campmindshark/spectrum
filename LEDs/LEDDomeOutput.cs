@@ -10,6 +10,20 @@ namespace Spectrum.LEDs {
 
   enum LEDDomeStrutTypes { Yellow, Red, Blue, Green, Purple, Orange };
 
+  public struct LEDDomeOutputPixel {
+    // index by strut and led within that strut
+    public int strutIndex;
+    public int strutLEDIndex;
+    // index by control box and pixel within that control box
+    public int controlBoxIndex;
+    public int controlBoxPixelIndex;
+    // position in projection
+    public double x;
+    public double y;
+    // color
+    public int color;
+  }
+
   public class LEDDomeOutput : Output {
 
     // There are 8 strands coming out of each control box. For each of these
@@ -331,6 +345,39 @@ namespace Spectrum.LEDs {
           ledIndex = ledIndex,
           color = color,
         });
+      }
+    }
+
+    public LEDDomeOutputPixel[] MakeDomeOutputBuffer() {
+      List<LEDDomeOutputPixel> pixels = new List<LEDDomeOutputPixel>();
+
+      for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
+        var leds = LEDDomeOutput.GetNumLEDs(i);
+        for (int j = 0; j < leds; j++) {
+          var point = StrutLayoutFactory.GetProjectedLEDPoint(i, j);
+          var deviceIndexes = GetDeviceIndexes(i, j);
+          LEDDomeOutputPixel pixel = new LEDDomeOutputPixel();
+          pixel.strutIndex = i;
+          pixel.strutLEDIndex = j;
+          pixel.controlBoxIndex = deviceIndexes.Item1;
+          pixel.controlBoxPixelIndex = deviceIndexes.Item2;
+          pixel.x = point.Item1;
+          pixel.y = point.Item2;
+          pixel.color = 0;
+
+          pixels.Add(pixel);
+        }
+      }
+      return pixels.ToArray();
+    }
+
+    public void WriteBuffer(LEDDomeOutputPixel[] buffer) {
+      for (int i = 0; i < buffer.Length; i++) {
+        // safe way
+        SetPixel(buffer[i].strutIndex, buffer[i].strutLEDIndex, buffer[i].color);
+
+        // JK: way i'd like it to be (skips excess calculations of indexes and so on)
+        // SetDevicePixel(buffer[i].controlBoxIndex, buffer[i].controlBoxPixelIndex, buffer[i].color);
       }
     }
 
