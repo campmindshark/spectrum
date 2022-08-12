@@ -2,7 +2,9 @@ name: MSBuild
 
 on:
   push:
-    branches: [ "no-madmom" ]
+    branches: [ "-no-madmom" ]
+    tags:
+      - v*
   pull_request:
     branches: [ "no-madmom" ]
 
