@@ -10,7 +10,6 @@ using System.Numerics;
 namespace Spectrum.Visualizers {
   class LEDDomeQuaternionTestVisualizer : Visualizer{
 
-
     private Configuration config;
     private OrientationInput orientation;
     private LEDDomeOutput dome;
