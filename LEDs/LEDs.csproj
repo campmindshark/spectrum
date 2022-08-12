@@ -41,6 +41,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="LEDDomeOutputBuffer.cs" />
     <Compile Include="LEDStageOutput.cs" />
     <Compile Include="LEDBarOutput.cs" />
     <Compile Include="StrutLayout.cs" />

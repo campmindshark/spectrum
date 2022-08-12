@@ -10,20 +10,6 @@ namespace Spectrum.LEDs {
 
   enum LEDDomeStrutTypes { Yellow, Red, Blue, Green, Purple, Orange };
 
-  public struct LEDDomeOutputPixel {
-    // index by strut and led within that strut
-    public int strutIndex;
-    public int strutLEDIndex;
-    // index by control box and pixel within that control box
-    public int controlBoxIndex;
-    public int controlBoxPixelIndex;
-    // position in projection
-    public double x;
-    public double y;
-    // color
-    public int color;
-  }
-
   public class LEDDomeOutput : Output {
 
     // There are 8 strands coming out of each control box. For each of these
@@ -348,7 +334,7 @@ namespace Spectrum.LEDs {
       }
     }
 
-    public LEDDomeOutputPixel[] MakeDomeOutputBuffer() {
+    public LEDDomeOutputBuffer MakeDomeOutputBuffer() {
       List<LEDDomeOutputPixel> pixels = new List<LEDDomeOutputPixel>();
 
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
@@ -368,16 +354,24 @@ namespace Spectrum.LEDs {
           pixels.Add(pixel);
         }
       }
-      return pixels.ToArray();
+
+      return new LEDDomeOutputBuffer(pixels.ToArray());
     }
 
-    public void WriteBuffer(LEDDomeOutputPixel[] buffer) {
-      for (int i = 0; i < buffer.Length; i++) {
+    public void WriteBuffer(LEDDomeOutputBuffer buffer) {
+      for (int i = 0; i < buffer.pixels.Length; i++) {
         // safe way
-        SetPixel(buffer[i].strutIndex, buffer[i].strutLEDIndex, buffer[i].color);
+        SetPixel(buffer.pixels[i].strutIndex, buffer.pixels[i].strutLEDIndex, buffer.pixels[i].color);
 
         // JK: way i'd like it to be (skips excess calculations of indexes and so on)
-        // SetDevicePixel(buffer[i].controlBoxIndex, buffer[i].controlBoxPixelIndex, buffer[i].color);
+        //SetDevicePixel(buffer.pixels[i].controlBoxIndex, buffer.pixels[i].controlBoxPixelIndex, buffer.pixels[i].color);
+        //if (this.config.domeSimulationEnabled) {
+        //  this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
+        //    strutIndex = buffer.pixels[i].strutIndex,
+        //    ledIndex = buffer.pixels[i].strutLEDIndex,
+        //    color = buffer.pixels[i].color,
+        //  });
+        //}
       }
     }
 

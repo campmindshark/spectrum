@@ -13,7 +13,7 @@ namespace Spectrum {
     private Configuration config;
     private AudioInput audio;
     private LEDDomeOutput dome;
-    private LEDDomeOutputPixel[] buffer;
+    private LEDDomeOutputBuffer buffer;
 
     private double currentAngle;
     private double currentGradient;
@@ -69,8 +69,10 @@ namespace Spectrum {
         config.domeRadialCenterDistance
       );
 
-      for (int i = 0; i < buffer.Length; i++) {
-        var pixel = buffer[i];
+      buffer.Fade(0.99, 0);
+
+      for (int i = 0; i < buffer.pixels.Length; i++) {
+        var pixel = buffer.pixels[i];
 
         var p = StrutLayoutFactory.GetProjectedLEDPointParametric(
           pixel.strutIndex,
@@ -152,7 +154,10 @@ namespace Spectrum {
               true
             )
           : 0;
-        buffer[i].color = color;
+
+        if (on) { 
+          buffer.pixels[i].color = color;
+        }
       }
 
       this.dome.WriteBuffer(buffer);
