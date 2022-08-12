@@ -54,6 +54,7 @@ jobs:
         filename: 'release.zip'
     - name: Release
       uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/v')
       with:
         files: './Spectrum/bin/Release/release.zip'
       env:
