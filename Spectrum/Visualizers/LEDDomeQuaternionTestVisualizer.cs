@@ -46,21 +46,11 @@ namespace Spectrum.Visualizers {
         var leds = LEDDomeOutput.GetNumLEDs(i);
         for (int j = 0; j < leds; j++) {
           var p = StrutLayoutFactory.GetProjectedLEDPoint(i, j); // centered on (.5, .5), [0, 1] x [0, 1]
-          var x = 1 - 2 * p.Item1; // now centered on (0, 0) and with range [0, 1]
-          var y = 2 * p.Item2 - 1;
+          var x = 2 * p.Item1 - 1; // now centered on (0, 0) and with range [0, 1]
+          var y = 1 - 2 * p.Item2; // this is because in the original mapping x, y come "out of" the top left corner
           float z = (float)Math.Sqrt(1 - x * x - y * y);
           Vector3 pixelPoint = new Vector3((float)x, (float)y, z);
           Vector3 pixelPointQuat = Vector3.Transform(pixelPoint, orientation.rotation);
-          double xdiff = p.Item1 - projectedSpot.Item1;
-          double ydiff = p.Item2 - projectedSpot.Item2;
-          double val = xdiff * xdiff + ydiff * ydiff;
-          /**
-          if(val < .25) {
-            this.dome.SetPixel(i, j, 0xFFFFFF);
-          } else {
-            this.dome.SetPixel(i, j, 0);
-          }
-          **/
           // Color maxes
           int maxIndex = MaxBy(pixelPointQuat);
           int color = 0;

@@ -4,7 +4,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Numerics;
 using Spectrum.Base;
-
 namespace Spectrum {
 
   public class OrientationInput : Input {
@@ -57,7 +56,7 @@ namespace Spectrum {
           short Z = BitConverter.ToInt16(buffer, 10);
           lock (mLock) {
             sensorState = new Quaternion(X / 16384.0f, Y / 16384.0f, Z / 16384.0f, W / 16384.0f);
-            mRotation = Quaternion.Inverse(Quaternion.Multiply(Quaternion.Inverse(calibratedOrigin), sensorState));
+            mRotation = Quaternion.Multiply(calibratedOrigin, Quaternion.Inverse(sensorState));
           }
         }
       }
@@ -65,6 +64,7 @@ namespace Spectrum {
 
     public void OperatorUpdate() {
       if (config.orientationCalibrate) {
+        // calibration always happens when facing directly 'forwards' in the y-direction
         lock(mLock) {
           calibratedOrigin = sensorState;
         }
