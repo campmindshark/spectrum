@@ -353,13 +353,8 @@
               </DockPanel>
             </DockPanel>
             <DockPanel Width="237">
-              <RadioButton DockPanel.Dock="Left" Name="tempoSelectorMadmom" HorizontalAlignment="Left" VerticalAlignment="Center" GroupName="TempoSelector" />
-              <Label Content="Madmom" FontSize="12" FontFamily="Segoe UI Semilight" Margin="0,0,0,2" Padding="1,5" />
-              <DockPanel DockPanel.Dock="Right" HorizontalAlignment="Right">
-                <CheckBox x:Name="tempoMadmomLink" IsChecked="False" Margin="5,0" VerticalAlignment="Center" />
-                <Label Content="Link Export" FontSize="12" FontFamily="Segoe UI Semilight" Margin="0,0,0,2" Padding="1,5" />
-              </DockPanel>
-            </DockPanel>
+                            <DockPanel DockPanel.Dock="Right" HorizontalAlignment="Right"/>
+                        </DockPanel>
             <DockPanel Width="237">
               <RadioButton DockPanel.Dock="Left" Name="tempoSelectorLink" HorizontalAlignment="Left" VerticalAlignment="Center" GroupName="TempoSelector" />
               <Label Content="Ableton Link" FontSize="12" FontFamily="Segoe UI Semilight" Margin="0,0,0,2" Padding="1,5" />
