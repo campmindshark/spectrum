@@ -1,4 +1,4 @@
-# Spectrum - No Madmom edition v1.0.12
+# Spectrum - No Madmom edition
 
 Spectrum is a Windows application written in C# intended for running lighting installations.
 
