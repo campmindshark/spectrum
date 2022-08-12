@@ -3,6 +3,8 @@ name: MSBuild
 on:
   push:
     branches: [ "no-madmom" ]
+    tags:
+      - v*
   pull_request:
     branches: [ "no-madmom" ]
 
@@ -46,7 +48,6 @@ jobs:
         path: Spectrum/bin/
     - name: Release
       uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/v')
       with:
         files: 'Spectrum/bin/Release/**'
       env:
