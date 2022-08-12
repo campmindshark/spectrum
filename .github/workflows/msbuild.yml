@@ -46,9 +46,11 @@ jobs:
       with:
         name: ${{github.sha}}
         path: Spectrum/bin/
+    - name: Zip release
+      run: zip release.zip './Spectrum/bin/Release/*' -r
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
-        files: 'Spectrum/bin/Release/**'
+        files: 'release.zip'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
