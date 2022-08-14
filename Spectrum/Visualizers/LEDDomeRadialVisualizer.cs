@@ -69,8 +69,6 @@ namespace Spectrum {
         config.domeRadialCenterDistance
       );
 
-      buffer.Fade(0.99, 0);
-
       for (int i = 0; i < buffer.pixels.Length; i++) {
         var pixel = buffer.pixels[i];
 
@@ -155,9 +153,7 @@ namespace Spectrum {
             )
           : 0;
 
-        if (on) { 
-          buffer.pixels[i].color = color;
-        }
+        buffer.pixels[i].color = color;
       }
 
       this.dome.WriteBuffer(buffer);
