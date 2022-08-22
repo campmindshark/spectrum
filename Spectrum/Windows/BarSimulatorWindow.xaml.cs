@@ -114,7 +114,7 @@ namespace Spectrum {
         y * 10,
         3,
         3,
-        Color.FromArgb(
+        System.Windows.Media.Color.FromArgb(
           (byte)(color >> 24),
           (byte)(color >> 16),
           (byte)(color >> 8),

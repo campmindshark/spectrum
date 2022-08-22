@@ -21,7 +21,7 @@ namespace Spectrum {
           return null;
         }
         int rgb = (int)value;
-        Color color = new Color();
+        System.Windows.Media.Color color = new System.Windows.Media.Color();
         color.R = (byte)(rgb >> 16);
         color.G = (byte)(rgb >> 8);
         color.B = (byte)rgb;
@@ -43,7 +43,7 @@ namespace Spectrum {
         if (value == null) {
           return null;
         }
-        Color color = (Color)value;
+        System.Windows.Media.Color color = (System.Windows.Media.Color)value;
         return (int)color.R << 16
           | (int)color.G << 8
           | (int)color.B;

@@ -75,7 +75,7 @@ namespace Spectrum {
           timeBuilder.Append(logMessage.time.ToLongTimeString());
           timeBuilder.Append("] ");
           Run timeRun = new Run(timeBuilder.ToString());
-          timeRun.Foreground = new SolidColorBrush(Color.FromRgb(0, 0, 255));
+          timeRun.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 0, 255));
           Run messageRun = new Run(logMessage.message);
           Paragraph paragraph = new Paragraph();
           paragraph.Inlines.Add(timeRun);
@@ -228,8 +228,10 @@ namespace Spectrum {
         [1] = this.domeActiveVisualizerRadial,
         [2] = this.domeActiveVisualizerRace,
         [3] = this.domeActiveVisualizerSnakes,
-        [4] = this.domeActiveVisualizerQuaternionTest
-
+        [4] = this.domeActiveVisualizerQuaternionTest,
+        [5] = this.domeActiveVisualizerQuaternionPaintbrush,
+        [6] = this.domeActiveVisualizerQuaternionFocus,
+        [7] = this.domeActiveVisualizerSplat
       }, true));
       this.Bind("domeVolumeRotationSpeed", this.domeVolumeRotationSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.dprs0, [0.125] = this.dprs1, [0.25] = this.dprs2, [0.5] = this.dprs3, [1.0] = this.dprs4, [2.0] = this.dprs5, [4.0] = this.dprs6 }, true));
       this.Bind("domeGradientSpeed", this.domeGradientSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.dsrs0, [0.125] = this.dsrs1, [0.25] = this.dsrs2, [0.5] = this.dsrs3, [1.0] = this.dsrs4, [2.0] = this.dsrs5, [4.0] = this.dsrs6 }, true));

@@ -62,6 +62,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Color.cs" />
     <Compile Include="Converter\ColorConverter.cs" />
     <Compile Include="Converter\TrueIfValueConverter.cs" />
     <Compile Include="Converter\SpecificValuesConverter.cs" />
@@ -69,8 +70,11 @@
     <Compile Include="Converter\StringJoinConverter.cs" />
     <Compile Include="OrientationInput.cs" />
     <Compile Include="Visualizers\LEDDomeFullColorFlashDiagnosticVisualizer.cs" />
+    <Compile Include="Visualizers\LEDDomeQuaternionFocusVisualizer.cs" />
+    <Compile Include="Visualizers\LEDDomeQuaternionPaintbrushVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeQuaternionTestVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeRaceVisualizer.cs" />
+    <Compile Include="Visualizers\LEDDomeSplatVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeRadialVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeSnakesVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeTVStaticVisualizer.cs" />
