@@ -230,7 +230,7 @@ namespace Spectrum {
         [3] = this.domeActiveVisualizerSnakes,
         [4] = this.domeActiveVisualizerQuaternionTest,
         [5] = this.domeActiveVisualizerQuaternionPaintbrush,
-        [6] = this.domeActiveVisualizerQuaternionFocus
+        [6] = this.domeActiveVisualizerQuaternionFocus,
         [7] = this.domeActiveVisualizerSplat
       }, true));
       this.Bind("domeVolumeRotationSpeed", this.domeVolumeRotationSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.dprs0, [0.125] = this.dprs1, [0.25] = this.dprs2, [0.5] = this.dprs3, [1.0] = this.dprs4, [2.0] = this.dprs5, [4.0] = this.dprs6 }, true));
