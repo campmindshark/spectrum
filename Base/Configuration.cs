@@ -87,6 +87,7 @@ namespace Spectrum.Base {
     // Dome Visualizer settings
     // TODO: move "volume" settings down here?
     int domeRadialEffect { get; set; }
+    double domeGlobalFadeSpeed { get; set; }
     double domeRadialSize { get; set; }
     int domeRadialFrequency { get; set; }
     double domeRadialCenterAngle { get; set; }
