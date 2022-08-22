@@ -371,7 +371,9 @@
                                         <ComboBoxItem x:Name="domeActiveVisualizerRace" Content='Race' />
                                         <ComboBoxItem x:Name="domeActiveVisualizerSnakes" Content='Snakes' />
                                         <ComboBoxItem x:Name="domeActiveVisualizerQuaternionTest" Content='Quaternion Test' />
-                                    </ComboBox>
+                                        <ComboBoxItem x:Name="domeActiveVisualizerQuaternionPaintbrush" Content='Quaternion Paintbrush' />
+                                        <ComboBoxItem x:Name="domeActiveVisualizerQuaternionFocus" Content='Quaternion Focus' />
+                  </ComboBox>
                                 </Grid>
                             </WrapPanel>
                         </Border>

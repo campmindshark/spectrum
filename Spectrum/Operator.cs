@@ -114,6 +114,18 @@ namespace Spectrum {
         orientation,
         dome
         ));
+      this.visualizers.Add(new LEDDomeQuaternionPaintbrushVisualizer(
+        this.config,
+        audio,
+        orientation,
+        dome
+        ));
+      this.visualizers.Add(new LEDDomeQuaternionFocusVisualizer(
+        this.config,
+        audio,
+        orientation,
+        dome
+        ));
       this.visualizers.Add(new LEDDomeRaceVisualizer(
         this.config,
         audio,

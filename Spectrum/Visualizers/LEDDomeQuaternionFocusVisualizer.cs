@@ -1,22 +1,27 @@
-﻿using Spectrum.Base;
+﻿using Spectrum.Audio;
+using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
 using System.Numerics;
 
 namespace Spectrum.Visualizers {
-  class LEDDomeQuaternionTestVisualizer : Visualizer{
+  class LEDDomeQuaternionFocusVisualizer : Visualizer {
 
 
     private Configuration config;
+    private AudioInput audio;
     private OrientationInput orientation;
     private LEDDomeOutput dome;
+    private Vector3 spot = new Vector3(0, 1, 0);
 
-    public LEDDomeQuaternionTestVisualizer(
+    public LEDDomeQuaternionFocusVisualizer(
       Configuration config,
+      AudioInput audio,
       OrientationInput orientation,
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.audio = audio;
       this.orientation = orientation;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
@@ -24,7 +29,7 @@ namespace Spectrum.Visualizers {
 
     public int Priority {
       get {
-        return this.config.domeActiveVis == 4 ? 2 : 0;
+        return this.config.domeActiveVis == 6 ? 2 : 0;
       }
     }
 
@@ -43,34 +48,21 @@ namespace Spectrum.Visualizers {
           var y = 1 - 2 * p.Item2; // this is because in the original mapping x, y come "out of" the top left corner
           float z = (float)Math.Sqrt(1 - x * x - y * y);
           Vector3 pixelPoint = new Vector3((float)x, (float)y, z);
-          Vector3 pixelPointQuat = Vector3.Transform(pixelPoint, orientation.rotation);
-          // Color maxes
-          int maxIndex = MaxBy(pixelPointQuat);
-          Color color = new Color(0, 0, 0);
-          if(maxIndex == 0) {
-            color = new Color(255, 0, 0);
-          } else if(maxIndex == 1) {
-            color = new Color(0, 255, 0);
-          } else if(maxIndex == 2) {
-            color = new Color(0, 0, 255);
+          // Calibration assigns (0, 1, 0) to be 'forward'
+          // So we want the post-transformed pixel closest to (0, 1, 0)?
+          int color = 0;
+          if (Vector3.Distance(Vector3.Transform(pixelPoint, orientation.rotation), spot) < .25) {
+            color = 0xFFFFFF;
           }
-          this.dome.SetPixel(i, j, color.ToInt());
+
+          this.dome.SetPixel(i, j, color);
         }
       }
     }
-
     public void Visualize() {
       this.Render();
 
       this.dome.Flush();
-    }
-    
-    // Returns the index of the maximum item in a vector
-    public int MaxBy(Vector3 v) {
-      if (Math.Abs(v.X) > Math.Abs(v.Y)) {
-        return Math.Abs(v.X) > Math.Abs(v.Z) ? 0 : 2;
-      }
-      return Math.Abs(v.Y) > Math.Abs(v.Z) ? 1 : 2;
     }
   }
 }
