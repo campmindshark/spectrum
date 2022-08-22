@@ -74,6 +74,7 @@
     <Compile Include="Visualizers\LEDDomeQuaternionPaintbrushVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeQuaternionTestVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeRaceVisualizer.cs" />
+    <Compile Include="Visualizers\LEDDomeSplatVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeRadialVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeSnakesVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeTVStaticVisualizer.cs" />
