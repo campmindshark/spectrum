@@ -9,6 +9,7 @@ namespace Spectrum.Visualizers {
     private Configuration config;
     private OrientationInput orientation;
     private LEDDomeOutput dome;
+    private LEDDomeOutputBuffer buffer;
 
     public LEDDomeQuaternionTestVisualizer(
       Configuration config,
@@ -19,6 +20,7 @@ namespace Spectrum.Visualizers {
       this.orientation = orientation;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
+      this.buffer = this.dome.MakeDomeOutputBuffer();
     }
 
     public int Priority {
@@ -34,28 +36,26 @@ namespace Spectrum.Visualizers {
     }
 
     void Render() {
-      for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-        var leds = LEDDomeOutput.GetNumLEDs(i);
-        for (int j = 0; j < leds; j++) {
-          var p = StrutLayoutFactory.GetProjectedLEDPoint(i, j); // centered on (.5, .5), [0, 1] x [0, 1]
-          var x = 2 * p.Item1 - 1; // now centered on (0, 0) and with range [0, 1]
-          var y = 1 - 2 * p.Item2; // this is because in the original mapping x, y come "out of" the top left corner
-          float z = (float)Math.Sqrt(1 - x * x - y * y);
-          Vector3 pixelPoint = new Vector3((float)x, (float)y, z);
-          Vector3 pixelPointQuat = Vector3.Transform(pixelPoint, orientation.rotation);
-          // Color maxes
-          int maxIndex = MaxBy(pixelPointQuat);
-          Color color = new Color(0, 0, 0);
-          if(maxIndex == 0) {
-            color = new Color(255, 0, 0);
-          } else if(maxIndex == 1) {
-            color = new Color(0, 255, 0);
-          } else if(maxIndex == 2) {
-            color = new Color(0, 0, 255);
-          }
-          this.dome.SetPixel(i, j, color.ToInt());
+      for (int i = 0; i < buffer.pixels.Length; i++) {
+        var p = buffer.pixels[i];
+        var x = 2 * p.x - 1; // now centered on (0, 0) and with range [0, 1]
+        var y = 1 - 2 * p.y; // this is because in the original mapping x, y come "out of" the top left corner
+        float z = (float)Math.Sqrt(1 - x * x - y * y);
+        Vector3 pixelPoint = new Vector3((float)x, (float)y, z);
+        Vector3 pixelPointQuat = Vector3.Transform(pixelPoint, orientation.rotation);
+        // Color maxes
+        int maxIndex = MaxBy(pixelPointQuat);
+        Color color = new Color(0, 0, 0);
+        if(maxIndex == 0) {
+          color = new Color(255, 0, 0);
+        } else if(maxIndex == 1) {
+          color = new Color(0, 255, 0);
+        } else if(maxIndex == 2) {
+          color = new Color(0, 0, 255);
         }
+        buffer.pixels[i].color = color.ToInt();
       }
+      this.dome.WriteBuffer(buffer);
     }
 
     public void Visualize() {

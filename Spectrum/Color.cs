@@ -6,16 +6,21 @@ namespace Spectrum {
     public byte R;
     public byte G;
     public byte B;
-    public double H;
-    public double S;
-    public double V;
+    public double H; // Hue - [0, 1] from Red to Green to Blue back to Red (periodic)
+    public double S; // Saturation - [0, 1] (grayness)
+    public double V; // Value - [0, 1] (brightness)
 
-    public Color(byte r, byte g, byte b) {
-      R = r;
-      G = g;
-      B = b;
-      double max = Math.Max(Math.Max(r / 255.0d, g / 255.0d), b / 255.0d);
-      double min = Math.Max(Math.Max(r / 255.0d, g / 255.0d), b / 255.0d);
+    public Color(byte _r, byte _g, byte _b) {
+      R = _r;
+      G = _g;
+      B = _b;
+
+      double r = _r / 255d;
+      double g = _g / 255d;
+      double b = _b / 255d;
+
+      double max = Math.Max(Math.Max(r, g), b);
+      double min = Math.Min(Math.Min(r, g), b);
       
       double d = max - min;
       double s = max == 0 ? 0 : d / max;

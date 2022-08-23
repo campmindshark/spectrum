@@ -235,8 +235,12 @@ namespace Spectrum {
       }, true));
       this.Bind("domeVolumeRotationSpeed", this.domeVolumeRotationSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.dprs0, [0.125] = this.dprs1, [0.25] = this.dprs2, [0.5] = this.dprs3, [1.0] = this.dprs4, [2.0] = this.dprs5, [4.0] = this.dprs6 }, true));
       this.Bind("domeGradientSpeed", this.domeGradientSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.dsrs0, [0.125] = this.dsrs1, [0.25] = this.dsrs2, [0.5] = this.dsrs3, [1.0] = this.dsrs4, [2.0] = this.dsrs5, [4.0] = this.dsrs6 }, true));
-       this.Bind("domeRadialCenterSpeed", this.domeRadialCenterSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.rcs0, [0.125] = this.rcs1, [0.25] = this.rcs2, [0.5] = this.rcs3, [1.0] = this.rcs4, [2.0] = this.rcs5, [4.0] = this.rcs6 }, true));
+      this.Bind("domeRadialCenterSpeed", this.domeRadialCenterSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.rcs0, [0.125] = this.rcs1, [0.25] = this.rcs2, [0.5] = this.rcs3, [1.0] = this.rcs4, [2.0] = this.rcs5, [4.0] = this.rcs6 }, true));
 
+      this.Bind("domeGlobalFadeSpeed", this.domeGlobalFadeSpeedSlider, Slider.ValueProperty);
+      this.Bind("domeGlobalFadeSpeed", this.domeGlobalFadeSpeedLabel, Label.ContentProperty);
+      this.Bind("domeGlobalHueSpeed", this.domeGlobalHueSpeedSlider, Slider.ValueProperty);
+      this.Bind("domeGlobalHueSpeed", this.domeGlobalHueSpeedLabel, Label.ContentProperty);
       this.Bind("domeRadialEffect", this.domeRadialEffect, ComboBox.SelectedIndexProperty, BindingMode.TwoWay);
       this.Bind("domeRadialSize", this.domeRadialSizeSlider, Slider.ValueProperty);
       this.Bind("domeRadialSize", this.domeRadialSizeLabel, Label.ContentProperty);

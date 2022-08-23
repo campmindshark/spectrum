@@ -45,7 +45,7 @@ namespace Spectrum {
     }
 
     void Render() {
-
+      buffer.Fade(1 - Math.Pow(10, -this.config.domeGlobalFadeSpeed), 0);
       double level = this.audio.LevelForChannel(0);
       // Sqrt makes values larger and gives more resolution for lower values
       double adjustedLevel = Clamp(Math.Sqrt(level), 0.1, 1);
@@ -139,23 +139,17 @@ namespace Spectrum {
         // size limit is scaled according the size slider and the current
         // level
         var sizeLimit = this.config.domeRadialSize * adjustedLevel;
-        bool on = val <= sizeLimit;
-
-        // use level to determine which colors to use
-        int whichGradient = (int)(level * 8);
-
-        var color = on
-          ? this.dome.GetGradientColor(
+        if(val <= sizeLimit) {
+          // use level to determine which colors to use
+          int whichGradient = (int)(level * 8);
+          buffer.pixels[i].color = this.dome.GetGradientColor(
               whichGradient,
               gradientVal,
               currentGradient,
               true
-            )
-          : 0;
-
-        buffer.pixels[i].color = color;
+            );
+        }
       }
-
       this.dome.WriteBuffer(buffer);
     }
 

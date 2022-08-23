@@ -93,6 +93,8 @@ namespace Spectrum {
     public int domeSkipLEDs { get; set; } = 0;
     public int domeTestPattern { get; set; } = 0;
     public int domeActiveVis { get; set; } = 0;
+    public double domeGlobalFadeSpeed { get; set; } = 0;
+    public double domeGlobalHueSpeed { get; set; } = 1;
     public int domeRadialEffect { get; set; } = 0;
     public double domeRadialSize { get; set; } = 0.1;
     public int domeRadialFrequency { get; set; } = 1;
