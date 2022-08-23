@@ -239,6 +239,8 @@ namespace Spectrum {
 
       this.Bind("domeGlobalFadeSpeed", this.domeGlobalFadeSpeedSlider, Slider.ValueProperty);
       this.Bind("domeGlobalFadeSpeed", this.domeGlobalFadeSpeedLabel, Label.ContentProperty);
+      this.Bind("domeGlobalHueSpeed", this.domeGlobalHueSpeedSlider, Slider.ValueProperty);
+      this.Bind("domeGlobalHueSpeed", this.domeGlobalHueSpeedLabel, Label.ContentProperty);
       this.Bind("domeRadialEffect", this.domeRadialEffect, ComboBox.SelectedIndexProperty, BindingMode.TwoWay);
       this.Bind("domeRadialSize", this.domeRadialSizeSlider, Slider.ValueProperty);
       this.Bind("domeRadialSize", this.domeRadialSizeLabel, Label.ContentProperty);

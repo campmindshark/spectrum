@@ -435,6 +435,11 @@
               <Label x:Name="domeGlobalFadeSpeedLabel" Content="0" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
             </Grid>
             <Grid Height="24">
+              <Label Content="Global Hue Speed" Margin="-2,3,2.4,0" Padding="0" />
+              <Slider x:Name="domeGlobalHueSpeedSlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="1.0" Maximum="4.0" LargeChange="1" SmallChange="0.1" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+              <Label x:Name="domeGlobalHueSpeedLabel" Content="0" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
+            </Grid>
+            <Grid Height="24">
               <Label Content="Radial Size" Margin="-2,3,2.4,0" Padding="0" />
               <Slider x:Name="domeRadialSizeSlider" Value="0.1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Maximum="4.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
               <Label x:Name="domeRadialSizeLabel" Content="0.1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
