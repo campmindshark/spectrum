@@ -95,11 +95,82 @@ namespace Spectrum {
           );
     }
     public static Color BlendHSV(double alpha, Color a, Color b) {
+      double hueDiff = HueDiff(a.H, b.H);
+      double hueDir = HueDir(a.H, b.H);
       return new Color(
-        ((b.H - a.H) * alpha + a.H),
+        Wrap(hueDir * hueDiff * alpha + a.H, 0, 1),
         ((b.S - a.S) * alpha + a.S),
         ((b.V - a.V) * alpha + a.V)
         );
     }
+    private static double Clamp(double x, double a, double b) {
+      if (x < a) return a;
+      if (x > b) return b;
+      return x;
+    }
+    private static double Wrap(double x, double a, double b) {
+      var range = b - a;
+      while (x < a) x += range;
+      while (x > b) x -= range;
+      return x;
+    }
+    // Hue values are in [0, 1] and wrap around a circle - 0 and 1 both represent red
+    // Shortest value and direction between two hue values
+    private static double HueDiff(double a, double b) {
+      return Math.Min(Math.Min(Math.Abs(b - a), Math.Abs(b - a - 1)), Math.Abs(b - a + 1));
+    }
+    private static int HueDir(double a, double b) {
+      // Ordinary case
+      if (b > a) {
+        if (Math.Abs(b - a) > .5) {
+          return -1;
+        } else {
+          return 1;
+        }
+      // Reflected case
+      } else {
+        if (Math.Abs(b - a) > .5) {
+          return 1;
+        } else {
+          return -1;
+        }
+      }
+    }
+    // Pixel blending modes
+    // Add: just direct RGB addition
+    public static Color BlendAdd(double alpha, Color a, Color b) {
+      return new Color(
+        ToByte(a.R + alpha * b.R), 
+        ToByte(a.G + alpha * b.G), 
+        ToByte(a.B + alpha * b.B));
+    }
+    // Lighten: brighten the original color by the V value of the second
+    public static Color BlendLighten(double alpha, Color a, Color b) {
+      return new Color(a.H, a.S, Clamp(a.V + alpha * b.V, 0, 1));
+    }
+    // Lighten2: apply the new color but limit its brightness by existing color
+    public static Color BlendLighten2(double alpha, Color a, Color b) {
+      return new Color(b.H, b.S, Clamp(a.V + alpha * b.V, 0, 1));
+    }
+    // Darken: darken the original color by the V value of the second
+    public static Color BlendDarken(double alpha, Color a, Color b) {
+      return new Color(a.H, a.S, Clamp(a.V - alpha * b.V, 0, 1));
+    }
+    // Hue: set the hue of the first color to the hue of the second
+    public static Color BlendHue(double alpha, Color a, Color b) {
+      double hueDiff = HueDiff(a.H, b.H);
+      double hueDir = HueDir(a.H, b.H);
+
+      return new Color(Wrap(hueDir * hueDiff * alpha + a.H, 0, 1), a.S, a.V); // FIX THIS
+    }
+    // Saturate: set the saturation of the first color to the hue of the second
+    public static Color BlendSaturation(double alpha, Color a, Color b) {
+      return new Color(a.H, (b.S - a.S) * alpha + a.S, a.V);
+    }
+    // Value: set the value of the first color to the value of the second
+    public static Color BlendValue(double alpha, Color a, Color b) {
+      return new Color(a.H, a.S, (b.V - a.V) * alpha + a.V);
+    }
+
   }
 }
