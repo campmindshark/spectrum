@@ -424,7 +424,9 @@ namespace Spectrum.Audio {
         this.AudioData
       ) / maxLevel;
     }
-
+    public float GetBin(int bin) {
+      return this.AudioData[bin];
+    }
     private double GetFilteredMax(
       double low,
       double high,
