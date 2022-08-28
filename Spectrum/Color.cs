@@ -161,7 +161,7 @@ namespace Spectrum {
       double hueDiff = HueDiff(a.H, b.H);
       double hueDir = HueDir(a.H, b.H);
 
-      return new Color(Wrap(hueDir * hueDiff * alpha + a.H, 0, 1), a.S, a.V); // FIX THIS
+      return new Color(Wrap(hueDir * hueDiff * alpha + a.H, 0, 1), a.S, a.V);
     }
     // Saturate: set the saturation of the first color to the hue of the second
     public static Color BlendSaturation(double alpha, Color a, Color b) {
@@ -170,6 +170,14 @@ namespace Spectrum {
     // Value: set the value of the first color to the value of the second
     public static Color BlendValue(double alpha, Color a, Color b) {
       return new Color(a.H, a.S, (b.V - a.V) * alpha + a.V);
+    }
+    // Background: set to the new color only if the old color is black
+    public static Color BlendBackground(Color a, Color b) {
+      if (a.V != 0) {
+        return a;
+      } else {
+        return b;
+      }
     }
 
   }

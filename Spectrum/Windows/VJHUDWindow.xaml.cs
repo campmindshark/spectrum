@@ -241,6 +241,12 @@ namespace Spectrum {
       this.Bind("domeGlobalFadeSpeed", this.domeGlobalFadeSpeedLabel, Label.ContentProperty);
       this.Bind("domeGlobalHueSpeed", this.domeGlobalHueSpeedSlider, Slider.ValueProperty);
       this.Bind("domeGlobalHueSpeed", this.domeGlobalHueSpeedLabel, Label.ContentProperty);
+      this.Bind("domeTwinkleDensity", this.domeTwinkleDensitySlider, Slider.ValueProperty);
+      this.Bind("domeTwinkleDensity", this.domeTwinkleDensityLabel, Label.ContentProperty);
+      this.Bind("domeRippleCDStep", this.domeRippleCDStepSlider, Slider.ValueProperty);
+      this.Bind("domeRippleCDStep", this.domeRippleCDStepLabel, Label.ContentProperty);
+      this.Bind("domeRippleStep", this.domeRippleStepSlider, Slider.ValueProperty);
+      this.Bind("domeRippleStep", this.domeRippleStepLabel, Label.ContentProperty);
       this.Bind("domeRadialEffect", this.domeRadialEffect, ComboBox.SelectedIndexProperty, BindingMode.TwoWay);
       this.Bind("domeRadialSize", this.domeRadialSizeSlider, Slider.ValueProperty);
       this.Bind("domeRadialSize", this.domeRadialSizeLabel, Label.ContentProperty);

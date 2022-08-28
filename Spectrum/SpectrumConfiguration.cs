@@ -95,6 +95,9 @@ namespace Spectrum {
     public int domeActiveVis { get; set; } = 0;
     public double domeGlobalFadeSpeed { get; set; } = 0;
     public double domeGlobalHueSpeed { get; set; } = 1;
+    public double domeTwinkleDensity { get; set; } = 0;
+    public double domeRippleCDStep { get; set; } = 1;
+    public double domeRippleStep { get; set; } = 1;
     public int domeRadialEffect { get; set; } = 0;
     public double domeRadialSize { get; set; } = 0.1;
     public int domeRadialFrequency { get; set; } = 1;

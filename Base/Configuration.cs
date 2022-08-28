@@ -89,6 +89,9 @@ namespace Spectrum.Base {
     int domeRadialEffect { get; set; }
     double domeGlobalFadeSpeed { get; set; }
     double domeGlobalHueSpeed { get; set; }
+    double domeTwinkleDensity { get; set; }
+    double domeRippleCDStep { get; set; }
+    double domeRippleStep { get; set; }
     double domeRadialSize { get; set; }
     int domeRadialFrequency { get; set; }
     double domeRadialCenterAngle { get; set; }
