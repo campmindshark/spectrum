@@ -1,0 +1,28 @@
+1. All dome blueprints/documentation/etc. is from the POV of someone above the dome looking down.
+
+2. Mapping in the book is correct: 
+                 G
+      A     B  .
+       \   / .
+        \ /.
+    F----V----C
+        .^
+      . / \
+    .  /   \
+  .   E     D
+H
+
+B-1
+F-2
+E-3
+H-4
+D-5
+A-6
+G-7
+C-8
+
+A: 24, 31
+B: 16, 23
+C:  8, 15
+D:  0, 7
+E: 32, 39
