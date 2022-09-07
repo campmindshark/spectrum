@@ -140,6 +140,7 @@ namespace Spectrum.Visualizers {
 
         // # Items here are now rendered in the order they come in
         // # Halo - visual that goes around the base of the dome
+        /**
         double angle = Math.Atan(y / x);
         if (x > 0) {
           angle = angle + Math.PI / 2;
@@ -148,9 +149,10 @@ namespace Spectrum.Visualizers {
         } // angle should run 0 to pi now
         double spectrum_level = .75 * Math.Sqrt(Math.Sqrt((double)audio.GetBin(1 + (int)Math.Round(128 * (angle / (3 * Math.PI))))));
         if (z < spectrum_level) {
-          Color new_color = new Color(Wrap((angle - 2), 0, 1) / (3 * Math.PI), Clamp(Math.Sqrt(1 - z), 0, 1), Clamp(1 - 1.05 * z, 0, 1));
+          Color new_color = new Color(Wrap((angle - 2), 0, 1) / (3 * Math.PI), Clamp(Math.Sqrt(1 - z), 0, 1), Clamp(1 - 1.05 * z, 0, .2));
           buffer.pixels[i].color = Color.BlendHSV(.1, old_color, new_color).ToInt();
         }
+        **/
         // # Ring stamps - shapes that appear based on sensor facing
         if (stampFired) {
           // Single band

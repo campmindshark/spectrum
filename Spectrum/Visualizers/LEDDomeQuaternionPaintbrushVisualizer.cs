@@ -1,4 +1,5 @@
-﻿using Spectrum.Audio;
+﻿using NAudio.CoreAudioApi;
+using Spectrum.Audio;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
@@ -14,10 +15,22 @@ namespace Spectrum.Visualizers {
     private LEDDomeOutput dome;
     private LEDDomeOutputBuffer buffer;
 
+    private Quaternion currentOrientation;
+    private Quaternion lastOrientation;
+    private int idleTimer = 600;
+    private bool idle = false;
+
     private Random rand;
 
     private Vector3 spot = new Vector3(0, 1, 0);
 
+    private double yaw = 0;
+    private double pitch = -.25;
+    private double roll = 0;
+
+    private double yawMomentum = 0;
+    private double pitchMomentum = 0.0005;
+    private double rollMomentum = 0;
     // Stamp effect variables
     private Quaternion stampCenter = new Quaternion(0, 0, 0, 1);
     int counter = 0;
@@ -45,6 +58,8 @@ namespace Spectrum.Visualizers {
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
       this.rand = new Random();
+      this.currentOrientation = orientation.rotation;
+      this.lastOrientation = new Quaternion(0, 0, 0, 1);
     }
 
     public int Priority {
@@ -63,6 +78,37 @@ namespace Spectrum.Visualizers {
       double progress = this.config.beatBroadcaster.ProgressThroughMeasure;
       double level = this.audio.LevelForChannel(0);
       counter++;
+      currentOrientation = orientation.rotation;
+      // Check if sensor is moving or not
+      // Potentially tweak this
+      float sensorThreshold = .00015f;
+      Console.WriteLine(idleTimer);
+      if ((Math.Abs(1 - Quaternion.Dot(lastOrientation, currentOrientation)) < sensorThreshold) | 
+        (isZero(currentOrientation))) {
+        if(idleTimer != 0) {
+          idleTimer--;
+        }
+      } else {
+        idleTimer = 600;
+      }
+      idle = idleTimer <= 0;
+      if (idle) {
+        // Sensor not apparently moving
+        // randomly nudge pointer
+        // enforce unit-ness
+        double noise = 0.0001;
+        yawMomentum = Clamp(yawMomentum + Nudge(noise), -.001, .001);
+        rollMomentum = Clamp(rollMomentum + Nudge(noise), -.001, .001);
+        pitchMomentum = Clamp(pitchMomentum + Nudge(noise), -.001, .001);
+
+        yaw = (yaw + 5 * level * yawMomentum);
+        pitch = (pitch + 5 * level * pitchMomentum);
+        roll = (roll + 5 * level * rollMomentum);
+
+        Quaternion dummyOrientation = Quaternion.CreateFromYawPitchRoll((float)(2 * Math.PI * yaw), (float)(2 * Math.PI * pitch), (float)(2 * Math.PI * roll));
+        dummyOrientation = Quaternion.Normalize(dummyOrientation);
+        currentOrientation = dummyOrientation;
+      }
       // A beat has happened but we are still rendering a stamp
       if (cooldown > 0 & lastProgress > progress) {
         cooldown--;
@@ -72,13 +118,13 @@ namespace Spectrum.Visualizers {
         }
       }
       // Enough time has passed and something loud enough has happened - fire stamp
-      if (counter > 1000 & level > .7) {
+      if (counter > 1000 & level > .3) {
         stampFired = true;
         counter = 0;
         cooldown = 7;
         // Choose one of the three
         stampEffect = (stampEffect + 1) % 3;
-        stampCenter = orientation.rotation;
+        stampCenter = currentOrientation;
       }
 
       if (rippleCounter > 1000) { // tweak this later
@@ -93,18 +139,12 @@ namespace Spectrum.Visualizers {
 
       if (rippleCooldown < 0) {
         rippleFiring = true;
-        rippleCenter = orientation.rotation;
+        rippleCenter = currentOrientation;
       }
 
       if (rippleFiring) {
         rippleCounter += this.config.domeRippleStep;
       }
-
-      // Global effects
-      // Fade out
-      buffer.Fade(1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed), 0);
-      // Hue shift to the beat
-      buffer.HueRotate((3 * progress * progress - 3 * progress + 1) * Math.Pow(10, -this.config.domeGlobalHueSpeed));
 
       for (int i = 0; i < buffer.pixels.Length; i++) {
         var p = buffer.pixels[i];
@@ -115,31 +155,20 @@ namespace Spectrum.Visualizers {
         Vector3 pixelPoint = new Vector3((float)x, (float)y, z);
 
         // # Items here are now rendered in the order they come in
-        // # Halo - visual that goes around the base of the dome
-        double angle = Math.Atan(y / x);
-        if (x > 0) {
-          angle = angle + Math.PI / 2;
-        } else {
-          angle = Math.PI / 2 - angle;
-        } // angle should run 0 to pi now
-        double spectrum_level = .75 * Math.Sqrt(Math.Sqrt((double)audio.GetBin(1 + (int)Math.Round(128 * (angle / (3 * Math.PI))))));
-        if (z < spectrum_level) {
-          Color new_color = new Color(Wrap((angle - 2), 0, 1) / (3 * Math.PI), Clamp(Math.Sqrt(1 - z), 0, 1), Clamp(1 - 1.05 * z, 0, 1));
-          buffer.pixels[i].color = Color.BlendHSV(.1, old_color, new_color).ToInt();
-        }
+
         // # Ring stamps - shapes that appear based on sensor facing
         if (stampFired) {
           // Single band
           if (stampEffect == 0) {
-            if (Between(Vector3.Distance(Vector3.Transform(pixelPoint, orientation.rotation), spot), 1.2, 1.22)) {
-              double hue = (256 * (orientation.rotation.W + 1) / 2) / 256d;
+            if (Between(Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), spot), 1.18, 1.22)) {
+              double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
               Color color = new Color(hue, .2, 1);
               buffer.pixels[i].color = color.ToInt();
             }
           } else if (stampEffect == 1) {
             // Evenly spaced "grid"
-            if (Vector3.Distance(Vector3.Transform(pixelPoint, orientation.rotation), spot) % .4 < .05) {
-              double hue = (256 * (orientation.rotation.W + 1) / 2) / 256d;
+            if (Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), spot) % .4 < .05) {
+              double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
               Color color = new Color(hue, .2, 1);
               buffer.pixels[i].color = color.ToInt();
             }
@@ -151,22 +180,13 @@ namespace Spectrum.Visualizers {
             // have them appear 'to the beat'?
             double ringDistance = 2.4 - Clamp(1.8d / (4 - (cooldown / 2d)), 0, 2.4);
             if (Between(Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot), ringDistance, ringDistance + .003 * cooldown * cooldown)) {
-              double hue = (256 * (orientation.rotation.W + 1) / 2) / 256d;
+              double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
               Color color = new Color(hue, .2, 1);
               buffer.pixels[i].color = color.ToInt();
             }
           }
         }
 
-        // # Ripple - global color wave
-        double rippleRadius = rippleCounter / 300d;
-        if (CloseTo(Vector3.Distance(Vector3.Transform(pixelPoint, rippleCenter), spot), rippleRadius, .01)) {
-          double hue = Wrap(((256 * (orientation.rotation.W + 1) / 2) / 256d) + Vector3.Dot(Vector3.Transform(pixelPoint, rippleCenter), spot) / 2, 0, 1);
-          double saturation = Clamp(1 - rippleCounter / 600d, 0, 1);
-          double value = Clamp(1 - rippleCounter / 800d, 0, 1);
-          Color color = new Color(hue, saturation, value);
-          buffer.pixels[i].color = Color.BlendBackground(old_color, color).ToInt();
-        }
         // # Twinkling - (configurably) dense bright dots at random
         if (rand.NextDouble() < this.config.domeTwinkleDensity & z > .2) {
           buffer.pixels[i].color = 0xFFFFFF;
@@ -176,22 +196,35 @@ namespace Spectrum.Visualizers {
         // Calibration assigns (0, 1, 0) to be 'forward'
         // So we want the post-transformed pixel closest to (0, 1, 0)?
         double radius = Clamp(this.config.domeRadialSize * level / 6, .01, 1);
-        double distance = Vector3.Distance(Vector3.Transform(pixelPoint, orientation.rotation), spot);
-        if (distance < radius) {
-          // Base color is just determined by sensor orientation
-          // Maybe add a rotation based on ProgressThroughMeasure?
-          // Also maybe add hue based on dome position?
-          double hue = (256 * (orientation.rotation.W + 1) / 2) / 256d;
+        double distance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), spot);
+        double negadistance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), Vector3.Negate(spot));
+        if (distance < radius | negadistance < radius) {
+          double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
           // At the high volumes, desaturate
-          double saturation = Clamp(1 / (1 - level) - 1, 0, 1);
+          double saturation = Clamp(1.5 / (1 - level) - 1, 0, 1);
           Color color = new Color(hue, saturation, 1 - Clamp(.01 / (radius - distance), 0, 1));
           buffer.pixels[i].color = color.ToInt();
         }
+        // # Ripple - global color wave
+        double rippleRadius = rippleCounter / 300d;
+        if (CloseTo(Vector3.Distance(Vector3.Transform(pixelPoint, rippleCenter), spot), rippleRadius, .01)) {
+          double hue = Wrap(((256 * (currentOrientation.W + 1) / 2) / 256d) + Vector3.Dot(Vector3.Transform(pixelPoint, rippleCenter), spot) / 2, 0, 1);
+          double saturation = Clamp(1 - rippleCounter / 600d, 0, 1);
+          double value = Clamp(1 - rippleCounter / 800d, 0, 1);
+          Color color = new Color(hue, saturation, value);
+          buffer.pixels[i].color = color.ToInt();
+        }
       }
+      // Global effects
+      // Fade out
+      buffer.Fade(1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed), 0);
+      // Hue shift to the beat
+      buffer.HueRotate((3 * progress * progress - 3 * progress + 1) * Math.Pow(10, -this.config.domeGlobalHueSpeed));
       // Finished pixel iterations - clean up
       if (stampEffect == 0 | stampEffect == 1) {
         stampFired = false;
       }
+      lastOrientation = orientation.rotation;
       lastProgress = progress;
       this.dome.WriteBuffer(buffer);
 
@@ -220,6 +253,12 @@ namespace Spectrum.Visualizers {
     private static bool CloseTo(double x, double y, double tolerance) {
       return Math.Abs(x - y) < tolerance;
     }
+    private float Nudge(double scale) {
+      return (float)((this.rand.NextDouble() - .5) * 2 * scale);
+    }
 
+    private bool isZero(Quaternion vector) {
+      return (vector.W == 0 & vector.X == 0 & vector.Y == 0 & vector.Z == 0);
+    }
   }
 }
