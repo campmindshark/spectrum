@@ -43,7 +43,7 @@ namespace Spectrum.Visualizers {
         var y = 1 - 2 * p.y; // this is because in the original mapping x, y come "out of" the top left corner
         float z = (float)Math.Sqrt(1 - x * x - y * y);
         Vector3 pixelPoint = new Vector3((float)x, (float)y, z);
-        Vector3 pixelPointQuat = Vector3.Transform(pixelPoint, orientation.rotation);
+        Vector3 pixelPointQuat = Vector3.Transform(pixelPoint, orientation.deviceRotation(config.orientationDeviceSpotlight));
         // Color maxes
         int maxIndex = MaxBy(pixelPointQuat);
         Color color = new Color(0, 0, 0);

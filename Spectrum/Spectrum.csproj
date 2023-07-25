@@ -68,9 +68,10 @@
     <Compile Include="Converter\SpecificValuesConverter.cs" />
     <Compile Include="Converter\FPSToBrushConverter.cs" />
     <Compile Include="Converter\StringJoinConverter.cs" />
+    <Compile Include="OrientationDevice.cs" />
     <Compile Include="OrientationInput.cs" />
     <Compile Include="Visualizers\LEDDomeFullColorFlashDiagnosticVisualizer.cs" />
-    <Compile Include="Visualizers\LEDDomeQuaternionFocusVisualizer.cs" />
+    <Compile Include="Visualizers\LEDDomeQuaternionMultiTestVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeQuaternionPaintbrushVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeQuaternionTestVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeRaceVisualizer.cs" />

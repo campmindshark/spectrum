@@ -158,6 +158,7 @@ namespace Spectrum.Base {
     bool humanLinkOutput { get; set; }
     bool madmomLinkOutput { get; set; }
 
+    int orientationDeviceSpotlight { get; set; }
     bool orientationCalibrate { get; set; }
   }
 

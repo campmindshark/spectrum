@@ -229,8 +229,8 @@ namespace Spectrum {
         [2] = this.domeActiveVisualizerRace,
         [3] = this.domeActiveVisualizerSnakes,
         [4] = this.domeActiveVisualizerQuaternionTest,
-        [5] = this.domeActiveVisualizerQuaternionPaintbrush,
-        [6] = this.domeActiveVisualizerQuaternionFocus,
+        [5] = this.domeActiveVisualizerQuaternionMultiTest,
+        [6] = this.domeActiveVisualizerQuaternionPaintbrush,
         [7] = this.domeActiveVisualizerSplat
       }, true));
       this.Bind("domeVolumeRotationSpeed", this.domeVolumeRotationSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.dprs0, [0.125] = this.dprs1, [0.25] = this.dprs2, [0.5] = this.dprs3, [1.0] = this.dprs4, [2.0] = this.dprs5, [4.0] = this.dprs6 }, true));
@@ -773,6 +773,13 @@ namespace Spectrum {
 
     private void OrientationCalibrationClicked(object sender, RoutedEventArgs e) {
       this.config.orientationCalibrate = true;
+    }
+
+    private void OrientationDeviceSpotlightChanged(object sender, TextChangedEventArgs e) {
+      short deviceId;
+      if (Int16.TryParse(orientationDeviceSpotlightInput.Text, out deviceId)) {
+        this.config.orientationDeviceSpotlight = deviceId;
+      }
     }
   }
 

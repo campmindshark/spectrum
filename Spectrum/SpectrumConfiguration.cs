@@ -214,6 +214,7 @@ namespace Spectrum {
       }
     }
 
+    public int orientationDeviceSpotlight { get; set; } = 0;
     public bool orientationCalibrate { get; set; } = false;
 
   }

@@ -329,7 +329,8 @@
           <Label x:Name="orientationLabel" Content="Orientation controls" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
           <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
             <WrapPanel Width="300" HorizontalAlignment="Left" VerticalAlignment="Top">
-              <Button x:Name="orientationCalibrate" Content="Set calibration" HorizontalAlignment="Left" Margin="0,0,0,0" VerticalAlignment="Top" Click="OrientationCalibrationClicked" Padding="0,0" />
+              <Button x:Name="orientationCalibrate" Content="Set calibration" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Click="OrientationCalibrationClicked" Padding="0,0" />
+              <TextBox x:Name="orientationDeviceSpotlightInput" Margin ="4,4,4,4" Width="21" TextChanged="OrientationDeviceSpotlightChanged"/>
             </WrapPanel>
           </Border>
         </WrapPanel>
@@ -379,8 +380,8 @@
                 <ComboBoxItem x:Name="domeActiveVisualizerRace" Content='Race' />
                 <ComboBoxItem x:Name="domeActiveVisualizerSnakes" Content='Snakes' />
                 <ComboBoxItem x:Name="domeActiveVisualizerQuaternionTest" Content='Quaternion Test' />
+                <ComboBoxItem x:Name="domeActiveVisualizerQuaternionMultiTest" Content='Quaternion Multi Test' />
                 <ComboBoxItem x:Name="domeActiveVisualizerQuaternionPaintbrush" Content='Quaternion Paintbrush' />
-                <ComboBoxItem x:Name="domeActiveVisualizerQuaternionFocus" Content='Quaternion Focus' />
                 <ComboBoxItem x:Name="domeActiveVisualizerSplat" Content='Splat' />
               </ComboBox>
             </Grid>

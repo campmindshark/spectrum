@@ -14,6 +14,7 @@ namespace Spectrum.Visualizers {
     private OrientationInput orientation;
     private LEDDomeOutput dome;
     private LEDDomeOutputBuffer buffer;
+    private LEDDomeOutputBuffer lastBuffer;
 
     private Quaternion currentOrientation;
     private Quaternion lastOrientation;
@@ -56,15 +57,16 @@ namespace Spectrum.Visualizers {
       this.orientation = orientation;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
-      this.rand = new Random();
-      this.currentOrientation = orientation.rotation;
-      this.lastOrientation = new Quaternion(0, 0, 0, 1);
+      buffer = this.dome.MakeDomeOutputBuffer();
+      lastBuffer = this.dome.MakeDomeOutputBuffer();
+      rand = new Random();
+      currentOrientation = orientation.deviceRotation(config.orientationDeviceSpotlight);
+      lastOrientation = new Quaternion(0, 0, 0, 1);
     }
 
     public int Priority {
       get {
-        return this.config.domeActiveVis == 5 ? 2 : 0;
+        return this.config.domeActiveVis == 6 ? 2 : 0;
       }
     }
 
@@ -78,11 +80,10 @@ namespace Spectrum.Visualizers {
       double progress = this.config.beatBroadcaster.ProgressThroughMeasure;
       double level = this.audio.LevelForChannel(0);
       counter++;
-      currentOrientation = orientation.rotation;
+      currentOrientation = orientation.deviceRotation(config.orientationDeviceSpotlight);
       // Check if sensor is moving or not
       // Potentially tweak this
       float sensorThreshold = .00015f;
-      Console.WriteLine(idleTimer);
       if ((Math.Abs(1 - Quaternion.Dot(lastOrientation, currentOrientation)) < sensorThreshold) | 
         (isZero(currentOrientation))) {
         if(idleTimer != 0) {
@@ -164,6 +165,7 @@ namespace Spectrum.Visualizers {
               double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
               Color color = new Color(hue, .2, 1);
               buffer.pixels[i].color = color.ToInt();
+              //buffer.pixels[i].color = Color.BlendHSV(1, new Color(lastBuffer.pixels[i].color), color).ToInt();
             }
           } else if (stampEffect == 1) {
             // Evenly spaced "grid"
@@ -171,6 +173,7 @@ namespace Spectrum.Visualizers {
               double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
               Color color = new Color(hue, .2, 1);
               buffer.pixels[i].color = color.ToInt();
+              //buffer.pixels[i].color = Color.BlendHSV(1, new Color(lastBuffer.pixels[i].color), color).ToInt();
             }
           } else if (stampEffect == 2) {
             // Time delayed decreasing bands
@@ -182,7 +185,8 @@ namespace Spectrum.Visualizers {
             if (Between(Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot), ringDistance, ringDistance + .003 * cooldown * cooldown)) {
               double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
               Color color = new Color(hue, .2, 1);
-              buffer.pixels[i].color = color.ToInt();
+              buffer.pixels[i].color = color.ToInt(); 
+              //buffer.pixels[i].color = Color.BlendHSV(1, new Color(lastBuffer.pixels[i].color), color).ToInt();
             }
           }
         }
@@ -199,11 +203,14 @@ namespace Spectrum.Visualizers {
         double distance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), spot);
         double negadistance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), Vector3.Negate(spot));
         if (distance < radius | negadistance < radius) {
+          double L = Math.Max((radius - distance) / radius, (radius - negadistance) / radius);
           double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
           // At the high volumes, desaturate
           double saturation = Clamp(1.5 / (1 - level) - 1, 0, 1);
-          Color color = new Color(hue, saturation, 1 - Clamp(.01 / (radius - distance), 0, 1));
-          buffer.pixels[i].color = color.ToInt();
+          Color color = new Color(hue, saturation, 1);
+          //Color color = new Color(hue, saturation, Clamp(L * L, 0, 1));
+          buffer.pixels[i].color = color.ToInt(); 
+          //buffer.pixels[i].color = Color.BlendHSV(1, new Color(lastBuffer.pixels[i].color), color).ToInt();
         }
         // # Ripple - global color wave
         double rippleRadius = rippleCounter / 300d;
@@ -212,7 +219,8 @@ namespace Spectrum.Visualizers {
           double saturation = Clamp(1 - rippleCounter / 600d, 0, 1);
           double value = Clamp(1 - rippleCounter / 800d, 0, 1);
           Color color = new Color(hue, saturation, value);
-          buffer.pixels[i].color = color.ToInt();
+          buffer.pixels[i].color = color.ToInt(); 
+          //buffer.pixels[i].color = Color.BlendHSV(1, new Color(lastBuffer.pixels[i].color), color).ToInt();
         }
       }
       // Global effects
@@ -224,10 +232,10 @@ namespace Spectrum.Visualizers {
       if (stampEffect == 0 | stampEffect == 1) {
         stampFired = false;
       }
-      lastOrientation = orientation.rotation;
+      lastOrientation = currentOrientation;
       lastProgress = progress;
-      this.dome.WriteBuffer(buffer);
-
+      dome.WriteBuffer(buffer);
+      buffer.pixels.CopyTo(lastBuffer.pixels, 0);
     }
 
     public void Visualize() {
