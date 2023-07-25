@@ -15,9 +15,6 @@ namespace Spectrum {
     private LEDDomeOutput dome;
     private LEDDomeOutputBuffer buffer;
 
-    private double currentAngle;
-    private double currentGradient;
-    private double currentCenterAngle;
     private double lastProgress;
 
     public LEDDomeSplatVisualizer(

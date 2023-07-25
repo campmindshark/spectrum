@@ -66,9 +66,10 @@ namespace Spectrum {
           conf.size == Size.Medium ? 1.0 / 4 :
           conf.size == Size.Large ? 3.0 / 4 :
           1;
-        this.Y = 1.0 * idx / num_racers + .5;
-        this.Angle = 0;
-        this.Radians = 2 * Math.PI * width;
+        this.idx = idx;
+        Y = 1.0 * idx / num_racers + .5;
+        Angle = 0;
+        Radians = 2 * Math.PI * width;
         AccumulatedSeconds = 0;
       }
 
@@ -86,18 +87,18 @@ namespace Spectrum {
 
       public int Color(LEDDomeOutput dome, Configuration config, double loc_y, double loc_ang) {
         if (conf.coloring == Coloring.Fade) {
-          return LEDColor.ScaleColor(dome.GetSingleColor(this.idx), loc_ang);
+          return LEDColor.ScaleColor(dome.GetSingleColor(idx), loc_ang);
         } else if (conf.coloring == Coloring.FadeExp) {
           var s = 4 * loc_ang - 4;
           return LEDColor.ScaleColor(
-            dome.GetSingleColor(this.idx),
+            dome.GetSingleColor(idx),
             1.0 / (1 + Math.Pow(Math.E, -s))
          );
         } else if (conf.coloring == Coloring.Multi) {
           var end_index = config.colorPalette.colors.Length - 1;
           return dome.GetGradientBetweenColors(end_index - 4, end_index, loc_ang, 0.0, false);
         }
-        return dome.GetSingleColor(this.idx);
+        return dome.GetSingleColor(idx);
       }
 
       private void MoveRads(double numSeconds, double radsPerSecond) {
