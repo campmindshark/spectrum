@@ -10,6 +10,47 @@ namespace Spectrum {
     public double S; // Saturation - [0, 1] (grayness)
     public double V; // Value - [0, 1] (brightness)
 
+    public Color(int value) {
+      var _r = (byte)(value >> 16);
+      var _g = (byte)(value >> 8);
+      var _b = (byte)value;
+      R = _r;
+      G = _g;
+      B = _b;
+
+      double r = _r / 255d;
+      double g = _g / 255d;
+      double b = _b / 255d;
+
+      double max = Math.Max(Math.Max(r, g), b);
+      double min = Math.Min(Math.Min(r, g), b);
+
+      double d = max - min;
+      double s = max == 0 ? 0 : d / max;
+      double v = max;
+      double h = 0;
+
+      if (max != min) {
+        if (r > g) {
+          if (r > b) {
+            h = (g - b) / d + (g < b ? 6 : 0);
+          } else {
+            h = (r - g) / d + 4;
+          }
+        } else {
+          if (g > b) {
+            h = (b - r) / d + 2;
+          } else {
+            h = (r - g) / d + 4;
+          }
+        }
+
+        h /= 6;
+      }
+      H = h;
+      S = s;
+      V = v;
+    }
     public Color(byte _r, byte _g, byte _b) {
       R = _r;
       G = _g;
@@ -179,6 +220,6 @@ namespace Spectrum {
         return b;
       }
     }
-
+    // 
   }
 }
