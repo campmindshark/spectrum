@@ -195,8 +195,8 @@ namespace Spectrum {
         [2] = this.domeActiveVisualizerRace,
         [3] = this.domeActiveVisualizerSnakes,
         [4] = this.domeActiveVisualizerQuaternionTest,
-        [5] = this.domeActiveVisualizerQuaternionPaintbrush,
-        [6] = this.domeActiveVisualizerQuaternionFocus,
+        [5] = this.domeActiveVisualizerQuaternionMultiTest,
+        [6] = this.domeActiveVisualizerQuaternionPaintbrush,
         [7] = this.domeActiveVisualizerSplat
       }, true));
       this.Bind("boardBeagleboneOPCAddress", this.boardBeagleboneOPCHostAndPort, TextBox.TextProperty);
