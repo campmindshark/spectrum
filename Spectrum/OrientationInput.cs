@@ -11,17 +11,23 @@ namespace Spectrum {
     private readonly Configuration config;
     public Dictionary<int, OrientationDevice> devices;
     private Dictionary<int, long> lastSeen;
+    private long[] lastEvent;
     private Thread listenThread;
-    private UdpClient listenClient;
     private readonly object mLock = new object();
     private readonly static long DEVICE_TIMEOUT_MS = 1000;
+    private readonly static long DEVICE_EVENT_TIMEOUT = 50;
 
     public OrientationInput(Configuration config) {
       this.config = config;
       devices = new Dictionary<int, OrientationDevice>();
       lastSeen = new Dictionary<int, long>();
+      lastEvent = new long[255];
       listenThread = new Thread(new ThreadStart(Run));
       listenThread.Start();
+    }
+    public struct UdpState {
+      public UdpClient u;
+      public IPEndPoint e;
     }
 
     public bool Active {
@@ -43,47 +49,66 @@ namespace Spectrum {
       }
     }
 
-    private void Run() {
-      var endpoint = new IPEndPoint(IPAddress.Any, 5005);
-      listenClient = new UdpClient(endpoint);
-      while (true) {
-        // move the device dropping code out of this loop to something that only runs once in a while
-        //var currentTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-        // Check and drop any devices that haven't been seen for a while
-        //foreach (KeyValuePair<int, long> kvp in lastSeen) {
-        //  if ((currentTime - kvp.Value) > DEVICE_TIMEOUT_MS) {
-        //    lock (mLock) {
-        //      devices.Remove(kvp.Key);
-        //    }
-        //  }
-        //}
-        var buffer = listenClient.Receive(ref endpoint);
-        var deviceId = buffer[0];
-        //lastSeen[deviceId] = currentTime;
-        var timestamp = BitConverter.ToInt32(buffer, 1);
-        short W = BitConverter.ToInt16(buffer, 5);
-        short X = BitConverter.ToInt16(buffer, 7);
-        short Y = BitConverter.ToInt16(buffer, 9);
-        short Z = BitConverter.ToInt16(buffer, 11);
-        var actionFlag = buffer[13]; // what the buttons do
-        Quaternion sensorState = new Quaternion(X / 16384.0f, Y / 16384.0f, Z / 16384.0f, W / 16384.0f);
-        if (devices.ContainsKey(deviceId)) {
-          lock (mLock) {
-            // action flags take priority:
-            if (actionFlag != 0) {
-              Console.WriteLine(deviceId);
-              // handle them here
-            }
-            if (timestamp > devices[deviceId].timestamp || timestamp < (devices[deviceId].timestamp - 1000)) {
-              // the second conditional is just to catch a case where the device was power cycled; assuming it was off for more than a second
-              devices[deviceId].timestamp = timestamp;
-              devices[deviceId].currentOrientation = sensorState;
-            }
-          }
-        } else {
-          devices.Add(deviceId, new OrientationDevice(timestamp, new Quaternion(0, 0, 0, 1), sensorState));
+    private void ReceiveCallback(IAsyncResult ar) {
+      UdpClient u = ((UdpState)(ar.AsyncState)).u;
+      IPEndPoint e = ((UdpState)(ar.AsyncState)).e;
+      UdpState s = new UdpState();
+      s.e = e;
+      s.u = u;
+      byte[] buffer = u.EndReceive(ar, ref e);
+      var deviceId = buffer[0];
+      var timestamp = BitConverter.ToInt32(buffer, 1);
+
+      // Disabled device removal - can we run this less often?
+      var currentTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+      lastSeen[deviceId] = currentTime;
+      foreach (KeyValuePair<int, long> kvp in lastSeen) {
+        if ((currentTime - kvp.Value) > DEVICE_TIMEOUT_MS) {
+          devices.Remove(kvp.Key);
         }
       }
+
+      // Datagram unpacking
+      short W = BitConverter.ToInt16(buffer, 5);
+      short X = BitConverter.ToInt16(buffer, 7);
+      short Y = BitConverter.ToInt16(buffer, 9);
+      short Z = BitConverter.ToInt16(buffer, 11);
+      var actionFlag = buffer[13]; // what the buttons do
+      Quaternion sensorState = new Quaternion(X / 16384.0f, Y / 16384.0f, Z / 16384.0f, W / 16384.0f);
+
+      // Device state update
+      if (!devices.ContainsKey(deviceId)) {
+        devices.Add(deviceId, new OrientationDevice(timestamp, new Quaternion(0, 0, 0, 1), sensorState));
+      } else {
+        devices[deviceId].actionFlag = 0;
+        if (actionFlag != 0) {
+          // debounce (per device!)
+          if (currentTime - lastEvent[deviceId] > DEVICE_EVENT_TIMEOUT) {
+            lastEvent[deviceId] = currentTime;
+            if (actionFlag == 4) {
+              devices[deviceId].calibrate();
+            } else if (actionFlag == 1 || actionFlag == 2 || actionFlag == 3) {
+              devices[deviceId].actionFlag = actionFlag;
+            }
+          }
+        }
+        if (timestamp > devices[deviceId].timestamp || timestamp < (devices[deviceId].timestamp - 1000)) {
+          // the second conditional is just to catch a case where the device was power cycled;
+          //   assuming it was off for more than a second
+          devices[deviceId].timestamp = timestamp;
+          devices[deviceId].currentOrientation = sensorState;
+        }
+      }
+      u.BeginReceive(new AsyncCallback(ReceiveCallback), s);
+    }
+    private void Run() {
+      IPEndPoint e = new IPEndPoint(IPAddress.Any, 5005);
+      UdpClient u = new UdpClient(e);
+
+      UdpState s = new UdpState();
+      s.e = e;
+      s.u = u;
+      u.BeginReceive(new AsyncCallback(ReceiveCallback), s);
     }
     public void OperatorUpdate() {
       if (config.orientationCalibrate) {

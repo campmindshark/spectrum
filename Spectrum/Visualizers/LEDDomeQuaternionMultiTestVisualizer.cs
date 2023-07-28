@@ -14,7 +14,6 @@ namespace Spectrum.Visualizers {
     private LEDDomeOutput dome;
     private LEDDomeOutputBuffer buffer;
 
-    Dictionary<int, OrientationDevice> devicesCopy;
     private Vector3 spot = new Vector3(0, 1, 0);
     private readonly object mLock = new object();
 
@@ -26,8 +25,8 @@ namespace Spectrum.Visualizers {
       this.config = config;
       this.orientation = orientation;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      dome.RegisterVisualizer(this);
+      buffer = dome.MakeDomeOutputBuffer();
     }
 
     public int Priority {
@@ -43,9 +42,18 @@ namespace Spectrum.Visualizers {
     }
 
     void Render() {
-      lock (mLock) {
-        devicesCopy = orientation.devices.ToDictionary(entry => entry.Key, entry => entry.Value);
+
+      // Global effects
+      // Fade out
+      buffer.Fade(1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed), 0);
+
+      // Store the device states as of this frame; this avoids problems when the devices get updated
+      // in another thread
+      Dictionary<int, OrientationDevice> devices;
+      lock (mLock) { // check if we still need this
+        devices = new Dictionary<int, OrientationDevice>(orientation.devices);
       }
+
       for (int i = 0; i < buffer.pixels.Length; i++) {
         var p = buffer.pixels[i];
         var x = 2 * p.x - 1; // now centered on (0, 0) and with range [-1, 1]
@@ -57,31 +65,32 @@ namespace Spectrum.Visualizers {
         // Calibration assigns (0, 1, 0) to be 'forward'
         // So we want the post-transformed pixel closest to (0, 1, 0)?
         double radius = .2;
-        foreach (KeyValuePair<int, OrientationDevice> entry in devicesCopy) {
-          Quaternion currentOrientation = entry.Value.currentRotation();
+
+        foreach (int deviceId in devices.Keys) {
+          Quaternion currentOrientation = devices[deviceId].currentRotation();
           double distance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), spot);
+          int sat = 1;
+          if (devices[deviceId].actionFlag == 1) {
+            radius = .4;
+            sat = 0;
+          } else {
+            radius = .2;
+            sat = 1;
+          }
           if (distance < radius) {
             double L = (radius - distance) / radius;
-            double hue = (double)entry.Key / devicesCopy.Count;
-            Color color = new Color(hue, 1, 1);
-            buffer.pixels[i].color = color.ToInt();
+            double hue = (double)Array.IndexOf(devices.Keys.ToArray(), deviceId) / devices.Count;
+            Color color = new Color(hue, sat, 1);
+            buffer.pixels[i].color = Color.BlendLightPaint(new Color(buffer.pixels[i].color), color).ToInt();
           }
         }
       }
-      // Global effects
-      // Fade out
-      buffer.Fade(1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed), 0);
-      this.dome.WriteBuffer(buffer);
+      dome.WriteBuffer(buffer);
     }
 
     public void Visualize() {
-      this.Render();
-      this.dome.Flush();
-    }
-    private static double Clamp(double x, double a, double b) {
-      if (x < a) return a;
-      if (x > b) return b;
-      return x;
+      Render();
+      dome.Flush();
     }
   }
 }
