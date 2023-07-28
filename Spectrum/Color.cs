@@ -62,7 +62,7 @@ namespace Spectrum {
 
       double max = Math.Max(Math.Max(r, g), b);
       double min = Math.Min(Math.Min(r, g), b);
-      
+
       double d = max - min;
       double s = max == 0 ? 0 : d / max;
       double v = max;
@@ -121,7 +121,7 @@ namespace Spectrum {
     }
 
     public int ToInt() {
-      return 256*256*(int)R + 256*(int)G + (int)B;
+      return 256 * 256 * (int)R + 256 * (int)G + (int)B;
     }
 
     private static byte ToByte(double x) {
@@ -168,7 +168,7 @@ namespace Spectrum {
         } else {
           return 1;
         }
-      // Reflected case
+        // Reflected case
       } else {
         if (Math.Abs(b - a) > .5) {
           return 1;
@@ -181,8 +181,8 @@ namespace Spectrum {
     // Add: just direct RGB addition
     public static Color BlendAdd(double alpha, Color a, Color b) {
       return new Color(
-        ToByte(a.R + alpha * b.R), 
-        ToByte(a.G + alpha * b.G), 
+        ToByte(a.R + alpha * b.R),
+        ToByte(a.G + alpha * b.G),
         ToByte(a.B + alpha * b.B));
     }
     // Lighten: brighten the original color by the V value of the second
@@ -220,6 +220,14 @@ namespace Spectrum {
         return b;
       }
     }
-    // 
+
+    // Light paint: set to new color only if brighter
+    public static Color BlendLightPaint(Color a, Color b) {
+      if (b.V > a.V) {
+        return b;
+      } else {
+        return a;
+      }
+    }
   }
 }
