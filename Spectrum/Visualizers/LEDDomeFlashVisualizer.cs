@@ -310,29 +310,6 @@ namespace Spectrum {
       // If we haven't seen any animations in a bit and computer animation is
       // enabled, then let's try and see if we should create one
       long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-      if (timestamp > this.lastUserAnimationCreated + 2000) {
-        foreach (AudioEvent audioEvent in this.audio.GetEventsSinceLastTick()) {
-          int colorIndex;
-          if (audioEvent.type == AudioDetectorType.Kick) {
-            colorIndex = 4;
-          } else if (audioEvent.type == AudioDetectorType.Snare) {
-            colorIndex = 5;
-          } else {
-            throw new Exception("invalid AudioDetectorType");
-          }
-          Animation animation = this.NewRandomAnimation(
-            ShapeType.Polygon,
-            colorIndex,
-            audioEvent.significance
-          );
-          if (animation == null) {
-            // If we aren't able to get any shape at all,
-            // then give up on new animations
-            break;
-          }
-          animation.Release();
-        }
-      }
 
       // Okay, now we have to actually animate each of the active animations
       foreach (var animation in this.activeAnimations) {

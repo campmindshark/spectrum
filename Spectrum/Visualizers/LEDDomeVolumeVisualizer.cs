@@ -109,7 +109,7 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        if (this.config.domeActiveVis != 0 || this.audio.isQuiet) {
+        if (this.config.domeActiveVis != 0) {
           return 0;
         }
         return 2;
@@ -157,7 +157,7 @@ namespace Spectrum {
         var outwardSegment = this.partLayout.GetSegment(part);
         double startRange = (double)part / volumeSplitInto;
         double endRange = (double)(part + 2) / volumeSplitInto;
-        double level = this.audio.LevelForChannel(0);
+        double level = this.audio.Volume;
         double scaled = (level - startRange) /
           (endRange - startRange);
         scaled = Math.Max(Math.Min(scaled, 1.0), 0.0);

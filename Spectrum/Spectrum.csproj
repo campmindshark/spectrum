@@ -105,15 +105,9 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="Visualizers\HueSilentVisualizer.cs" />
-    <Compile Include="Visualizers\HueSolidColorVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeMidiTestVisualizer.cs" />
     <Compile Include="Visualizers\LEDDomeVolumeVisualizer.cs" />
-    <Compile Include="Visualizers\LEDPanelVolumeVisualizer.cs" />
-    <Compile Include="Visualizers\LEDPanelMidiVisualizer.cs" />
     <Compile Include="SpectrumConfiguration.cs" />
-    <Compile Include="Hotkey.cs" />
-    <Compile Include="Visualizers\HueAudioVisualizer.cs" />
     <Page Include="Windows\BarSimulatorWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -179,10 +173,6 @@
     <ProjectReference Include="..\Base\Base.csproj">
       <Project>{5258999b-1e36-4a6c-9674-23c259dad81e}</Project>
       <Name>Base</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Hues\Hues.csproj">
-      <Project>{5a363af7-650a-4a12-86bb-facc73a6def2}</Project>
-      <Name>Hues</Name>
     </ProjectReference>
     <ProjectReference Include="..\LEDs\LEDs.csproj">
       <Project>{872a880b-ddf1-47c8-ba70-f1aecef2546c}</Project>

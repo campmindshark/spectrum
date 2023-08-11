@@ -44,8 +44,6 @@ namespace Spectrum {
     }
 
     private static readonly HashSet<string> configPropertiesToRebootOn = new HashSet<string>() {
-      "huesOutputInSeparateThread",
-      "ledBoardOutputInSeparateThread",
       "midiInputInSeparateThread",
       "domeOutputInSeparateThread",
       "barOutputInSeparateThread",
@@ -54,7 +52,6 @@ namespace Spectrum {
     private static readonly HashSet<string> configPropertiesIgnored = new HashSet<string>() {
       "operatorFPS",
       "domeBeagleboneOPCFPS",
-      "boardBeagleboneOPCFPS",
       "barBeagleboneOPCFPS",
       "stageBeagleboneOPCFPS",
       "beatBroadcaster",
@@ -78,16 +75,6 @@ namespace Spectrum {
 
     public MainWindow() {
       this.InitializeComponent();
-
-      new HotKey(Key.Q, KeyModifier.Alt, this.OnHotKeyHandler);
-      new HotKey(Key.OemTilde, KeyModifier.Alt, this.OnHotKeyHandler);
-      new HotKey(Key.R, KeyModifier.Alt, this.OnHotKeyHandler);
-      new HotKey(Key.OemPeriod, KeyModifier.Alt, this.OnHotKeyHandler);
-      new HotKey(Key.OemComma, KeyModifier.Alt, this.OnHotKeyHandler);
-      new HotKey(Key.Left, KeyModifier.Alt, this.OnHotKeyHandler);
-      new HotKey(Key.Right, KeyModifier.Alt, this.OnHotKeyHandler);
-      new HotKey(Key.Up, KeyModifier.Alt, this.OnHotKeyHandler);
-      new HotKey(Key.Down, KeyModifier.Alt, this.OnHotKeyHandler);
 
       this.LoadConfig();
       this.config.PropertyChanged += ConfigUpdated;
@@ -172,11 +159,7 @@ namespace Spectrum {
       this.RefreshMidiDevices(null, null);
       this.LoadPresets();
 
-      this.Bind("huesEnabled", this.hueEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("ledBoardEnabled", this.ledBoardEnabled, CheckBox.IsCheckedProperty);
       this.Bind("midiInputEnabled", this.midiEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("huesOutputInSeparateThread", this.hueThreadCheckbox, CheckBox.IsCheckedProperty);
-      this.Bind("ledBoardOutputInSeparateThread", this.ledBoardThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("midiInputInSeparateThread", this.midiThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("domeOutputInSeparateThread", this.domeThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("barOutputInSeparateThread", this.barThreadCheckbox, CheckBox.IsCheckedProperty);
@@ -199,11 +182,6 @@ namespace Spectrum {
         [6] = this.domeActiveVisualizerQuaternionPaintbrush,
         [7] = this.domeActiveVisualizerSplat
       }, true));
-      this.Bind("boardBeagleboneOPCAddress", this.boardBeagleboneOPCHostAndPort, TextBox.TextProperty);
-      this.Bind("boardBeagleboneOPCFPS", this.boardBeagleboneOPCFPSLabel, Label.ContentProperty);
-      this.Bind("boardBeagleboneOPCFPS", this.boardBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("ledBoardOutputInSeparateThread", this.boardBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("barBeagleboneOPCAddress", this.barBeagleboneOPCHostAndPort, TextBox.TextProperty);
       this.Bind("barBeagleboneOPCFPS", this.barBeagleboneOPCFPSLabel, Label.ContentProperty);
       this.Bind("barBeagleboneOPCFPS", this.barBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
@@ -216,34 +194,6 @@ namespace Spectrum {
       this.Bind("stageOutputInSeparateThread", this.stageBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
       this.Bind("stageOutputInSeparateThread", this.stageBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("stageTestPattern", this.stageTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.stageTestPatternNone, [1] = this.stageTestPatternFlashColors }, true));
-      this.Bind("hueDelay", this.hueCommandDelay, TextBox.TextProperty);
-      this.Bind("hueIdleOnSilent", this.hueIdleOnSilent, CheckBox.IsCheckedProperty);
-      this.Bind("hueOverrideIndex", this.hueOverride, ComboBox.SelectedIndexProperty);
-      this.Bind("hueOverrideIsCustom", this.hueCustomGrid, Grid.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("hueOverrideIsDisabled", this.hueIdleOnSilent, Grid.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("brighten", this.hueCustomBrightness, TextBox.TextProperty);
-      this.Bind("sat", this.hueCustomSaturation, TextBox.TextProperty);
-      this.Bind("colorslide", this.hueCustomHue, TextBox.TextProperty);
-      this.Bind("peakC", this.peakChangeS, Slider.ValueProperty);
-      this.Bind("peakC", this.peakChangeL, Label.ContentProperty);
-      this.Bind("dropQ", this.dropQuietS, Slider.ValueProperty);
-      this.Bind("dropQ", this.dropQuietL, Label.ContentProperty);
-      this.Bind("dropT", this.dropChangeS, Slider.ValueProperty);
-      this.Bind("dropT", this.dropChangeL, Label.ContentProperty);
-      this.Bind("kickQ", this.kickQuietS, Slider.ValueProperty);
-      this.Bind("kickQ", this.kickQuietL, Label.ContentProperty);
-      this.Bind("kickT", this.kickChangeS, Slider.ValueProperty);
-      this.Bind("kickT", this.kickChangeL, Label.ContentProperty);
-      this.Bind("snareQ", this.snareQuietS, Slider.ValueProperty);
-      this.Bind("snareQ", this.snareQuietL, Label.ContentProperty);
-      this.Bind("snareT", this.snareChangeS, Slider.ValueProperty);
-      this.Bind("snareT", this.snareChangeL, Label.ContentProperty);
-      this.Bind("hueURL", this.hueHubAddress, TextBox.TextProperty);
-      this.Bind("hueIndices", this.hueLightIndices, TextBox.TextProperty, BindingMode.TwoWay, new StringJoinConverter());
-      this.Bind("boardRowLength", this.ledBoardRowLength, TextBox.TextProperty);
-      this.Bind("boardRowsPerStrip", this.ledBoardRowsPerStrip, TextBox.TextProperty);
-      this.Bind("boardBrightness", this.ledBoardBrightnessSlider, Slider.ValueProperty);
-      this.Bind("boardBrightness", this.ledBoardBrightnessLabel, Label.ContentProperty);
       this.Bind("domeEnabled", this.domeEnabled, CheckBox.IsCheckedProperty);
       this.Bind("domeSimulationEnabled", this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
       this.Bind("domeMaxBrightness", this.domeMaxBrightnessSlider, Slider.ValueProperty);
@@ -293,42 +243,6 @@ namespace Spectrum {
 
     private void SliderCompleted(object sender, DragCompletedEventArgs e) {
       MainWindow.LoadingConfig = false;
-    }
-
-    private void OnHotKeyHandler(HotKey hotKey) {
-      if (hotKey.Key.Equals(Key.Q)) {
-        this.hueOverride.SelectedItem =
-          this.hueOverride.SelectedItem == this.hueOverrideOn
-            ? this.hueOverrideDisable
-            : this.hueOverrideOn;
-      } else if (hotKey.Key.Equals(Key.OemTilde)) {
-        this.hueOverride.SelectedItem =
-          this.hueOverride.SelectedItem == this.hueOverrideOff
-            ? this.hueOverrideDisable
-            : this.hueOverrideOff;
-      } else if (hotKey.Key.Equals(Key.R)) {
-        this.hueOverride.SelectedItem =
-          this.hueOverride.SelectedItem == this.hueOverrideRed
-            ? this.hueOverrideDisable
-            : this.hueOverrideRed;
-      } else if (hotKey.Key.Equals(Key.OemPeriod)) {
-        this.hueCustomBrightness.Text =
-          Math.Min(this.config.brighten + 1, 0).ToString();
-      } else if (hotKey.Key.Equals(Key.OemComma)) {
-        this.hueCustomBrightness.Text =
-          Math.Max(this.config.brighten - 1, -4).ToString();
-      } else if (hotKey.Key.Equals(Key.Left)) {
-        this.hueCustomHue.Text = (this.config.colorslide - 1).ToString();
-      } else if (hotKey.Key.Equals(Key.Right)) {
-        this.hueCustomHue.Text = (this.config.colorslide + 1).ToString();
-      } else if (hotKey.Key.Equals(Key.Up)) {
-        this.hueCustomSaturation.Text =
-          Math.Min(this.config.sat + 1, 2).ToString();
-      } else if (hotKey.Key.Equals(Key.Down)) {
-        this.hueCustomSaturation.Text =
-          Math.Max(this.config.sat - 1, -2).ToString();
-      }
-      //config.colorslide = (config.colorslide + 4 + 16) % 16 - 4;??
     }
 
     private void PowerButtonClicked(object sender, RoutedEventArgs e) {

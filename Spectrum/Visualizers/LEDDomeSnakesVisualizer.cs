@@ -50,14 +50,6 @@ namespace Spectrum {
           // will not run
           return 0;
         }
-        // There is a "screensaver" Visualizer with priority 1 associated with
-        // LEDDomeOutput (LEDDomeTVStaticVisualizer). The intention is to run
-        // that Visualizer when there is no audio input. If you are writing a
-        // Visualizer that depends on audio input, consider disabling it when
-        // the audio is off using the following condition:
-        if (this.audio.isQuiet) {
-          return 0;
-        }
         // You can return any number higher than 1 here to make sure this
         // Visualizer runs and the screensaver Visualizer doesn't
         return 2;

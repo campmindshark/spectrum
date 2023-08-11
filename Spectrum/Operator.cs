@@ -1,10 +1,6 @@
-﻿using System;
-using System.Windows;
-using System.Windows.Controls;
-using System.Threading;
+﻿using System.Threading;
 using Spectrum.Base;
 using Spectrum.Audio;
-using Spectrum.Hues;
 using Spectrum.LEDs;
 using Spectrum.MIDI;
 using System.Collections.Generic;
@@ -20,14 +16,11 @@ namespace Spectrum {
     private readonly List<Input> inputs;
     private readonly List<Output> outputs;
     private readonly List<Visualizer> visualizers;
-    private readonly Stopwatch operatorThreadBlockingStopwatch;
     private readonly Stopwatch frameRateStopwatch;
     private int framesThisSecond;
 
     public Operator(Configuration config) {
       this.config = config;
-      this.operatorThreadBlockingStopwatch = new Stopwatch();
-      this.operatorThreadBlockingStopwatch.Start();
 
       this.frameRateStopwatch = new Stopwatch();
       this.frameRateStopwatch.Start();
@@ -42,10 +35,6 @@ namespace Spectrum {
       this.inputs.Add(orientation);
 
       this.outputs = new List<Output>();
-      var hue = new HueOutput(config);
-      this.outputs.Add(hue);
-      var board = new LEDBoardOutput(config);
-      this.outputs.Add(board);
       var dome = new LEDDomeOutput(config);
       this.outputs.Add(dome);
       var bar = new LEDBarOutput(config, dome);
@@ -54,30 +43,6 @@ namespace Spectrum {
       this.outputs.Add(stage);
 
       this.visualizers = new List<Visualizer>();
-      this.visualizers.Add(new HueAudioVisualizer(
-        this.config,
-        audio,
-        hue
-      ));
-      this.visualizers.Add(new LEDPanelVolumeVisualizer(
-        this.config,
-        audio,
-        board
-      ));
-      this.visualizers.Add(new HueSolidColorVisualizer(
-        this.config,
-        hue
-      ));
-      this.visualizers.Add(new HueSilentVisualizer(
-        this.config,
-        audio,
-        hue
-      ));
-      this.visualizers.Add(new LEDPanelMidiVisualizer(
-        this.config,
-        midi,
-        board
-      ));
       this.visualizers.Add(new LEDDomeMidiTestVisualizer(
         this.config,
         midi,
@@ -214,11 +179,6 @@ namespace Spectrum {
 
     private void OperatorThread() {
       while (true) {
-        if (this.operatorThreadBlockingStopwatch.ElapsedMilliseconds < 8) {
-          Thread.Sleep(1);
-        }
-        this.operatorThreadBlockingStopwatch.Restart();
-
         if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
           this.frameRateStopwatch.Restart();
           this.config.operatorFPS = this.framesThisSecond;

@@ -47,7 +47,7 @@ namespace Spectrum {
     void Render() {
       buffer.Fade(1 - Math.Pow(10, -this.config.domeGlobalFadeSpeed), 0);
       buffer.HueRotate(Math.Pow(10, -this.config.domeGlobalHueSpeed));
-      double level = this.audio.LevelForChannel(0);
+      double level = this.audio.Volume;
       // Sqrt makes values larger and gives more resolution for lower values
       double adjustedLevel = Clamp(Math.Sqrt(level), 0.1, 1);
 
