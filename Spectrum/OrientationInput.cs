@@ -123,6 +123,14 @@ namespace Spectrum {
         }
         config.orientationCalibrate = false;
       }
+      if (config.orientationAction) {
+        lock(mLock) {
+          foreach (int id in devices.Keys) {
+            devices[id].actionFlag = 1;
+          }
+        }
+        config.orientationAction = false;
+      }
     }
 
     public Quaternion deviceRotation(int deviceId) {

@@ -160,6 +160,8 @@ namespace Spectrum.Base {
 
     int orientationDeviceSpotlight { get; set; }
     bool orientationCalibrate { get; set; }
+
+    bool orientationAction { get; set; }
   }
 
 }

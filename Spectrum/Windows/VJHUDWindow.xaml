@@ -331,6 +331,7 @@
             <WrapPanel Width="300" HorizontalAlignment="Left" VerticalAlignment="Top">
               <Button x:Name="orientationCalibrate" Content="Set calibration" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Click="OrientationCalibrationClicked" Padding="0,0" />
               <TextBox x:Name="orientationDeviceSpotlightInput" Margin ="4,4,4,4" Width="21" TextChanged="OrientationDeviceSpotlightChanged"/>
+              <Button x:Name="orientationAction" Content="Action" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Click="OrientationActionClicked" Padding="0,0" />
             </WrapPanel>
           </Border>
         </WrapPanel>

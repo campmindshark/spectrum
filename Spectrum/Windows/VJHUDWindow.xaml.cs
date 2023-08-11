@@ -775,6 +775,10 @@ namespace Spectrum {
       this.config.orientationCalibrate = true;
     }
 
+    private void OrientationActionClicked(object sender, RoutedEventArgs e) {
+      this.config.orientationAction = true;
+    }
+
     private void OrientationDeviceSpotlightChanged(object sender, TextChangedEventArgs e) {
       short deviceId;
       if (Int16.TryParse(orientationDeviceSpotlightInput.Text, out deviceId)) {
