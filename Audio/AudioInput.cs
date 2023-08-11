@@ -36,6 +36,7 @@ namespace Spectrum.Audio {
     private WasapiCapture captureStream;
     private readonly List<short> unanalyzedValues = new List<short>();
 
+    private readonly object mLock = new object();
     // These values get continuously updated by the internal thread
     public float[] AudioData { get; private set; } = new float[fftSize];
     private readonly ConcurrentDictionary<string, double> maxAudioDataLevels = new ConcurrentDictionary<string, double>();
@@ -76,12 +77,12 @@ namespace Spectrum.Audio {
     private bool active;
     public bool Active {
       get {
-        lock (this.maxAudioDataLevels) {
+        lock (mLock) {
           return this.active;
         }
       }
       set {
-        lock (this.maxAudioDataLevels) {
+        lock (mLock) {
           if (this.active == value) {
             return;
           }
@@ -148,7 +149,7 @@ namespace Spectrum.Audio {
 
     private void Update(object sender, NAudio.Wave.WaveInEventArgs args) {
       this.Volume = recordingDevice.AudioMeterInformation.MasterPeakValue;
-      lock (this.maxAudioDataLevels) {
+      lock (mLock) {
         short[] values = new short[args.Buffer.Length / 2];
         for (int i = 0; i < args.BytesRecorded; i += 2) {
           values[i / 2] = (short)((args.Buffer[i + 1] << 8) | args.Buffer[i]);
