@@ -80,7 +80,6 @@ namespace Spectrum {
       if (!devices.ContainsKey(deviceId)) {
         devices.Add(deviceId, new OrientationDevice(timestamp, new Quaternion(0, 0, 0, 1), sensorState));
       } else {
-        devices[deviceId].actionFlag = 0;
         if (actionFlag != 0) {
           // debounce (per device!)
           if (currentTime - lastEvent[deviceId] > DEVICE_EVENT_TIMEOUT) {
@@ -91,6 +90,8 @@ namespace Spectrum {
               devices[deviceId].actionFlag = actionFlag;
             }
           }
+        } else {
+          devices[deviceId].actionFlag = 0;
         }
         if (timestamp > devices[deviceId].timestamp || timestamp < (devices[deviceId].timestamp - 1000)) {
           // the second conditional is just to catch a case where the device was power cycled;
