@@ -50,9 +50,7 @@ namespace Spectrum.Visualizers {
       // Store the device states as of this frame; this avoids problems when the devices get updated
       // in another thread
       Dictionary<int, OrientationDevice> devices;
-      lock (mLock) { // check if we still need this
-        devices = new Dictionary<int, OrientationDevice>(orientation.devices);
-      }
+      devices = new Dictionary<int, OrientationDevice>(orientation.devices);
 
       for (int i = 0; i < buffer.pixels.Length; i++) {
         var p = buffer.pixels[i];
