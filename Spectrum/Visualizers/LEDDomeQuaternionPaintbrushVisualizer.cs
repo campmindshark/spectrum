@@ -4,8 +4,55 @@ using Spectrum.LEDs;
 using System;
 using System.Numerics;
 using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
+using System.Resources;
+using Sanford.Multimedia;
+using System.Linq;
 
 namespace Spectrum.Visualizers {
+  class Planet {
+    public bool cleanup = false;
+    public Vector2 position;
+    Vector2 velocity;
+    public Vector3 dome_position;
+    float timescale = .01f; // tweak this
+    double escape_velocity = 10;
+    Configuration config;
+    public Planet(float x, float y, float vx, float vy, Configuration config) {
+      position = new Vector2(x, y);
+      velocity = new Vector2(vx, vy);
+      this.config = config;
+      dome_position = projectDome();
+    }
+
+    public Planet(Vector2 position, Vector2 velocity, Configuration config) {
+      this.position = position;
+      this.velocity = velocity;
+      this.config = config;
+    }
+
+    public void update(Vector2 new_acceleration) {
+      position += timescale * velocity;
+      double position_r = position.Length();
+      velocity += timescale * new_acceleration;
+      if (position_r > 1) {
+        if (config.orientationSphereTopology) {
+          position = -position;
+        } else {
+          if (velocity.Length() > escape_velocity) {
+            cleanup = true;
+          }
+        }
+      }
+      dome_position = projectDome();
+    }
+
+    private Vector3 projectDome() {
+      float z = (float)Math.Sqrt(1 - position.LengthSquared());
+      return new Vector3(position, z);
+    }
+  }
   class LEDDomeQuaternionPaintbrushVisualizer : Visualizer {
 
 
@@ -52,8 +99,22 @@ namespace Spectrum.Visualizers {
     double rippleCooldown = 100; // tweak this later
 
     // Contour line variables
-    bool contourFiring = false;
     double contourCounter = 0;
+
+    // Graphic pixels
+    HashSet<int> imagePixels;
+    bool showImage = false;
+    int showImageTimer = 10000;
+
+    // Planets
+    HashSet<Planet> planets = new HashSet<Planet>();
+    bool spawningPlanets = false;
+    int planetsToSpawn = 0;
+    // Change these to stagger out planet spawning more; i.e. planetTimer = 10 will require 10 iterations per spawn
+    int planetTimer = 2;
+    int planetCounter = 0;
+    Vector2 new_planet_position;
+    Vector2 new_planet_velocity;
 
     public LEDDomeQuaternionPaintbrushVisualizer(
       Configuration config,
@@ -70,8 +131,38 @@ namespace Spectrum.Visualizers {
       rand = new Random();
       currentOrientation = orientation.deviceRotation(config.orientationDeviceSpotlight);
       lastOrientation = new Quaternion(0, 0, 0, 1);
+      idleTimer = 0;
+      imagePixels = loadImage(200, 0);
     }
 
+    public HashSet<int> loadImage(double scale, double theta) {
+      Bitmap img = Properties.Resources.texture;
+      HashSet<int> graphicPixels = new HashSet<int>();
+      for (int i = 0; i < buffer.pixels.Length; i++) {
+        var p = buffer.pixels[i];
+        var x = 2 * p.x - 1;
+        var y = 1 - 2 * p.y;
+        double r = x * x + y * y;
+        float z = r > 1 ? 0 : (float)Math.Sqrt(1 - r);
+        // Filter out points that only exist on one side of the sheet
+        double viewAngle = Math.Atan2(y, x) - theta;
+        if ((viewAngle + 2 * Math.PI) < (Math.PI / 2)) {
+          viewAngle += 2 * Math.PI;
+        }
+        if ((viewAngle - 2 * Math.PI) > (-Math.PI / 2)) {
+          viewAngle -= 2 * Math.PI;
+        }
+        int u = (int)(scale * (1 + r * Math.Sin(viewAngle)));
+        int v = (int)(scale * z);
+        if (viewAngle >= (-Math.PI / 2) & viewAngle <= (Math.PI / 2) & u >= 0 & v >= 0 & u < img.Width & v < img.Height) {
+          System.Drawing.Color col = img.GetPixel(u, v);
+          if (col.Name != "ffffffff") {
+            graphicPixels.Add(i);
+          }
+        }
+      }
+      return graphicPixels;
+    }
     public int Priority {
       get {
         return this.config.domeActiveVis == 6 ? 2 : 0;
@@ -87,6 +178,38 @@ namespace Spectrum.Visualizers {
     void Render() {
       double progress = this.config.beatBroadcaster.ProgressThroughMeasure;
       double level = this.audio.Volume;
+
+      // Check for planet interaction
+      if (config.orientationPlanetClear) {
+        config.orientationPlanetClear = false;
+        planets = new HashSet<Planet>();
+      }
+
+      if (config.orientationPlanetSpawn && config.orientationPlanetSpawnNumber > 0) {
+        config.orientationPlanetSpawn = false;
+        spawningPlanets = true;
+        planetsToSpawn = config.orientationPlanetSpawnNumber;
+        // pick a random x, y somewhere between r = .2 and r = .8
+        // pick a random velocity that's 1/r^2, perpendicular to random x, y, maybe plus or minus a small amount
+        float new_planet_r = (float)rand.NextDouble() * .2f + .5f;
+        float new_planet_x = (float)rand.NextDouble() * .6f + .2f;
+        float new_planet_y = (float)Math.Sqrt(new_planet_r * new_planet_r - new_planet_x * new_planet_x);
+        new_planet_position = new Vector2(new_planet_x, new_planet_y);
+        new_planet_velocity = new Vector2(-new_planet_y, new_planet_x);
+
+      }
+
+      if (spawningPlanets) {
+        planetCounter++;
+        if (planetCounter >= planetTimer) {
+          planetCounter = 0;
+          planetsToSpawn--;
+          planets.Add(new Planet(new_planet_position, new_planet_velocity, config));
+        }
+        if (planetsToSpawn <= 0) {
+          spawningPlanets = false;
+        }
+      }
       // Global effects
       // Fade out
       buffer.Fade(1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed), 0);
@@ -203,18 +326,21 @@ namespace Spectrum.Visualizers {
         }
       }
 
-      // CONTOUR logic
-      if (config.orientationAction) {
-        config.orientationAction = false;
-        contourFiring = true;
-        contourCounter = 6; 
+      // Contour logic ('animates' the contours pulsing)
+      contourCounter++;
+      if (contourCounter >= 100) {
+        contourCounter = 0;
       }
 
-      if (contourFiring) {
-        contourCounter -= .01;
-        if (contourCounter < 2) {
-          contourFiring = false;
-        }
+      // Image logic
+      if (!showImage) {
+        showImageTimer--;
+      } else {
+        showImageTimer = 10000;
+        showImage = false;
+      }
+      if (showImageTimer < 0) {
+        showImage = true;
       }
 
       double thresholdFactor = (config.domeRadialSize / 4) + level + .25;
@@ -222,126 +348,160 @@ namespace Spectrum.Visualizers {
 
       // Big pixel painting loop
       for (int i = 0; i < buffer.pixels.Length; i++) {
-        // 1. Convert the current pixel in the buffer to its coordinates
-        var p = buffer.pixels[i];
-        var x = 2 * p.x - 1; // now centered on (0, 0) and with range [-1, 1]
-        var y = 1 - 2 * p.y; // this is because in the original mapping x, y come "out of" the top left corner
-        float z = (x * x + y * y) > 1 ? 0 : (float)Math.Sqrt(1 - x * x - y * y);
-        Vector3 pixelPoint = new Vector3((float)x, (float)y, z);
-
-        // # Ring stamps - shapes that appear based on sensor facing
-        if (stampFired) {
-          // Single band
-          if (stampEffect == 0) {
-            if (Between(Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot), 1.13, 1.27)) {
-              double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
-              Color color = new Color(hue, .2, 1);
-              buffer.pixels[i].color = color.ToInt();
-            }
-          } else if (stampEffect == 1) {
-            // Evenly spaced "grid"
-            if (Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot) % .4 < .05) {
-              double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
-              Color color = new Color(hue, .2, 1);
-              buffer.pixels[i].color = color.ToInt();
-            }
-          } else if (stampEffect == 2) {
-            // Time delayed decreasing bands
-            // 0 to 2
-            // counter goes from 9 to 0
-            // 2 - (counter / 9)
-            // have them appear 'to the beat'?
-            double ringDistance = 2.4 - Clamp(1.8d / (4 - (cooldown / 2d)), 0, 2.4);
-            if (Between(Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot), ringDistance - .003 * cooldown * cooldown, ringDistance + .003 * cooldown * cooldown)) {
-              double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
-              Color color = new Color(hue, .2, 1);
-              buffer.pixels[i].color = color.ToInt();
-            }
-          }
-        }
-
-        // # Twinkling - (configurably) dense bright dots at random
-        if (rand.NextDouble() < this.config.domeTwinkleDensity & z > .2) {
-          buffer.pixels[i].color = 0xFFFFFF;
-        }
-
-        // # Spotlight - orientation sensor dot
-        // Calibration assigns (0, 1, 0) to be 'forward'
-        // So we want the post-transformed pixel closest to (0, 1, 0)?
-        //double radius = Clamp(config.domeRadialSize * level * level * level * level, .05, 4);
-        double potential = 0;
-        int deviceCounter = 0;
-        Quaternion colorCenter = new Quaternion(0, 0, 0, 0);
-        if (idle) {
-          double distance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), spot);
-          double negadistance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), Vector3.Negate(spot));
-          potential += 1 / (distance * negadistance);
-          colorCenter = currentOrientation;
-        } else {
-          foreach (int deviceId in devices.Keys) {
-
-            deviceCounter++;
-            Quaternion currentOrientation = devices[deviceId].currentRotation();
-
-            if (!devices.ContainsKey(config.orientationDeviceSpotlight)) {
-              // for simplicity lets just assign the first one we see as the spotlight ID
-              spotlightId = deviceId;
-              spotlightCenter = currentOrientation;
-            }
-            // Metaball - we sum up contributions from each sensor to the current point and shade based on that
-            // The added trick is, we identify opposite ends of the hemispherical domain
-            // So we sum both 'ends' at once (i.e. (0, 1, 0) and (0, -1, 0) are identified as the same point)
-            double distance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), spot);
-            double negadistance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), Vector3.Negate(spot));
-            double scale = 1 / (distance * negadistance);
-            if (distance < negadistance) {
-              colorCenter += Quaternion.Multiply(currentOrientation, (float)scale);
-            } else {
-              colorCenter -= Quaternion.Multiply(currentOrientation, (float)scale);
-            }
-            potential += scale;
-          }
-          colorCenter = Quaternion.Normalize(colorCenter);
-          potential = potential / deviceCounter; // normalize by device count
-        }
-
-        double strength = potential - threshold;
-        // 'absolute' metaball - just a crisp cutoff at threshold
-        if (strength > 0) {
-          double hue = (256 * (1 + colorCenter.W) / 2) / 256d;
-          // At the high volumes, desaturate
-          double saturation = Clamp(1.2 / level - 1, 0, 1);
-          Color color = new Color(hue, saturation, 1);
-          buffer.pixels[i].color = Color.BlendLightPaint(new Color(buffer.pixels[i].color), color).ToInt();
-        }
-
-        // Contour - highlight level curves of the potential field
-        if (contourFiring & Math.Abs(potential - contourCounter) < 1) {
+        // Early return - if the pixel here is in our graphic AND its time to flash the graphic
+        if (imagePixels.Contains(i) & showImage) {
           Color color = new Color(1, .1, 1);
           buffer.pixels[i].color = color.ToInt();
-        }
+        } else {
+          // 1. Convert the current pixel in the buffer to its coordinates
+          var p = buffer.pixels[i];
+          var x = 2 * p.x - 1; // now centered on (0, 0) and with range [-1, 1]
+          var y = 1 - 2 * p.y; // this is because in the original mapping x, y come "out of" the top left corner
+          float z = (x * x + y * y) > 1 ? 0 : (float)Math.Sqrt(1 - x * x - y * y);
+          Vector3 pixelPoint = new Vector3((float)x, (float)y, z);
 
-        // Ripple_follow - global color wave that follows a spot
-        double rippleRadius = rippleCounter / 300d;
-        if (CloseTo(Vector3.Distance(Vector3.Transform(pixelPoint, rippleCenter), spot), rippleRadius, .01)) {
-          double hue = Wrap(((256 * (currentOrientation.W + 1) / 2) / 256d) + Vector3.Dot(Vector3.Transform(pixelPoint, rippleCenter), spot) / 2, 0, 1);
-          double saturation = Clamp(1 - rippleCounter / 600d, 0, 1);
-          double value = Clamp(1 - rippleCounter / 800d, 0, 1);
-          Color color = new Color(hue, saturation, value);
-          buffer.pixels[i].color = Color.BlendValue(1, new Color(buffer.pixels[i].color), color).ToInt();
+          // # Ring stamps - shapes that appear based on sensor facing
+          if (stampFired) {
+            // Single band
+            if (stampEffect == 0) {
+              if (Between(Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot), 1.13, 1.27)) {
+                double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
+                Color color = new Color(hue, .2, 1);
+                buffer.pixels[i].color = color.ToInt();
+              }
+            } else if (stampEffect == 1) {
+              // Evenly spaced "grid"
+              if (Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot) % .4 < .05) {
+                double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
+                Color color = new Color(hue, .2, 1);
+                buffer.pixels[i].color = color.ToInt();
+              }
+            } else if (stampEffect == 2) {
+              // Time delayed decreasing bands
+              // 0 to 2
+              // counter goes from 9 to 0
+              // 2 - (counter / 9)
+              // have them appear 'to the beat'?
+              double ringDistance = 2.4 - Clamp(1.8d / (4 - (cooldown / 2d)), 0, 2.4);
+              if (Between(Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot), ringDistance - .003 * cooldown * cooldown, ringDistance + .003 * cooldown * cooldown)) {
+                double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
+                Color color = new Color(hue, .2, 1);
+                buffer.pixels[i].color = color.ToInt();
+              }
+            }
+          }
+
+          // # Twinkling - (configurably) dense bright dots at random
+          if (rand.NextDouble() < this.config.domeTwinkleDensity & z > .2) {
+            buffer.pixels[i].color = 0xFFFFFF;
+          }
+
+          // # Spotlight - orientation sensor dot
+          // Calibration assigns (0, 1, 0) to be 'forward'
+          // So we want the post-transformed pixel closest to (0, 1, 0)?
+          //double radius = Clamp(config.domeRadialSize * level * level * level * level, .05, 4);
+          double potential = 0;
+          int deviceCounter = 0;
+          Quaternion colorCenter = new Quaternion(0, 0, 0, 0);
+          if (idle) {
+            double distance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), spot);
+            double negadistance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), Vector3.Negate(spot));
+            potential += 1 / (distance * negadistance);
+            colorCenter = currentOrientation;
+          } else {
+            foreach (int deviceId in devices.Keys) {
+
+              deviceCounter++;
+              Quaternion currentOrientation = devices[deviceId].currentRotation();
+
+              if (!devices.ContainsKey(config.orientationDeviceSpotlight)) {
+                // for simplicity lets just assign the first one we see as the spotlight ID
+                spotlightId = deviceId;
+                spotlightCenter = currentOrientation;
+              }
+              // Metaball - we sum up contributions from each sensor to the current point and shade based on that
+              // The added trick is, we identify opposite ends of the hemispherical domain
+              // So we sum both 'ends' at once (i.e. (0, 1, 0) and (0, -1, 0) are identified as the same point)
+              double distance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), spot);
+              double negadistance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), Vector3.Negate(spot));
+              double scale = 1 / (distance * negadistance);
+              if (devices[deviceId].actionFlag == 1) {
+                scale = scale * 2; // 'bonus' from button press; dial this in later
+              }
+              if (distance < negadistance) {
+                colorCenter += Quaternion.Multiply(currentOrientation, (float)scale);
+              } else {
+                colorCenter -= Quaternion.Multiply(currentOrientation, (float)scale);
+              }
+              potential += scale;
+            }
+            colorCenter = Quaternion.Normalize(colorCenter);
+            potential = potential / deviceCounter; // normalize by device count
+          }
+          double strength = potential - threshold;
+          double metaballhue = (256 * (1 + colorCenter.W) / 2) / 256d;
+          // 'absolute' metaball - just a crisp cutoff at threshold
+          if (strength > 0) {
+            // At the high volumes, desaturate
+            double saturation = Clamp(1.2 / level - 1, 0, 1);
+            Color color = new Color(metaballhue, saturation, 1);
+            buffer.pixels[i].color = Color.BlendLightPaint(new Color(buffer.pixels[i].color), color).ToInt();
+          }
+
+          // Contour - highlight level curves of the potential field
+          double potentialContours = Math.Log(1000 * (potential - .5)) + contourCounter / 100;
+          double contourBracket = Math.Truncate(potentialContours);
+          double contourValue = potentialContours - contourBracket;
+          if (config.orientationShowContours & contourValue < .2) {
+            Color color = new Color(metaballhue, .4, .8 - Clamp(1 - contourBracket / 10, 0, .8));
+            buffer.pixels[i].color = color.ToInt();
+          }
+
+          // Ripple_follow - global color wave that follows a spot
+          double rippleRadius = rippleCounter / 300d;
+          if (CloseTo(Vector3.Distance(Vector3.Transform(pixelPoint, rippleCenter), spot), rippleRadius, .01)) {
+            double hue = Wrap(((256 * (currentOrientation.W + 1) / 2) / 256d) + Vector3.Dot(Vector3.Transform(pixelPoint, rippleCenter), spot) / 2, 0, 1);
+            double saturation = Clamp(1 - rippleCounter / 600d, 0, 1);
+            double value = Clamp(1 - rippleCounter / 800d, 0, 1);
+            Color color = new Color(hue, saturation, value);
+            buffer.pixels[i].color = Color.BlendValue(1, new Color(buffer.pixels[i].color), color).ToInt();
+          }
+
+          // Planets
+          foreach (Planet planet in planets) {
+            double distance = Vector3.Distance(pixelPoint, planet.dome_position);
+            if (distance < config.orientationPlanetVisualSize) {
+              Color color = new Color(1, .01, 1);
+              buffer.pixels[i].color = color.ToInt();
+            }
+
+          }
         }
       }
       // Finished pixel iterations - clean up
       if (cooldown < 7 & (stampEffect == 0 | stampEffect == 1)) {
         stampFired = false;
       }
+      // Update planets
+      planets.RemoveWhere(p => p.cleanup);
+      foreach (Planet p in planets) {
+        double dome_gravity = config.orientationDomeG / p.position.LengthSquared();
+        Vector2 acceleration = (float)dome_gravity * -p.position;
+        foreach (int deviceId in devices.Keys) {
+          Quaternion orientation = devices[deviceId].currentRotation();
+          Vector2 device_separation = new Vector2(orientation.X, orientation.Y) - p.position;
+          double wand_gravity = config.orientationWandG / device_separation.LengthSquared();
+          acceleration += (float)wand_gravity * device_separation;
+        }
+        p.update(acceleration);
+      }
+
       lastProgress = progress;
       dome.WriteBuffer(buffer);
     }
 
     public void Visualize() {
       this.Render();
-
       this.dome.Flush();
     }
     private static bool Between(double x, double a, double b) {
