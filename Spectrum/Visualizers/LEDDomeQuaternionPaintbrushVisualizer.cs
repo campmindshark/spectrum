@@ -89,7 +89,7 @@ namespace Spectrum.Visualizers {
     int cooldown = 7;
     double lastProgress = 0;
     bool stampFired = false;
-    int stampEffect = 0; // 0 - meridian ring; 1 - grid of rings; 2 - rhythm stamp
+    int stampEffect = 0; // 1 - grid of rings; 2 - rhythm stamp
 
     // Ripple effect variables
     int rippleType = 0; // 0 - 'static' ripple; 1 - 'follower' ripple
@@ -245,7 +245,9 @@ namespace Spectrum.Visualizers {
           idleTimer = 600;
         }
         lastOrientation = currentOrientation;
-        idle = idleTimer <= 0;
+        if (idleTimer <= 0) {
+          idle = true;
+        }
       } else {
         idle = false;
       }
@@ -285,7 +287,15 @@ namespace Spectrum.Visualizers {
         counter = 0;
         cooldown = 10;
         // Choose one of the three
-        stampEffect = (stampEffect + 1) % 3;
+        if (stampEffect == 0) {
+          stampEffect = 1;
+        }
+        if (stampEffect == 1) {
+          stampEffect = 2;
+        }
+        if (stampEffect == 2) {
+          stampEffect = 1;
+        }
         if (spotlightId == -1) {
           stampCenter = currentOrientation;
         } else {
@@ -362,14 +372,7 @@ namespace Spectrum.Visualizers {
 
           // # Ring stamps - shapes that appear based on sensor facing
           if (stampFired) {
-            // Single band
-            if (stampEffect == 0) {
-              if (Between(Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot), 1.13, 1.27)) {
-                double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
-                Color color = new Color(hue, .2, 1);
-                buffer.pixels[i].color = color.ToInt();
-              }
-            } else if (stampEffect == 1) {
+            if (stampEffect == 1) {
               // Evenly spaced "grid"
               if (Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot) % .4 < .05) {
                 double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
@@ -454,7 +457,7 @@ namespace Spectrum.Visualizers {
           double contourValue = potentialContours - contourBracket;
           if (config.orientationShowContours & contourValue < .2) {
             Color color = new Color(metaballhue, .4, .8 - Clamp(1 - contourBracket / 10, 0, .8));
-            buffer.pixels[i].color = color.ToInt();
+            buffer.pixels[i].color = Color.BlendLightPaint(new Color(buffer.pixels[i].color), color).ToInt();
           }
 
           // Ripple_follow - global color wave that follows a spot
@@ -479,7 +482,7 @@ namespace Spectrum.Visualizers {
         }
       }
       // Finished pixel iterations - clean up
-      if (cooldown < 7 & (stampEffect == 0 | stampEffect == 1)) {
+      if (cooldown < 7 & stampEffect == 1) {
         stampFired = false;
       }
       // Update planets
