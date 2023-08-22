@@ -147,6 +147,7 @@ namespace Spectrum {
     public bool orientationPlanetClear { get; set; } = false;
     public double orientationDomeG { get; set; } = 0;
     public double orientationWandG { get; set; } = 0;
+    public double orientationFriction { get; set; } = 1;
 
   }
 

@@ -272,6 +272,9 @@ namespace Spectrum {
       this.Bind("orientationShowContours", this.orientationContours, CheckBox.IsCheckedProperty);
       this.Bind("orientationSphereTopology", this.orientationSphereTopology, CheckBox.IsCheckedProperty);
       this.Bind("orientationPlanetVisualSize", this.orientationPlanetSize, Slider.ValueProperty);
+      this.Bind("orientationFriction", this.orientationFriction, Slider.ValueProperty);
+      this.Bind("orientationPlanetVisualSize", this.orientationPlanetSizeLabel, Label.ContentProperty);
+      this.Bind("orientationFriction", this.orientationFrictionLabel, Label.ContentProperty);
     }
 
     private void Bind(

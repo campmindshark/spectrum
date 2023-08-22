@@ -9,6 +9,7 @@ using System.IO;
 using System.Resources;
 using Sanford.Multimedia;
 using System.Linq;
+using NAudio.Gui;
 
 namespace Spectrum.Visualizers {
   class Planet {
@@ -33,6 +34,7 @@ namespace Spectrum.Visualizers {
     }
 
     public void update(Vector2 new_acceleration) {
+      velocity = (float)config.orientationFriction * velocity;
       position += timescale * velocity;
       double position_r = position.Length();
       velocity += timescale * new_acceleration;
@@ -242,6 +244,7 @@ namespace Spectrum.Visualizers {
             idleTimer--;
           }
         } else {
+          idle = false;
           idleTimer = 600;
         }
         lastOrientation = currentOrientation;
@@ -370,6 +373,11 @@ namespace Spectrum.Visualizers {
           float z = (x * x + y * y) > 1 ? 0 : (float)Math.Sqrt(1 - x * x - y * y);
           Vector3 pixelPoint = new Vector3((float)x, (float)y, z);
 
+          // # Twinkling - (configurably) dense bright dots at random
+          if (rand.NextDouble() < this.config.domeTwinkleDensity & z > .2) {
+            buffer.pixels[i].color = 0xFFFFFF;
+          }
+
           // # Ring stamps - shapes that appear based on sensor facing
           if (stampFired) {
             if (stampEffect == 1) {
@@ -394,10 +402,6 @@ namespace Spectrum.Visualizers {
             }
           }
 
-          // # Twinkling - (configurably) dense bright dots at random
-          if (rand.NextDouble() < this.config.domeTwinkleDensity & z > .2) {
-            buffer.pixels[i].color = 0xFFFFFF;
-          }
 
           // # Spotlight - orientation sensor dot
           // Calibration assigns (0, 1, 0) to be 'forward'
@@ -446,7 +450,7 @@ namespace Spectrum.Visualizers {
           // 'absolute' metaball - just a crisp cutoff at threshold
           if (strength > 0) {
             // At the high volumes, desaturate
-            double saturation = Clamp(1.2 / level - 1, 0, 1);
+            double saturation = Clamp(1.3 / level - 1, .2, 1);
             Color color = new Color(metaballhue, saturation, 1);
             buffer.pixels[i].color = Color.BlendLightPaint(new Color(buffer.pixels[i].color), color).ToInt();
           }
@@ -463,11 +467,10 @@ namespace Spectrum.Visualizers {
           // Ripple_follow - global color wave that follows a spot
           double rippleRadius = rippleCounter / 300d;
           if (CloseTo(Vector3.Distance(Vector3.Transform(pixelPoint, rippleCenter), spot), rippleRadius, .01)) {
-            double hue = Wrap(((256 * (currentOrientation.W + 1) / 2) / 256d) + Vector3.Dot(Vector3.Transform(pixelPoint, rippleCenter), spot) / 2, 0, 1);
             double saturation = Clamp(1 - rippleCounter / 600d, 0, 1);
             double value = Clamp(1 - rippleCounter / 800d, 0, 1);
-            Color color = new Color(hue, saturation, value);
-            buffer.pixels[i].color = Color.BlendValue(1, new Color(buffer.pixels[i].color), color).ToInt();
+            Color color = new Color(metaballhue, saturation, value);
+            buffer.pixels[i].color = Color.BlendLightPaint(new Color(buffer.pixels[i].color), color).ToInt();
           }
 
           // Planets
@@ -489,12 +492,24 @@ namespace Spectrum.Visualizers {
       planets.RemoveWhere(p => p.cleanup);
       foreach (Planet p in planets) {
         double dome_gravity = config.orientationDomeG / p.position.LengthSquared();
+        // Cap acceleration to avoid 'divide by zero' type issues
+        dome_gravity = Clamp(dome_gravity, -100, 100);
         Vector2 acceleration = (float)dome_gravity * -p.position;
-        foreach (int deviceId in devices.Keys) {
-          Quaternion orientation = devices[deviceId].currentRotation();
-          Vector2 device_separation = new Vector2(orientation.X, orientation.Y) - p.position;
+        if (idle) {
+          Vector3 device_position = Vector3.Transform(spot, Quaternion.Inverse(currentOrientation));
+          Vector2 device_separation = new Vector2(device_position.X, device_position.Y) - p.position;
           double wand_gravity = config.orientationWandG / device_separation.LengthSquared();
+          wand_gravity = Clamp(wand_gravity, -100, 100);
           acceleration += (float)wand_gravity * device_separation;
+        } else {
+          foreach (int deviceId in devices.Keys) {
+            Quaternion orientation = devices[deviceId].currentRotation();
+            Vector3 device_position = Vector3.Transform(spot, Quaternion.Inverse(orientation));
+            Vector2 device_separation = new Vector2(device_position.X, device_position.Y) - p.position;
+            double wand_gravity = config.orientationWandG / device_separation.LengthSquared();
+            wand_gravity = Clamp(wand_gravity, -100, 100);
+            acceleration += (float)wand_gravity * device_separation;
+          }
         }
         p.update(acceleration);
       }

@@ -122,6 +122,7 @@ namespace Spectrum.Base {
     bool orientationPlanetClear { get; set; }
     double orientationDomeG { get; set; }
     double orientationWandG { get; set; }
+    double orientationFriction { get; set; }
   }
 
 }

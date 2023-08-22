@@ -14,7 +14,7 @@
   WindowState="Maximized"
 >
     <DockPanel>
-        <DockPanel Height="620" DockPanel.Dock="Top">
+        <DockPanel DockPanel.Dock="Top">
             <Grid HorizontalAlignment="Left" VerticalAlignment="Top">
                 <Label Content="Colors" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
                 <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
@@ -325,27 +325,42 @@
                         </WrapPanel>
                     </Border>
                 </WrapPanel>
-                <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
-                    <Label x:Name="orientationLabel" Content="Orientation controls" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                    <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
-                        <WrapPanel Width="300" HorizontalAlignment="Center" VerticalAlignment="Top" Height="83">
-                            <Button x:Name="orientationCalibrate" Content="Set calibration" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Click="OrientationCalibrationClicked" Padding="0,0" />
-                            <TextBox x:Name="orientationDeviceSpotlightInput" Text="ID"  Margin ="4,4,4,4" Width="21" TextChanged="OrientationDeviceSpotlightChanged"/>
-                            <CheckBox x:Name="orientationContours" Content="Display contours" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Padding="0,0" />
-                            <TextBox x:Name="orientationSpawnNumber" Text="#" Margin ="4,4,4,4" Width="21" TextChanged="OrientationSpawnNumberChanged"/>
-              <Button x:Name="orientationSpawnDots" Content="Spawn" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Click="OrientationSpawnDotsClicked"/>
-              <Button x:Name="orientationClearDots" Content="Clear" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Click="OrientationClearDotsClicked"/>
-              <CheckBox x:Name="orientationSphereTopology" Content="Spherical topology" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Padding="0,0"/>
-              <TextBox x:Name="orientationDomeGravity" Text="G_d" Margin="4,4,4,4" Width="25" TextChanged="OrientationDomeGravityChanged"/>
-              <TextBox x:Name="orientationWandGravity" Text="G_w" Margin="4,4,4,4" Width="25" TextChanged="OrientationDomeWandChanged"/>
-              <Label Content="Planet visual size" Margin="0,3,0,0" Padding="0" />
-              <Slider x:Name="orientationPlanetSize" Value=".1" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Height="20" Width="115" Minimum="0" Maximum=".25" LargeChange=".05" SmallChange=".01" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted"/>
 
-
+        <Grid Width="258" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Right">
+          <Label Content="Orientation controls" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+          <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
+            <WrapPanel Margin="0,0,0,0">
+              <Grid Height="28">
+                <Button x:Name="orientationCalibrate" Content="Set calibration" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Click="OrientationCalibrationClicked" Padding="0,0" />
+                <TextBox x:Name="orientationDeviceSpotlightInput" Text="ID"  Margin ="90,4,4,4" Width="21" TextChanged="OrientationDeviceSpotlightChanged"/>
+              </Grid>
+              <Grid Height="24">
+                <CheckBox x:Name="orientationContours" Content="Display contours" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Padding="0,0" />
+              </Grid>
+              <Grid Height="28">
+                <TextBox x:Name="orientationSpawnNumber" Text="#" HorizontalAlignment="Left" Margin ="4,4,4,4" Width="21" TextChanged="OrientationSpawnNumberChanged"/>
+                <Button x:Name="orientationSpawnDots" Content="Spawn" HorizontalAlignment="Left" Margin="40,4,4,4" VerticalAlignment="Top" Click="OrientationSpawnDotsClicked"/>
+                <Button x:Name="orientationClearDots" Content="Clear" HorizontalAlignment="Left" Margin="90,4,4,4" VerticalAlignment="Top" Click="OrientationClearDotsClicked"/>
+              </Grid>
+              <Grid Height="28">
+                <CheckBox x:Name="orientationSphereTopology" Content="Spherical topology" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Padding="0,0"/>
+                <TextBox x:Name="orientationDomeGravity" Text="G_d" HorizontalAlignment="Left" Margin="130,4,4,4" Width="25" TextChanged="OrientationDomeGravityChanged"/>
+                <TextBox x:Name="orientationWandGravity" Text="G_w" Margin="170,4,4,4" Width="25" TextChanged="OrientationDomeWandChanged"/>
+              </Grid>
+              <Grid Height="28">
+                <Label Content="Planet visual size" HorizontalAlignment="Left" Margin="0,3,0,0" Padding="0" />
+                <Slider x:Name="orientationPlanetSize" Value=".1" Margin="90,4,4,4" VerticalAlignment="Top" Height="20" Width="115" Minimum="0" Maximum=".25" LargeChange=".05" SmallChange=".01" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted"/>
+                <Label x:Name="orientationPlanetSizeLabel" Content="1" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="210,0,0,0" Padding="0" ContentStringFormat="F3" />
+              </Grid>
+              <Grid Height="28">
+                <Label Content="Planet friction" HorizontalAlignment="Left" Margin="0,3,0,0" Padding="0" />
+                <Slider x:Name="orientationFriction" Value="1" Margin="90,4,4,4" VerticalAlignment="Top" Height="20" Width="115" Minimum=".95" Maximum="1.05" LargeChange=".01" SmallChange=".001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted"/>
+                <Label x:Name="orientationFrictionLabel" Content="1" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="210,0,0,0" Padding="0" ContentStringFormat="F3" />
+              </Grid>
             </WrapPanel>
-                    </Border>
-                </WrapPanel>
-            </DockPanel>
+          </Border>
+        </Grid>
+      </DockPanel>
             <Grid Width="258" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
                 <Label Content="Tempo" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
                 <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
