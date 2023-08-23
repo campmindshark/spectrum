@@ -350,12 +350,12 @@
               <Grid Height="28">
                 <Label Content="Planet visual size" HorizontalAlignment="Left" Margin="0,3,0,0" Padding="0" />
                 <Slider x:Name="orientationPlanetSize" Value=".1" Margin="90,4,4,4" VerticalAlignment="Top" Height="20" Width="115" Minimum="0" Maximum=".25" LargeChange=".05" SmallChange=".01" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted"/>
-                <Label x:Name="orientationPlanetSizeLabel" Content="1" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="210,0,0,0" Padding="0" ContentStringFormat="F3" />
+                <Label x:Name="orientationPlanetSizeLabel" Content="1" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="220,0,0,0" Padding="0" ContentStringFormat="F3" />
               </Grid>
               <Grid Height="28">
                 <Label Content="Planet friction" HorizontalAlignment="Left" Margin="0,3,0,0" Padding="0" />
-                <Slider x:Name="orientationFriction" Value="1" Margin="90,4,4,4" VerticalAlignment="Top" Height="20" Width="115" Minimum=".95" Maximum="1.05" LargeChange=".01" SmallChange=".001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted"/>
-                <Label x:Name="orientationFrictionLabel" Content="1" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="210,0,0,0" Padding="0" ContentStringFormat="F3" />
+                <Slider x:Name="orientationFriction" Value="1" Margin="90,4,4,4" VerticalAlignment="Top" Height="20" Width="115" Minimum=".95" Maximum="1" LargeChange=".01" SmallChange=".001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted"/>
+                <Label x:Name="orientationFrictionLabel" Content="1" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="220,0,0,0" Padding="0" ContentStringFormat="F3" />
               </Grid>
             </WrapPanel>
           </Border>
@@ -487,22 +487,22 @@
                             <Label x:Name="domeRadialSizeLabel" Content="0.1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
                         </Grid>
                         <Grid Height="24">
-                            <Label Content="Radial Frequency" Margin="0,3,0,0" Padding="0" />
+              <Label Content="Radial Frequency" Margin="-2,3,2.4,0" Padding="0" />
                             <Slider x:Name="domeRadialFrequencySlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="1" Maximum="12" LargeChange="1" SmallChange="1" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                             <Label x:Name="domeRadialFrequencyLabel" Content="1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
                         </Grid>
                         <Grid Height="24">
-                            <Label Content="Radial Center Angle" Margin="0,3,0,0" Padding="0" />
+              <Label Content="Radial Center Angle" Margin="-2,3,2.4,0" Padding="0" />
                             <Slider x:Name="domeRadialCenterAngleSlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="-3.14159" Maximum="3.14159" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                             <Label x:Name="domeRadialCenterAngleLabel" Content="1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
                         </Grid>
                         <Grid Height="24">
-                            <Label Content="Radial Center Distance" Margin="0,3,0,0" Padding="0" />
+              <Label Content="Radial Center Distance" Margin="-2,3,2.4,0" Padding="0" />
                             <Slider x:Name="domeRadialCenterDistanceSlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="0" Maximum="1" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                             <Label x:Name="domeRadialCenterDistanceLabel" Content="1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
                         </Grid>
                         <Grid Height="24">
-                            <Label Content="Stage 1" Margin="0,3,0,0" Padding="0" />
+              <Label Content="Stage 1" Margin="-2,3,2.4,0" Padding="0" />
                             <ComboBox x:Name="stagePrimaryRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
                                 <ComboBoxItem x:Name="sprs0" Content="0" IsSelected="True" />
                                 <ComboBoxItem x:Name="sprs1" Content="1/8" />
@@ -514,7 +514,7 @@
                             </ComboBox>
                         </Grid>
                         <Grid Height="24">
-                            <Label Content="Flash" Margin="0,3,0,0" Padding="0" />
+              <Label Content="Flash" Margin="-2,3,2.4,0" Padding="0" />
                             <ComboBox x:Name="flashRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
                                 <ComboBoxItem x:Name="frs0" Content="0" IsSelected="True" />
                                 <ComboBoxItem x:Name="frs1" Content="1/2" />
