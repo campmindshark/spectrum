@@ -5,11 +5,6 @@ using System;
 using System.Numerics;
 using System.Collections.Generic;
 using System.Drawing;
-using System.IO;
-using System.Resources;
-using Sanford.Multimedia;
-using System.Linq;
-using NAudio.Gui;
 
 namespace Spectrum.Visualizers {
   class Planet {
@@ -106,7 +101,9 @@ namespace Spectrum.Visualizers {
     // Graphic pixels
     HashSet<int> imagePixels;
     bool showImage = false;
-    int showImageTimer = 10000;
+    static int showImageTimeLimit = 10000;
+    int showImageTimer = showImageTimeLimit;
+    static double showImageAngle = 0; // tweak this on playa when we know which way the dome faces
 
     // Planets
     HashSet<Planet> planets = new HashSet<Planet>();
@@ -131,10 +128,10 @@ namespace Spectrum.Visualizers {
       this.dome.RegisterVisualizer(this);
       buffer = this.dome.MakeDomeOutputBuffer();
       rand = new Random();
-      currentOrientation = orientation.deviceRotation(config.orientationDeviceSpotlight);
+      currentOrientation = new Quaternion(0, 0, 0, 1);
       lastOrientation = new Quaternion(0, 0, 0, 1);
       idleTimer = 0;
-      imagePixels = loadImage(200, 0);
+      imagePixels = loadImage(200, showImageAngle);
     }
 
     public HashSet<int> loadImage(double scale, double theta) {
@@ -229,18 +226,19 @@ namespace Spectrum.Visualizers {
         spotlightCenter = devices[spotlightId].currentRotation();
       }
 
+      Console.WriteLine(devices.Count);
       // Check if sensor is moving or not; this is only relevant if one device is left, if theres multiple we first wait for them to turn off
-      if (devices.Count <= 1) {
+      if (devices.Count == 0) {
+        idle = true;
+      } else if (devices.Count == 1) {
         float sensorThreshold = .00015f;
-        if (devices.Count > 0) {
-          var en = devices.Values.GetEnumerator();
-          en.MoveNext();
-          currentOrientation = en.Current.currentRotation();
-          en.Dispose();
-        }
+        var en = devices.Values.GetEnumerator();
+        en.MoveNext();
+        currentOrientation = en.Current.currentRotation();
+        en.Dispose();
         if ((Math.Abs(1 - Quaternion.Dot(lastOrientation, currentOrientation)) < sensorThreshold) |
           (IsZero(currentOrientation))) {
-          if (idleTimer != 0) {
+          if (idleTimer > 0) {
             idleTimer--;
           }
         } else {
@@ -254,7 +252,6 @@ namespace Spectrum.Visualizers {
       } else {
         idle = false;
       }
-
       if (idle) {
         // Sensor not apparently moving
         // randomly nudge pointer
@@ -349,7 +346,7 @@ namespace Spectrum.Visualizers {
       if (!showImage) {
         showImageTimer--;
       } else {
-        showImageTimer = 10000;
+        showImageTimer = showImageTimeLimit;
         showImage = false;
       }
       if (showImageTimer < 0) {
@@ -378,29 +375,6 @@ namespace Spectrum.Visualizers {
             buffer.pixels[i].color = 0xFFFFFF;
           }
 
-          // # Ring stamps - shapes that appear based on sensor facing
-          if (stampFired) {
-            if (stampEffect == 1) {
-              // Evenly spaced "grid"
-              if (Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot) % .4 < .05) {
-                double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
-                Color color = new Color(hue, .2, 1);
-                buffer.pixels[i].color = color.ToInt();
-              }
-            } else if (stampEffect == 2) {
-              // Time delayed decreasing bands
-              // 0 to 2
-              // counter goes from 9 to 0
-              // 2 - (counter / 9)
-              // have them appear 'to the beat'?
-              double ringDistance = 2.4 - Clamp(1.8d / (4 - (cooldown / 2d)), 0, 2.4);
-              if (Between(Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot), ringDistance - .003 * cooldown * cooldown, ringDistance + .003 * cooldown * cooldown)) {
-                double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
-                Color color = new Color(hue, .2, 1);
-                buffer.pixels[i].color = color.ToInt();
-              }
-            }
-          }
 
 
           // # Spotlight - orientation sensor dot
@@ -481,6 +455,30 @@ namespace Spectrum.Visualizers {
               buffer.pixels[i].color = color.ToInt();
             }
 
+          }
+          
+          // # Ring stamps - shapes that appear based on sensor facing
+          if (stampFired) {
+            if (stampEffect == 1) {
+              // Evenly spaced "grid"
+              if (Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot) % .4 < .05) {
+                double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
+                Color color = new Color(hue, .2, 1);
+                buffer.pixels[i].color = color.ToInt();
+              }
+            } else if (stampEffect == 2) {
+              // Time delayed decreasing bands
+              // 0 to 2
+              // counter goes from 9 to 0
+              // 2 - (counter / 9)
+              // have them appear 'to the beat'?
+              double ringDistance = 2.4 - Clamp(1.8d / (4 - (cooldown / 2d)), 0, 2.4);
+              if (Between(Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot), ringDistance - .003 * cooldown * cooldown, ringDistance + .003 * cooldown * cooldown)) {
+                double hue = (256 * (currentOrientation.W + 1) / 2) / 256d;
+                Color color = new Color(hue, .2, 1);
+                buffer.pixels[i].color = color.ToInt();
+              }
+            }
           }
         }
       }
