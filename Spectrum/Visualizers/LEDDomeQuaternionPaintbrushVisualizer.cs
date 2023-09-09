@@ -64,10 +64,10 @@ namespace Spectrum.Visualizers {
 
     private Random rand;
 
-    private Vector3 spot = new Vector3(0, 1, 0);
+    private Vector3 spot = new Vector3(-1, 0, 0);
 
     // idle variables
-    private int idleTimer = 600;
+    private int idleTimer = 100;
     private bool idle = false;
     private double yaw = 0;
     private double pitch = -.25;
@@ -103,7 +103,7 @@ namespace Spectrum.Visualizers {
     bool showImage = false;
     static int showImageTimeLimit = 10000;
     int showImageTimer = showImageTimeLimit;
-    static double showImageAngle = 0; // tweak this on playa when we know which way the dome faces
+    static double showImageAngle = -2.8; // tweak this on playa when we know which way the dome faces
 
     // Planets
     HashSet<Planet> planets = new HashSet<Planet>();
@@ -152,7 +152,7 @@ namespace Spectrum.Visualizers {
           viewAngle -= 2 * Math.PI;
         }
         int u = (int)(scale * (1 + r * Math.Sin(viewAngle)));
-        int v = (int)(scale * z);
+        int v = (int)(scale * (1 - z));
         if (viewAngle >= (-Math.PI / 2) & viewAngle <= (Math.PI / 2) & u >= 0 & v >= 0 & u < img.Width & v < img.Height) {
           System.Drawing.Color col = img.GetPixel(u, v);
           if (col.Name != "ffffffff") {
@@ -226,24 +226,24 @@ namespace Spectrum.Visualizers {
         spotlightCenter = devices[spotlightId].currentRotation();
       }
 
-      Console.WriteLine(devices.Count);
       // Check if sensor is moving or not; this is only relevant if one device is left, if theres multiple we first wait for them to turn off
       if (devices.Count == 0) {
         idle = true;
       } else if (devices.Count == 1) {
-        float sensorThreshold = .00015f;
+        float sensorThreshold = .0001f;
         var en = devices.Values.GetEnumerator();
         en.MoveNext();
         currentOrientation = en.Current.currentRotation();
         en.Dispose();
-        if ((Math.Abs(1 - Quaternion.Dot(lastOrientation, currentOrientation)) < sensorThreshold) |
+        double diff = Math.Abs(1 - Quaternion.Dot(lastOrientation, currentOrientation));
+        if ((diff < sensorThreshold) |
           (IsZero(currentOrientation))) {
           if (idleTimer > 0) {
             idleTimer--;
           }
         } else {
           idle = false;
-          idleTimer = 600;
+          idleTimer = 100;
         }
         lastOrientation = currentOrientation;
         if (idleTimer <= 0) {
@@ -252,6 +252,12 @@ namespace Spectrum.Visualizers {
       } else {
         idle = false;
       }
+
+      // hack to temporarily ignore all wands
+      if (config.orientationDeviceSpotlight == -2) {
+        idle = true;
+      }
+      // end hack
       if (idle) {
         // Sensor not apparently moving
         // randomly nudge pointer
@@ -262,9 +268,9 @@ namespace Spectrum.Visualizers {
         rollMomentum = Clamp(rollMomentum + Nudge(noise), -.001, .001);
         pitchMomentum = Clamp(pitchMomentum + Nudge(noise), -.001, .001);
 
-        yaw = (yaw + 5 * (level + .2) * yawMomentum);
-        pitch = (pitch + 5 * (level + .2) * pitchMomentum);
-        roll = (roll + 5 * (level + .2) * rollMomentum);
+        yaw = (yaw + 4 * (level + .25) * yawMomentum);
+        pitch = (pitch + 4 * (level + .25) * pitchMomentum);
+        roll = (roll + 4 * (level + .25) * rollMomentum);
 
         Quaternion dummyOrientation = Quaternion.CreateFromYawPitchRoll((float)(2 * Math.PI * yaw), (float)(2 * Math.PI * pitch), (float)(2 * Math.PI * roll));
         dummyOrientation = Quaternion.Normalize(dummyOrientation);
@@ -337,11 +343,10 @@ namespace Spectrum.Visualizers {
       }
 
       // Contour logic ('animates' the contours pulsing)
-      contourCounter++;
+      contourCounter += 4 * level;
       if (contourCounter >= 100) {
         contourCounter = 0;
       }
-
       // Image logic
       if (!showImage) {
         showImageTimer--;
@@ -352,9 +357,9 @@ namespace Spectrum.Visualizers {
       if (showImageTimer < 0) {
         showImage = true;
       }
-
-      double thresholdFactor = (config.domeRadialSize / 4) + level + .25;
-      double threshold = 1 / thresholdFactor;
+      showImage = false; // delete me
+      double thresholdFactor = (config.domeRadialSize / 4) + level + .01; // tweak this
+      double threshold = 2 / thresholdFactor;
 
       // Big pixel painting loop
       for (int i = 0; i < buffer.pixels.Length; i++) {
@@ -406,8 +411,8 @@ namespace Spectrum.Visualizers {
               double distance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), spot);
               double negadistance = Vector3.Distance(Vector3.Transform(pixelPoint, currentOrientation), Vector3.Negate(spot));
               double scale = 1 / (distance * negadistance);
-              if (devices[deviceId].actionFlag == 1) {
-                scale = scale * 2; // 'bonus' from button press; dial this in later
+              if (devices[deviceId].actionFlag == 1 | devices[deviceId].actionFlag == 2 | devices[deviceId].actionFlag == 3) {
+                scale = scale * 4; // 'bonus' from button press; dial this in later
               }
               if (distance < negadistance) {
                 colorCenter += Quaternion.Multiply(currentOrientation, (float)scale);

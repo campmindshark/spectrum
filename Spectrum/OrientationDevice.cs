@@ -17,7 +17,7 @@ namespace Spectrum {
     }
 
     public Quaternion currentRotation() {
-      return Quaternion.Multiply(calibrationOrigin, Quaternion.Inverse(currentOrientation));
+      return Quaternion.Multiply(Quaternion.Inverse(currentOrientation), calibrationOrigin);
     }
   }
 }
