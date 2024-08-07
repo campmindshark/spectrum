@@ -60,13 +60,12 @@ namespace Spectrum.Audio {
       start.WorkingDirectory = envScriptPath;
       start.FileName = Path.Combine(envScriptPath, "python.exe");
       start.Arguments = string.Format(
-        "TorchBeatTracker --audio_input={0} online",
+        "TorchBeatTracker --host_api --audio_input={0} online",
         this.audio.CurrentAudioDeviceIndex
       );
       start.UseShellExecute = false;
       start.RedirectStandardOutput = true;
       start.CreateNoWindow = true;
-
       this.process = Process.Start(start);
       this.process.OutputDataReceived += BeatDetected;
       this.process.BeginOutputReadLine();
