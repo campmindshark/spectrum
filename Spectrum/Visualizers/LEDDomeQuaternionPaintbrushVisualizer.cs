@@ -98,13 +98,6 @@ namespace Spectrum.Visualizers {
     // Contour line variables
     double contourCounter = 0;
 
-    // Graphic pixels
-    HashSet<int> imagePixels;
-    bool showImage = false;
-    static int showImageTimeLimit = 10000;
-    int showImageTimer = showImageTimeLimit;
-    static double showImageAngle = -2.8; // tweak this on playa when we know which way the dome faces
-
     // Planets
     HashSet<Planet> planets = new HashSet<Planet>();
     bool spawningPlanets = false;
@@ -318,17 +311,7 @@ namespace Spectrum.Visualizers {
       if (contourCounter >= 100) {
         contourCounter = 0;
       }
-      // Image logic
-      if (!showImage) {
-        showImageTimer--;
-      } else {
-        showImageTimer = showImageTimeLimit;
-        showImage = false;
-      }
-      if (showImageTimer < 0) {
-        showImage = true;
-      }
-      showImage = false; // delete me
+
       double thresholdFactor = (config.domeRadialSize / 4) + level + .01; // tweak this
       double threshold = 2 / thresholdFactor;
 
