@@ -79,15 +79,5 @@ namespace Spectrum.Properties {
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap texture {
-            get {
-                object obj = ResourceManager.GetObject("texture", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
     }
 }
