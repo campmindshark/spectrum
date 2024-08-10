@@ -67,18 +67,14 @@ namespace Spectrum {
           devices.Remove(kvp.Key);
         }
       }
-
+      // DeviceType
       // Datagram unpacking
-      short W = BitConverter.ToInt16(buffer, 5);
-      short X = BitConverter.ToInt16(buffer, 7);
-      short Y = BitConverter.ToInt16(buffer, 9);
-      short Z = BitConverter.ToInt16(buffer, 11);
-      var actionFlag = buffer[13]; // what the buttons do
-      Quaternion sensorState = new Quaternion(X / 16384.0f, Y / 16384.0f, Z / 16384.0f, W / 16384.0f);
+      var datagramOut = DatagramHandler.parseDatagram(buffer);
+      int actionFlag = datagramOut.actionFlag;
 
       // Device state update
       if (!devices.ContainsKey(deviceId)) {
-        devices.Add(deviceId, new OrientationDevice(timestamp, new Quaternion(0, 0, 0, 1), sensorState));
+        devices.Add(deviceId, datagramOut.device);
       } else {
         if (actionFlag != 0) {
           // debounce (per device!)
@@ -97,7 +93,7 @@ namespace Spectrum {
           // the second conditional is just to catch a case where the device was power cycled;
           //   assuming it was off for more than a second
           devices[deviceId].timestamp = timestamp;
-          devices[deviceId].currentOrientation = sensorState;
+          devices[deviceId].currentOrientation = datagramOut.device.currentOrientation;
         }
       }
       u.BeginReceive(new AsyncCallback(ReceiveCallback), s);

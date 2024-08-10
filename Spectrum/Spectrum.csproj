@@ -68,6 +68,7 @@
     <Compile Include="Converter\SpecificValuesConverter.cs" />
     <Compile Include="Converter\FPSToBrushConverter.cs" />
     <Compile Include="Converter\StringJoinConverter.cs" />
+    <Compile Include="DatagramHandler.cs" />
     <Compile Include="OrientationDevice.cs" />
     <Compile Include="OrientationInput.cs" />
     <Compile Include="Visualizers\LEDDomeFullColorFlashDiagnosticVisualizer.cs" />
