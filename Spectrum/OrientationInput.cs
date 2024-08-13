@@ -5,21 +5,26 @@ using System.Net;
 using System.Net.Sockets;
 using System.Numerics;
 using Spectrum.Base;
+using System.Linq;
+
 namespace Spectrum {
 
   public class OrientationInput : Input {
     private readonly Configuration config;
     public Dictionary<int, OrientationDevice> devices;
+    private long lastCheckedDevices;
     private Dictionary<int, long> lastSeen;
     private long[] lastEvent;
     private Thread listenThread;
     private readonly object mLock = new object();
     private readonly static long DEVICE_TIMEOUT_MS = 5000;
     private readonly static long DEVICE_EVENT_TIMEOUT = 50;
+    private int n_poi = 0;
 
     public OrientationInput(Configuration config) {
       this.config = config;
       devices = new Dictionary<int, OrientationDevice>();
+      lastCheckedDevices = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
       lastSeen = new Dictionary<int, long>();
       lastEvent = new long[255];
       listenThread = new Thread(new ThreadStart(Run));
@@ -59,15 +64,9 @@ namespace Spectrum {
       var deviceId = buffer[0];
       var timestamp = BitConverter.ToInt32(buffer, 1);
 
-      // Disabled device removal - can we run this less often?
       var currentTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
       lastSeen[deviceId] = currentTime;
-      foreach (KeyValuePair<int, long> kvp in lastSeen) {
-        if ((currentTime - kvp.Value) > DEVICE_TIMEOUT_MS) {
-          devices.Remove(kvp.Key);
-        }
-      }
-      // DeviceType
+
       // Datagram unpacking
       var datagramOut = DatagramHandler.parseDatagram(buffer);
       int actionFlag = datagramOut.actionFlag;
@@ -75,6 +74,11 @@ namespace Spectrum {
       // Device state update
       if (!devices.ContainsKey(deviceId)) {
         devices.Add(deviceId, datagramOut.device);
+        if (devices[deviceId].deviceType == 2) {
+          n_poi++;
+        } else {
+          n_poi--;
+        }
       } else {
         if (actionFlag != 0) {
           // debounce (per device!)
@@ -119,6 +123,28 @@ namespace Spectrum {
         }
         config.orientationCalibrate = false;
       }
+
+      // Disabled device removal - can we run this less often?
+      var currentTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+      if ((currentTime - lastCheckedDevices) > DEVICE_TIMEOUT_MS) {
+        List<int> removedDevices = new List<int>();
+        foreach (KeyValuePair<int, long> kvp in lastSeen) {
+          if ((currentTime - kvp.Value) > DEVICE_TIMEOUT_MS) {
+            if (devices[kvp.Key].deviceType == 2) {
+              n_poi--;
+            } else {
+              n_poi++;
+            }
+            devices.Remove(kvp.Key);
+            removedDevices.Add(kvp.Key);
+          }
+        }
+        foreach (int deviceId in removedDevices) {
+          lastSeen.Remove(deviceId);
+        }
+        lastCheckedDevices = currentTime;
+      }
+
     }
 
     public Quaternion deviceRotation(int deviceId) {
@@ -139,6 +165,10 @@ namespace Spectrum {
           return new Quaternion(0, 0, 0, 1);
         }
       }
+    }
+
+    public bool onlyPoi() {
+      return n_poi == devices.Count;
     }
   }
 }
