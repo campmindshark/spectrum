@@ -55,7 +55,7 @@ namespace Spectrum.Visualizers {
 
     private Configuration config;
     private AudioInput audio;
-    private OrientationInput orientation;
+    private OrientationInput orientationInput;
     private LEDDomeOutput dome;
     private LEDDomeOutputBuffer buffer;
 
@@ -111,12 +111,12 @@ namespace Spectrum.Visualizers {
     public LEDDomeQuaternionPaintbrushVisualizer(
       Configuration config,
       AudioInput audio,
-      OrientationInput orientation,
+      OrientationInput orientationInput,
       LEDDomeOutput dome
     ) {
       this.config = config;
       this.audio = audio;
-      this.orientation = orientation;
+      this.orientationInput = orientationInput;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       buffer = this.dome.MakeDomeOutputBuffer();
@@ -135,7 +135,7 @@ namespace Spectrum.Visualizers {
     public bool Enabled { get; set; }
 
     public Input[] GetInputs() {
-      return new Input[] { this.orientation };
+      return new Input[] { this.orientationInput };
     }
 
     void Render() {
@@ -183,13 +183,12 @@ namespace Spectrum.Visualizers {
       // Store the device states as of this frame; this avoids problems when the devices get updated
       // in another thread
       Dictionary<int, OrientationDevice> devices;
-      devices = new Dictionary<int, OrientationDevice>(orientation.devices);
+      devices = new Dictionary<int, OrientationDevice>(orientationInput.devices);
 
       if (devices.ContainsKey(config.orientationDeviceSpotlight)) {
         spotlightId = config.orientationDeviceSpotlight;
         spotlightCenter = devices[spotlightId].currentRotation();
       }
-
       // Check if sensor is moving or not; this is only relevant if one device is left, if theres multiple we first wait for them to turn off
       if (devices.Count == 0) {
         idle = true;
@@ -217,7 +216,7 @@ namespace Spectrum.Visualizers {
         idle = false;
       }
 
-      // hack to temporarily ignore all wands
+      // hack to temporarily ignore all wands if the spotlight ID is -2
       if (config.orientationDeviceSpotlight == -2) {
         idle = true;
       }
@@ -362,6 +361,13 @@ namespace Spectrum.Visualizers {
             double scale = 1 / (distance * negadistance);
             if (devices[deviceId].actionFlag == 1 | devices[deviceId].actionFlag == 2 | devices[deviceId].actionFlag == 3) {
               scale = scale * 4; // 'bonus' from button press; dial this in later
+            }
+            if (devices[deviceId].deviceType == 2) {
+              scale = scale * (4 * (1 + devices[deviceId].rotationalSpeed)); // 'bonus' from spinning poi faster
+              if (orientationInput.onlyPoi()) {
+                scale /= 2; // Cut scale in half if non-poi are connected
+                // there might be a race condition here, since `devices` is hard copied at this point in the loop while `orientationInput` keeps going
+              }
             }
             if (distance < negadistance) {
               colorCenter += Quaternion.Multiply(currentOrientation, (float)scale);
