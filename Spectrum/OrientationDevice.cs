@@ -3,6 +3,7 @@
 namespace Spectrum {
   public class OrientationDevice {
     public int timestamp { get; set; }
+    public int deviceType { get; }
     public Quaternion calibrationOrigin { get; set; }
     public Quaternion currentOrientation { get; set; }
     public double rotationalSpeed { get; set; }
@@ -10,8 +11,9 @@ namespace Spectrum {
     public int actionFlag { get; set; }
 
     // Device types 1, 3, 4 - wands, wristbands
-    public OrientationDevice(int timestamp, Quaternion calibrationOrigin, Quaternion currentOrientation) {
+    public OrientationDevice(int timestamp, int deviceType, Quaternion calibrationOrigin, Quaternion currentOrientation) {
       this.timestamp = timestamp;
+      this.deviceType = deviceType;
       this.calibrationOrigin = calibrationOrigin;
       this.currentOrientation = currentOrientation;
       this.hasSpeed = false;
@@ -19,8 +21,9 @@ namespace Spectrum {
     }
 
     // Device type 2 - Adam's poi
-    public OrientationDevice(int timestamp, Quaternion calibrationOrigin, Quaternion currentOrientation, double rotationalSpeed) {
+    public OrientationDevice(int timestamp, int deviceType, Quaternion calibrationOrigin, Quaternion currentOrientation, double rotationalSpeed) {
       this.timestamp = timestamp;
+      this.deviceType = deviceType;
       this.calibrationOrigin = calibrationOrigin;
       this.currentOrientation = currentOrientation;
       this.hasSpeed = true;

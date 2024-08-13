@@ -22,18 +22,18 @@ namespace Spectrum {
         short Z = BitConverter.ToInt16(buffer, 12);
         Quaternion sensorState = new Quaternion(X / 16384.0f, Y / 16384.0f, Z / 16384.0f, W / 16384.0f);
         int actionFlag = buffer[13]; // what the buttons do
-        return (device: new OrientationDevice(timestamp, new Quaternion(0, 0, 0, 1), sensorState), actionFlag: actionFlag);
+        return (device: new OrientationDevice(timestamp, deviceType, new Quaternion(0, 0, 0, 1), sensorState), actionFlag: actionFlag);
       }
       if (deviceType == 2) {
         short W = BitConverter.ToInt16(buffer, 6);
         short X = BitConverter.ToInt16(buffer, 8);
         short Y = BitConverter.ToInt16(buffer, 10);
         short Z = BitConverter.ToInt16(buffer, 12);
-        double rotationalSpeed = BitConverter.ToInt16(buffer, 14) / 65536.0f;
+        double rotationalSpeed = BitConverter.ToUInt16(buffer, 14) / 65536.0f;
         Quaternion sensorState = new Quaternion(X / 16384.0f, Y / 16384.0f, Z / 16384.0f, W / 16384.0f);
-        return (device: new OrientationDevice(timestamp, new Quaternion(0, 0, 0, 1), sensorState, rotationalSpeed), actionFlag: 0);
+        return (device: new OrientationDevice(timestamp, deviceType, new Quaternion(0, 0, 0, 1), sensorState, rotationalSpeed), actionFlag: 0);
       }
-      return (device: new OrientationDevice(-1, new Quaternion(0, 0, 0, 0), new Quaternion(0, 0, 0, 0)), actionFlag: 0);
+      return (device: new OrientationDevice(-1, -1, new Quaternion(0, 0, 0, 0), new Quaternion(0, 0, 0, 0)), actionFlag: 0);
     }
   }
 }
