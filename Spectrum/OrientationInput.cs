@@ -98,6 +98,8 @@ namespace Spectrum {
           //   assuming it was off for more than a second
           devices[deviceId].timestamp = timestamp;
           devices[deviceId].currentOrientation = datagramOut.device.currentOrientation;
+          // This took me a while to track down. We must set the avgDistanceShort from the datagram
+          devices[deviceId].avgDistanceShort = datagramOut.device.avgDistanceShort;
         }
       }
       u.BeginReceive(new AsyncCallback(ReceiveCallback), s);
@@ -167,7 +169,12 @@ namespace Spectrum {
       }
     }
 
+    // onlyPoi is used to change visualization to accentuate poi
     public bool onlyPoi() {
+      // All devices are not poi if there are no devices.
+      if (devices.Count == 0) {
+        return false;
+      }
       return n_poi == devices.Count;
     }
   }

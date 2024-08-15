@@ -362,13 +362,26 @@ namespace Spectrum.Visualizers {
             if (devices[deviceId].actionFlag == 1 | devices[deviceId].actionFlag == 2 | devices[deviceId].actionFlag == 3) {
               scale = scale * 4; // 'bonus' from button press; dial this in later
             }
-            if (devices[deviceId].deviceType == 2) {
-              scale = scale * (4 * (1 + devices[deviceId].rotationalSpeed)); // 'bonus' from spinning poi faster
-              if (orientationInput.onlyPoi()) {
-                scale /= 2; // Cut scale in half if non-poi are connected
-                // there might be a race condition here, since `devices` is hard copied at this point in the loop while `orientationInput` keeps going
-              }
+
+            // If only poi are connected, their visualization takes over the dome
+            // otherwise they are wands on strings.
+            if (devices[deviceId].deviceType == 2 && orientationInput.onlyPoi()) {
+              // These numbers will be tweaked as the poi firmware caclulations change.
+              // Current values were tested for commit 'a194981' in
+              // https://github.com/adamryman/mindshark-dome-poi-control-esp32c3-bno055
+              // Overflow issues happening at high speeds, will need to tweak.
+
+              // When moving slowly, scale to almost entierly the whole dome.
+              double slowestScale = 5;
+              // when moving quickly, tighten up the spot to smaller than wand.
+              double fastestScale = 0.6;
+              double exponet = Math.Log(slowestScale / fastestScale);
+              // exponetial curve between the two scales, inversing the average distance
+              double rotationScale = fastestScale * Math.Exp(exponet * (1 - devices[deviceId].currentAverageDistance()));
+
+              scale = scale * rotationScale;
             }
+
             if (distance < negadistance) {
               colorCenter += Quaternion.Multiply(currentOrientation, (float)scale);
             } else {
