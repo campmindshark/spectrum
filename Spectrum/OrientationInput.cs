@@ -76,8 +76,6 @@ namespace Spectrum {
         devices.Add(deviceId, datagramOut.device);
         if (devices[deviceId].deviceType == 2) {
           n_poi++;
-        } else {
-          n_poi--;
         }
       } else {
         if (actionFlag != 0) {
@@ -134,8 +132,6 @@ namespace Spectrum {
           if ((currentTime - kvp.Value) > DEVICE_TIMEOUT_MS) {
             if (devices[kvp.Key].deviceType == 2) {
               n_poi--;
-            } else {
-              n_poi++;
             }
             devices.Remove(kvp.Key);
             removedDevices.Add(kvp.Key);
