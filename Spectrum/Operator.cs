@@ -183,7 +183,7 @@ namespace Spectrum {
     private void OperatorThread() {
       while (true) {
         if (this.operatorThreadBlockingStopwatch.ElapsedMilliseconds < 8) {
-          Thread.Sleep(1);
+          //Thread.Sleep(1);
         }
         this.operatorThreadBlockingStopwatch.Restart();
 

@@ -7,49 +7,6 @@ using System.Collections.Generic;
 using System.Drawing;
 
 namespace Spectrum.Visualizers {
-  class Planet {
-    public bool cleanup = false;
-    public Vector2 position;
-    Vector2 velocity;
-    public Vector3 dome_position;
-    float timescale = .01f; // tweak this
-    double escape_velocity = 10;
-    Configuration config;
-    public Planet(float x, float y, float vx, float vy, Configuration config) {
-      position = new Vector2(x, y);
-      velocity = new Vector2(vx, vy);
-      this.config = config;
-      dome_position = projectDome();
-    }
-
-    public Planet(Vector2 position, Vector2 velocity, Configuration config) {
-      this.position = position;
-      this.velocity = velocity;
-      this.config = config;
-    }
-
-    public void update(Vector2 new_acceleration) {
-      velocity = (float)config.orientationFriction * velocity;
-      position += timescale * velocity;
-      double position_r = position.Length();
-      velocity += timescale * new_acceleration;
-      if (position_r > 1) {
-        if (config.orientationSphereTopology) {
-          position = -position;
-        } else {
-          if (velocity.Length() > escape_velocity) {
-            cleanup = true;
-          }
-        }
-      }
-      dome_position = projectDome();
-    }
-
-    private Vector3 projectDome() {
-      float z = (float)Math.Sqrt(1 - position.LengthSquared());
-      return new Vector3(position, z);
-    }
-  }
   class LEDDomeQuaternionPaintbrushVisualizer : Visualizer {
 
 
@@ -67,7 +24,8 @@ namespace Spectrum.Visualizers {
     private Vector3 spot = new Vector3(-1, 0, 0);
 
     // idle variables
-    private int idleTimer = 100;
+    private static int IDLE_TIME = 1000;
+    private int idleTimer = IDLE_TIME;
     private bool idle = false;
     private double yaw = 0;
     private double pitch = -.25;
@@ -97,16 +55,6 @@ namespace Spectrum.Visualizers {
 
     // Contour line variables
     double contourCounter = 0;
-
-    // Planets
-    HashSet<Planet> planets = new HashSet<Planet>();
-    bool spawningPlanets = false;
-    int planetsToSpawn = 0;
-    // Change these to stagger out planet spawning more; i.e. planetTimer = 10 will require 10 iterations per spawn
-    int planetTimer = 2;
-    int planetCounter = 0;
-    Vector2 new_planet_position;
-    Vector2 new_planet_velocity;
 
     public LEDDomeQuaternionPaintbrushVisualizer(
       Configuration config,
@@ -142,37 +90,6 @@ namespace Spectrum.Visualizers {
       double progress = this.config.beatBroadcaster.ProgressThroughMeasure;
       double level = this.audio.Volume;
 
-      // Check for planet interaction
-      if (config.orientationPlanetClear) {
-        config.orientationPlanetClear = false;
-        planets = new HashSet<Planet>();
-      }
-
-      if (config.orientationPlanetSpawn && config.orientationPlanetSpawnNumber > 0) {
-        config.orientationPlanetSpawn = false;
-        spawningPlanets = true;
-        planetsToSpawn = config.orientationPlanetSpawnNumber;
-        // pick a random x, y somewhere between r = .2 and r = .8
-        // pick a random velocity that's 1/r^2, perpendicular to random x, y, maybe plus or minus a small amount
-        float new_planet_r = (float)rand.NextDouble() * .2f + .5f;
-        float new_planet_x = (float)rand.NextDouble() * .6f + .2f;
-        float new_planet_y = (float)Math.Sqrt(new_planet_r * new_planet_r - new_planet_x * new_planet_x);
-        new_planet_position = new Vector2(new_planet_x, new_planet_y);
-        new_planet_velocity = new Vector2(-new_planet_y, new_planet_x);
-
-      }
-
-      if (spawningPlanets) {
-        planetCounter++;
-        if (planetCounter >= planetTimer) {
-          planetCounter = 0;
-          planetsToSpawn--;
-          planets.Add(new Planet(new_planet_position, new_planet_velocity, config));
-        }
-        if (planetsToSpawn <= 0) {
-          spawningPlanets = false;
-        }
-      }
       // Global effects
       // Fade out
       buffer.Fade(1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed), 0);
@@ -206,7 +123,7 @@ namespace Spectrum.Visualizers {
           }
         } else {
           idle = false;
-          idleTimer = 100;
+          idleTimer = IDLE_TIME;
         }
         lastOrientation = currentOrientation;
         if (idleTimer <= 0) {
@@ -371,15 +288,12 @@ namespace Spectrum.Visualizers {
               // https://github.com/adamryman/mindshark-dome-poi-control-esp32c3-bno055
               // Overflow issues happening at high speeds, will need to tweak.
 
-              // When moving slowly, scale to almost entierly the whole dome.
-              double slowestScale = 5;
-              // when moving quickly, tighten up the spot to smaller than wand.
-              double fastestScale = 0.6;
-              double exponet = Math.Log(slowestScale / fastestScale);
-              // exponetial curve between the two scales, inversing the average distance
-              double rotationScale = fastestScale * Math.Exp(exponet * (1 - devices[deviceId].currentAverageDistance()));
+              // Hotfix by adam ryman at burn, will be replaced by implimentation in OrientationDevice
+              double poiMinScale = 0.5;
+              double poiMaxScale = 5;
+              
 
-              scale = scale * rotationScale;
+              scale = scale * (devices[deviceId].currentAverageDistance()*(poiMaxScale-poiMinScale))+poiMinScale;
             }
 
             if (distance < negadistance) {
@@ -419,15 +333,6 @@ namespace Spectrum.Visualizers {
           Color color = new Color(metaballhue, saturation, value);
           buffer.pixels[i].color = Color.BlendLightPaint(new Color(buffer.pixels[i].color), color).ToInt();
         }
-
-        // Planets
-        foreach (Planet planet in planets) {
-          double distance = Vector3.Distance(pixelPoint, planet.dome_position);
-          if (distance < config.orientationPlanetVisualSize) {
-            Color color = new Color(1, .01, 1);
-            buffer.pixels[i].color = color.ToInt();
-          }
-        }
           
         // # Ring stamps - shapes that appear based on sensor facing
         if (stampFired) {
@@ -458,32 +363,6 @@ namespace Spectrum.Visualizers {
       if (cooldown < 7 & stampEffect == 1) {
         stampFired = false;
       }
-      // Update planets
-      planets.RemoveWhere(p => p.cleanup);
-      foreach (Planet p in planets) {
-        double dome_gravity = config.orientationDomeG / p.position.LengthSquared();
-        // Cap acceleration to avoid 'divide by zero' type issues
-        dome_gravity = Clamp(dome_gravity, -100, 100);
-        Vector2 acceleration = (float)dome_gravity * -p.position;
-        if (idle) {
-          Vector3 device_position = Vector3.Transform(spot, Quaternion.Inverse(currentOrientation));
-          Vector2 device_separation = new Vector2(device_position.X, device_position.Y) - p.position;
-          double wand_gravity = config.orientationWandG / device_separation.LengthSquared();
-          wand_gravity = Clamp(wand_gravity, -100, 100);
-          acceleration += (float)wand_gravity * device_separation;
-        } else {
-          foreach (int deviceId in devices.Keys) {
-            Quaternion orientation = devices[deviceId].currentRotation();
-            Vector3 device_position = Vector3.Transform(spot, Quaternion.Inverse(orientation));
-            Vector2 device_separation = new Vector2(device_position.X, device_position.Y) - p.position;
-            double wand_gravity = config.orientationWandG / device_separation.LengthSquared();
-            wand_gravity = Clamp(wand_gravity, -100, 100);
-            acceleration += (float)wand_gravity * device_separation;
-          }
-        }
-        p.update(acceleration);
-      }
-
       lastProgress = progress;
       dome.WriteBuffer(buffer);
     }

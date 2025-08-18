@@ -139,16 +139,6 @@ namespace Spectrum {
     public int orientationDeviceSpotlight { get; set; } = 0;
     public bool orientationCalibrate { get; set; } = false;
     public bool orientationShowContours { get; set; } = false;
-    public bool orientationSphereTopology { get; set; } = false;
-    public double orientationPlanetVisualSize { get; set; } = .1;
-
-    public int orientationPlanetSpawnNumber { get; set; } = 0;
-    public bool orientationPlanetSpawn { get; set; } = false;
-    public bool orientationPlanetClear { get; set; } = false;
-    public double orientationDomeG { get; set; } = 0;
-    public double orientationWandG { get; set; } = 0;
-    public double orientationFriction { get; set; } = 1;
-
   }
 
 }

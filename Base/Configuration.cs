@@ -115,14 +115,5 @@ namespace Spectrum.Base {
     bool orientationCalibrate { get; set; }
 
     bool orientationShowContours { get; set; }
-    bool orientationSphereTopology { get; set; }
-    double orientationPlanetVisualSize { get; set; }
-    int orientationPlanetSpawnNumber { get; set; }
-    bool orientationPlanetSpawn { get; set; }
-    bool orientationPlanetClear { get; set; }
-    double orientationDomeG { get; set; }
-    double orientationWandG { get; set; }
-    double orientationFriction { get; set; }
   }
-
 }

@@ -337,27 +337,11 @@
               <Grid Height="24">
                 <CheckBox x:Name="orientationContours" Content="Display contours" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Padding="0,0" />
               </Grid>
-              <Grid Height="28">
-                <TextBox x:Name="orientationSpawnNumber" Text="#" HorizontalAlignment="Left" Margin ="4,4,4,4" Width="21" TextChanged="OrientationSpawnNumberChanged"/>
-                <Button x:Name="orientationSpawnDots" Content="Spawn" HorizontalAlignment="Left" Margin="40,4,4,4" VerticalAlignment="Top" Click="OrientationSpawnDotsClicked"/>
-                <Button x:Name="orientationClearDots" Content="Clear" HorizontalAlignment="Left" Margin="90,4,4,4" VerticalAlignment="Top" Click="OrientationClearDotsClicked"/>
-              </Grid>
-              <Grid Height="28">
-                <CheckBox x:Name="orientationSphereTopology" Content="Spherical topology" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Padding="0,0"/>
-                <TextBox x:Name="orientationDomeGravity" Text="G_d" HorizontalAlignment="Left" Margin="130,4,4,4" Width="25" TextChanged="OrientationDomeGravityChanged"/>
-                <TextBox x:Name="orientationWandGravity" Text="G_w" Margin="170,4,4,4" Width="25" TextChanged="OrientationDomeWandChanged"/>
-              </Grid>
-              <Grid Height="28">
-                <Label Content="Planet visual size" HorizontalAlignment="Left" Margin="0,3,0,0" Padding="0" />
-                <Slider x:Name="orientationPlanetSize" Value=".1" Margin="90,4,4,4" VerticalAlignment="Top" Height="20" Width="115" Minimum="0" Maximum=".25" LargeChange=".05" SmallChange=".01" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted"/>
-                <Label x:Name="orientationPlanetSizeLabel" Content="1" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="220,0,0,0" Padding="0" ContentStringFormat="F3" />
-              </Grid>
-              <Grid Height="28">
-                <Label Content="Planet friction" HorizontalAlignment="Left" Margin="0,3,0,0" Padding="0" />
-                <Slider x:Name="orientationFriction" Value="1" Margin="90,4,4,4" VerticalAlignment="Top" Height="20" Width="115" Minimum=".95" Maximum="1" LargeChange=".01" SmallChange=".001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted"/>
-                <Label x:Name="orientationFrictionLabel" Content="1" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="220,0,0,0" Padding="0" ContentStringFormat="F3" />
-              </Grid>
-            </WrapPanel>
+              <Grid Height="28"/>
+                            <Grid Height="28"/>
+                            <Grid Height="28"/>
+                            <Grid Height="28"/>
+                        </WrapPanel>
           </Border>
         </Grid>
       </DockPanel>

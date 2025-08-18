@@ -21,7 +21,7 @@ namespace Spectrum {
         short Y = BitConverter.ToInt16(buffer, 10);
         short Z = BitConverter.ToInt16(buffer, 12);
         Quaternion sensorState = new Quaternion(X / 16384.0f, Y / 16384.0f, Z / 16384.0f, W / 16384.0f);
-        int actionFlag = buffer[13]; // what the buttons do
+        int actionFlag = buffer[14]; // what the buttons do
         return (device: new OrientationDevice(timestamp, deviceType, new Quaternion(0, 0, 0, 1), sensorState), actionFlag: actionFlag);
       }
       // Device type 2 - Adam's poi

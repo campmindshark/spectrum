@@ -17,8 +17,8 @@ namespace Spectrum {
     private long[] lastEvent;
     private Thread listenThread;
     private readonly object mLock = new object();
-    private readonly static long DEVICE_TIMEOUT_MS = 5000;
-    private readonly static long DEVICE_EVENT_TIMEOUT = 50;
+    private readonly static long DEVICE_TIMEOUT_MS = 1000;
+    private readonly static long DEVICE_EVENT_TIMEOUT = 5;
     private int n_poi = 0;
 
     public OrientationInput(Configuration config) {

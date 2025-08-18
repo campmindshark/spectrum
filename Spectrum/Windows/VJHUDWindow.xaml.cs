@@ -270,11 +270,6 @@ namespace Spectrum {
       this.Bind("humanLinkOutput", this.tempoHumanLink, CheckBox.IsCheckedProperty);
       this.Bind("madmomLinkOutput", this.tempoMadmomLink, CheckBox.IsCheckedProperty);
       this.Bind("orientationShowContours", this.orientationContours, CheckBox.IsCheckedProperty);
-      this.Bind("orientationSphereTopology", this.orientationSphereTopology, CheckBox.IsCheckedProperty);
-      this.Bind("orientationPlanetVisualSize", this.orientationPlanetSize, Slider.ValueProperty);
-      this.Bind("orientationFriction", this.orientationFriction, Slider.ValueProperty);
-      this.Bind("orientationPlanetVisualSize", this.orientationPlanetSizeLabel, Label.ContentProperty);
-      this.Bind("orientationFriction", this.orientationFrictionLabel, Label.ContentProperty);
     }
 
     private void Bind(
@@ -782,35 +777,5 @@ namespace Spectrum {
         this.config.orientationDeviceSpotlight = deviceId;
       }
     }
-    private void OrientationSpawnNumberChanged(object sender, TextChangedEventArgs e) {
-      short spawn_number;
-      if (Int16.TryParse(orientationSpawnNumber.Text, out spawn_number)) {
-        this.config.orientationPlanetSpawnNumber = spawn_number;
-      }
-    }
-
-    private void OrientationSpawnDotsClicked(object sender, RoutedEventArgs e) {
-      this.config.orientationPlanetSpawn = true;
-    }
-
-    private void OrientationClearDotsClicked(object sender, RoutedEventArgs e) {
-      this.config.orientationPlanetClear = true;
-    }
-
-    private void OrientationDomeGravityChanged(object sender, TextChangedEventArgs e) {
-      double dome_g;
-      if (Double.TryParse(orientationDomeGravity.Text, out dome_g)) {
-        this.config.orientationDomeG = dome_g;
-      }
-    }
-
-    private void OrientationDomeWandChanged(object sender, TextChangedEventArgs e) {
-      double wand_g;
-      if (Double.TryParse(orientationWandGravity.Text, out wand_g)) {
-        this.config.orientationWandG = wand_g;
-      }
-    }
-
   }
-
 }
