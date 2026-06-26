@@ -40,8 +40,9 @@ namespace Spectrum {
 
     public bool Enabled { get; set; }
 
+    private Input[] inputs;
     public Input[] GetInputs() {
-      return new Input[] { this.audio };
+      return this.inputs ?? (this.inputs = new Input[] { this.audio });
     }
 
     void Render() {
@@ -73,16 +74,18 @@ namespace Spectrum {
       for (int i = 0; i < buffer.pixels.Length; i++) {
         var pixel = buffer.pixels[i];
 
-        var p = StrutLayoutFactory.GetProjectedLEDPointParametric(
-          pixel.strutIndex,
-          pixel.strutLEDIndex,
-          centerOffset.Item1,
-          centerOffset.Item2
-        );
+        // The static projected (x, y) is precomputed once in
+        // MakeDomeOutputBuffer (pixel.x/pixel.y come straight from
+        // GetProjectedLEDPoint), so only the parametric transform relative to
+        // the moving centerOffset needs to run per frame (M2). This inlines
+        // GetProjectedLEDPointParametric without its per-pixel
+        // GetProjectedLEDPoint/GetNumLEDs recomputation.
+        double px = (pixel.x + centerOffset.Item1) * 2 - 1;
+        double py = (pixel.y + centerOffset.Item2) * 2 - 1;
 
         // map angle to 0-1
-        var angle = MapWrap(p.Item3, -Math.PI, Math.PI, 0.0, 1.0);
-        var dist = p.Item4;
+        var angle = MapWrap(Math.Atan2(py, px), -Math.PI, Math.PI, 0.0, 1.0);
+        var dist = Math.Sqrt(px * px + py * py);
 
         double val = 0;
         double gradientVal = 0;

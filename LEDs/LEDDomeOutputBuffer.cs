@@ -54,6 +54,92 @@ namespace Spectrum.LEDs {
       get { return _b; }
       set { _b = value; updateColor(); }
     }
+
+    // Fade and HueRotate live on the struct (M3/L3) so they mutate _r/_g/_b
+    // directly and repack via a single updateColor() per pixel, instead of the
+    // three repacks the public r/g/b setters incur (one per component). Called
+    // as pixels[i].Fade(...) on an array slot, which mutates in place. They keep
+    // operating on the double-precision _r/_g/_b state (not the truncated packed
+    // _color) so the sub-integer fade accumulation across frames is unchanged —
+    // these are throughput optimizations, not visual changes.
+
+    public void Fade(double mul, double sub) {
+      // Matches the old "if (color != 0)" guard; black pixels stay black.
+      if (_color == 0) {
+        return;
+      }
+      _r = _r * mul - sub;
+      _g = _g * mul - sub;
+      _b = _b * mul - sub;
+      updateColor();
+    }
+
+    public void HueRotate(double rate) {
+      // Black pixels have saturation 0, so the original skipped the write for
+      // them anyway (the "if (s != 0)" branch below). Bailing early just avoids
+      // the RGB->HSV round-trip for the (common, after a fade) all-black case.
+      if (_color == 0) {
+        return;
+      }
+
+      double r = _r / 255d;
+      double g = _g / 255d;
+      double b = _b / 255d;
+
+      double max = Math.Max(Math.Max(r, g), b);
+      double min = Math.Min(Math.Min(r, g), b);
+
+      double d = max - min;
+      double s = max == 0 ? 0 : d / max;
+      if (s != 0) {
+        double v = max;
+        double h = 0;
+
+        if (max != min) {
+          if (r > g) {
+            if (r > b) {
+              h = (g - b) / d + (g < b ? 6 : 0);
+            } else {
+              h = (r - g) / d + 4;
+            }
+          } else {
+            if (g > b) {
+              h = (b - r) / d + 2;
+            } else {
+              h = (r - g) / d + 4;
+            }
+          }
+
+          h /= 6;
+        }
+        double shifted_hue = (h + rate) % 1;
+        if (shifted_hue > 1) {
+          shifted_hue -= 1;
+        }
+        if (shifted_hue < 0) {
+          shifted_hue += 1;
+        }
+
+        int j = (int)Math.Floor(shifted_hue * 6);
+        double f = shifted_hue * 6 - j;
+        double p = v * (1 - s);
+        double q = v * (1 - f * s);
+        double t = v * (1 - (1 - f) * s);
+
+        switch (j % 6) {
+          case 0: r = v; g = t; b = p; break;
+          case 1: r = q; g = v; b = p; break;
+          case 2: r = p; g = v; b = t; break;
+          case 3: r = p; g = q; b = v; break;
+          case 4: r = t; g = p; b = v; break;
+          case 5: r = v; g = p; b = q; break;
+        }
+        _r = r * 255;
+        _g = g * 255;
+        _b = b * 255;
+        updateColor();
+      }
+    }
   }
 
   public class LEDDomeOutputBuffer {
@@ -65,72 +151,13 @@ namespace Spectrum.LEDs {
 
     public void Fade(double mul, double sub) {
       for (int i = 0; i < pixels.Length; i++) {
-        if (pixels[i].color != 0) {
-          pixels[i].r = pixels[i].r * mul - sub;
-          pixels[i].g = pixels[i].g * mul - sub;
-          pixels[i].b = pixels[i].b * mul - sub;
-        }
+        pixels[i].Fade(mul, sub);
       }
     }
 
     public void HueRotate(double rate) {
       for (int i = 0; i < pixels.Length; i++) {
-        double r = pixels[i].r / 255d;
-        double g = pixels[i].g / 255d;
-        double b = pixels[i].b / 255d;
-
-        double max = Math.Max(Math.Max(r, g), b);
-        double min = Math.Min(Math.Min(r, g), b);
-
-        double d = max - min;
-        double s = max == 0 ? 0 : d / max;
-        if (s != 0) {
-          double v = max;
-          double h = 0;
-
-          if (max != min) {
-            if (r > g) {
-              if (r > b) {
-                h = (g - b) / d + (g < b ? 6 : 0);
-              } else {
-                h = (r - g) / d + 4;
-              }
-            } else {
-              if (g > b) {
-                h = (b - r) / d + 2;
-              } else {
-                h = (r - g) / d + 4;
-              }
-            }
-
-            h /= 6;
-          }
-          double shifted_hue = (h + rate) % 1;
-          if (shifted_hue > 1) {
-            shifted_hue -= 1;
-          }
-          if (shifted_hue < 0) {
-            shifted_hue += 1;
-          }
-
-          int j = (int)Math.Floor(shifted_hue * 6);
-          double f = shifted_hue * 6 - j;
-          double p = v * (1 - s);
-          double q = v * (1 - f * s);
-          double t = v * (1 - (1 - f) * s);
-
-          switch (j % 6) {
-            case 0: r = v; g = t; b = p; break;
-            case 1: r = q; g = v; b = p; break;
-            case 2: r = p; g = v; b = t; break;
-            case 3: r = p; g = q; b = v; break;
-            case 4: r = t; g = p; b = v; break;
-            case 5: r = v; g = p; b = q; break;
-          }
-          pixels[i].r = r * 255;
-          pixels[i].g = g * 255;
-          pixels[i].b = b * 255;
-        }
+        pixels[i].HueRotate(rate);
       }
     }
   }

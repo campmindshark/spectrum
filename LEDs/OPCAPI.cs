@@ -146,6 +146,11 @@ namespace Spectrum.LEDs {
         SocketType.Stream,
         ProtocolType.Tcp
       );
+      // Disable Nagle's algorithm (M4): without this, the ~25 KB frame can be
+      // coalesced/delayed by the TCP stack, adding latency between "frame ready"
+      // and "frame on the wire" and making the OPC output rate uneven. The frame
+      // is already a single Send(), so coalescing buys us nothing.
+      this.socket.NoDelay = true;
     }
 
     private void ConnectSocket() {

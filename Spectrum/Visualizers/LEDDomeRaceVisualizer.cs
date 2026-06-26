@@ -246,12 +246,14 @@ namespace Spectrum {
       }
     }
 
+    private Input[] inputs;
     public Input[] GetInputs() {
       // In order for the Operator to know which Inputs need to be enabled, you
       // should return the ones you are currently using here. If your Visualizer
       // only needs certain Inputs under certain conditions, you can put
-      // conditional logic here
-      return new Input[] { this.audio };
+      // conditional logic here -- but then drop the cache below, which assumes
+      // the returned set is static.
+      return this.inputs ?? (this.inputs = new Input[] { this.audio });
     }
 
     public void Visualize() {

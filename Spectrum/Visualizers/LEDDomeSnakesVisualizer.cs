@@ -69,10 +69,11 @@ namespace Spectrum {
       }
     }
 
+    private Input[] inputs;
     public Input[] GetInputs() {
-      return new Input[] {
+      return this.inputs ?? (this.inputs = new Input[] {
         this.audio,
-      };
+      });
     }
 
     public void Visualize() {

@@ -199,10 +199,15 @@ namespace Spectrum.LEDs {
 
     public void RegisterVisualizer(Visualizer visualizer) {
       this.visualizers.Add(visualizer);
+      this.visualizersArray = null;
     }
 
+    // Cached snapshot of `visualizers`, rebuilt only when a visualizer is
+    // registered (startup) rather than allocated fresh every Operator frame.
+    private Visualizer[] visualizersArray;
     public Visualizer[] GetVisualizers() {
-      return this.visualizers.ToArray();
+      return this.visualizersArray
+        ?? (this.visualizersArray = this.visualizers.ToArray());
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {

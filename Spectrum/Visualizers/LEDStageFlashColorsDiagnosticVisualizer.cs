@@ -43,7 +43,7 @@ namespace Spectrum {
     }
 
     public Input[] GetInputs() {
-      return new Input[] { };
+      return System.Array.Empty<Input>();
     }
 
     private void setAtAllIndices(int color) {

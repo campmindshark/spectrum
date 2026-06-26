@@ -248,8 +248,9 @@ namespace Spectrum {
     // We don't actually care about this
     public bool Enabled { get; set; } = false;
 
+    private Input[] inputs;
     public Input[] GetInputs() {
-      return new Input[] { this.audio, this.midi };
+      return this.inputs ?? (this.inputs = new Input[] { this.audio, this.midi });
     }
 
     public void Visualize() {

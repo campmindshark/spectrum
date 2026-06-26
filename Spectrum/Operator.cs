@@ -20,6 +20,18 @@ namespace Spectrum {
     private readonly Stopwatch frameRateStopwatch;
     private int framesThisSecond;
 
+    // Scratch collections reused across every OperatorThread frame so the
+    // scheduling pass allocates nothing steady-state. Only ever touched on the
+    // operator thread, so they need no synchronization.
+    private readonly List<Output> activeOutputs = new List<Output>();
+    private readonly HashSet<Visualizer> activeVisualizers =
+      new HashSet<Visualizer>();
+    private readonly HashSet<Input> activeInputs = new HashSet<Input>();
+    private readonly List<Visualizer> topPriVisualizers =
+      new List<Visualizer>();
+    private readonly List<Visualizer> alwaysRunVisualizers =
+      new List<Visualizer>();
+
     public Operator(Configuration config) {
       this.config = config;
       this.operatorThreadBlockingStopwatch = new Stopwatch();
@@ -203,30 +215,27 @@ namespace Spectrum {
         // themselves enabled. For each enabled Output, we'll find what the
         // highest priority reported by any Visualizer is, and we'll consider
         // those Visualizers as candidates to enable.
-        List<Output> activeOutputs = new List<Output>();
-        HashSet<Visualizer> activeVisualizers = new HashSet<Visualizer>();
+        this.activeOutputs.Clear();
+        this.activeVisualizers.Clear();
         foreach (var output in this.outputs) {
           if (!output.Enabled) {
             continue;
           }
           int topPri = 1;
-          List<Visualizer> topPriVisualizers = new List<Visualizer>();
-          List<Visualizer> alwaysRunVisualizers = new List<Visualizer>();
+          this.topPriVisualizers.Clear();
+          this.alwaysRunVisualizers.Clear();
           foreach (var visualizer in output.GetVisualizers()) {
             // We can only consider a visualizer if all its inputs are enabled
-            bool allInputsEnabled = visualizer.GetInputs().All(
-              input => input.Enabled
-            );
-            if (!allInputsEnabled) {
+            if (!AllInputsEnabled(visualizer)) {
               continue;
             }
             int pri = visualizer.Priority;
             bool canAdd = false;
             if (pri == -1) {
-              alwaysRunVisualizers.Add(visualizer);
+              this.alwaysRunVisualizers.Add(visualizer);
             } else if (pri > topPri) {
               topPri = pri;
-              topPriVisualizers.Clear();
+              this.topPriVisualizers.Clear();
               canAdd = true;
             } else if (pri == topPri) {
               canAdd = true;
@@ -234,22 +243,26 @@ namespace Spectrum {
             if (!canAdd) {
               continue;
             }
-            topPriVisualizers.Add(visualizer);
+            this.topPriVisualizers.Add(visualizer);
           }
-          topPriVisualizers.AddRange(alwaysRunVisualizers);
-          if (topPriVisualizers.Count != 0) {
-            activeOutputs.Add(output);
+          this.topPriVisualizers.AddRange(this.alwaysRunVisualizers);
+          if (this.topPriVisualizers.Count != 0) {
+            this.activeOutputs.Add(output);
           }
-          activeVisualizers.UnionWith(topPriVisualizers);
+          this.activeVisualizers.UnionWith(this.topPriVisualizers);
         }
 
-        HashSet<Input> activeInputs = new HashSet<Input>();
-        foreach (var visualizer in activeVisualizers) {
-          activeInputs.UnionWith(visualizer.GetInputs());
+        this.activeInputs.Clear();
+        foreach (var visualizer in this.activeVisualizers) {
+          foreach (var input in visualizer.GetInputs()) {
+            this.activeInputs.Add(input);
+          }
         }
-        activeInputs.UnionWith(
-          this.inputs.Where(input => input.Enabled && input.AlwaysActive)
-        );
+        foreach (var input in this.inputs) {
+          if (input.Enabled && input.AlwaysActive) {
+            this.activeInputs.Add(input);
+          }
+        }
 
         foreach (var output in this.outputs) {
           output.Active = activeOutputs.Contains(output);
@@ -273,6 +286,18 @@ namespace Spectrum {
           output.OperatorUpdate();
         }
       }
+    }
+
+    // Allocation-free replacement for GetInputs().All(i => i.Enabled): avoids
+    // the per-visualizer delegate + array enumerator that LINQ would create on
+    // the hot scheduling path.
+    private static bool AllInputsEnabled(Visualizer visualizer) {
+      foreach (var input in visualizer.GetInputs()) {
+        if (!input.Enabled) {
+          return false;
+        }
+      }
+      return true;
     }
 
   }

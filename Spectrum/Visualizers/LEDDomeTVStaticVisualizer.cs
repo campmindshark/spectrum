@@ -32,7 +32,7 @@ namespace Spectrum {
     public bool Enabled { get; set; }
 
     public Input[] GetInputs() {
-      return new Input[] { };
+      return System.Array.Empty<Input>();
     }
 
     public void Static() {

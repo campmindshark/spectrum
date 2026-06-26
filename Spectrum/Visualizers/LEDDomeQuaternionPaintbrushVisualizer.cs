@@ -82,8 +82,9 @@ namespace Spectrum.Visualizers {
 
     public bool Enabled { get; set; }
 
+    private Input[] inputs;
     public Input[] GetInputs() {
-      return new Input[] { this.orientationInput };
+      return this.inputs ?? (this.inputs = new Input[] { this.orientationInput });
     }
 
     void Render() {
