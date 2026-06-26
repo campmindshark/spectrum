@@ -15,10 +15,11 @@ namespace Spectrum {
     private long lastCheckedDevices;
     private Dictionary<int, long> lastSeen;
     private long[] lastEvent;
-    private Thread listenThread;
     private readonly object mLock = new object();
-    private IPEndPoint mEndpoint;
-    private readonly UdpClient mUdpClient;
+    // Guards the listener lifecycle (mUdpClient/active) independently of mLock,
+    // which protects the device state read on the receive thread.
+    private readonly object lifecycleLock = new object();
+    private UdpClient mUdpClient;
     private readonly static int DEVICE_LISTEN_PORT = 5005;
     private readonly static long DEVICE_TIMEOUT_MS = 1000;
     private readonly static long DEVICE_EVENT_TIMEOUT = 5;
@@ -29,17 +30,47 @@ namespace Spectrum {
       devices = new Dictionary<int, OrientationDevice>();
       lastCheckedDevices = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
       lastSeen = new Dictionary<int, long>();
-      lastEvent = new long[255];
-      mEndpoint = new IPEndPoint(IPAddress.Any, DEVICE_LISTEN_PORT);
-      mUdpClient = new UdpClient(mEndpoint);
-      mUdpClient.BeginReceive(ReceiveCallback, null);
+      lastEvent = new long[256];
     }
 
+    private bool active;
     public bool Active {
       get {
-        return true;
+        lock (lifecycleLock) {
+          return active;
+        }
       }
-      set { }
+      // The UDP listener now follows Active (driven by the operator) instead of
+      // running for the whole process lifetime: it starts when activated and the
+      // UdpClient is disposed when deactivated.
+      set {
+        lock (lifecycleLock) {
+          if (active == value) {
+            return;
+          }
+          active = value;
+          if (value) {
+            StartListening();
+          } else {
+            StopListening();
+          }
+        }
+      }
+    }
+
+    // Must be called while holding lifecycleLock.
+    private void StartListening() {
+      mUdpClient = new UdpClient(new IPEndPoint(IPAddress.Any, DEVICE_LISTEN_PORT));
+      mUdpClient.BeginReceive(ReceiveCallback, mUdpClient);
+    }
+
+    // Must be called while holding lifecycleLock. Closing disposes the client; a
+    // pending ReceiveCallback then completes with ObjectDisposedException, which
+    // it swallows, so the receive loop stops cleanly.
+    private void StopListening() {
+      UdpClient client = mUdpClient;
+      mUdpClient = null;
+      client?.Close();
     }
 
     public bool AlwaysActive {
@@ -55,9 +86,45 @@ namespace Spectrum {
     }
 
     private void ReceiveCallback(IAsyncResult ar) {
-      byte[] buffer = mUdpClient.EndReceive(ar, ref mEndpoint);
+      UdpClient client = (UdpClient)ar.AsyncState;
+      byte[] buffer;
+      var remote = new IPEndPoint(IPAddress.Any, 0);
+      try {
+        buffer = client.EndReceive(ar, ref remote);
+      } catch (ObjectDisposedException) {
+        // The client was closed in StopListening(); stop the receive loop.
+        return;
+      } catch (SocketException) {
+        // A prior send was rejected (e.g. ICMP port-unreachable). Re-arm and
+        // keep listening.
+        RearmReceive(client);
+        return;
+      }
+
+      ProcessDatagram(buffer);
+      RearmReceive(client);
+    }
+
+    private void RearmReceive(UdpClient client) {
+      try {
+        client.BeginReceive(ReceiveCallback, client);
+      } catch (ObjectDisposedException) {
+        // Deactivated between datagrams; nothing more to do.
+      }
+    }
+
+    private void ProcessDatagram(byte[] buffer) {
+      // This is an unauthenticated UDP listener on 0.0.0.0, so any short or
+      // spoofed datagram must be ignored rather than indexed blindly.
+      if (buffer.Length < DatagramHandler.MinDatagramLength) {
+        return;
+      }
       var deviceId = buffer[0];
       var timestamp = BitConverter.ToInt32(buffer, 1);
+      int deviceType = buffer[5];
+      if (buffer.Length < DatagramHandler.RequiredLength(deviceType)) {
+        return;
+      }
 
       var currentTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
 
@@ -100,7 +167,6 @@ namespace Spectrum {
           }
         }
       }
-      mUdpClient.BeginReceive(new AsyncCallback(ReceiveCallback), null);
     }
     public void OperatorUpdate() {
       if (config.orientationCalibrate) {

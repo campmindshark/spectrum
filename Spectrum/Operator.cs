@@ -140,6 +140,8 @@ namespace Spectrum {
 
     private bool enabled;
     private Thread operatorThread;
+    // Cooperative stop flag for OperatorThread, replacing Thread.Abort().
+    private volatile bool operatorThreadStop;
     public bool Enabled {
       get {
         lock (this.visualizers) {
@@ -152,10 +154,13 @@ namespace Spectrum {
             return;
           }
           if (value) {
+            this.operatorThreadStop = false;
             this.operatorThread = new Thread(OperatorThread);
             this.operatorThread.Start();
           } else {
-            this.operatorThread.Abort();
+            // OperatorThread does not take lock(this.visualizers), so joining
+            // while holding it is safe and won't deadlock.
+            this.operatorThreadStop = true;
             this.operatorThread.Join();
             this.operatorThread = null;
 
@@ -181,7 +186,7 @@ namespace Spectrum {
     }
 
     private void OperatorThread() {
-      while (true) {
+      while (!this.operatorThreadStop) {
         if (this.operatorThreadBlockingStopwatch.ElapsedMilliseconds < 8) {
           //Thread.Sleep(1);
         }
@@ -229,9 +234,7 @@ namespace Spectrum {
             if (!canAdd) {
               continue;
             }
-            if (visualizer.GetInputs().All(input => input.Enabled)) {
-              topPriVisualizers.Add(visualizer);
-            }
+            topPriVisualizers.Add(visualizer);
           }
           topPriVisualizers.AddRange(alwaysRunVisualizers);
           if (topPriVisualizers.Count != 0) {

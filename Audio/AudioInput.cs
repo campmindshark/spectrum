@@ -62,19 +62,23 @@ namespace Spectrum.Audio {
       if (this.config.audioDeviceID == null) {
         throw new Exception("audioDeviceID not set!");
       }
-      var iterator = new MMDeviceEnumerator().EnumerateAudioEndPoints(
-        DataFlow.Capture,
-        DeviceState.Active
-      );
       MMDevice device = null;
-      foreach (var audioDevice in iterator) {
-        if (this.config.audioDeviceID == audioDevice.ID) {
-          device = audioDevice;
-          break;
+      using (var enumerator = new MMDeviceEnumerator()) {
+        var iterator = enumerator.EnumerateAudioEndPoints(
+          DataFlow.Capture,
+          DeviceState.Active
+        );
+        foreach (var audioDevice in iterator) {
+          if (this.config.audioDeviceID == audioDevice.ID) {
+            device = audioDevice;
+            break;
+          }
         }
       }
       if (device == null) {
-        throw new Exception("audioDeviceID not set!");
+        throw new Exception(
+          "Configured audioDeviceID not found among active capture devices!"
+        );
       }
       this.recordingDevice = device;
       var bitrate = device.AudioClient.MixFormat.BitsPerSample;
@@ -90,8 +94,17 @@ namespace Spectrum.Audio {
     }
 
     private void TerminateAudio() {
-      this.captureStream.StopRecording();
-      this.captureStream = null;
+      if (this.captureStream != null) {
+        this.captureStream.StopRecording();
+        this.captureStream.Dispose();
+        this.captureStream = null;
+      }
+      if (this.recordingDevice != null) {
+        this.recordingDevice.Dispose();
+        this.recordingDevice = null;
+      }
+      // Don't leave a stale peak reading behind once capture has stopped.
+      this.Volume = 0.0f;
     }
 
     private void Update(object sender, NAudio.Wave.WaveInEventArgs args) {

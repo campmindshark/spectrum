@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media;
@@ -24,6 +25,11 @@ namespace Spectrum.Base {
     private static readonly int tapTempoConclusionTime = 2000;
 
     private readonly Configuration config;
+    // Guards all of the mutable beat/tap/driver state below, which is touched
+    // from the Madmom output thread, the MIDI thread, the tap-tempo Timer
+    // thread, the operator thread, and the UI thread. PropertyChanged is always
+    // raised outside this lock to avoid reentrancy into the locked getters.
+    private readonly object beatLock = new object();
     private List<long> currentTaps = new List<long>();
     private long startingTime = -1;
     private long lastMadmomReport = -1;
@@ -34,6 +40,13 @@ namespace Spectrum.Base {
       null, null, null, null, null, null, null, null,
     };
     private long lastChannelInteractionTime = 0;
+
+    // Monotonic milliseconds since system boot. Unlike Environment.TickCount
+    // (32-bit, wraps to negative after ~24.9 days) this is 64-bit, and unlike
+    // Environment.TickCount64 it is available on .NET Framework 4.8 (not just
+    // 4.8.1). Same "ms since boot" base as the value Madmom reports.
+    [DllImport("kernel32.dll")]
+    private static extern ulong GetTickCount64();
 
     public event PropertyChangedEventHandler PropertyChanged;
 
@@ -48,49 +61,63 @@ namespace Spectrum.Base {
       }
     }
 
+    // Reads timeRelativeTo, so callers must hold beatLock.
     private long currentTime {
       get {
         if (this.timeRelativeTo == TimeRelativeTo.Timestamp) {
           return DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
         }
-        return Environment.TickCount;
+        return (long)GetTickCount64();
       }
     }
 
     public double ProgressThroughBeat(double factor) {
-      if (
-        this.startingTime == -1 ||
-        this.measureLength == -1 ||
-        factor == 0.0
-      ) {
+      if (factor == 0.0) {
         return 0.0;
       }
-      int distance = (int)(this.currentTime - this.startingTime);
-      int beatLength = (int)(this.measureLength / factor);
-      int progressThroughMeasure = distance % beatLength;
-      return (double)progressThroughMeasure / beatLength;
+      lock (this.beatLock) {
+        if (this.startingTime == -1 || this.measureLength == -1) {
+          return 0.0;
+        }
+        int distance = (int)(this.currentTime - this.startingTime);
+        int beatLength = (int)(this.measureLength / factor);
+        int progressThroughMeasure = distance % beatLength;
+        return (double)progressThroughMeasure / beatLength;
+      }
     }
 
     public int MeasureLength {
       get {
-        return this.measureLength;
+        lock (this.beatLock) {
+          return this.measureLength;
+        }
       }
     }
 
     public void AddTap() {
       this.tapTempoConclusionTimer.Stop();
       long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-      if (
-        this.currentTaps.Count > 0 &&
-        timestamp - this.currentTaps.Last() > tapTempoConclusionTime
-      ) {
-        this.currentTaps = new List<long>();
+      bool beatUpdated = false;
+      lock (this.beatLock) {
+        if (
+          this.currentTaps.Count > 0 &&
+          timestamp - this.currentTaps.Last() > tapTempoConclusionTime
+        ) {
+          this.currentTaps = new List<long>();
+        }
+        this.currentTaps.Add(timestamp);
+        if (this.currentTaps.Count >= 3) {
+          this.UpdateBeatFromTaps();
+          beatUpdated = true;
+        }
       }
-      this.currentTaps.Add(timestamp);
       this.TapTempoConcluded(null, null);
       this.tapTempoConclusionTimer.Start();
-      if (this.currentTaps.Count >= 3) {
-        this.UpdateBeatFromTaps();
+      if (beatUpdated) {
+        this.PropertyChanged?.Invoke(
+          this,
+          new PropertyChangedEventArgs("BPMString")
+        );
       }
     }
 
@@ -106,11 +133,13 @@ namespace Spectrum.Base {
     }
 
     public void Reset() {
-      this.currentTaps = new List<long>();
-      this.startingTime = -1;
-      this.measureLength = -1;
-      this.lastMadmomReport = -1;
-      this.timeRelativeTo = TimeRelativeTo.Timestamp;
+      lock (this.beatLock) {
+        this.currentTaps = new List<long>();
+        this.startingTime = -1;
+        this.measureLength = -1;
+        this.lastMadmomReport = -1;
+        this.timeRelativeTo = TimeRelativeTo.Timestamp;
+      }
       this.TapTempoConcluded(null, null);
       this.PropertyChanged?.Invoke(
         this,
@@ -118,6 +147,8 @@ namespace Spectrum.Base {
       );
     }
 
+    // Caller must hold beatLock. PropertyChanged("BPMString") is raised by the
+    // caller after the lock is released.
     private void UpdateBeatFromTaps() {
       int[] measureLengths = new int[this.currentTaps.Count - 1];
       for (int i = 0; i < this.currentTaps.Count - 1; i++) {
@@ -128,18 +159,18 @@ namespace Spectrum.Base {
       this.startingTime = this.currentTaps.Last();
       this.lastMadmomReport = -1;
       this.timeRelativeTo = TimeRelativeTo.Timestamp;
-      this.PropertyChanged?.Invoke(
-        this,
-        new PropertyChangedEventArgs("BPMString")
-      );
     }
 
+    // beatLock is reentrant (Monitor), so this is safe to call from other
+    // locked getters below.
     private bool IsTapTempoConcluded() {
-      if (this.currentTaps.Count == 0) {
-        return true;
+      lock (this.beatLock) {
+        if (this.currentTaps.Count == 0) {
+          return true;
+        }
+        long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+        return timestamp - this.currentTaps.Last() > tapTempoConclusionTime;
       }
-      long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-      return timestamp - this.currentTaps.Last() > tapTempoConclusionTime;
     }
 
     public Brush TapCounterBrush {
@@ -153,19 +184,23 @@ namespace Spectrum.Base {
 
     public string TapCounterText {
       get {
-        if (this.IsTapTempoConcluded()) {
-          return "Tap";
+        lock (this.beatLock) {
+          if (this.IsTapTempoConcluded()) {
+            return "Tap";
+          }
+          return this.currentTaps.Count.ToString();
         }
-        return this.currentTaps.Count.ToString();
       }
     }
 
     public string BPMString {
       get {
-        if (this.measureLength == -1) {
-          return "[none]";
+        lock (this.beatLock) {
+          if (this.measureLength == -1) {
+            return "[none]";
+          }
+          return (60000 / this.measureLength).ToString();
         }
-        return (60000 / this.measureLength).ToString();
       }
     }
 
@@ -196,17 +231,21 @@ namespace Spectrum.Base {
     }
 
     public void MidiReleaseOnChannel(int channelIndex) {
-      if (this.driversByChannel[channelIndex] != null) {
-        long now = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-        this.driversByChannel[channelIndex].ReleaseTimestamp = now;
-        this.lastChannelInteractionTime = now;
+      lock (this.beatLock) {
+        if (this.driversByChannel[channelIndex] != null) {
+          long now = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+          this.driversByChannel[channelIndex].ReleaseTimestamp = now;
+          this.lastChannelInteractionTime = now;
+        }
       }
     }
 
     public void MidiPress(MidiLevelDriverInstance newDriver) {
       if (this.GetPresetForChannelIndex(newDriver.ChannelIndex) != null) {
-        this.driversByChannel[newDriver.ChannelIndex] = newDriver;
-        this.lastChannelInteractionTime = newDriver.PressTimestamp;
+        lock (this.beatLock) {
+          this.driversByChannel[newDriver.ChannelIndex] = newDriver;
+          this.lastChannelInteractionTime = newDriver.PressTimestamp;
+        }
       }
     }
 
@@ -230,71 +269,85 @@ namespace Spectrum.Base {
     }
 
     public double? CurrentMidiLevelDriverValueForChannel(int channelIndex) {
-      var driver = this.driversByChannel[channelIndex];
       var preset = this.GetPresetForChannelIndex(channelIndex);
-      if (driver == null || preset == null) {
-        return null;
-      }
-      long currentTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-      long timeSincePress = currentTime - driver.PressTimestamp;
-      if (timeSincePress < 0.0) {
-        return 0.0;
-      }
-      if (
-        !driver.ReleaseTimestamp.HasValue ||
-        currentTime < driver.ReleaseTimestamp.Value
-      ) {
-        return this.CurrentMidiLevelDriverValueWithoutReleaseForChannel(
-          driver,
-          preset,
-          currentTime
-        );
-      }
-      long timeSinceRelease = currentTime - driver.ReleaseTimestamp.Value;
-      if (timeSinceRelease > preset.ReleaseTime) {
-        if (currentTime > this.lastChannelInteractionTime + 5000) {
-          // Pass control back to the audio stream
+      lock (this.beatLock) {
+        var driver = this.driversByChannel[channelIndex];
+        if (driver == null || preset == null) {
           return null;
         }
-        return 0.0;
+        long currentTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+        long timeSincePress = currentTime - driver.PressTimestamp;
+        if (timeSincePress < 0.0) {
+          return 0.0;
+        }
+        if (
+          !driver.ReleaseTimestamp.HasValue ||
+          currentTime < driver.ReleaseTimestamp.Value
+        ) {
+          return this.CurrentMidiLevelDriverValueWithoutReleaseForChannel(
+            driver,
+            preset,
+            currentTime
+          );
+        }
+        long timeSinceRelease = currentTime - driver.ReleaseTimestamp.Value;
+        if (timeSinceRelease > preset.ReleaseTime) {
+          if (currentTime > this.lastChannelInteractionTime + 5000) {
+            // Pass control back to the audio stream
+            return null;
+          }
+          return 0.0;
+        }
+        double levelAtRelease =
+          this.CurrentMidiLevelDriverValueWithoutReleaseForChannel(
+            driver,
+            preset,
+            driver.ReleaseTimestamp.Value
+          );
+        return levelAtRelease * (preset.ReleaseTime - timeSinceRelease)
+          / preset.ReleaseTime;
       }
-      double levelAtRelease =
-        this.CurrentMidiLevelDriverValueWithoutReleaseForChannel(
-          driver,
-          preset,
-          driver.ReleaseTimestamp.Value
-        );
-      return levelAtRelease * (preset.ReleaseTime - timeSinceRelease)
-        / preset.ReleaseTime;
     }
 
     public void ReportMadmomBeat(long msSinceBoot) {
-      this.timeRelativeTo = TimeRelativeTo.SystemBoot;
+      lock (this.beatLock) {
+        this.timeRelativeTo = TimeRelativeTo.SystemBoot;
 
-      if (this.startingTime < 0 || this.lastMadmomReport < 0) {
-        this.startingTime = msSinceBoot;
+        if (this.startingTime < 0 || this.lastMadmomReport < 0) {
+          this.startingTime = msSinceBoot;
+          this.lastMadmomReport = msSinceBoot;
+          this.measureLength = -1;
+          return;
+        }
+
+        long beatInterval = msSinceBoot - this.lastMadmomReport;
+        if (beatInterval <= 0) {
+          // Two beats reported at the same (or out-of-order) timestamp: a zero
+          // interval would divide by zero in the modulo below and yields no
+          // usable measure length. Just record this report and wait for the
+          // next one.
+          this.lastMadmomReport = msSinceBoot;
+          return;
+        }
+
+        long currentMsSinceBoot = (long)GetTickCount64();
+        var progressThroughMeasure = (currentMsSinceBoot - msSinceBoot)
+          % beatInterval;
+
+        double totalMeasures = (double)(currentMsSinceBoot - this.startingTime)
+          / this.measureLength;
+        if (totalMeasures > 8.0) {
+          totalMeasures -= 8.0;
+        }
+        totalMeasures = Math.Floor(totalMeasures);
+
+        this.measureLength = (int)beatInterval;
         this.lastMadmomReport = msSinceBoot;
-        this.measureLength = -1;
-        return;
+
+        this.startingTime = currentMsSinceBoot
+          - (long)(totalMeasures * this.measureLength)
+          - progressThroughMeasure;
       }
-
-      var currentMsSinceBoot = Environment.TickCount;
-      var progressThroughMeasure = (currentMsSinceBoot - msSinceBoot)
-        % (msSinceBoot - this.lastMadmomReport);
-
-      double totalMeasures = (double)(currentMsSinceBoot - this.startingTime)
-        / this.measureLength;
-      if (totalMeasures > 8.0) {
-        totalMeasures -= 8.0;
-      }
-      totalMeasures = Math.Floor(totalMeasures);
-
-      this.measureLength = (int)(msSinceBoot - this.lastMadmomReport);
-      this.lastMadmomReport = msSinceBoot;
-
-      this.startingTime = currentMsSinceBoot
-        - (long)(totalMeasures * this.measureLength)
-        - progressThroughMeasure;
 
       this.PropertyChanged?.Invoke(
         this,

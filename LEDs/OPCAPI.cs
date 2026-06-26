@@ -33,7 +33,11 @@ namespace Spectrum.LEDs {
     private readonly Stopwatch frameRateStopwatch;
     private int framesThisSecond;
     private readonly byte defaultChannel;
-    private bool flushHappened;
+    // Whether a default channel was actually specified in the host string.
+    // defaultChannel is a byte, so a ">= 0" check can never detect "unset".
+    private readonly bool defaultChannelSet;
+    // Read in Update() outside lockObject, written under it in Flush()/Update().
+    private volatile bool flushHappened;
 
     /**
      * hostAndPort looks like:
@@ -51,6 +55,7 @@ namespace Spectrum.LEDs {
       this.port = Convert.ToInt32(parts[1]);
       if (parts.Length >= 3) {
         this.defaultChannel = Convert.ToByte(parts[2]);
+        this.defaultChannelSet = true;
       }
       this.InitializeSocket();
       this.currentPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
@@ -68,6 +73,8 @@ namespace Spectrum.LEDs {
 
     private bool active;
     private Thread outputThread;
+    // Cooperative stop flag for OutputThread, replacing Thread.Abort().
+    private volatile bool outputThreadStop;
     private readonly object lockObject = new object();
     public bool Active {
       get {
@@ -76,12 +83,17 @@ namespace Spectrum.LEDs {
         }
       }
       set {
+        Thread threadToJoin = null;
         lock (this.lockObject) {
           if (this.active == value) {
             return;
           }
+          // Set active before (re)starting/stopping so ConnectSocket's
+          // this.Active check sees the new state.
+          this.active = value;
           if (value) {
             if (this.separateThread) {
+              this.outputThreadStop = false;
               this.outputThread = new Thread(this.OutputThread);
               this.outputThread.Start();
             } else {
@@ -89,15 +101,18 @@ namespace Spectrum.LEDs {
             }
           } else {
             if (this.outputThread != null) {
-              this.outputThread.Abort();
-              this.outputThread.Join();
+              // Signal the loop to exit; it disconnects the socket itself.
+              this.outputThreadStop = true;
+              threadToJoin = this.outputThread;
               this.outputThread = null;
             } else {
               this.DisconnectSocket();
             }
           }
-          this.active = value;
         }
+        // Join outside lockObject: OutputThread takes lockObject in Update(), so
+        // joining while holding it could deadlock.
+        threadToJoin?.Join();
       }
     }
 
@@ -111,7 +126,7 @@ namespace Spectrum.LEDs {
 
     private void ConnectSocket() {
       while (true) {
-        if (!this.Active) {
+        if (!this.Active || this.outputThreadStop) {
           return;
         }
         var asyncResult = this.socket.BeginConnect(this.host, this.port, null, null);
@@ -121,7 +136,9 @@ namespace Spectrum.LEDs {
         }
         try {
           this.socket.Close();
-        } catch { }
+        } catch (Exception e) {
+          Debug.WriteLine("OPCAPI: error closing socket during reconnect: " + e);
+        }
         this.InitializeSocket();
       }
     }
@@ -129,10 +146,14 @@ namespace Spectrum.LEDs {
     private void DisconnectSocket() {
       try {
         this.socket.Disconnect(true);
-      } catch { }
+      } catch (Exception e) {
+        Debug.WriteLine("OPCAPI: error disconnecting socket: " + e);
+      }
       try {
         this.socket.Close();
-      } catch { }
+      } catch (Exception e) {
+        Debug.WriteLine("OPCAPI: error closing socket: " + e);
+      }
       this.InitializeSocket();
       this.currentPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
       this.nextPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
@@ -177,7 +198,8 @@ namespace Spectrum.LEDs {
         try {
           this.socket.Send(bytes);
           this.flushHappened = false;
-        } catch {
+        } catch (Exception e) {
+          Debug.WriteLine("OPCAPI: socket send failed, reconnecting: " + e);
           this.DisconnectSocket();
           this.ConnectSocket();
         }
@@ -192,19 +214,16 @@ namespace Spectrum.LEDs {
 
     private void OutputThread() {
       this.ConnectSocket();
-      try {
-        while (true) {
-          if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
-            this.frameRateStopwatch.Restart();
-            this.setFPS(this.framesThisSecond);
-            this.framesThisSecond = 0;
-          }
-          this.framesThisSecond++;
-          this.Update();
+      while (!this.outputThreadStop) {
+        if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
+          this.frameRateStopwatch.Restart();
+          this.setFPS(this.framesThisSecond);
+          this.framesThisSecond = 0;
         }
-      } catch (ThreadAbortException) {
-        this.DisconnectSocket();
+        this.framesThisSecond++;
+        this.Update();
       }
+      this.DisconnectSocket();
     }
 
     public void Flush() {
@@ -235,7 +254,7 @@ namespace Spectrum.LEDs {
      * use this method. Otherwise it will crash.
      */
     public void SetPixel(int pixelIndex, int color) {
-      Debug.Assert(this.defaultChannel >= 0, "defaultChannel should be set");
+      Debug.Assert(this.defaultChannelSet, "defaultChannel should be set");
       this.SetPixel(this.defaultChannel, pixelIndex, color);
     }
 

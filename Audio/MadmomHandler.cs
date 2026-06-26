@@ -3,6 +3,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 
 namespace Spectrum.Audio {
 
@@ -39,12 +40,31 @@ namespace Spectrum.Audio {
       }
     }
 
+    // Walks up from the running assembly's directory looking for the bundled
+    // Madmom virtualenv. Returns null if it can't be found, so callers can fail
+    // gracefully instead of throwing an opaque Win32Exception from Process.Start.
+    private static string FindMadmomScriptsDir() {
+      var dir = new DirectoryInfo(
+        Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
+      );
+      while (dir != null) {
+        var candidate = Path.Combine(dir.FullName, "Madmom", "env", "Scripts");
+        if (File.Exists(Path.Combine(candidate, "python.exe"))) {
+          return candidate;
+        }
+        dir = dir.Parent;
+      }
+      return null;
+    }
+
     private void UpdateEnabled() {
       if (this.process != null) {
         if (!process.HasExited) { this.process.Kill(); }
         try {
           this.process.Dispose();
-        } catch { }
+        } catch (Exception e) {
+          Debug.WriteLine("MadmomHandler: error disposing process: " + e);
+        }
         this.process = null;
       }
 
@@ -52,9 +72,14 @@ namespace Spectrum.Audio {
         return;
       }
 
-      var currentDir = Directory.GetParent(Environment.CurrentDirectory);
-      var rootDir = currentDir.Parent.Parent.FullName;
-      var envScriptPath = Path.Combine(rootDir, "Madmom", "env", "Scripts");
+      var envScriptPath = FindMadmomScriptsDir();
+      if (envScriptPath == null) {
+        Debug.WriteLine(
+          "MadmomHandler: could not locate Madmom/env/Scripts/python.exe; " +
+          "beat detection disabled."
+        );
+        return;
+      }
 
       ProcessStartInfo start = new ProcessStartInfo();
       start.WorkingDirectory = envScriptPath;
