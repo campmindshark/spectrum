@@ -35,6 +35,13 @@ namespace Spectrum {
       calibrationOrigin = currentOrientation;
     }
 
+    // All fields are value types, so a memberwise copy is a fully independent
+    // snapshot. Used to hand visualizers a device state they can read off-thread
+    // without racing the receive thread's field writes.
+    public OrientationDevice Clone() {
+      return (OrientationDevice)this.MemberwiseClone();
+    }
+
     public double currentAverageDistance() {
       if (!hasSpeed) {
         return 0f;

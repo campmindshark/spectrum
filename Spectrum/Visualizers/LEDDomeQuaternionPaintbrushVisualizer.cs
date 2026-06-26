@@ -99,8 +99,7 @@ namespace Spectrum.Visualizers {
 
       // Store the device states as of this frame; this avoids problems when the devices get updated
       // in another thread
-      Dictionary<int, OrientationDevice> devices;
-      devices = new Dictionary<int, OrientationDevice>(orientationInput.devices);
+      Dictionary<int, OrientationDevice> devices = orientationInput.DevicesSnapshot();
 
       if (devices.ContainsKey(config.orientationDeviceSpotlight)) {
         spotlightId = config.orientationDeviceSpotlight;

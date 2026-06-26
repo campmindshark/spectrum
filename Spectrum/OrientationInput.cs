@@ -11,7 +11,7 @@ namespace Spectrum {
 
   public class OrientationInput : Input {
     private readonly Configuration config;
-    public Dictionary<int, OrientationDevice> devices;
+    private Dictionary<int, OrientationDevice> devices;
     private long lastCheckedDevices;
     private Dictionary<int, long> lastSeen;
     private long[] lastEvent;
@@ -60,37 +60,40 @@ namespace Spectrum {
       var timestamp = BitConverter.ToInt32(buffer, 1);
 
       var currentTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-      lastSeen[deviceId] = currentTime;
 
       // Datagram unpacking
       var datagramOut = DatagramHandler.parseDatagram(buffer);
       int actionFlag = datagramOut.actionFlag;
 
-      // Device state update
-      if (devices.TryGetValue(deviceId, out var device)) {
-        if (actionFlag != 0) {
-          // debounce (per device!)
-          if (currentTime - lastEvent[deviceId] > DEVICE_EVENT_TIMEOUT) {
-            lastEvent[deviceId] = currentTime;
-            if (actionFlag == 4) {
-              device.calibrate();
-            } else if (actionFlag == 1 || actionFlag == 2 || actionFlag == 3) {
-              device.actionFlag = actionFlag;
+      // All access to the shared device state must be under mLock, since the
+      // operator thread reads/removes from these collections concurrently.
+      lock (mLock) {
+        lastSeen[deviceId] = currentTime;
+
+        // Device state update
+        if (devices.TryGetValue(deviceId, out var device)) {
+          if (actionFlag != 0) {
+            // debounce (per device!)
+            if (currentTime - lastEvent[deviceId] > DEVICE_EVENT_TIMEOUT) {
+              lastEvent[deviceId] = currentTime;
+              if (actionFlag == 4) {
+                device.calibrate();
+              } else if (actionFlag == 1 || actionFlag == 2 || actionFlag == 3) {
+                device.actionFlag = actionFlag;
+              }
             }
+          } else {
+            device.actionFlag = 0;
+          }
+          if (timestamp > device.timestamp || timestamp < (device.timestamp - 1000)) {
+            // the second conditional is just to catch a case where the device was power cycled;
+            //   assuming it was off for more than a second
+            device.timestamp = timestamp;
+            device.currentOrientation = datagramOut.device.currentOrientation;
+            // This took me a while to track down. We must set the avgDistanceShort from the datagram
+            device.avgDistanceShort = datagramOut.device.avgDistanceShort;
           }
         } else {
-          device.actionFlag = 0;
-        }
-        if (timestamp > device.timestamp || timestamp < (device.timestamp - 1000)) {
-          // the second conditional is just to catch a case where the device was power cycled;
-          //   assuming it was off for more than a second
-          device.timestamp = timestamp;
-          device.currentOrientation = datagramOut.device.currentOrientation;
-          // This took me a while to track down. We must set the avgDistanceShort from the datagram
-          device.avgDistanceShort = datagramOut.device.avgDistanceShort;
-        }
-      } else {
-        lock (mLock) {
           devices.Add(deviceId, datagramOut.device);
           if (devices[deviceId].deviceType == 2) {
             n_poi++;
@@ -134,6 +137,20 @@ namespace Spectrum {
       }
     }
 
+    // Returns a thread-safe deep copy of the current device map, taken under
+    // mLock. Callers (e.g. visualizers on the operator thread) get fully
+    // independent device objects, so they can read device fields off-thread
+    // without racing the receive thread's field writes or enumeration.
+    public Dictionary<int, OrientationDevice> DevicesSnapshot() {
+      lock (mLock) {
+        var snapshot = new Dictionary<int, OrientationDevice>(devices.Count);
+        foreach (var kvp in devices) {
+          snapshot[kvp.Key] = kvp.Value.Clone();
+        }
+        return snapshot;
+      }
+    }
+
     public Quaternion deviceRotation(int deviceId) {
       lock (mLock) {
         return devices.TryGetValue(deviceId, out var device) ? device.currentRotation() : new Quaternion(0, 0, 0, 1);
@@ -148,11 +165,13 @@ namespace Spectrum {
 
     // onlyPoi is used to change visualization to accentuate poi
     public bool onlyPoi() {
-      // All devices are not poi if there are no devices.
-      if (devices.Count == 0) {
-        return false;
+      lock (mLock) {
+        // All devices are not poi if there are no devices.
+        if (devices.Count == 0) {
+          return false;
+        }
+        return n_poi == devices.Count;
       }
-      return n_poi == devices.Count;
     }
   }
 }
