@@ -86,7 +86,6 @@
   <domeAutoFlashDelay>5</domeAutoFlashDelay>
   <domeVolumeRotationSpeed>0.25</domeVolumeRotationSpeed>
   <domeGradientSpeed>0.25</domeGradientSpeed>
-  <domeSkipLEDs>0</domeSkipLEDs>
   <domeTestPattern>0</domeTestPattern>
   <domeActiveVis>0</domeActiveVis>
   <domeRadialSize>1.0</domeRadialSize>

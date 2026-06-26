@@ -206,8 +206,8 @@ namespace Spectrum.LEDs {
 
               bool reversed = connected.Value.Item2;
               Strut strut = reversed
-                ? Strut.ReversedFromIndex(config, strutIndex)
-                : Strut.FromIndex(config, strutIndex);
+                ? Strut.ReversedFromIndex(strutIndex)
+                : Strut.FromIndex(strutIndex);
               layer1.Add(strut);
               strutsByGroup[i].Add(strut);
 
@@ -257,8 +257,8 @@ namespace Spectrum.LEDs {
 
               var reversed = strutInfo.Item2;
               Strut strut = reversed
-                ? Strut.ReversedFromIndex(config, strutIndex)
-                : Strut.FromIndex(config, strutIndex);
+                ? Strut.ReversedFromIndex(strutIndex)
+                : Strut.FromIndex(strutIndex);
               layer2.Add(strut);
               circleStruts.Add(strut);
               strutsByGroup[i].Add(strut);

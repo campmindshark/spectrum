@@ -278,7 +278,7 @@ namespace Spectrum {
       //-----------------------------------------------------------------------
 
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-        Strut strut = Strut.FromIndex(this.config, i);
+        Strut strut = Strut.FromIndex(i);
         var leds = LEDDomeOutput.GetNumLEDs(i);
         for (int j = 0; j < leds; j++) {
           var pixel_p = StrutLayoutFactory.GetProjectedLEDPointParametric(i, j);

@@ -214,8 +214,6 @@
                                 <Label Content="Brightness" HorizontalAlignment="Left" Padding="0" Margin="0,51,0,0" />
                                 <Slider x:Name="domeBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,51,0,0" VerticalAlignment="Top" Height="20" Width="170" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                                 <Label x:Name="domeBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="265,51,0,0" Padding="0" ContentStringFormat="F3" />
-                                <Label Content="Skip LEDs" Margin="0,78,0,0" Padding="0" />
-                                <TextBox x:Name="domeSkipLEDs" Margin="94,78,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="202" />
                             </Grid>
                         </Border>
                         <Label Content="Volume animation" HorizontalAlignment="Left" Margin="4,131,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />

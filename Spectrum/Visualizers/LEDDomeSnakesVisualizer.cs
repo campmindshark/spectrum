@@ -36,7 +36,7 @@ namespace Spectrum {
 
       this.dome.RegisterVisualizer(this);
 
-      var triangleFactory = new TriangleSegmentFactory(config);
+      var triangleFactory = new TriangleSegmentFactory();
       triangleSegments = triangleFactory.GetAll();
     }
 
@@ -176,13 +176,12 @@ namespace Spectrum {
     /// <summary>
     /// Provide struts in a clockwise direction
     /// </summary>
-    /// <param name="config"></param>
     /// <param name="firstStrutIndex"></param>
     /// <param name="secondStrutIndex"></param>
     /// <param name="thirdStrutIndex"></param>
     /// <param name="pointsUp"></param>
-    public TriangleSegment(Configuration config, bool pointsUp, int firstStrutIndex, int secondStrutIndex, int thirdStrutIndex) :
-      this(pointsUp, Strut.FromIndex(config, firstStrutIndex), Strut.FromIndex(config, secondStrutIndex), Strut.FromIndex(config, thirdStrutIndex)) {
+    public TriangleSegment(bool pointsUp, int firstStrutIndex, int secondStrutIndex, int thirdStrutIndex) :
+      this(pointsUp, Strut.FromIndex(firstStrutIndex), Strut.FromIndex(secondStrutIndex), Strut.FromIndex(thirdStrutIndex)) {
     }
 
     public TriangleSegment(bool pointsUp, Strut firstStrut, Strut secondStrut, Strut thirdStrut) :
@@ -196,7 +195,6 @@ namespace Spectrum {
 
   // We may want to move this into the StrutLayoutFactory class or nearby
   public class TriangleSegmentFactory {
-    private readonly Configuration config;
     private readonly List<TriangleSegment>[] rows = new List<TriangleSegment>[5];
 
     public TriangleSegment[] GetAll() {
@@ -211,8 +209,7 @@ namespace Spectrum {
       return new TriangleSegment[0];
     }
 
-    public TriangleSegmentFactory(Configuration config) {
-      this.config = config;
+    public TriangleSegmentFactory() {
       LoadSegments();
     }
 
@@ -365,7 +362,7 @@ namespace Spectrum {
 
     private void AddTriangle(int row, int first, int second, int third, bool pointsUp) {
       rows[row] = rows[row] ?? new List<TriangleSegment>();
-      var newTriangleSegment = new TriangleSegment(config, pointsUp, first, second, third);
+      var newTriangleSegment = new TriangleSegment(pointsUp, first, second, third);
       rows[row].Add(newTriangleSegment);
 
       TriangleSegment[] allTriangles = GetAllTriangles(rows).ToArray();

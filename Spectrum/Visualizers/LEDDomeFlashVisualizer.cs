@@ -271,7 +271,7 @@ namespace Spectrum {
         var unreservedStruts =
           animation.shape.struts.Except(this.dome.ReservedStruts());
         foreach (int strutIndex in unreservedStruts) {
-          Strut strut = Strut.FromIndex(this.config, strutIndex);
+          Strut strut = Strut.FromIndex(strutIndex);
           for (int i = 0; i < strut.Length; i++) {
             this.dome.SetPixel(strutIndex, i, 0x000000);
           }

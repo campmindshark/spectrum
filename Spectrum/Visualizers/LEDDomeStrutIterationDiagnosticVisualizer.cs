@@ -84,7 +84,7 @@ namespace Spectrum {
 
         // Reset every LED to blue
         for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-          Strut blueStrut = Strut.FromIndex(this.config, i);
+          Strut blueStrut = Strut.FromIndex(i);
           for (int j = 0; j < blueStrut.Length; j++) {
             this.dome.SetPixel(i, j, 0x0000FF);
           }
@@ -106,7 +106,7 @@ namespace Spectrum {
         this.lastControlBox,
         this.lastIndex
       );
-      Strut strut = Strut.FromIndex(this.config, strutIndex);
+      Strut strut = Strut.FromIndex(strutIndex);
       for (int i = 0; i < strut.Length; i++) {
         this.dome.SetPixel(strutIndex, i, this.color & whiteColor);
       }

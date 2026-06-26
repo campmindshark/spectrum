@@ -307,9 +307,6 @@ namespace Spectrum.LEDs {
     }
 
     public void SetPixel(int strutIndex, int ledIndex, int color) {
-      // TODO: remove domeSkipLEDs entirely unless it is useful
-      ledIndex += this.config.domeSkipLEDs;
-
       // JK: leaving original code here since there's not really a way to test it off-playa
       int pixelIndex = ledIndex;
       Tuple<int, int> strutPosition = strutPositions[strutIndex];
@@ -373,23 +370,18 @@ namespace Spectrum.LEDs {
       }
       // Use the device indexes precomputed once in MakeDomeOutputBuffer rather
       // than re-deriving the control-box/pixel mapping for every pixel every
-      // frame (P3). domeSkipLEDs is a uniform additive offset into each control
-      // box's pixel strand (it is added to ledIndex before the same strut/strand
-      // accumulation that produced controlBoxPixelIndex), so it can be applied
-      // directly to the cached index here — keeping behavior identical to the
-      // old SetPixel path even when domeSkipLEDs is non-zero.
-      int skipLEDs = this.config.domeSkipLEDs;
+      // frame (P3).
       int stride = maxStripLength * 8;
       bool simulationEnabled = this.config.domeSimulationEnabled;
       for (int i = 0; i < buffer.pixels.Length; i++) {
         LEDDomeOutputPixel pixel = buffer.pixels[i];
         int totalPixelIndex =
-          pixel.controlBoxIndex * stride + pixel.controlBoxPixelIndex + skipLEDs;
+          pixel.controlBoxIndex * stride + pixel.controlBoxPixelIndex;
         opcAPI.SetPixel(totalPixelIndex, pixel.color);
         if (simulationEnabled) {
           this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
             strutIndex = pixel.strutIndex,
-            ledIndex = pixel.strutLEDIndex + skipLEDs,
+            ledIndex = pixel.strutLEDIndex,
             color = pixel.color,
           });
         }
@@ -448,10 +440,6 @@ namespace Spectrum.LEDs {
       return strutPositions.Length;
     }
 
-    /**
-     * Doesn't take into account Configuration.domeSkipLEDs. Don't use this
-     * unless you are Strut. Use Strut.Length instead.
-     */
     public static int GetNumLEDs(int strutIndex) {
       var strutPosition = strutPositions[strutIndex];
       int strutsLeft = strutPosition.Item2;

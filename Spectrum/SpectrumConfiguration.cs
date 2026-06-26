@@ -27,7 +27,6 @@ namespace Spectrum {
       this.PropertyChanged(this, new PropertyChangedEventArgs("midiLog"));
     }
 
-    public int audioDeviceIndex { get; set; } = -1;
     public string audioDeviceID { get; set; } = null;
 
     public bool domeEnabled { get; set; } = false;
@@ -76,7 +75,6 @@ namespace Spectrum {
     public int domeAutoFlashDelay { get; set; } = 100;
     public double domeVolumeRotationSpeed { get; set; } = 1.0;
     public double domeGradientSpeed { get; set; } = 1.0;
-    public int domeSkipLEDs { get; set; } = 0;
     public int domeTestPattern { get; set; } = 0;
     public int domeActiveVis { get; set; } = 0;
     public double domeGlobalFadeSpeed { get; set; } = 0;

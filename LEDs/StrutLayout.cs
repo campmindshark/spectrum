@@ -1,5 +1,4 @@
-﻿using Spectrum.Base;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,32 +11,29 @@ namespace Spectrum.LEDs {
     private static readonly Dictionary<Tuple<int, bool>, Strut> struts =
       new Dictionary<Tuple<int, bool>, Strut>();
 
-    public static Strut FromIndex(Configuration config, int index) {
+    public static Strut FromIndex(int index) {
       var key = new Tuple<int, bool>(index, false);
       if (!struts.ContainsKey(key)) {
-        struts[key] = new Strut(config, index, false);
+        struts[key] = new Strut(index, false);
       }
       return struts[key];
     }
 
-    public static Strut ReversedFromIndex(Configuration config, int index) {
+    public static Strut ReversedFromIndex(int index) {
       var key = new Tuple<int, bool>(index, true);
       if (!struts.ContainsKey(key)) {
-        struts[key] = new Strut(config, index, true);
+        struts[key] = new Strut(index, true);
       }
       return struts[key];
     }
 
-    private readonly Configuration config;
     private readonly int index;
     private readonly bool reversed;
 
     private Strut(
-      Configuration config,
       int index,
       bool reversed
     ) {
-      this.config = config;
       this.index = index;
       this.reversed = reversed;
     }
@@ -54,13 +50,9 @@ namespace Spectrum.LEDs {
       }
     }
 
-    /**
-     * Takes into account Configuration.domeSkipLEDs
-     */
     public int Length {
       get {
-        int actualLength = LEDDomeOutput.GetNumLEDs(this.index);
-        return actualLength - this.config.domeSkipLEDs * 2;
+        return LEDDomeOutput.GetNumLEDs(this.index);
       }
     }
 

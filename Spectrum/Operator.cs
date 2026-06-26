@@ -16,7 +16,6 @@ namespace Spectrum {
     private readonly List<Input> inputs;
     private readonly List<Output> outputs;
     private readonly List<Visualizer> visualizers;
-    private readonly Stopwatch operatorThreadBlockingStopwatch;
     private readonly Stopwatch frameRateStopwatch;
     private int framesThisSecond;
 
@@ -34,8 +33,6 @@ namespace Spectrum {
 
     public Operator(Configuration config) {
       this.config = config;
-      this.operatorThreadBlockingStopwatch = new Stopwatch();
-      this.operatorThreadBlockingStopwatch.Start();
 
       this.frameRateStopwatch = new Stopwatch();
       this.frameRateStopwatch.Start();
@@ -199,11 +196,6 @@ namespace Spectrum {
 
     private void OperatorThread() {
       while (!this.operatorThreadStop) {
-        if (this.operatorThreadBlockingStopwatch.ElapsedMilliseconds < 8) {
-          //Thread.Sleep(1);
-        }
-        this.operatorThreadBlockingStopwatch.Restart();
-
         if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
           this.frameRateStopwatch.Restart();
           this.config.operatorFPS = this.framesThisSecond;

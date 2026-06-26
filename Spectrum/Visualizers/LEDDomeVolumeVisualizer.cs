@@ -81,8 +81,8 @@ namespace Spectrum {
         segments[i] = new StrutLayoutSegment(new HashSet<Strut>(
           strutsBySpoke[i].Select(
             strut => reversedStruts.Contains(strut)
-              ? Strut.ReversedFromIndex(this.config, strut)
-              : Strut.FromIndex(this.config, strut)
+              ? Strut.ReversedFromIndex(strut)
+              : Strut.FromIndex(strut)
           )
         ));
       }
@@ -140,7 +140,7 @@ namespace Spectrum {
     public void Visualize() {
       if (this.wipeStrutsNextCycle) {
         for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-          Strut strut = Strut.FromIndex(this.config, i);
+          Strut strut = Strut.FromIndex(i);
           for (int j = 0; j < strut.Length; j++) {
             this.dome.SetPixel(i, j, 0x000000);
           }

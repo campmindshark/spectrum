@@ -66,7 +66,7 @@ namespace Spectrum {
         valueSet = true;
         if (this.strutStates.ContainsKey(command.index)) {
           var existingStrutIndex = this.strutStates[command.index];
-          Strut existingStrut = Strut.FromIndex(this.config, existingStrutIndex);
+          Strut existingStrut = Strut.FromIndex(existingStrutIndex);
           for (int i = 0; i < existingStrut.Length; i++) {
             this.dome.SetPixel(existingStrutIndex, i, 0x000000);
           }
@@ -100,7 +100,7 @@ namespace Spectrum {
           strutIndex = candidateStrutIndex;
         }
 
-        Strut strut = Strut.FromIndex(this.config, strutIndex);
+        Strut strut = Strut.FromIndex(strutIndex);
         for (int i = 0; i < strut.Length; i++) {
           this.dome.SetPixel(strutIndex, i, color);
         }

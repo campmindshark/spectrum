@@ -10,8 +10,6 @@ namespace Spectrum.Base {
    */
   public interface Configuration : INotifyPropertyChanged {
 
-    // The unique index identifying the audio device we are listening to
-    int audioDeviceIndex { get; set; }
     string audioDeviceID { get; set; }
 
     bool domeEnabled { get; set; }
@@ -19,9 +17,9 @@ namespace Spectrum.Base {
     bool barEnabled { get; set; }
     bool stageEnabled { get; set; }
 
-    // If this is true, we will poll the Un4seen APIs in a thread separate to
-    // the one running the visualizers. If it is false, a single thread will
-    // first poll the Un4seen APIs and then run the visualizers.
+    // If this is true, we will poll the input/output APIs in a thread separate
+    // to the one running the visualizers. If it is false, a single thread will
+    // first poll the input/output APIs and then run the visualizers.
     bool midiInputInSeparateThread { get; set; }
     bool domeOutputInSeparateThread { get; set; }
     bool barOutputInSeparateThread { get; set; }
@@ -64,7 +62,6 @@ namespace Spectrum.Base {
     int domeAutoFlashDelay { get; set; }
     double domeVolumeRotationSpeed { get; set; }
     double domeGradientSpeed { get; set; }
-    int domeSkipLEDs { get; set; }
     // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts, 3 - Strip test
     int domeTestPattern { get; set; }
     int domeActiveVis { get; set; }

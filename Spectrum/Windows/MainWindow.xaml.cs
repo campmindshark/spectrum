@@ -202,7 +202,6 @@ namespace Spectrum {
       this.Bind("domeBrightness", this.domeBrightnessLabel, Label.ContentProperty);
       this.Bind("domeVolumeAnimationSize", this.domeVolumeAnimationSize, ComboBox.SelectedIndexProperty);
       this.Bind("domeAutoFlashDelay", this.domeAutoFlashDelay, TextBox.TextProperty);
-      this.Bind("domeSkipLEDs", this.domeSkipLEDs, TextBox.TextProperty);
       this.Bind("barEnabled", this.barEnabled, CheckBox.IsCheckedProperty);
       this.Bind("barSimulationEnabled", this.barSimulationEnabled, CheckBox.IsCheckedProperty);
       this.Bind("barInfinityLength", this.barInfinityLength, TextBox.TextProperty);

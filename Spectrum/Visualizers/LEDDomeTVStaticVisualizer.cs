@@ -37,7 +37,7 @@ namespace Spectrum {
 
     public void Static() {
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-        Strut strut = Strut.FromIndex(this.config, i);
+        Strut strut = Strut.FromIndex(i);
         for (int j = 0; j < strut.Length; j++) {
           this.dome.SetPixel(i, j, this.RandomColor());
         }

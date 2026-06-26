@@ -55,7 +55,7 @@ namespace Spectrum {
 
       if (this.state == 0) {
         for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-          Strut strut = Strut.FromIndex(this.config, i);
+          Strut strut = Strut.FromIndex(i);
           for (int j = 0; j < strut.Length; j++) {
             this.dome.SetPixel(i, j, 0x000000);
           }
@@ -75,7 +75,7 @@ namespace Spectrum {
       for (int controlBox = 0; controlBox < 5; controlBox++) {
         for (int localIndex = 0; localIndex < 38; localIndex++) {
           var strutIndex = LEDDomeOutput.FindStrutIndex(controlBox, localIndex);
-          Strut strut = Strut.FromIndex(this.config, strutIndex);
+          Strut strut = Strut.FromIndex(strutIndex);
           if (this.state == 2) {
             for (int j = 1; j < strut.Length - 1; j++) {
               this.dome.SetPixel(strutIndex, j, 0x000000);
