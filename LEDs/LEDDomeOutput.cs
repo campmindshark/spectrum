@@ -359,19 +359,35 @@ namespace Spectrum.LEDs {
     }
 
     public void WriteBuffer(LEDDomeOutputBuffer buffer) {
+      // Snapshot opcAPI once instead of null-checking + locking per pixel (P4).
+      // The visualizers list is only mutated at registration time, so the
+      // per-pixel lock in SetDevicePixel guarded nothing here.
+      OPCAPI opcAPI = this.opcAPI;
+      if (opcAPI == null) {
+        return;
+      }
+      // Use the device indexes precomputed once in MakeDomeOutputBuffer rather
+      // than re-deriving the control-box/pixel mapping for every pixel every
+      // frame (P3). domeSkipLEDs is a uniform additive offset into each control
+      // box's pixel strand (it is added to ledIndex before the same strut/strand
+      // accumulation that produced controlBoxPixelIndex), so it can be applied
+      // directly to the cached index here — keeping behavior identical to the
+      // old SetPixel path even when domeSkipLEDs is non-zero.
+      int skipLEDs = this.config.domeSkipLEDs;
+      int stride = maxStripLength * 8;
+      bool simulationEnabled = this.config.domeSimulationEnabled;
       for (int i = 0; i < buffer.pixels.Length; i++) {
-        // safe way
-        SetPixel(buffer.pixels[i].strutIndex, buffer.pixels[i].strutLEDIndex, buffer.pixels[i].color);
-
-        // JK: way i'd like it to be (skips excess calculations of indexes and so on)
-        //SetDevicePixel(buffer.pixels[i].controlBoxIndex, buffer.pixels[i].controlBoxPixelIndex, buffer.pixels[i].color);
-        //if (this.config.domeSimulationEnabled) {
-        //  this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
-        //    strutIndex = buffer.pixels[i].strutIndex,
-        //    ledIndex = buffer.pixels[i].strutLEDIndex,
-        //    color = buffer.pixels[i].color,
-        //  });
-        //}
+        LEDDomeOutputPixel pixel = buffer.pixels[i];
+        int totalPixelIndex =
+          pixel.controlBoxIndex * stride + pixel.controlBoxPixelIndex + skipLEDs;
+        opcAPI.SetPixel(totalPixelIndex, pixel.color);
+        if (simulationEnabled) {
+          this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
+            strutIndex = pixel.strutIndex,
+            ledIndex = pixel.strutLEDIndex + skipLEDs,
+            color = pixel.color,
+          });
+        }
       }
     }
 
