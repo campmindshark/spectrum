@@ -1,10 +1,7 @@
-﻿using System.IO.Ports;
-using Spectrum.Base;
+﻿using Spectrum.Base;
 using System.Threading;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System;
 using System.Net.Sockets;
 
@@ -15,19 +12,43 @@ namespace Spectrum.LEDs {
    */
   class OPCAPI {
 
+    /**
+     * Double-buffered, preallocated pixel storage for a single OPC channel.
+     *
+     * The pixel set on a channel is dense and (after warmup) fixed-size, so we
+     * back it with plain int[] RGB buffers instead of a tuple-keyed dictionary.
+     * The visualize/operator thread writes into "next"; Flush() swaps "next"
+     * into "current" (the realized frame) and copies it back into "next" so the
+     * next frame inherits the previous frame's pixels (the persistence
+     * semantics the old per-flush dictionary copy provided). The output thread
+     * reads only "current".
+     */
+    private class ChannelBuffer {
+      public int[] next;
+      public int[] current;
+      // (max pixel index that has been set) + 1, i.e. the realized pixel count.
+      public int nextCount;
+      public int currentCount;
+
+      public ChannelBuffer(int initialCapacity) {
+        this.next = new int[initialCapacity];
+        this.current = new int[initialCapacity];
+      }
+    }
+
+    // Smallest channel buffer we allocate; grows on demand to the max pixel
+    // index actually written.
+    private const int InitialChannelCapacity = 64;
+
     private readonly string host;
     private readonly int port;
     private Socket socket;
-    // (channel ID, pixel ID) => RGB value
-    // these values have been realized (ie. a flush has happened)
-    private ConcurrentDictionary<Tuple<byte, int>, int> currentPixelColors;
-    // these values haven't been realized (ie. flush hasn't happened yet)
-    private ConcurrentDictionary<Tuple<byte, int>, int> nextPixelColors;
-    // channel ID => pixel ID
-    // these values have been realized (ie. a flush has happened)
-    private ConcurrentDictionary<byte, int> currentFirstPixelNotSet;
-    // these values haven't been realized (ie. flush hasn't happened yet)
-    private ConcurrentDictionary<byte, int> nextFirstPixelNotSet;
+    // channel ID => its double-buffered pixel storage. Structural additions
+    // happen only under lockObject; after warmup the set of channels is fixed,
+    // so the hot SetPixel path reads it lock-free.
+    private Dictionary<byte, ChannelBuffer> channels;
+    // Reusable OPC wire buffer; grown (never shrunk) to fit the largest frame.
+    private byte[] sendBuffer;
     private readonly bool separateThread;
     private readonly Action<int> setFPS;
     private readonly Stopwatch frameRateStopwatch;
@@ -58,10 +79,13 @@ namespace Spectrum.LEDs {
         this.defaultChannelSet = true;
       }
       this.InitializeSocket();
-      this.currentPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
-      this.nextPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
-      this.currentFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
-      this.nextFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
+      this.channels = new Dictionary<byte, ChannelBuffer>();
+      // Pre-create the default channel so the common single-channel path never
+      // has to structurally modify the dictionary at runtime.
+      if (this.defaultChannelSet) {
+        this.channels[this.defaultChannel] =
+          new ChannelBuffer(InitialChannelCapacity);
+      }
       this.flushHappened = false;
       this.separateThread = separateThread;
       this.setFPS = setFPS;
@@ -155,10 +179,11 @@ namespace Spectrum.LEDs {
         Debug.WriteLine("OPCAPI: error closing socket: " + e);
       }
       this.InitializeSocket();
-      this.currentPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
-      this.nextPixelColors = new ConcurrentDictionary<Tuple<byte, int>, int>();
-      this.currentFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
-      this.nextFirstPixelNotSet = new ConcurrentDictionary<byte, int>();
+      this.channels = new Dictionary<byte, ChannelBuffer>();
+      if (this.defaultChannelSet) {
+        this.channels[this.defaultChannel] =
+          new ChannelBuffer(InitialChannelCapacity);
+      }
     }
 
     private void Update() {
@@ -166,37 +191,45 @@ namespace Spectrum.LEDs {
         return;
       }
       lock (this.lockObject) {
-        // channel ID => array of bits, one per color
-        Dictionary<byte, int[]> colorsPerChannel = new Dictionary<byte, int[]>();
-        foreach (var pixelPair in this.currentFirstPixelNotSet) {
-          colorsPerChannel[pixelPair.Key] = new int[pixelPair.Value];
-        }
-        foreach (var pixelColorPair in this.currentPixelColors) {
-          var channelIndex = pixelColorPair.Key.Item1;
-          var pixelIndex = pixelColorPair.Key.Item2;
-          if (pixelIndex < colorsPerChannel[channelIndex].Length) {
-            colorsPerChannel[channelIndex][pixelIndex] = pixelColorPair.Value;
+        // Each non-empty channel contributes a 4-byte OPC header plus 3 bytes
+        // per pixel. Channels with no pixels set yet are skipped, matching the
+        // original (which only emitted channels present in the realized set).
+        int totalLength = 0;
+        foreach (var channelPair in this.channels) {
+          if (channelPair.Value.currentCount > 0) {
+            totalLength += 4 + channelPair.Value.currentCount * 3;
           }
         }
-        byte[][] messages = new byte[colorsPerChannel.Count][];
-        int i = 0;
-        foreach (var channelPixelsPair in colorsPerChannel) {
-          List<byte> message = new List<byte>();
-          message.Add(channelPixelsPair.Key);
-          message.Add(0);
-          var length = channelPixelsPair.Value.Length * 3;
-          message.Add((byte)(length >> 8));
-          message.Add((byte)length);
-          foreach (int color in channelPixelsPair.Value) {
-            message.Add((byte)(color >> 16));
-            message.Add((byte)(color >> 8));
-            message.Add((byte)color);
-          }
-          messages[i++] = message.ToArray();
+        if (totalLength == 0) {
+          this.flushHappened = false;
+          return;
         }
-        byte[] bytes = messages.SelectMany(a => a).ToArray();
+        if (this.sendBuffer == null || this.sendBuffer.Length < totalLength) {
+          this.sendBuffer = new byte[totalLength];
+        }
+        byte[] bytes = this.sendBuffer;
+        int offset = 0;
+        foreach (var channelPair in this.channels) {
+          ChannelBuffer channel = channelPair.Value;
+          int count = channel.currentCount;
+          if (count == 0) {
+            continue;
+          }
+          int length = count * 3;
+          bytes[offset++] = channelPair.Key;
+          bytes[offset++] = 0;
+          bytes[offset++] = (byte)(length >> 8);
+          bytes[offset++] = (byte)length;
+          int[] colors = channel.current;
+          for (int p = 0; p < count; p++) {
+            int color = colors[p];
+            bytes[offset++] = (byte)(color >> 16);
+            bytes[offset++] = (byte)(color >> 8);
+            bytes[offset++] = (byte)color;
+          }
+        }
         try {
-          this.socket.Send(bytes);
+          this.socket.Send(bytes, 0, totalLength, SocketFlags.None);
           this.flushHappened = false;
         } catch (Exception e) {
           Debug.WriteLine("OPCAPI: socket send failed, reconnecting: " + e);
@@ -228,24 +261,61 @@ namespace Spectrum.LEDs {
 
     public void Flush() {
       lock (this.lockObject) {
-        this.currentFirstPixelNotSet = this.nextFirstPixelNotSet;
-        this.nextFirstPixelNotSet =
-          new ConcurrentDictionary<byte, int>(this.nextFirstPixelNotSet);
-        this.currentPixelColors = this.nextPixelColors;
-        this.nextPixelColors =
-          new ConcurrentDictionary<Tuple<byte, int>, int>(this.nextPixelColors);
+        foreach (var channelPair in this.channels) {
+          ChannelBuffer channel = channelPair.Value;
+          // Realize "next" into "current" via a reference swap (no per-frame
+          // dictionary rebuild or deep copy).
+          int[] realized = channel.next;
+          channel.next = channel.current;
+          channel.current = realized;
+          channel.currentCount = channel.nextCount;
+          // Carry the realized frame back into "next" so visualizers that only
+          // overwrite some pixels inherit the rest (matches the old semantics
+          // where the next dictionary started as a copy of the flushed one).
+          if (channel.next.Length < channel.current.Length) {
+            channel.next = new int[channel.current.Length];
+          }
+          Array.Copy(channel.current, channel.next, channel.currentCount);
+          channel.nextCount = channel.currentCount;
+        }
         this.flushHappened = true;
       }
     }
 
     public void SetPixel(byte channelIndex, int pixelIndex, int color) {
+      ChannelBuffer channel = this.GetOrCreateChannel(channelIndex);
+      if (pixelIndex >= channel.next.Length) {
+        int newCapacity = channel.next.Length;
+        while (newCapacity <= pixelIndex) {
+          newCapacity *= 2;
+        }
+        Array.Resize(ref channel.next, newCapacity);
+      }
+      channel.next[pixelIndex] = color;
+      if (pixelIndex + 1 > channel.nextCount) {
+        channel.nextCount = pixelIndex + 1;
+      }
+    }
+
+    // Looks up a channel's buffer, creating it on first use. The lock is taken
+    // only on the (rare) creation path so it doesn't race the output thread's
+    // enumeration of the channels dictionary in Flush()/Update(); the common
+    // case (channel already exists) reads the dictionary lock-free.
+    private ChannelBuffer GetOrCreateChannel(byte channelIndex) {
+      ChannelBuffer channel;
+      if (this.channels.TryGetValue(channelIndex, out channel)) {
+        return channel;
+      }
       lock (this.lockObject) {
-        this.nextFirstPixelNotSet[channelIndex] =
-          this.nextFirstPixelNotSet.ContainsKey(channelIndex)
-            ? Math.Max(this.nextFirstPixelNotSet[channelIndex], pixelIndex + 1)
-            : pixelIndex + 1;
-        var pixelTuple = new Tuple<byte, int>(channelIndex, pixelIndex);
-        this.nextPixelColors[pixelTuple] = color;
+        if (!this.channels.TryGetValue(channelIndex, out channel)) {
+          channel = new ChannelBuffer(InitialChannelCapacity);
+          // Copy-on-write the dictionary so a concurrent lock-free reader in
+          // SetPixel never observes a half-mutated Dictionary.
+          var updated = new Dictionary<byte, ChannelBuffer>(this.channels);
+          updated[channelIndex] = channel;
+          this.channels = updated;
+        }
+        return channel;
       }
     }
 
