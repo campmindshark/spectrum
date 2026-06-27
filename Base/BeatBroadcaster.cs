@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media;
@@ -41,13 +40,6 @@ namespace Spectrum.Base {
     };
     private long lastChannelInteractionTime = 0;
 
-    // Monotonic milliseconds since system boot. Unlike Environment.TickCount
-    // (32-bit, wraps to negative after ~24.9 days) this is 64-bit, and unlike
-    // Environment.TickCount64 it is available on .NET Framework 4.8 (not just
-    // 4.8.1). Same "ms since boot" base as the value Madmom reports.
-    [DllImport("kernel32.dll")]
-    private static extern ulong GetTickCount64();
-
     public event PropertyChangedEventHandler PropertyChanged;
 
     public BeatBroadcaster(Configuration config) {
@@ -67,7 +59,10 @@ namespace Spectrum.Base {
         if (this.timeRelativeTo == TimeRelativeTo.Timestamp) {
           return DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
         }
-        return (long)GetTickCount64();
+        // Monotonic milliseconds since system boot (same base as the value
+        // Madmom reports). 64-bit, so unlike Environment.TickCount it does not
+        // wrap to negative after ~24.9 days.
+        return Environment.TickCount64;
       }
     }
 
@@ -330,7 +325,7 @@ namespace Spectrum.Base {
           return;
         }
 
-        long currentMsSinceBoot = (long)GetTickCount64();
+        long currentMsSinceBoot = Environment.TickCount64;
         var progressThroughMeasure = (currentMsSinceBoot - msSinceBoot)
           % beatInterval;
 

@@ -1,77 +1,11 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{5258999B-1E36-4A6C-9674-23C259DAD81E}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Base</RootNamespace>
     <AssemblyName>Base</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
-    <TargetFrameworkProfile />
+    <!-- BeatBroadcaster / LEDColor use System.Windows.Media (PresentationCore). -->
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="PresentationCore" />
-    <Reference Include="PresentationFramework" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="BeatBroadcaster.cs" />
-    <Compile Include="Configuration.cs" />
-    <Compile Include="Input.cs" />
-    <Compile Include="LEDColor.cs" />
-    <Compile Include="LEDCommand.cs" />
-    <Compile Include="Level drivers\AudioLevelDriverPreset.cs" />
-    <Compile Include="Level drivers\MidiLevelDriverPreset.cs" />
-    <Compile Include="Level drivers\LevelDriverPreset.cs" />
-    <Compile Include="MIDI\AdsrLevelDriverMidiBindingConfig.cs" />
-    <Compile Include="MIDI\ContinuousKnobMidiBindingConfig.cs" />
-    <Compile Include="MIDI\DiscreteKnobMidiBindingConfig.cs" />
-    <Compile Include="MIDI\DiscreteLogarithmicKnobMidiBindingConfig.cs" />
-    <Compile Include="MIDI\ObservableMidiLog.cs" />
-    <Compile Include="MIDI\TapTempoMidiBindingConfig.cs" />
-    <Compile Include="MIDI\ColorPaletteMidiBindingConfig.cs" />
-    <Compile Include="MIDI\MidiPreset.cs" />
-    <Compile Include="Output.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Visualizer.cs" />
-  </ItemGroup>
-  <ItemGroup />
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+
 </Project>

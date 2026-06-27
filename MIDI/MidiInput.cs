@@ -119,6 +119,10 @@ namespace Spectrum.MIDI {
 
     private bool active;
     private Thread inputThread;
+    // Signals MidiProcessingThread to exit its loop. Replaces the old
+    // Thread.Abort() teardown, which throws PlatformNotSupportedException on
+    // modern .NET.
+    private volatile bool stopRequested;
     public bool Active {
       get {
         lock (this.buffer) {
@@ -132,14 +136,17 @@ namespace Spectrum.MIDI {
           }
           if (value) {
             if (this.config.midiInputInSeparateThread) {
-              this.inputThread = new Thread(MidiProcessingThread);
+              this.stopRequested = false;
+              this.inputThread = new Thread(MidiProcessingThread) {
+                IsBackground = true,
+              };
               this.inputThread.Start();
             } else {
               this.InitializeMidi();
             }
           } else {
             if (this.inputThread != null) {
-              this.inputThread.Abort();
+              this.stopRequested = true;
               this.inputThread.Join();
               this.inputThread = null;
             } else {
@@ -265,10 +272,10 @@ namespace Spectrum.MIDI {
     private void MidiProcessingThread() {
       this.InitializeMidi();
       try {
-        while (true) {
+        while (!this.stopRequested) {
           this.Update();
         }
-      } catch (ThreadAbortException) {
+      } finally {
         this.TerminateMidi();
       }
     }
