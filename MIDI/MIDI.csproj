@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Sanford.Multimedia.Midi" Version="6.4.1" />
+    <PackageReference Include="Sanford.Multimedia.Midi" Version="6.7.3" />
   </ItemGroup>
 
   <ItemGroup>

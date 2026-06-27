@@ -2,6 +2,7 @@
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 
@@ -102,10 +103,20 @@ namespace Spectrum.Audio {
         return;
       }
 
-      long msSinceBoot = (long)(Convert.ToDouble(line.Substring(5)) * 1000);
+      // This runs on the process's stdout reader thread, where an unhandled
+      // exception would be unobserved and could tear down the app. A malformed
+      // BEAT: line must be dropped, not thrown on. Parse with InvariantCulture
+      // since the Python side emits a '.'-decimal float regardless of locale.
+      if (!double.TryParse(
+        line.Substring(5),
+        NumberStyles.Float,
+        CultureInfo.InvariantCulture,
+        out double seconds
+      )) {
+        return;
+      }
+      long msSinceBoot = (long)(seconds * 1000);
       this.config.beatBroadcaster.ReportMadmomBeat(msSinceBoot);
-
-      //Console.WriteLine(Environment.TickCount - msSinceBoot);
     }
 
   }

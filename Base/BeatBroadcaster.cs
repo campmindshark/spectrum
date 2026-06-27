@@ -76,6 +76,11 @@ namespace Spectrum.Base {
         }
         int distance = (int)(this.currentTime - this.startingTime);
         int beatLength = (int)(this.measureLength / factor);
+        if (beatLength <= 0) {
+          // A large factor (or a tiny measureLength) can floor the beat length
+          // to zero; guard the modulo/division below against DivideByZeroException.
+          return 0.0;
+        }
         int progressThroughMeasure = distance % beatLength;
         return (double)progressThroughMeasure / beatLength;
       }
@@ -329,12 +334,19 @@ namespace Spectrum.Base {
         var progressThroughMeasure = (currentMsSinceBoot - msSinceBoot)
           % beatInterval;
 
-        double totalMeasures = (double)(currentMsSinceBoot - this.startingTime)
-          / this.measureLength;
-        if (totalMeasures > 8.0) {
-          totalMeasures -= 8.0;
+        // On the beat that first establishes an interval, measureLength is still
+        // the -1 sentinel; dividing by it yields a meaningless measure count.
+        // Only derive totalMeasures once a real measureLength exists — otherwise
+        // anchor startingTime to the current beat (totalMeasures == 0).
+        double totalMeasures = 0.0;
+        if (this.measureLength > 0) {
+          totalMeasures = (double)(currentMsSinceBoot - this.startingTime)
+            / this.measureLength;
+          if (totalMeasures > 8.0) {
+            totalMeasures -= 8.0;
+          }
+          totalMeasures = Math.Floor(totalMeasures);
         }
-        totalMeasures = Math.Floor(totalMeasures);
 
         this.measureLength = (int)beatInterval;
         this.lastMadmomReport = msSinceBoot;

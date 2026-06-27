@@ -54,8 +54,10 @@ namespace Spectrum.LEDs {
     private Socket socket;
     // channel ID => its double-buffered pixel storage. Structural additions
     // happen only under lockObject; after warmup the set of channels is fixed,
-    // so the hot SetPixel path reads it lock-free.
-    private Dictionary<byte, ChannelBuffer> channels;
+    // so the hot SetPixel path reads it lock-free. volatile so a lock-free
+    // reader always sees the latest reference after a copy-on-write swap or a
+    // reconnect reset.
+    private volatile Dictionary<byte, ChannelBuffer> channels;
     // Reusable OPC wire buffer; grown (never shrunk) to fit the largest frame.
     private byte[] sendBuffer;
     private readonly bool separateThread;
@@ -199,10 +201,18 @@ namespace Spectrum.LEDs {
         Debug.WriteLine("OPCAPI: error closing socket: " + e);
       }
       this.InitializeSocket();
-      this.channels = new Dictionary<byte, ChannelBuffer>();
+      // Reset the realized pixel set on (re)connect. Built off-lock then swapped
+      // in under lockObject so a lock-free SetPixel reader never observes a
+      // half-built dictionary (channels is volatile, so the new reference is
+      // visible immediately). DisconnectSocket is now reachable from Update()'s
+      // catch outside the lock; lock is reentrant, so callers already holding it
+      // (the Active setter) are fine.
+      var fresh = new Dictionary<byte, ChannelBuffer>();
       if (this.defaultChannelSet) {
-        this.channels[this.defaultChannel] =
-          new ChannelBuffer(InitialChannelCapacity);
+        fresh[this.defaultChannel] = new ChannelBuffer(InitialChannelCapacity);
+      }
+      lock (this.lockObject) {
+        this.channels = fresh;
       }
     }
 
@@ -217,11 +227,12 @@ namespace Spectrum.LEDs {
       if (this.sendThrottleStopwatch.Elapsed.TotalMilliseconds < MinSendIntervalMs) {
         return false;
       }
+      int totalLength;
       lock (this.lockObject) {
         // Each non-empty channel contributes a 4-byte OPC header plus 3 bytes
         // per pixel. Channels with no pixels set yet are skipped, matching the
         // original (which only emitted channels present in the realized set).
-        int totalLength = 0;
+        totalLength = 0;
         foreach (var channelPair in this.channels) {
           if (channelPair.Value.currentCount > 0) {
             totalLength += 4 + channelPair.Value.currentCount * 3;
@@ -255,17 +266,23 @@ namespace Spectrum.LEDs {
             bytes[offset++] = (byte)color;
           }
         }
-        try {
-          this.socket.Send(bytes, 0, totalLength, SocketFlags.None);
-          this.sendThrottleStopwatch.Restart();
-          this.flushHappened = false;
-          return true;
-        } catch (Exception e) {
-          Debug.WriteLine("OPCAPI: socket send failed, reconnecting: " + e);
-          this.DisconnectSocket();
-          this.ConnectSocket();
-          return false;
-        }
+      }
+      // The send (and any resulting reconnect) runs OUTSIDE lockObject. A
+      // reconnect can block for seconds; holding lockObject across it would
+      // stall Flush()/SetPixel on the operator thread for the whole outage,
+      // defeating the point of the separate output thread. sendBuffer and the
+      // socket are only ever touched on this single Update() thread, so they
+      // need no lock here.
+      try {
+        this.socket.Send(this.sendBuffer, 0, totalLength, SocketFlags.None);
+        this.sendThrottleStopwatch.Restart();
+        this.flushHappened = false;
+        return true;
+      } catch (Exception e) {
+        Debug.WriteLine("OPCAPI: socket send failed, reconnecting: " + e);
+        this.DisconnectSocket();
+        this.ConnectSocket();
+        return false;
       }
     }
 

@@ -24,8 +24,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="WriteableBitmapEx" Version="1.6.2" />
-    <PackageReference Include="XSerializer" Version="0.4.2" />
+    <PackageReference Include="WriteableBitmapEx" Version="1.6.11" />
+    <PackageReference Include="XSerializer" Version="0.4.4" />
   </ItemGroup>
 
   <ItemGroup>

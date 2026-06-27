@@ -95,6 +95,10 @@ namespace Spectrum.Audio {
 
     private void TerminateAudio() {
       if (this.captureStream != null) {
+        // Detach the handler before stopping: StopRecording can raise a final
+        // DataAvailable, and we don't want it running against a device we're
+        // about to dispose/null.
+        this.captureStream.DataAvailable -= Update;
         this.captureStream.StopRecording();
         this.captureStream.Dispose();
         this.captureStream = null;
@@ -108,7 +112,13 @@ namespace Spectrum.Audio {
     }
 
     private void Update(object sender, NAudio.Wave.WaveInEventArgs args) {
-      this.Volume = recordingDevice.AudioMeterInformation.MasterPeakValue;
+      // The capture thread can still deliver a buffer as TerminateAudio nulls
+      // recordingDevice; read it into a local and bail if it's already gone.
+      var device = this.recordingDevice;
+      if (device == null) {
+        return;
+      }
+      this.Volume = device.AudioMeterInformation.MasterPeakValue;
     }
 
     public void OperatorUpdate() {

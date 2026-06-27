@@ -37,9 +37,24 @@ namespace Spectrum.LEDs {
     }
 
     private void updateColor() {
-      _color = (int)(((byte)_r) << 16) +
-        (int)(((byte)_g) << 8) +
-        (int)(((byte)_b));
+      _color = (ClampByte(_r) << 16) +
+        (ClampByte(_g) << 8) +
+        ClampByte(_b);
+    }
+
+    // Fade() can drive _r/_g/_b out of [0,255] (negative in particular, via
+    // "* mul - sub"), and a direct double->byte cast of an out-of-range value is
+    // unspecified in C#. Clamp when packing so the wire color is always well
+    // defined. The double-precision _r/_g/_b accumulators are intentionally left
+    // unclamped so Fade's cross-frame sub-integer accumulation is unchanged.
+    private static int ClampByte(double v) {
+      if (v <= 0) {
+        return 0;
+      }
+      if (v >= 255) {
+        return 255;
+      }
+      return (int)v;
     }
 
     public double r {
