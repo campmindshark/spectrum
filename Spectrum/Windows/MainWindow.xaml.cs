@@ -8,7 +8,6 @@ using XSerializer;
 using System.IO;
 using Spectrum.MIDI;
 using System.Windows.Data;
-using Xceed.Wpf.Toolkit;
 using System.Collections.Generic;
 using System.Windows.Media;
 using Spectrum.Base;

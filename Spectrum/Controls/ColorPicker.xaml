@@ -1,0 +1,26 @@
+<UserControl
+  x:Class="Spectrum.ColorPicker"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Height="20"
+  Cursor="Hand"
+>
+  <Grid>
+    <Border
+      x:Name="swatch"
+      BorderBrush="#FF707070"
+      BorderThickness="1"
+      SnapsToDevicePixels="True"
+      Background="White"
+      MouseLeftButtonUp="SwatchClicked"
+    />
+    <Line
+      x:Name="emptyMarker"
+      X1="0" Y1="1" X2="1" Y2="0"
+      Stretch="Fill"
+      Stroke="Red"
+      StrokeThickness="1"
+      IsHitTestVisible="False"
+    />
+  </Grid>
+</UserControl>
