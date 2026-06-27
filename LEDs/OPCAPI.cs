@@ -40,6 +40,15 @@ namespace Spectrum.LEDs {
     // index actually written.
     private const int InitialChannelCapacity = 64;
 
+    // Cap on how often we actually push a frame to the controller. Visualizers
+    // Flush() once per operator frame and the operator loop is unthrottled, so
+    // without this the OPC send rate is bounded only by the CPU. The frame is
+    // ~25 KB and the BeagleBone/LEDs gain nothing from being driven faster than
+    // this — it just burns CPU and network. 400 Hz is far above anything visible
+    // while leaving generous headroom.
+    private const int MaxRefreshRateHz = 400;
+    private static readonly double MinSendIntervalMs = 1000.0 / MaxRefreshRateHz;
+
     private readonly string host;
     private readonly int port;
     private Socket socket;
@@ -53,6 +62,11 @@ namespace Spectrum.LEDs {
     private readonly Action<int> setFPS;
     private readonly Stopwatch frameRateStopwatch;
     private int framesThisSecond;
+    // Measures time since the last frame actually sent, to enforce
+    // MaxRefreshRateHz. Only ever touched inside Update(), which runs on a
+    // single thread (the output thread when separateThread, else the operator
+    // thread), so it needs no synchronization.
+    private readonly Stopwatch sendThrottleStopwatch;
     private readonly byte defaultChannel;
     // Whether a default channel was actually specified in the host string.
     // defaultChannel is a byte, so a ">= 0" check can never detect "unset".
@@ -93,6 +107,7 @@ namespace Spectrum.LEDs {
       this.frameRateStopwatch = new Stopwatch();
       this.frameRateStopwatch.Start();
       this.framesThisSecond = 0;
+      this.sendThrottleStopwatch = Stopwatch.StartNew();
     }
 
     private bool active;
@@ -191,9 +206,16 @@ namespace Spectrum.LEDs {
       }
     }
 
-    private void Update() {
+    // Returns true if a frame was actually pushed to the controller this call.
+    private bool Update() {
       if (!this.flushHappened || this.socket == null || !this.socket.Connected) {
-        return;
+        return false;
+      }
+      // Refresh-rate cap: if we pushed a frame too recently, leave flushHappened
+      // set and try again on a later pass. This throttles both the threaded
+      // output loop (which spins) and the inline OperatorUpdate() path.
+      if (this.sendThrottleStopwatch.Elapsed.TotalMilliseconds < MinSendIntervalMs) {
+        return false;
       }
       lock (this.lockObject) {
         // Each non-empty channel contributes a 4-byte OPC header plus 3 bytes
@@ -207,7 +229,7 @@ namespace Spectrum.LEDs {
         }
         if (totalLength == 0) {
           this.flushHappened = false;
-          return;
+          return false;
         }
         if (this.sendBuffer == null || this.sendBuffer.Length < totalLength) {
           this.sendBuffer = new byte[totalLength];
@@ -235,11 +257,14 @@ namespace Spectrum.LEDs {
         }
         try {
           this.socket.Send(bytes, 0, totalLength, SocketFlags.None);
+          this.sendThrottleStopwatch.Restart();
           this.flushHappened = false;
+          return true;
         } catch (Exception e) {
           Debug.WriteLine("OPCAPI: socket send failed, reconnecting: " + e);
           this.DisconnectSocket();
           this.ConnectSocket();
+          return false;
         }
       }
     }
@@ -258,8 +283,11 @@ namespace Spectrum.LEDs {
           this.setFPS(this.framesThisSecond);
           this.framesThisSecond = 0;
         }
-        this.framesThisSecond++;
-        this.Update();
+        // Count only frames that actually went out so the reported FPS reflects
+        // the real (throttled) refresh rate rather than the spin-loop rate.
+        if (this.Update()) {
+          this.framesThisSecond++;
+        }
       }
       this.DisconnectSocket();
     }
