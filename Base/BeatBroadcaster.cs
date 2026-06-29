@@ -31,7 +31,16 @@ namespace Spectrum.Base {
     private readonly object beatLock = new object();
     private List<long> currentTaps = new List<long>();
     private long startingTime = -1;
-    private long lastMadmomReport = -1;
+    // The most recent Madmom-reported beat timestamps (ms, in Madmom's
+    // audio-stream base), used to derive tempo. These are sample-derived and so
+    // immune to the model's bursty per-frame latency, unlike wall-clock arrival
+    // times. See ReportMadmomBeat.
+    private const int madmomBeatWindow = 8;
+    // A gap longer than this (in Madmom's timeline) means detection dropped out
+    // (silence / song change); we start a fresh tempo window rather than
+    // averaging across it.
+    private const long madmomBeatTimeout = 2500;
+    private readonly List<long> madmomBeatTimes = new List<long>();
     private int measureLength = -1;
     private TimeRelativeTo timeRelativeTo = TimeRelativeTo.Timestamp;
     private readonly Timer tapTempoConclusionTimer = new Timer(tapTempoConclusionTime);
@@ -137,7 +146,7 @@ namespace Spectrum.Base {
         this.currentTaps = new List<long>();
         this.startingTime = -1;
         this.measureLength = -1;
-        this.lastMadmomReport = -1;
+        this.madmomBeatTimes.Clear();
         this.timeRelativeTo = TimeRelativeTo.Timestamp;
       }
       this.TapTempoConcluded(null, null);
@@ -157,7 +166,7 @@ namespace Spectrum.Base {
       }
       this.measureLength = (int)(measureLengths.Average());
       this.startingTime = this.currentTaps.Last();
-      this.lastMadmomReport = -1;
+      this.madmomBeatTimes.Clear();
       this.timeRelativeTo = TimeRelativeTo.Timestamp;
     }
 
@@ -309,57 +318,84 @@ namespace Spectrum.Base {
       }
     }
 
-    public void ReportMadmomBeat(long msSinceBoot) {
+    // Called once per beat Madmom detects, with Madmom's own (audio-stream)
+    // timestamp for that beat in milliseconds. Tempo is derived from the median
+    // spacing of a short window of these timestamps: a single Madmom interval is
+    // noisy (a missed beat doubles it, a double-report zeroes it), and the
+    // sample-derived timestamps are far more reliable for *spacing* than the
+    // bursty wall-clock arrival of the BEAT: lines. The phase, however, is
+    // anchored to our own real-time clock, since that is the base callers
+    // measure progress against.
+    public void ReportMadmomBeat(long beatTimeMs) {
       lock (this.beatLock) {
         this.timeRelativeTo = TimeRelativeTo.SystemBoot;
 
-        if (this.startingTime < 0 || this.lastMadmomReport < 0) {
-          this.startingTime = msSinceBoot;
-          this.lastMadmomReport = msSinceBoot;
-          this.measureLength = -1;
-          return;
-        }
-
-        long beatInterval = msSinceBoot - this.lastMadmomReport;
-        if (beatInterval <= 0) {
-          // Two beats reported at the same (or out-of-order) timestamp: a zero
-          // interval would divide by zero in the modulo below and yields no
-          // usable measure length. Just record this report and wait for the
-          // next one.
-          this.lastMadmomReport = msSinceBoot;
-          return;
-        }
-
-        long currentMsSinceBoot = Environment.TickCount64;
-        var progressThroughMeasure = (currentMsSinceBoot - msSinceBoot)
-          % beatInterval;
-
-        // On the beat that first establishes an interval, measureLength is still
-        // the -1 sentinel; dividing by it yields a meaningless measure count.
-        // Only derive totalMeasures once a real measureLength exists — otherwise
-        // anchor startingTime to the current beat (totalMeasures == 0).
-        double totalMeasures = 0.0;
-        if (this.measureLength > 0) {
-          totalMeasures = (double)(currentMsSinceBoot - this.startingTime)
-            / this.measureLength;
-          if (totalMeasures > 8.0) {
-            totalMeasures -= 8.0;
+        // Drop the window on a discontinuity in Madmom's timeline: a long gap
+        // (silence / song change) or a backwards jump (Madmom process restart,
+        // which resets its clock toward zero). measureLength is left intact to
+        // free-run until the window refills.
+        if (this.madmomBeatTimes.Count > 0) {
+          long sinceLast =
+            beatTimeMs - this.madmomBeatTimes[this.madmomBeatTimes.Count - 1];
+          if (sinceLast <= 0 || sinceLast > madmomBeatTimeout) {
+            this.madmomBeatTimes.Clear();
           }
-          totalMeasures = Math.Floor(totalMeasures);
+        }
+        this.madmomBeatTimes.Add(beatTimeMs);
+        if (this.madmomBeatTimes.Count > madmomBeatWindow) {
+          this.madmomBeatTimes.RemoveAt(0);
         }
 
-        this.measureLength = (int)beatInterval;
-        this.lastMadmomReport = msSinceBoot;
-
-        this.startingTime = currentMsSinceBoot
-          - (long)(totalMeasures * this.measureLength)
-          - progressThroughMeasure;
+        long now = Environment.TickCount64;
+        int estimatedLength = this.EstimateMadmomBeatLength();
+        if (estimatedLength <= 0) {
+          // First beat of a fresh window: no interval to measure yet. Anchor the
+          // phase to now and wait for the next beat to establish a tempo.
+          this.startingTime = now;
+        } else {
+          // Keep startingTime an integer number of beats behind the beat we just
+          // saw, so the phase stays locked to real beats while multi-beat cycles
+          // (ProgressThroughBeat with factor < 1) remain continuous across
+          // beats. measureLength is still the previous value here, used only to
+          // pick how many whole beats back to anchor.
+          double totalMeasures = 0.0;
+          if (this.measureLength > 0 && this.startingTime >= 0) {
+            totalMeasures = (double)(now - this.startingTime)
+              / this.measureLength;
+            if (totalMeasures > 8.0) {
+              totalMeasures -= 8.0;
+            }
+            totalMeasures = Math.Floor(totalMeasures);
+          }
+          this.measureLength = estimatedLength;
+          this.startingTime = now - (long)(totalMeasures * this.measureLength);
+        }
       }
 
       this.PropertyChanged?.Invoke(
         this,
         new PropertyChangedEventArgs("BPMString")
       );
+    }
+
+    // Caller must hold beatLock. Returns the median interval (ms) between the
+    // beats currently in the window, or -1 if fewer than two beats are known.
+    // The median is intentionally robust to the occasional missed/double beat,
+    // which would skew a mean.
+    private int EstimateMadmomBeatLength() {
+      if (this.madmomBeatTimes.Count < 2) {
+        return -1;
+      }
+      var intervals = new List<long>(this.madmomBeatTimes.Count - 1);
+      for (int i = 1; i < this.madmomBeatTimes.Count; i++) {
+        intervals.Add(this.madmomBeatTimes[i] - this.madmomBeatTimes[i - 1]);
+      }
+      intervals.Sort();
+      int mid = intervals.Count / 2;
+      long median = intervals.Count % 2 == 1
+        ? intervals[mid]
+        : (intervals[mid - 1] + intervals[mid]) / 2;
+      return median > 0 ? (int)median : -1;
     }
 
   }
