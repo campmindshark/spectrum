@@ -19,6 +19,15 @@ namespace Spectrum {
     private readonly Stopwatch frameRateStopwatch;
     private int framesThisSecond;
 
+    // Global rate cap: the operator loop runs no faster than 400Hz, i.e. at
+    // least this many Stopwatch ticks per frame (2.5ms). Stopwatch.Frequency
+    // is ticks-per-second, so dividing by it yields the per-frame budget. Note
+    // OPC output to the BeagleBone has its own, independent send-rate cap (see
+    // MaxRefreshRateHz in OPCAPI) — this one bounds engine compute, not the wire.
+    private const int MaxFramesPerSecond = 400;
+    private static readonly long MinFrameTicks =
+      Stopwatch.Frequency / MaxFramesPerSecond;
+
     // Scratch collections reused across every OperatorThread frame so the
     // scheduling pass allocates nothing steady-state. Only ever touched on the
     // operator thread, so they need no synchronization.
@@ -195,7 +204,12 @@ namespace Spectrum {
     }
 
     private void OperatorThread() {
+      // Timestamp this frame is allowed to start, advanced by one frame budget
+      // each tick to cap the loop at MaxFramesPerSecond.
+      long nextFrameTimestamp = Stopwatch.GetTimestamp();
       while (!this.operatorThreadStop) {
+        ThrottleFrame(ref nextFrameTimestamp);
+
         if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
           this.frameRateStopwatch.Restart();
           this.config.operatorFPS = this.framesThisSecond;
@@ -278,6 +292,30 @@ namespace Spectrum {
           output.OperatorUpdate();
         }
       }
+    }
+
+    // Blocks until roughly one frame budget (1/MaxFramesPerSecond) has elapsed
+    // since the previous frame, so the whole program runs no faster than
+    // MaxFramesPerSecond. nextFrameTimestamp tracks the earliest allowed start
+    // of the next frame. We Thread.Sleep off the whole-millisecond portion of
+    // the remaining budget and skip the sub-millisecond tail rather than
+    // busy-spinning a core. Because Thread.Sleep's Windows timer granularity is
+    // coarse (~1-15ms), the loop can drift slightly under the cap (~350Hz)
+    // under load — an acceptable trade for not pinning a CPU.
+    private static void ThrottleFrame(ref long nextFrameTimestamp) {
+      long now = Stopwatch.GetTimestamp();
+      // If we fell behind (a frame ran long), don't try to "catch up" by
+      // bursting above the cap — just reset the clock to now.
+      if (now > nextFrameTimestamp) {
+        nextFrameTimestamp = now;
+      } else {
+        long remainingMs =
+          (nextFrameTimestamp - now) * 1000 / Stopwatch.Frequency;
+        if (remainingMs > 0) {
+          Thread.Sleep((int)remainingMs);
+        }
+      }
+      nextFrameTimestamp += MinFrameTicks;
     }
 
     // Allocation-free replacement for GetInputs().All(i => i.Enabled): avoids

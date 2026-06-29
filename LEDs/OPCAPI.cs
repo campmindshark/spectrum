@@ -40,13 +40,15 @@ namespace Spectrum.LEDs {
     // index actually written.
     private const int InitialChannelCapacity = 64;
 
-    // Cap on how often we actually push a frame to the controller. Visualizers
-    // Flush() once per operator frame and the operator loop is unthrottled, so
-    // without this the OPC send rate is bounded only by the CPU. The frame is
-    // ~25 KB and the BeagleBone/LEDs gain nothing from being driven faster than
-    // this — it just burns CPU and network. 400 Hz is far above anything visible
-    // while leaving generous headroom.
-    private const int MaxRefreshRateHz = 400;
+    // Cap on how often we actually push a frame to the controller, independent
+    // of the operator loop's own rate cap. This matters most when the output
+    // runs on its own thread (separateThread): OutputThread spins free of the
+    // operator loop, so this is the only thing bounding its send rate. Even
+    // inline, it keeps the wire rate decoupled from engine compute — the frame
+    // is ~25 KB and the BeagleBone/LEDs gain nothing from being driven faster
+    // than this, it just burns CPU and network. 200 Hz is far above anything
+    // visible while leaving generous headroom.
+    private const int MaxRefreshRateHz = 200;
     private static readonly double MinSendIntervalMs = 1000.0 / MaxRefreshRateHz;
 
     private readonly string host;
