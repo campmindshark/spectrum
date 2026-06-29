@@ -299,9 +299,10 @@ namespace Spectrum {
     // MaxFramesPerSecond. nextFrameTimestamp tracks the earliest allowed start
     // of the next frame. We Thread.Sleep off the whole-millisecond portion of
     // the remaining budget and skip the sub-millisecond tail rather than
-    // busy-spinning a core. Because Thread.Sleep's Windows timer granularity is
-    // coarse (~1-15ms), the loop can drift slightly under the cap (~350Hz)
-    // under load — an acceptable trade for not pinning a CPU.
+    // busy-spinning a core. App.OnStartup raises the Windows timer resolution to
+    // 1ms (timeBeginPeriod), so Thread.Sleep(1) lands near 1ms and the loop holds
+    // close to the cap; the dropped sub-millisecond tail still lets it drift
+    // slightly under MaxFramesPerSecond — an acceptable trade for not pinning a CPU.
     private static void ThrottleFrame(ref long nextFrameTimestamp) {
       long now = Stopwatch.GetTimestamp();
       // If we fell behind (a frame ran long), don't try to "catch up" by

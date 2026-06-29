@@ -33,7 +33,7 @@ namespace Spectrum.Base {
     private long startingTime = -1;
     // The most recent Madmom-reported beat timestamps (ms, in Madmom's
     // audio-stream base), used to derive tempo. These are sample-derived and so
-    // immune to the model's bursty per-frame latency, unlike wall-clock arrival
+    // immune to the tracker's bursty per-frame latency, unlike wall-clock arrival
     // times. See ReportMadmomBeat.
     private const int madmomBeatWindow = 8;
     // A gap longer than this (in Madmom's timeline) means detection dropped out

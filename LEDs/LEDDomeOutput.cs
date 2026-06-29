@@ -373,18 +373,26 @@ namespace Spectrum.LEDs {
       // frame (P3).
       int stride = maxStripLength * 8;
       bool simulationEnabled = this.config.domeSimulationEnabled;
+      // When simulating, snapshot the whole frame's colors and hand the
+      // simulator a single command, instead of enqueueing one command per pixel
+      // (~4000 interlocked ConcurrentQueue ops + an equal number of dequeues and
+      // per-command geometry recomputes every frame). A fresh array per frame is
+      // required because the buffer is mutated in place next frame and the queue
+      // may hold several frames at once, so the snapshot can't be reused.
+      int[] frame = simulationEnabled ? new int[buffer.pixels.Length] : null;
       for (int i = 0; i < buffer.pixels.Length; i++) {
         LEDDomeOutputPixel pixel = buffer.pixels[i];
         int totalPixelIndex =
           pixel.controlBoxIndex * stride + pixel.controlBoxPixelIndex;
         opcAPI.SetPixel(totalPixelIndex, pixel.color);
         if (simulationEnabled) {
-          this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
-            strutIndex = pixel.strutIndex,
-            ledIndex = pixel.strutLEDIndex,
-            color = pixel.color,
-          });
+          frame[i] = pixel.color;
         }
+      }
+      if (simulationEnabled) {
+        this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
+          frame = frame,
+        });
       }
     }
 

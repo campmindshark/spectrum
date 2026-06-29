@@ -86,8 +86,7 @@ namespace Spectrum.Audio {
       start.WorkingDirectory = envScriptPath;
       start.FileName = Path.Combine(envScriptPath, "python.exe");
       start.Arguments = string.Format(
-        "DBNBeatTracker --host_api --audio_input={0} " +
-        "online",
+        "DBNBeatTracker --host_api --audio_input={0} online",
         this.audio.CurrentAudioDeviceIndex
       );
       start.UseShellExecute = false;
@@ -110,7 +109,7 @@ namespace Spectrum.Audio {
       // since the Python side emits a '.'-decimal float regardless of locale.
       //
       // The timestamp is Madmom's audio-stream position (sample-derived, so it
-      // is immune to the model's bursty per-frame latency). BeatBroadcaster uses
+      // is immune to the tracker's bursty per-frame latency). BeatBroadcaster uses
       // the spacing between these timestamps for tempo, and its own clock only
       // for the real-time phase anchor.
       if (!double.TryParse(

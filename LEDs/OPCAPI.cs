@@ -67,9 +67,9 @@ namespace Spectrum.LEDs {
     private readonly Stopwatch frameRateStopwatch;
     private int framesThisSecond;
     // Measures time since the last frame actually sent, to enforce
-    // MaxRefreshRateHz. Only ever touched inside Update(), which runs on a
-    // single thread (the output thread when separateThread, else the operator
-    // thread), so it needs no synchronization.
+    // MaxRefreshRateHz. Touched only on a single thread — the output thread when
+    // separateThread (Update() plus OutputThread's inter-send sleep), else the
+    // operator thread (Update()) — so it needs no synchronization.
     private readonly Stopwatch sendThrottleStopwatch;
     private readonly byte defaultChannel;
     // Whether a default channel was actually specified in the host string.
@@ -306,6 +306,18 @@ namespace Spectrum.LEDs {
         // the real (throttled) refresh rate rather than the spin-loop rate.
         if (this.Update()) {
           this.framesThisSecond++;
+        } else {
+          // Nothing was sent this pass: either we're inside the MaxRefreshRateHz
+          // window, there's no new frame, or we're disconnected. Sleep instead
+          // of busy-spinning — without this the loop pins a whole CPU core just
+          // re-reading the throttle Stopwatch between sends. Sleep off the
+          // whole-millisecond remainder until the next send is due (the same
+          // Sleep-vs-spin tradeoff the operator loop makes in ThrottleFrame),
+          // with a 1ms floor so a no-new-frame/disconnected pass still yields.
+          double remainingMs = MinSendIntervalMs -
+            this.sendThrottleStopwatch.Elapsed.TotalMilliseconds;
+          int sleepMs = remainingMs > 1 ? (int)remainingMs : 1;
+          Thread.Sleep(sleepMs);
         }
       }
       this.DisconnectSocket();
