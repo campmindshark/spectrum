@@ -16,6 +16,11 @@ namespace Spectrum {
     private readonly List<Input> inputs;
     private readonly List<Output> outputs;
     private readonly List<Visualizer> visualizers;
+
+    // Exposed so diagnostic windows (e.g. the wand status display) can read the
+    // live orientation-device state. Stable for the Operator's lifetime — Reboot
+    // only toggles threads, it doesn't rebuild this instance.
+    public OrientationInput OrientationInput { get; }
     private readonly Stopwatch frameRateStopwatch;
     private int framesThisSecond;
 
@@ -54,6 +59,7 @@ namespace Spectrum {
       this.inputs.Add(midi);
       var orientation = new OrientationInput(config);
       this.inputs.Add(orientation);
+      this.OrientationInput = orientation;
 
       this.outputs = new List<Output>();
       var dome = new LEDDomeOutput(config);

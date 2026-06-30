@@ -71,6 +71,7 @@ namespace Spectrum {
     private BarSimulatorWindow barSimulatorWindow;
     private StageSimulatorWindow stageSimulatorWindow;
     private VJHUDWindow vjHUDWindow;
+    private WandStatusWindow wandStatusWindow;
     private int? currentlyEditingPreset = null;
     private int? currentlyEditingBinding = null;
     private Timer configSaveTimer = null;
@@ -1182,6 +1183,23 @@ namespace Spectrum {
 
     private void DomeMappingClosed(object sender, EventArgs e) {
       this.domeMappingWindow = null;
+    }
+
+    private void OpenWandStatus(object sender, RoutedEventArgs e) {
+      if (this.wandStatusWindow != null) {
+        this.wandStatusWindow.Activate();
+        return;
+      }
+      this.wandStatusWindow = new WandStatusWindow(
+        this.config,
+        this.op.OrientationInput
+      );
+      this.wandStatusWindow.Closed += WandStatusClosed;
+      this.wandStatusWindow.Show();
+    }
+
+    private void WandStatusClosed(object sender, EventArgs e) {
+      this.wandStatusWindow = null;
     }
 
     private void OpenBarSimulator(object sender, RoutedEventArgs e) {

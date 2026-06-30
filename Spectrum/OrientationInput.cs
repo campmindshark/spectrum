@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Net;
 using System.Net.Sockets;
@@ -15,6 +16,15 @@ namespace Spectrum {
     private long lastCheckedDevices;
     private Dictionary<int, long> lastSeen;
     private long[] lastEvent;
+    // Per-device connection-quality stats (arrival rate, jitter, packet count),
+    // accumulated on the receive thread under mLock alongside the device map.
+    private Dictionary<int, DeviceStats> stats;
+
+    // High-resolution monotonic clock for arrival timing. DateTime.Now (used for
+    // the 1s device timeout) is too coarse to measure jitter on a stream that
+    // arrives every few ms, so the stats use Stopwatch ticks instead.
+    private static readonly double TicksToMs = 1000.0 / Stopwatch.Frequency;
+    private static double NowMillis() => Stopwatch.GetTimestamp() * TicksToMs;
     private readonly object mLock = new object();
     // Guards the listener lifecycle (mUdpClient/active) independently of mLock,
     // which protects the device state read on the receive thread.
@@ -31,6 +41,7 @@ namespace Spectrum {
       lastCheckedDevices = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
       lastSeen = new Dictionary<int, long>();
       lastEvent = new long[256];
+      stats = new Dictionary<int, DeviceStats>();
     }
 
     private bool active;
@@ -127,6 +138,7 @@ namespace Spectrum {
       }
 
       var currentTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+      var arrivalMs = NowMillis();
 
       // Datagram unpacking
       var datagramOut = DatagramHandler.parseDatagram(buffer);
@@ -136,6 +148,15 @@ namespace Spectrum {
       // operator thread reads/removes from these collections concurrently.
       lock (mLock) {
         lastSeen[deviceId] = currentTime;
+
+        // Connection-quality accounting. Uses the high-res arrival time and the
+        // device's own send timestamp (buffer[1..4], ms) as the reference clock
+        // for jitter; both are valid even for an as-yet-unknown deviceType.
+        if (!stats.TryGetValue(deviceId, out var deviceStats)) {
+          deviceStats = new DeviceStats();
+          stats[deviceId] = deviceStats;
+        }
+        deviceStats.RecordArrival(arrivalMs, timestamp);
 
         // Device state update
         if (devices.TryGetValue(deviceId, out var device)) {
@@ -192,6 +213,7 @@ namespace Spectrum {
                 n_poi--;
               }
               devices.Remove(kvp.Key);
+              stats.Remove(kvp.Key);
               removedDevices.Add(kvp.Key);
            }
           }
@@ -212,6 +234,20 @@ namespace Spectrum {
         var snapshot = new Dictionary<int, OrientationDevice>(devices.Count);
         foreach (var kvp in devices) {
           snapshot[kvp.Key] = kvp.Value.Clone();
+        }
+        return snapshot;
+      }
+    }
+
+    // Thread-safe snapshot of per-device connection-quality stats, taken under
+    // mLock. Keyed by the same device ids as DevicesSnapshot. MillisSinceLast is
+    // computed against the current time so the "staleness" is fresh at call.
+    public Dictionary<int, OrientationDeviceStats> ConnectionStatsSnapshot() {
+      var nowMs = NowMillis();
+      lock (mLock) {
+        var snapshot = new Dictionary<int, OrientationDeviceStats>(stats.Count);
+        foreach (var kvp in stats) {
+          snapshot[kvp.Key] = kvp.Value.Snapshot(nowMs);
         }
         return snapshot;
       }
@@ -238,6 +274,88 @@ namespace Spectrum {
         }
         return n_poi == devices.Count;
       }
+    }
+
+    // Mutable per-device accumulator, only ever touched on the receive thread
+    // under mLock. Tracks a smoothed inter-arrival interval (→ update rate) and
+    // an RFC 3550-style interarrival jitter estimate.
+    private class DeviceStats {
+      // RFC 3550 jitter smoothing gain (J += (|D| - J)/16).
+      private const double JitterGain = 1.0 / 16.0;
+      // EWMA gain for the mean inter-arrival interval.
+      private const double IntervalGain = 0.1;
+
+      private bool primed;
+      private double lastArrivalMs;
+      private int lastDeviceTimestamp;
+      private double meanIntervalMs;
+      private double jitterMs;
+      private long packetCount;
+
+      public void RecordArrival(double arrivalMs, int deviceTimestamp) {
+        packetCount++;
+        if (!primed) {
+          // First packet only establishes the baseline; no interval yet.
+          primed = true;
+          lastArrivalMs = arrivalMs;
+          lastDeviceTimestamp = deviceTimestamp;
+          return;
+        }
+
+        double hostInterval = arrivalMs - lastArrivalMs;
+        int deviceInterval = deviceTimestamp - lastDeviceTimestamp;
+        lastArrivalMs = arrivalMs;
+        lastDeviceTimestamp = deviceTimestamp;
+
+        meanIntervalMs = meanIntervalMs == 0
+          ? hostInterval
+          : meanIntervalMs + (hostInterval - meanIntervalMs) * IntervalGain;
+
+        // Interarrival jitter: the variation in network transit time, taking
+        // the device's own send timestamps as the reference clock. Skip
+        // degenerate device-clock deltas (reordering, or a power-cycle reset —
+        // the same >1000ms case the device-state update guards against) so a
+        // clock jump doesn't spike the estimate.
+        if (deviceInterval > 0 && deviceInterval < 1000) {
+          double transitDelta = hostInterval - deviceInterval;
+          jitterMs += (Math.Abs(transitDelta) - jitterMs) * JitterGain;
+        }
+      }
+
+      public OrientationDeviceStats Snapshot(double nowMs) {
+        double rateHz = meanIntervalMs > 0 ? 1000.0 / meanIntervalMs : 0.0;
+        return new OrientationDeviceStats(
+          rateHz,
+          meanIntervalMs,
+          jitterMs,
+          packetCount,
+          primed ? nowMs - lastArrivalMs : 0.0
+        );
+      }
+    }
+  }
+
+  // Immutable snapshot of one device's connection-quality stats. Value type so
+  // callers read a consistent set of numbers with no shared mutable state.
+  public readonly struct OrientationDeviceStats {
+    public double UpdateRateHz { get; }
+    public double MeanIntervalMs { get; }
+    public double JitterMs { get; }
+    public long PacketCount { get; }
+    public double MillisSinceLastPacket { get; }
+
+    public OrientationDeviceStats(
+      double updateRateHz,
+      double meanIntervalMs,
+      double jitterMs,
+      long packetCount,
+      double millisSinceLastPacket
+    ) {
+      this.UpdateRateHz = updateRateHz;
+      this.MeanIntervalMs = meanIntervalMs;
+      this.JitterMs = jitterMs;
+      this.PacketCount = packetCount;
+      this.MillisSinceLastPacket = millisSinceLastPacket;
     }
   }
 }

@@ -1,0 +1,75 @@
+<Window
+  x:Class="Spectrum.WandStatusWindow"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:local="clr-namespace:Spectrum"
+  mc:Ignorable="d"
+  Title="Wand Status"
+  Height="470"
+  Width="900"
+  Background="#FF1A1A1A"
+  Icon="pack://siteoforigin:,,,/Resources/s.PNG"
+  Loaded="WindowLoaded"
+  Closed="WindowClosed"
+>
+  <Grid Margin="12">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <TextBlock Grid.Row="0" Text="Wand Status" FontSize="18" FontWeight="Bold"
+      Foreground="White" />
+
+    <TextBlock Grid.Row="1" x:Name="summaryLabel" Margin="0,6,0,8"
+      Foreground="#FFCCCCCC" Text="Listening for devices…" />
+
+    <Border Grid.Row="2" BorderBrush="#FF444444" BorderThickness="1"
+      CornerRadius="3">
+      <ListView x:Name="wandList" Background="Transparent" BorderThickness="0"
+        Foreground="#FFDDDDDD" FontFamily="Consolas" FontSize="13">
+        <ListView.ItemContainerStyle>
+          <Style TargetType="ListViewItem">
+            <!-- Whole-row color reflects connection quality (green/amber/red). -->
+            <Setter Property="Foreground" Value="{Binding QualityBrush}" />
+          </Style>
+        </ListView.ItemContainerStyle>
+        <ListView.View>
+          <GridView>
+            <GridViewColumn Header="ID" Width="45"
+              DisplayMemberBinding="{Binding DeviceId}" />
+            <GridViewColumn Header="Type" Width="90"
+              DisplayMemberBinding="{Binding TypeName}" />
+            <GridViewColumn Header="Button" Width="65"
+              DisplayMemberBinding="{Binding Action}" />
+            <GridViewColumn Header="Quality" Width="60"
+              DisplayMemberBinding="{Binding Quality}" />
+            <GridViewColumn Header="Rate (Hz)" Width="70"
+              DisplayMemberBinding="{Binding Rate}" />
+            <GridViewColumn Header="Jitter (ms)" Width="75"
+              DisplayMemberBinding="{Binding Jitter}" />
+            <GridViewColumn Header="Packets" Width="75"
+              DisplayMemberBinding="{Binding Packets}" />
+            <GridViewColumn Header="Last (ms)" Width="70"
+              DisplayMemberBinding="{Binding LastSeen}" />
+            <GridViewColumn Header="Orientation (W X Y Z)" Width="190"
+              DisplayMemberBinding="{Binding Orientation}" />
+            <GridViewColumn Header="Speed" Width="65"
+              DisplayMemberBinding="{Binding Speed}" />
+          </GridView>
+        </ListView.View>
+      </ListView>
+    </Border>
+
+    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,12,0,0">
+      <Button x:Name="calibrateButton" Content="Calibrate All" Width="130"
+        Height="30" FontWeight="Bold" Click="CalibrateClicked" />
+      <Button x:Name="closeButton" Content="Close" Width="90" Height="30"
+        Margin="8,0,0,0" Click="CloseClicked" />
+    </StackPanel>
+  </Grid>
+</Window>
