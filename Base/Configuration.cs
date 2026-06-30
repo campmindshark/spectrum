@@ -66,6 +66,20 @@ namespace Spectrum.Base {
     int domeTestPattern { get; set; }
     int domeActiveVis { get; set; }
 
+    // Dome cable mapping. The dome is wired as 10 cables (5 control boxes, each
+    // with two ethernet cables: A = strands 0-3, B = strands 4-7), identified by
+    // box*2 + half (half 0 = A, 1 = B). domeCableMapping[c] records, for each
+    // controller cable c, the physical dome endpoint (same box*2 + half labeling
+    // under the hard-coded layout) that actually lights when c is driven.
+    // Identity {0..9} = the legacy hard-coded wiring. Discovered by the "Set
+    // Dome Mapping" calibration window.
+    int[] domeCableMapping { get; set; }
+    // Transient state driving that calibration (not persisted): whether the
+    // calibration is running, and which controller cable (box*2 + half, or -1
+    // for all-off) the dome should currently be lighting.
+    bool domeCalibrationActive { get; set; }
+    int domeCalibrationCableIndex { get; set; }
+
     // Dome Visualizer settings
     // TODO: move "volume" settings down here?
     int domeRadialEffect { get; set; }

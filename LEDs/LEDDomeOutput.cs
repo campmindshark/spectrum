@@ -172,6 +172,31 @@ namespace Spectrum.LEDs {
     private readonly HashSet<int> reservedStruts;
     private static readonly int maxStripLength;
 
+    // The dome is wired as 10 "cables": each of the 5 control boxes drives 8
+    // strands split across two parallel ethernet cables, A (strands 0-3) and B
+    // (strands 4-7). We identify a cable by box*2 + half (half 0 = A, 1 = B), so
+    // cable ids run 0..9. Calibration permutes which controller cable feeds which
+    // physical dome endpoint; see GetDeviceIndexes and config.domeCableMapping.
+    private const int StrandsPerCable = 4;
+    public const int NumCables = 10;
+    // Struts carried by cable A (strands 0-3) of every box, and the total per
+    // box (38). Computed from controlBoxStrutOrder so the A/B boundary stays in
+    // sync if the strand layout ever changes.
+    private static readonly int cableAStrutCount;
+    private static readonly int domeStrutsPerBox;
+
+    // controllerForEndpoint[e] = the controller cable (box*2 + half) whose data
+    // physically reaches dome endpoint e (same box*2 + half labeling under the
+    // hard-coded layout). This is the inverse of config.domeCableMapping (which
+    // records, per controller cable, the endpoint that lit during calibration).
+    // Identity by default, so an uncalibrated dome behaves exactly as before.
+    private readonly int[] controllerForEndpoint = new int[NumCables];
+    // Buffers handed out by MakeDomeOutputBuffer, tracked so their baked-in
+    // device indexes can be recomputed in place when the cable mapping changes,
+    // letting a calibration take effect live without restarting the app.
+    private readonly List<LEDDomeOutputBuffer> buffers =
+      new List<LEDDomeOutputBuffer>();
+
     private static int calculateMaxStripLength() {
       int maxLength = 0;
       foreach (LEDDomeStrutTypes[] struts in controlBoxStrutOrder) {
@@ -188,13 +213,68 @@ namespace Spectrum.LEDs {
 
     static LEDDomeOutput() {
       maxStripLength = calculateMaxStripLength();
+      int aCount = 0;
+      for (int s = 0; s < StrandsPerCable; s++) {
+        aCount += controlBoxStrutOrder[s].Length;
+      }
+      cableAStrutCount = aCount;
+      int total = 0;
+      foreach (LEDDomeStrutTypes[] strand in controlBoxStrutOrder) {
+        total += strand.Length;
+      }
+      domeStrutsPerBox = total;
     }
 
     public LEDDomeOutput(Configuration config) {
       this.config = config;
       this.visualizers = new List<Visualizer>();
       this.reservedStruts = new HashSet<int>();
+      this.RebuildCableMapping();
       this.config.PropertyChanged += ConfigUpdated;
+    }
+
+    // Rebuilds controllerForEndpoint (the inverse of config.domeCableMapping)
+    // and re-bakes the device indexes of every outstanding buffer so a new
+    // calibration takes effect immediately. Falls back to the identity mapping
+    // if the config value is missing or not a valid permutation of 0..9, so a
+    // corrupt or short config can never scramble or crash output.
+    private void RebuildCableMapping() {
+      int[] mapping = this.config.domeCableMapping;
+      bool valid = mapping != null && mapping.Length == NumCables;
+      if (valid) {
+        var seen = new bool[NumCables];
+        foreach (int endpoint in mapping) {
+          if (endpoint < 0 || endpoint >= NumCables || seen[endpoint]) {
+            valid = false;
+            break;
+          }
+          seen[endpoint] = true;
+        }
+      }
+      for (int controller = 0; controller < NumCables; controller++) {
+        int endpoint = valid ? mapping[controller] : controller;
+        this.controllerForEndpoint[endpoint] = controller;
+      }
+      lock (this.buffers) {
+        foreach (LEDDomeOutputBuffer buffer in this.buffers) {
+          this.RebakeBuffer(buffer);
+        }
+      }
+    }
+
+    // Recomputes the cached (control box, pixel-within-box) address of every
+    // pixel in a buffer from its strut identity, applying the current cable
+    // mapping. Called when the mapping changes; MakeDomeOutputBuffer bakes the
+    // same values in once at creation.
+    private void RebakeBuffer(LEDDomeOutputBuffer buffer) {
+      for (int i = 0; i < buffer.pixels.Length; i++) {
+        var deviceIndexes = this.GetDeviceIndexes(
+          buffer.pixels[i].strutIndex,
+          buffer.pixels[i].strutLEDIndex
+        );
+        buffer.pixels[i].controlBoxIndex = deviceIndexes.Item1;
+        buffer.pixels[i].controlBoxPixelIndex = deviceIndexes.Item2;
+      }
     }
 
     public void RegisterVisualizer(Visualizer visualizer) {
@@ -211,6 +291,10 @@ namespace Spectrum.LEDs {
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
+      if (e.PropertyName == "domeCableMapping") {
+        this.RebuildCableMapping();
+        return;
+      }
       if (
         e.PropertyName != "domeBeagleboneOPCAddress" &&
         e.PropertyName != "domeOutputInSeparateThread" &&
@@ -290,7 +374,11 @@ namespace Spectrum.LEDs {
       }
     }
 
-    private Tuple<int, int> GetDeviceIndexes(int strutIndex, int ledIndex) {
+    // Raw (identity) device address: which control box and pixel-within-box a
+    // strut's LED occupies under the hard-coded strutPositions wiring, ignoring
+    // any calibrated cable permutation. This is the canonical "what the program
+    // believes it is lighting" used by the dome-mapping calibration.
+    private Tuple<int, int> GetDeviceIndexesRaw(int strutIndex, int ledIndex) {
       int pixelIndex = ledIndex;
       Tuple<int, int> strutPosition = strutPositions[strutIndex];
       int strutsLeft = strutPosition.Item2;
@@ -306,26 +394,51 @@ namespace Spectrum.LEDs {
       return Tuple.Create(strutPosition.Item1, pixelIndex);
     }
 
+    // Mapped device address: the raw address re-routed through the calibrated
+    // cable permutation. Each LED lives on a physical endpoint (box*2 + half);
+    // controllerForEndpoint tells us which controller cable actually feeds that
+    // endpoint, so we relocate the LED onto that cable, preserving its
+    // strand-within-cable and offset-within-strand (every cable is the same
+    // 4-strand x maxStripLength shape in the OPC stream, so only box/half
+    // change). Identity mapping reproduces GetDeviceIndexesRaw exactly.
+    private Tuple<int, int> GetDeviceIndexes(int strutIndex, int ledIndex) {
+      Tuple<int, int> raw = this.GetDeviceIndexesRaw(strutIndex, ledIndex);
+      int box = raw.Item1;
+      int strandSlot = raw.Item2 / maxStripLength;
+      int offsetWithinStrand = raw.Item2 - strandSlot * maxStripLength;
+      int half = strandSlot < StrandsPerCable ? 0 : 1;
+      int strandWithinCable = strandSlot - half * StrandsPerCable;
+      int endpoint = box * 2 + half;
+      int controller = this.controllerForEndpoint[endpoint];
+      int newBox = controller / 2;
+      int newHalf = controller % 2;
+      int newStrandSlot = newHalf * StrandsPerCable + strandWithinCable;
+      return Tuple.Create(
+        newBox,
+        newStrandSlot * maxStripLength + offsetWithinStrand
+      );
+    }
+
     public void SetPixel(int strutIndex, int ledIndex, int color) {
-      // JK: leaving original code here since there's not really a way to test it off-playa
-      int pixelIndex = ledIndex;
-      Tuple<int, int> strutPosition = strutPositions[strutIndex];
-      int strutsLeft = strutPosition.Item2;
-      int i = 0;
-      while (controlBoxStrutOrder[i].Length <= strutsLeft) {
-        strutsLeft -= controlBoxStrutOrder[i].Length;
-        i++;
-        pixelIndex += maxStripLength;
-      }
-      for (int j = 0; j < strutsLeft; j++) {
-        pixelIndex += strutLengths[controlBoxStrutOrder[i][j]];
-      }
+      Tuple<int, int> deviceIndexes = this.GetDeviceIndexes(strutIndex, ledIndex);
+      this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
 
-      this.SetDevicePixel(strutPosition.Item1, pixelIndex, color);
+      if (this.config.domeSimulationEnabled) {
+        this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
+          strutIndex = strutIndex,
+          ledIndex = ledIndex,
+          color = color,
+        });
+      }
+    }
 
-      // JK: this is how i'd like the code to look
-      //Tuple<int, int> deviceIndexes = GetDeviceIndexes(strutIndex, ledIndex);
-      //this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
+    // Like SetPixel but writes to the raw (unpermuted) control-box address, so
+    // the dome-mapping calibration can light exactly one physical controller
+    // cable regardless of the current (possibly wrong or identity) calibration.
+    public void SetPixelRaw(int strutIndex, int ledIndex, int color) {
+      Tuple<int, int> deviceIndexes =
+        this.GetDeviceIndexesRaw(strutIndex, ledIndex);
+      this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
 
       if (this.config.domeSimulationEnabled) {
         this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
@@ -357,7 +470,30 @@ namespace Spectrum.LEDs {
         }
       }
 
-      return new LEDDomeOutputBuffer(pixels.ToArray());
+      var buffer = new LEDDomeOutputBuffer(pixels.ToArray());
+      // Track the buffer so its baked-in device indexes can be re-derived in
+      // place if the cable mapping changes (see RebuildCableMapping).
+      lock (this.buffers) {
+        this.buffers.Add(buffer);
+      }
+      return buffer;
+    }
+
+    // The strut indices physically carried by one controller cable
+    // (boxIndex, half; half 0 = ethernet A = strands 0-3, 1 = B = strands 4-7),
+    // under the raw hard-coded wiring. Used by the dome-mapping calibration both
+    // to light a single cable and to draw the clickable per-endpoint regions.
+    public static List<int> GetControllerCableStruts(int boxIndex, int half) {
+      int start = half == 0 ? 0 : cableAStrutCount;
+      int end = half == 0 ? cableAStrutCount : domeStrutsPerBox;
+      var struts = new List<int>();
+      for (int localIndex = start; localIndex < end; localIndex++) {
+        int strutIndex = FindStrutIndex(boxIndex, localIndex);
+        if (strutIndex != -1) {
+          struts.Add(strutIndex);
+        }
+      }
+      return struts;
     }
 
     public void WriteBuffer(LEDDomeOutputBuffer buffer) {

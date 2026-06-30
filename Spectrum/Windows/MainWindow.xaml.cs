@@ -57,6 +57,8 @@ namespace Spectrum {
       "domeCommandQueue",
       "barCommandQueue",
       "stageCommandQueue",
+      "domeCalibrationActive",
+      "domeCalibrationCableIndex",
     };
 
     private Operator op;
@@ -65,6 +67,7 @@ namespace Spectrum {
     private List<int> midiDeviceIndices;
     private List<int> midiPresetIndices;
     private DomeSimulatorWindow domeSimulatorWindow;
+    private DomeMappingWindow domeMappingWindow;
     private BarSimulatorWindow barSimulatorWindow;
     private StageSimulatorWindow stageSimulatorWindow;
     private VJHUDWindow vjHUDWindow;
@@ -1165,6 +1168,20 @@ namespace Spectrum {
 
     private void DomeSimulatorClosed(object sender, EventArgs e) {
       this.config.domeSimulationEnabled = false;
+    }
+
+    private void OpenDomeMapping(object sender, RoutedEventArgs e) {
+      if (this.domeMappingWindow != null) {
+        this.domeMappingWindow.Activate();
+        return;
+      }
+      this.domeMappingWindow = new DomeMappingWindow(this.config);
+      this.domeMappingWindow.Closed += DomeMappingClosed;
+      this.domeMappingWindow.Show();
+    }
+
+    private void DomeMappingClosed(object sender, EventArgs e) {
+      this.domeMappingWindow = null;
     }
 
     private void OpenBarSimulator(object sender, RoutedEventArgs e) {

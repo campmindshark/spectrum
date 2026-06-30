@@ -230,6 +230,32 @@ namespace Spectrum {
       get => _domeActiveVis;
       set => SetField(ref _domeActiveVis, value);
     }
+    // Left null by default (rather than a pre-filled identity array): XSerializer
+    // deserializes an array property by calling IList.Add on the *existing*
+    // instance, and a non-null array is fixed-size, so a pre-initialized default
+    // throws NotSupportedException ("Collection was of a fixed size") on load.
+    // LEDDomeOutput.RebuildCableMapping already treats null as the identity
+    // mapping, so a null default is equivalent to the legacy hard-coded wiring.
+    private int[] _domeCableMapping = null;
+    public int[] domeCableMapping {
+      get => _domeCableMapping;
+      set => SetField(ref _domeCableMapping, value);
+    }
+    // Transient calibration UI state (see Configuration). Not persisted, and
+    // listed in MainWindow.configPropertiesIgnored so toggling them mid-
+    // calibration doesn't churn the config file.
+    private bool _domeCalibrationActive = false;
+    [XmlIgnore]
+    public bool domeCalibrationActive {
+      get => _domeCalibrationActive;
+      set => SetField(ref _domeCalibrationActive, value);
+    }
+    private int _domeCalibrationCableIndex = -1;
+    [XmlIgnore]
+    public int domeCalibrationCableIndex {
+      get => _domeCalibrationCableIndex;
+      set => SetField(ref _domeCalibrationCableIndex, value);
+    }
     private double _domeGlobalFadeSpeed = 0;
     public double domeGlobalFadeSpeed {
       get => _domeGlobalFadeSpeed;
