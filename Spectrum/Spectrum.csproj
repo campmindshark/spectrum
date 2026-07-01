@@ -28,6 +28,19 @@
     <PackageReference Include="XSerializer" Version="0.4.4" />
   </ItemGroup>
 
+  <!-- In-process Kestrel host for the web control surface (Web/). Sharing the
+       one Configuration instance with the WPF app; see docs/web_architecture.md. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Web\wwwroot\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Audio\Audio.csproj" />
     <ProjectReference Include="..\Base\Base.csproj" />

@@ -130,6 +130,36 @@ namespace Spectrum.Base {
       }
     }
 
+    // Sets the tempo directly from a pre-computed BPM, as if it had been tapped.
+    // The web "Tap" button measures tap timing in the browser (so request
+    // latency doesn't distort the intervals) and posts the resulting BPM here,
+    // rather than replaying individual taps through AddTap. Phase is anchored to
+    // now against the real-time clock, exactly as UpdateBeatFromTaps does.
+    // Ignores non-positive/non-finite input.
+    public void SetManualBPM(double bpm) {
+      if (double.IsNaN(bpm) || double.IsInfinity(bpm) || bpm <= 0.0) {
+        return;
+      }
+      int length = (int)Math.Round(60000.0 / bpm);
+      if (length < 1) {
+        // Absurdly high BPM would floor the measure length to zero, which
+        // BPMString and ProgressThroughBeat both divide by; ignore it.
+        return;
+      }
+      long timestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+      lock (this.beatLock) {
+        this.currentTaps = new List<long>();
+        this.measureLength = length;
+        this.startingTime = timestamp;
+        this.madmomBeatTimes.Clear();
+        this.timeRelativeTo = TimeRelativeTo.Timestamp;
+      }
+      this.PropertyChanged?.Invoke(
+        this,
+        new PropertyChangedEventArgs("BPMString")
+      );
+    }
+
     private void TapTempoConcluded(object sender, ElapsedEventArgs e) {
       this.PropertyChanged?.Invoke(
         this,

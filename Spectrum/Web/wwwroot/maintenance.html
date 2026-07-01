@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Spectrum &mdash; Maintenance</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      font-family: system-ui, sans-serif; margin: 0; padding: 1rem;
+      background: #1a1410; color: #eee;
+    }
+    h1 { font-size: 1.2rem; margin: 0 0 1rem; }
+    .param { margin-bottom: 1rem; }
+    .param label { display: block; font-size: 0.85rem; margin-bottom: 0.25rem; }
+    .param .val { color: #fc8; float: right; font-variant-numeric: tabular-nums; }
+    input[type=range] { width: 100%; }
+    button { font-size: 0.9rem; padding: 0.35rem 0.7rem; margin: 0.15rem;
+      background: #2a2018; color: #fc8; border: 1px solid #543; border-radius: 4px;
+      cursor: pointer; }
+    button:disabled { opacity: 0.4; cursor: default; }
+    .status { position: fixed; bottom: 0; left: 0; right: 0; padding: 0.4rem 1rem;
+      font-size: 0.75rem; background: #000; color: #6c6; }
+    .telemetry { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;
+      font-size: 0.8rem; color: #fc8; font-variant-numeric: tabular-nums; }
+    .telemetry-item { background: #221a12; padding: 0.25rem 0.5rem; border-radius: 4px; }
+    .section { border-top: 1px solid #432; margin-top: 1.5rem; padding-top: 0.5rem; }
+    .section h2 { font-size: 1rem; }
+    .lock-tag { color: #fc8; }
+    .locks-title { font-size: 0.85rem; color: #fc8; margin-bottom: 0.25rem; }
+    .lock-row { font-size: 0.8rem; margin-bottom: 0.2rem; }
+    .calib-status { font-size: 0.9rem; margin: 0.5rem 0; }
+    .calib-diagram { display: block; width: 100%; max-width: 520px; height: auto;
+      margin: 0.5rem 0; background: #120d0a; border: 1px solid #432;
+      border-radius: 4px; touch-action: manipulation; }
+    .calib-line { stroke-width: 5; stroke-linecap: round; pointer-events: none; }
+    .calib-ep.assigned .calib-line { opacity: 0.33; }
+    .calib-label-btn { pointer-events: none; }
+    .calib-label-btn.pickable { pointer-events: auto; cursor: pointer; }
+    .calib-label-bg { fill: #2a2018; stroke: #543; stroke-width: 1.5; }
+    .calib-label-btn.pickable:hover .calib-label-bg { fill: #3a2c20; stroke: #fc8; }
+    .calib-label { font: bold 14px system-ui, sans-serif; fill: #fc8;
+      text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+    .calib-ep.assigned .calib-label-bg { fill: #1c2a1c; stroke: #2f5f2f; }
+    .calib-ep.assigned .calib-label { fill: #6fdf6f; }
+    .calib-picks { white-space: pre; font-family: ui-monospace, monospace;
+      font-size: 0.75rem; color: #cba; margin: 0.5rem 0; }
+    .calib-swap { margin: 0.75rem 0 0.25rem; }
+    .calib-swap-label { font-size: 0.8rem; color: #cba; margin-bottom: 0.3rem; }
+    .calib-swap-row { display: flex; align-items: center; gap: 0.4rem;
+      flex-wrap: wrap; }
+    .calib-swap-sep { color: #fc8; }
+    .calib-swap select { background: #2a2018; color: #fc8; border: 1px solid #543;
+      border-radius: 4px; padding: 0.3rem; font-size: 0.85rem; }
+    .calib-swap select:disabled { opacity: 0.4; }
+    .wand-table { width: 100%; border-collapse: collapse; margin: 0.5rem 0;
+      font-family: ui-monospace, monospace; font-size: 0.75rem; }
+    .wand-table th { text-align: left; font-weight: normal; color: #fc8;
+      border-bottom: 1px solid #432; padding: 0.15rem 0.4rem; white-space: nowrap; }
+    .wand-table td { padding: 0.15rem 0.4rem; white-space: pre;
+      font-variant-numeric: tabular-nums; }
+    a { color: #fc8; }
+  </style>
+</head>
+<body>
+  <h1>Spectrum &mdash; Maintenance</h1>
+  <div class="telemetry" id="telemetry"></div>
+  <div id="tempo" class="section"></div>
+  <div id="testpatterns" class="section"></div>
+  <div id="locks" class="section"></div>
+  <div id="wands" class="section"></div>
+  <div id="calibration" class="section"></div>
+  <div class="status" id="status">loading&hellip;</div>
+  <p style="font-size:0.75rem"><a href="/">&larr; User controls</a></p>
+  <script>window.SPECTRUM_SCOPE = "maintenance";</script>
+  <script src="app.js"></script>
+  <script src="calibration.js"></script>
+  <script src="wands.js"></script>
+</body>
+</html>

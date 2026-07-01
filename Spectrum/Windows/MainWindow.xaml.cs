@@ -75,12 +75,53 @@ namespace Spectrum {
     private int? currentlyEditingPreset = null;
     private int? currentlyEditingBinding = null;
     private Timer configSaveTimer = null;
+    private Web.WebServer webServer = null;
+    private Web.ConfigEventStream webEventStream = null;
+    private const int WebServerPort = 8080;
 
     public MainWindow() {
       this.InitializeComponent();
 
       this.LoadConfig();
       this.config.PropertyChanged += ConfigUpdated;
+      this.StartWebServer();
+    }
+
+    private void StartWebServer() {
+      // All web-originated mutations funnel through this gateway, which marshals
+      // onto the WPF Dispatcher so they behave exactly like native GUI writes.
+      var gateway = new Web.DispatcherControlGateway(
+        System.Windows.Application.Current.Dispatcher);
+      var registry = Web.SpectrumParameters.BuildRegistry();
+      var controls = new Web.ControlService(registry, gateway, this.config);
+      // The event stream subscribes to config.PropertyChanged (and the
+      // Operator's EnabledChanged) and fans changes out to connected browsers
+      // over SSE.
+      this.webEventStream = new Web.ConfigEventStream(registry, this.config, this.op);
+      // Advisory locks guard modal ops (calibration, per-device test patterns)
+      // against concurrent maintenance users.
+      var locks = new Web.AdvisoryLockManager();
+      // The dome-mapping calibration flow: same state machine as
+      // DomeMappingWindow, driven over REST and guarded by the domeCalibration
+      // lease. Writes to Configuration go through the same gateway.
+      var calibration = new Web.DomeCalibrationController(
+        gateway, this.config, LEDs.LEDDomeOutput.NumCables);
+      // Read-only wand/orientation-device diagnostics (the web port of
+      // WandStatusWindow), plus its Calibrate All action through the gateway.
+      var wands = new Web.WandStatusController(
+        this.op.OrientationInput, gateway, this.config);
+      // The global Start/Stop button: toggles the Operator's runtime Enabled
+      // flag (the same engine switch the native power button drives) through the
+      // gateway.
+      var operatorControl = new Web.OperatorController(this.op, gateway);
+      // The maintenance "Tap" tempo button: applies a browser-computed BPM as
+      // the human tap tempo (and switches the source to Human) through the
+      // gateway, the same as a native tap.
+      var tempo = new Web.TempoController(this.config, gateway);
+      this.webServer = new Web.WebServer(
+        controls, this.webEventStream, locks, calibration, wands,
+        operatorControl, tempo, WebServerPort);
+      this.webServer.Start();
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
@@ -94,6 +135,10 @@ namespace Spectrum {
 
     private void HandleClose(object sender, EventArgs e) {
       this.op.Enabled = false;
+      // Fire-and-forget: Kestrel shuts down on background threads, and the
+      // process is exiting anyway, so don't block the UI thread waiting on it.
+      this.webServer?.StopAsync();
+      this.webEventStream?.Dispose();
       this.SaveConfig();
     }
 

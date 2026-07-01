@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Spectrum</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      font-family: system-ui, sans-serif; margin: 0; padding: 1rem;
+      background: #111; color: #eee; -webkit-tap-highlight-color: transparent;
+    }
+    h1 { font-size: 1.2rem; margin: 0 0 1rem; }
+    .param { margin-bottom: 1rem; }
+    .param label { display: block; font-size: 0.85rem; margin-bottom: 0.25rem; }
+    .param .val { color: #8cf; float: right; font-variant-numeric: tabular-nums; }
+    input[type=range] { width: 100%; }
+    select, input[type=checkbox] { font-size: 1rem; }
+    .status { position: fixed; bottom: 0; left: 0; right: 0; padding: 0.4rem 1rem;
+      font-size: 0.75rem; background: #000; color: #6c6; }
+    .telemetry { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;
+      font-size: 0.8rem; color: #8cf; font-variant-numeric: tabular-nums; }
+    .telemetry-item { background: #1c1c22; padding: 0.25rem 0.5rem; border-radius: 4px; }
+    a { color: #8cf; }
+    .operator { margin-bottom: 1rem; }
+    .operator button { width: 100%; font-size: 1.1rem; font-weight: bold;
+      padding: 0.7rem; border: none; border-radius: 6px; cursor: pointer;
+      color: #fff; }
+    .operator button.stopped { background: #185018; }
+    .operator button.running { background: #7a1818; }
+    .operator button:disabled { opacity: 0.5; cursor: default; }
+  </style>
+</head>
+<body>
+  <h1>Spectrum &mdash; Controls</h1>
+  <div class="operator" id="operator"></div>
+  <div class="telemetry" id="telemetry"></div>
+  <div id="params"></div>
+  <div class="status" id="status">loading&hellip;</div>
+  <p style="font-size:0.75rem"><a href="/maintenance.html">Maintenance &rarr;</a></p>
+  <script src="app.js"></script>
+</body>
+</html>

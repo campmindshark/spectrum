@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using Spectrum.Base;
 using Spectrum.Audio;
 using Spectrum.LEDs;
@@ -10,7 +11,7 @@ using Spectrum.Visualizers;
 
 namespace Spectrum {
 
-  class Operator {
+  public class Operator {
 
     private readonly Configuration config;
     private readonly List<Input> inputs;
@@ -170,6 +171,12 @@ namespace Spectrum {
     private Thread operatorThread;
     // Cooperative stop flag for OperatorThread, replacing Thread.Abort().
     private volatile bool operatorThreadStop;
+    // Raised (outside the visualizers lock) whenever Enabled actually flips, so
+    // observers such as the web control surface can reflect and broadcast the
+    // engine's on/off state. Every native path that stops/starts the engine (the
+    // power button, an audio-device refresh) routes through the Enabled setter,
+    // so every transition is observed here regardless of who initiated it.
+    public event Action<bool> EnabledChanged;
     public bool Enabled {
       get {
         lock (this.visualizers) {
@@ -201,6 +208,7 @@ namespace Spectrum {
           }
           this.enabled = value;
         }
+        this.EnabledChanged?.Invoke(value);
       }
     }
 
