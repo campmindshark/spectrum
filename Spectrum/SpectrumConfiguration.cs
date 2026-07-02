@@ -389,21 +389,11 @@ namespace Spectrum {
     public ConcurrentQueue<StageLEDCommand> stageCommandQueue { get; } =
       new ConcurrentQueue<StageLEDCommand>();
 
-    // 0 = human, 1 = Madmom, 2 = Ableton Link
+    // 0 = human, 1 = Madmom, 2 = Pro DJ Link
     private int _beatInput = 0;
     public int beatInput {
       get => _beatInput;
       set => SetField(ref _beatInput, value);
-    }
-    private bool _humanLinkOutput = false;
-    public bool humanLinkOutput {
-      get => _humanLinkOutput;
-      set => SetField(ref _humanLinkOutput, value);
-    }
-    private bool _madmomLinkOutput = false;
-    public bool madmomLinkOutput {
-      get => _madmomLinkOutput;
-      set => SetField(ref _madmomLinkOutput, value);
     }
 
     private int _orientationDeviceSpotlight = 0;

@@ -18,12 +18,12 @@ namespace Spectrum.Audio {
     public float Volume { get; private set; } = 0.0f;
 
     private readonly MadmomHandler madmomHandler;
-    private readonly CarabinerHandler carabinerHandler;
+    private readonly ProDjLinkHandler proDjLinkHandler;
 
     public AudioInput(Configuration config) {
       this.config = config;
       this.madmomHandler = new MadmomHandler(config, this);
-      this.carabinerHandler = new CarabinerHandler(config);
+      this.proDjLinkHandler = new ProDjLinkHandler(config);
     }
 
     private bool active;
@@ -42,7 +42,7 @@ namespace Spectrum.Audio {
         }
         this.active = value;
         this.madmomHandler.Active = value;
-        this.carabinerHandler.Active = value;
+        this.proDjLinkHandler.Active = value;
       }
     }
 

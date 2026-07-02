@@ -348,6 +348,66 @@ namespace Spectrum.Base {
       }
     }
 
+    // The 1-4 beat-within-bar of the most recent Pro DJ Link beat (1 = downbeat),
+    // or 0 if no Pro DJ Link beat has been seen. Carried from the gear but not yet
+    // acted on for phase; it's here so the HUD can surface it and so Phase 3 can
+    // expose true downbeat-aligned 4-beat measures. Guarded by beatLock.
+    private int latestBeatWithinBar = 0;
+    public int LatestBeatWithinBar {
+      get {
+        lock (this.beatLock) {
+          return this.latestBeatWithinBar;
+        }
+      }
+    }
+
+    // Called once per beat received from a Pioneer Pro DJ Link device (a CDJ or
+    // DJM), with the exact effective BPM the gear reports (track BPM scaled by the
+    // deck's current pitch fader). Unlike Madmom, no estimation is needed: the
+    // tempo is authoritative and the packet's arrival is itself a beat boundary,
+    // so phase is anchored to the real-time clock exactly as taps are. Malformed
+    // or stopped-deck values (non-positive/non-finite BPM) are dropped.
+    public void ReportProDjLinkBeat(double effectiveBpm, int beatWithinBar) {
+      if (
+        double.IsNaN(effectiveBpm) ||
+        double.IsInfinity(effectiveBpm) ||
+        effectiveBpm <= 0.0
+      ) {
+        return;
+      }
+      int length = (int)Math.Round(60000.0 / effectiveBpm);
+      if (length < 1) {
+        // Absurdly high BPM would floor the measure length to zero, which
+        // BPMString and ProgressThroughBeat both divide by; ignore it.
+        return;
+      }
+      lock (this.beatLock) {
+        this.timeRelativeTo = TimeRelativeTo.Timestamp;
+        this.latestBeatWithinBar = beatWithinBar;
+        long now = this.currentTime;
+        // Anchor startingTime an integer number of beats behind the beat we just
+        // received, so the phase stays locked to the gear while multi-beat cycles
+        // (ProgressThroughBeat with factor < 1) remain continuous across beats,
+        // mirroring ReportMadmomBeat. The beat's arrival instant is a beat
+        // boundary, so ProgressThroughBeat(1.0) reads ~0 right now.
+        double totalMeasures = 0.0;
+        if (this.measureLength > 0 && this.startingTime >= 0) {
+          totalMeasures = (double)(now - this.startingTime) / this.measureLength;
+          if (totalMeasures > 8.0) {
+            totalMeasures -= 8.0;
+          }
+          totalMeasures = Math.Floor(totalMeasures);
+        }
+        this.measureLength = length;
+        this.startingTime = now - (long)(totalMeasures * this.measureLength);
+        this.madmomBeatTimes.Clear();
+      }
+      this.PropertyChanged?.Invoke(
+        this,
+        new PropertyChangedEventArgs("BPMString")
+      );
+    }
+
     // Called once per beat Madmom detects, with Madmom's own (audio-stream)
     // timestamp for that beat in milliseconds. Tempo is derived from the median
     // spacing of a short window of these timestamps: a single Madmom interval is

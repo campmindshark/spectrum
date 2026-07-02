@@ -600,6 +600,4 @@
   <hueOverrideIsCustom>false</hueOverrideIsCustom>
   <hueOverrideIndex>0</hueOverrideIndex>
   <beatInput>0</beatInput>
-  <humanLinkOutput>false</humanLinkOutput>
-  <madmomLinkOutput>false</madmomLinkOutput>
 </SpectrumConfiguration>

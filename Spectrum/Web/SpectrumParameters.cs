@@ -42,7 +42,7 @@ namespace Spectrum.Web {
     // BPM source selection (beatInput index) — mirrors the Tempo radio group in
     // the VJ HUD (VJHUDWindow: tempoSelectorHuman/Madmom/Link).
     private static readonly IReadOnlyList<string> BeatInputNames = new[] {
-      "Human", "Madmom", "Ableton Link",
+      "Human", "Madmom", "Pro DJ Link",
     };
 
     public static ParameterRegistry BuildRegistry() {
@@ -107,7 +107,7 @@ namespace Spectrum.Web {
 
         // ---- Maintenance surface: device wiring & diagnostics ----
 
-        // BPM source (Human tap-tempo / Madmom beat tracker / Ableton Link)
+        // BPM source (Human tap-tempo / Madmom beat tracker / Pro DJ Link)
         new EnumIntParameter("beatInput", maint, BeatInputNames,
           c => c.beatInput, (c, v) => c.beatInput = v),
 
