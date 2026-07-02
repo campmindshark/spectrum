@@ -316,6 +316,15 @@ namespace Spectrum {
       foreach (var animation in this.activeAnimations) {
         animation.Animate(this.dome);
       }
+
+      // If we wrote any pixels this frame — either animating or clearing struts
+      // for removed animations — flush them ourselves. We can't rely on a
+      // co-running selected visualizer to flush our writes: if none is present
+      // (e.g. domeActiveVis points at a value with no matching visualizer),
+      // Flash wins the priority tie alone and would otherwise never flush.
+      if (toRemove.Count > 0 || this.activeAnimations.Count > 0) {
+        this.dome.Flush();
+      }
     }
 
     private Animation NewRandomAnimation(

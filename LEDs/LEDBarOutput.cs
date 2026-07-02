@@ -68,7 +68,12 @@ namespace Spectrum.LEDs {
           return;
         }
         this.active = value;
-        if (this.dome != null) {
+        // The bar's pixels are driven through the dome's shared OPC connection
+        // (SetBarPixel), so activating the bar must ensure the dome output is
+        // live. Deactivation must NOT propagate: the operator manages the
+        // dome's own Active state, and tearing it down here would bounce the
+        // dome's OPC connection whenever the bar leaves the active set.
+        if (this.dome != null && value) {
           this.dome.Active = value;
         }
         if (value) {

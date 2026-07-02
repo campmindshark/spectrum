@@ -151,6 +151,13 @@ namespace Spectrum {
       this.UpdateCenter();
       this.UpdateAnimationSize(this.config.domeVolumeAnimationSize);
 
+      // The gradient focus position advances with the beat but is identical for
+      // every pixel this frame, so compute it once here rather than calling
+      // ProgressThroughBeat (a lock + DateTime.Now) per pixel inside ColorFromPart.
+      double gradientFocus = this.config.beatBroadcaster.ProgressThroughBeat(
+        this.config.domeGradientSpeed
+      );
+
       int subdivisions = this.partLayout.NumSegments / 2;
       int totalParts = this.config.domeVolumeAnimationSize;
       int volumeSplitInto = 2 * ((totalParts - 1) / 2 + 1);
@@ -166,7 +173,7 @@ namespace Spectrum {
         endRange = Math.Min(endRange / level, 1.0);
 
         foreach (Strut strut in outwardSegment.GetStruts()) {
-          this.UpdateStrut(strut, scaled, startRange, endRange);
+          this.UpdateStrut(strut, scaled, startRange, endRange, gradientFocus);
         }
 
         if (part + 1 == totalParts) {
@@ -184,7 +191,8 @@ namespace Spectrum {
               strut,
               scaled == 1.0 ? 1.0 : 0.0,
               gradientStartPos,
-              gradientEndPos
+              gradientEndPos,
+              gradientFocus
             );
             gradientStartPos = gradientEndPos;
           }
@@ -242,7 +250,8 @@ namespace Spectrum {
       Strut strut,
       double percentageLit,
       double startLitRange,
-      double endLitRange
+      double endLitRange,
+      double gradientFocus
     ) {
       double step = (endLitRange - startLitRange) / (strut.Length * percentageLit);
       for (int i = 0; i < strut.Length; i++) {
@@ -250,10 +259,10 @@ namespace Spectrum {
           strut.GetGradientPos(percentageLit, startLitRange, endLitRange, i);
         int color;
         if (gradientPos != -1.0) {
-          color = this.ColorFromPart(strut.Index, gradientPos);
-          //color = this.ColorFromIndex(strut.Index, gradientPos);
+          color = this.ColorFromPart(strut.Index, gradientPos, gradientFocus);
+          //color = this.ColorFromIndex(strut.Index, gradientPos, gradientFocus);
           //color = this.ColorFromRandom(strut.Index);
-          //color = this.ColorFromPartAndSpoke(strut.Index, gradientPos);
+          //color = this.ColorFromPartAndSpoke(strut.Index, gradientPos, gradientFocus);
         } else {
           color = 0x000000;
         }
@@ -261,7 +270,7 @@ namespace Spectrum {
       }
     }
 
-    private int ColorFromIndex(int strut, double pixelPos) {
+    private int ColorFromIndex(int strut, double pixelPos, double gradientFocus) {
       int colorIndex;
       if (this.indexLayout.SegmentIndexOfStrutIndex(strut) == 0) {
         colorIndex = 1;
@@ -281,14 +290,12 @@ namespace Spectrum {
       return this.dome.GetGradientColor(
         colorIndex,
         pixelPos,
-        this.config.beatBroadcaster.ProgressThroughBeat(
-          this.config.domeGradientSpeed
-        ),
+        gradientFocus,
         true
       );
     }
 
-    private int ColorFromPart(int strut, double pixelPos) {
+    private int ColorFromPart(int strut, double pixelPos, double gradientFocus) {
       int colorIndex;
       if (this.partLayout.SegmentIndexOfStrutIndex(strut) == 0) {
         colorIndex = 1;
@@ -304,9 +311,7 @@ namespace Spectrum {
       return this.dome.GetGradientColor(
         colorIndex,
         pixelPos,
-        this.config.beatBroadcaster.ProgressThroughBeat(
-          this.config.domeGradientSpeed
-        ),
+        gradientFocus,
         true
       );
     }
@@ -332,7 +337,7 @@ namespace Spectrum {
       return color;
     }
 
-    private int ColorFromPartAndSpoke(int strut, double pixelPos) {
+    private int ColorFromPartAndSpoke(int strut, double pixelPos, double gradientFocus) {
       int colorIndex;
       if (this.partLayout.SegmentIndexOfStrutIndex(strut) == 1) {
         colorIndex = 1;
@@ -352,9 +357,7 @@ namespace Spectrum {
       return this.dome.GetGradientColor(
         colorIndex,
         pixelPos,
-        this.config.beatBroadcaster.ProgressThroughBeat(
-          this.config.domeGradientSpeed
-        ),
+        gradientFocus,
         true
       );
     }

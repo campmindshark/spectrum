@@ -33,18 +33,22 @@ namespace Spectrum.LEDs {
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (
-        this.Active &&
-        this.config.stageEnabled &&
-        (e.PropertyName == "stageBeagleboneOPCAddress" ||
-          e.PropertyName == "stageOutputInSeparateThread")
-      ) {
-        if (this.opcAPI != null) {
-          this.opcAPI.Active = false;
-        }
-        this.initializeOPCAPI();
-      } else if (e.PropertyName == "stageSideLengths") {
+      if (e.PropertyName == "stageSideLengths") {
         this.calculateMaxTriangleLength();
+        return;
+      }
+      if (
+        e.PropertyName != "stageBeagleboneOPCAddress" &&
+        e.PropertyName != "stageOutputInSeparateThread" &&
+        e.PropertyName != "stageEnabled"
+      ) {
+        return;
+      }
+      if (this.opcAPI != null) {
+        this.opcAPI.Active = false;
+      }
+      if (this.active && this.config.stageEnabled) {
+        this.initializeOPCAPI();
       }
     }
 
@@ -73,10 +77,7 @@ namespace Spectrum.LEDs {
           return;
         }
         this.active = value;
-        if (!this.config.stageEnabled) {
-          return;
-        }
-        if (value) {
+        if (value && this.config.stageEnabled) {
           this.initializeOPCAPI();
         } else if (this.opcAPI != null) {
           this.opcAPI.Active = false;

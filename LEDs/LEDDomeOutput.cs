@@ -352,6 +352,33 @@ namespace Spectrum.LEDs {
       if (this.opcAPI != null) {
          this.opcAPI.OperatorUpdate();
       }
+      // The operator runs Visualize() on every winning visualizer and then this
+      // OperatorUpdate() once per output, so this marks the end of a frame: drop
+      // the per-frame color snapshot so the next frame's first pixel recomputes
+      // it. See EnsureFrameColorCache.
+      this.frameColorCacheValid = false;
+    }
+
+    // Per-frame snapshot of the beat/brightness state that every GetSingleColor /
+    // GetGradientColor call would otherwise recompute for each of the ~4500 dome
+    // pixels. CurrentlyFlashedOff takes a lock and reads the wall clock, so
+    // querying it (and the domeMaxBrightness*domeBrightness product) once per
+    // frame instead of once per pixel removes millions of lock acquisitions and
+    // DateTime.Now reads per second from the operator thread. These fields are
+    // only ever touched on the operator thread (visualizers and OperatorUpdate
+    // both run there), so they need no synchronization.
+    private bool frameColorCacheValid = false;
+    private bool frameFlashedOff;
+    private double frameBrightness;
+
+    private void EnsureFrameColorCache() {
+      if (this.frameColorCacheValid) {
+        return;
+      }
+      this.frameFlashedOff = this.config.beatBroadcaster.CurrentlyFlashedOff;
+      this.frameBrightness =
+        this.config.domeMaxBrightness * this.config.domeBrightness;
+      this.frameColorCacheValid = true;
     }
 
     public void Flush() {
@@ -596,7 +623,8 @@ namespace Spectrum.LEDs {
     }
 
     public int GetSingleColor(int index) {
-      if (this.config.beatBroadcaster.CurrentlyFlashedOff) {
+      this.EnsureFrameColorCache();
+      if (this.frameFlashedOff) {
         return 0x000000;
       }
       int absoluteIndex = LEDColor.GetAbsoluteColorIndex(
@@ -605,7 +633,7 @@ namespace Spectrum.LEDs {
       );
       return LEDColor.ScaleColor(
         this.config.colorPalette.GetSingleColor(absoluteIndex),
-        this.config.domeMaxBrightness * this.config.domeBrightness
+        this.frameBrightness
       );
     }
 
@@ -615,7 +643,8 @@ namespace Spectrum.LEDs {
       double focusPos,
       bool wrap
     ) {
-      if (this.config.beatBroadcaster.CurrentlyFlashedOff) {
+      this.EnsureFrameColorCache();
+      if (this.frameFlashedOff) {
         return 0x000000;
       }
       int absoluteIndex = LEDColor.GetAbsoluteColorIndex(
@@ -639,7 +668,7 @@ namespace Spectrum.LEDs {
           focusPos,
           wrap
         ),
-        this.config.domeMaxBrightness * this.config.domeBrightness
+        this.frameBrightness
       );
     }
 
@@ -654,7 +683,8 @@ namespace Spectrum.LEDs {
       if (pixelPos < 0 || pixelPos > 1) {
         throw new ArgumentException("Pixel Position out of range: " + pixelPos.ToString());
       }
-      if (this.config.beatBroadcaster.CurrentlyFlashedOff) {
+      this.EnsureFrameColorCache();
+      if (this.frameFlashedOff) {
         return 0x000000;
       }
       var num_colors = maxIndex - minIndex;
@@ -694,7 +724,7 @@ namespace Spectrum.LEDs {
         this.GetSingleColor(maxColorIdx));
       return LEDColor.ScaleColor(
         color.GradientColor(scaledPixelPos, focusPos, wrap),
-        this.config.domeMaxBrightness * this.config.domeBrightness
+        this.frameBrightness
       );
     }
   }
