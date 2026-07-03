@@ -114,6 +114,9 @@ namespace Spectrum {
     private const double StaleMs = 400.0;
     private const double JitterFairMs = 8.0;
     private const double JitterPoorMs = 20.0;
+    // Packet-loss bands (fraction of sent packets missing).
+    private const double LossFairFraction = 0.01;
+    private const double LossPoorFraction = 0.05;
 
     private static readonly Brush GoodBrush = Frozen(0xDD, 0xDD, 0xDD);
     private static readonly Brush FairBrush = Frozen(0xFF, 0xD2, 0x4D);
@@ -153,6 +156,18 @@ namespace Spectrum {
     public string Jitter {
       get => this.jitter;
       private set => this.Set(ref this.jitter, value, nameof(this.Jitter));
+    }
+
+    private string loss;
+    public string Loss {
+      get => this.loss;
+      private set => this.Set(ref this.loss, value, nameof(this.Loss));
+    }
+
+    private string dataRate;
+    public string DataRate {
+      get => this.dataRate;
+      private set => this.Set(ref this.dataRate, value, nameof(this.DataRate));
     }
 
     private string packets;
@@ -204,6 +219,14 @@ namespace Spectrum {
       this.Jitter = stats.PacketCount > 1
         ? stats.JitterMs.ToString("F2", CultureInfo.InvariantCulture)
         : "—";
+      this.Loss = stats.PacketCount > 1
+        ? (stats.PacketLossFraction * 100.0).ToString(
+            "F1", CultureInfo.InvariantCulture)
+        : "—";
+      this.DataRate = stats.DataRateBytesPerSec > 0
+        ? (stats.DataRateBytesPerSec / 1000.0).ToString(
+            "F2", CultureInfo.InvariantCulture)
+        : "—";
       this.Packets = stats.PacketCount.ToString(CultureInfo.InvariantCulture);
       this.LastSeen = stats.MillisSinceLastPacket.ToString(
         "F0", CultureInfo.InvariantCulture);
@@ -220,10 +243,12 @@ namespace Spectrum {
         return;
       }
       if (stats.MillisSinceLastPacket > StaleMs ||
-          stats.JitterMs > JitterPoorMs) {
+          stats.JitterMs > JitterPoorMs ||
+          stats.PacketLossFraction > LossPoorFraction) {
         this.Quality = "Poor";
         this.QualityBrush = PoorBrush;
-      } else if (stats.JitterMs > JitterFairMs) {
+      } else if (stats.JitterMs > JitterFairMs ||
+                 stats.PacketLossFraction > LossFairFraction) {
         this.Quality = "Fair";
         this.QualityBrush = FairBrush;
       } else {

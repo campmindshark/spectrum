@@ -34,6 +34,8 @@ namespace Spectrum.Web {
       public double speed { get; set; }
       public double updateRateHz { get; set; }
       public double jitterMs { get; set; }
+      public double packetLossFraction { get; set; }
+      public double dataRateBytesPerSec { get; set; }
       public long packetCount { get; set; }
       public double millisSinceLastPacket { get; set; }
     }
@@ -70,6 +72,8 @@ namespace Spectrum.Web {
           speed = device.avgDistanceShort,
           updateRateHz = s.UpdateRateHz,
           jitterMs = s.JitterMs,
+          packetLossFraction = s.PacketLossFraction,
+          dataRateBytesPerSec = s.DataRateBytesPerSec,
           packetCount = s.PacketCount,
           millisSinceLastPacket = s.MillisSinceLastPacket,
         });

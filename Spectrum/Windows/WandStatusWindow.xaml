@@ -8,7 +8,7 @@
   mc:Ignorable="d"
   Title="Wand Status"
   Height="470"
-  Width="900"
+  Width="1050"
   Background="#FF1A1A1A"
   Icon="pack://siteoforigin:,,,/Resources/s.PNG"
   Loaded="WindowLoaded"
@@ -52,6 +52,10 @@
               DisplayMemberBinding="{Binding Rate}" />
             <GridViewColumn Header="Jitter (ms)" Width="75"
               DisplayMemberBinding="{Binding Jitter}" />
+            <GridViewColumn Header="Loss (%)" Width="65"
+              DisplayMemberBinding="{Binding Loss}" />
+            <GridViewColumn Header="Data (kB/s)" Width="80"
+              DisplayMemberBinding="{Binding DataRate}" />
             <GridViewColumn Header="Packets" Width="75"
               DisplayMemberBinding="{Binding Packets}" />
             <GridViewColumn Header="Last (ms)" Width="70"

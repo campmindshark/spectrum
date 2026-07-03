@@ -156,7 +156,7 @@ namespace Spectrum {
           deviceStats = new DeviceStats();
           stats[deviceId] = deviceStats;
         }
-        deviceStats.RecordArrival(arrivalMs, timestamp);
+        deviceStats.RecordArrival(arrivalMs, timestamp, buffer.Length);
 
         // Device state update
         if (devices.TryGetValue(deviceId, out var device)) {
@@ -277,13 +277,17 @@ namespace Spectrum {
     }
 
     // Mutable per-device accumulator, only ever touched on the receive thread
-    // under mLock. Tracks a smoothed inter-arrival interval (→ update rate) and
-    // an RFC 3550-style interarrival jitter estimate.
+    // under mLock. Tracks a smoothed inter-arrival interval (→ update rate), an
+    // RFC 3550-style interarrival jitter estimate, a smoothed payload byte rate
+    // (→ data rate), and a packet-loss estimate derived from the device's own
+    // send timestamps.
     private class DeviceStats {
       // RFC 3550 jitter smoothing gain (J += (|D| - J)/16).
       private const double JitterGain = 1.0 / 16.0;
       // EWMA gain for the mean inter-arrival interval.
       private const double IntervalGain = 0.1;
+      // EWMA gain for the mean payload size (→ data rate).
+      private const double PacketBytesGain = 0.1;
 
       private bool primed;
       private double lastArrivalMs;
@@ -291,14 +295,27 @@ namespace Spectrum {
       private double meanIntervalMs;
       private double jitterMs;
       private long packetCount;
+      private double meanPacketBytes;
 
-      public void RecordArrival(double arrivalMs, int deviceTimestamp) {
+      // Packet-loss accounting in the device's own timestamp domain (ms since
+      // the wand powered on). minDeviceIntervalMs is the smallest gap seen
+      // between two consecutive received packets, taken as the wand's true send
+      // period; receivedInWindow/missingInWindow accumulate the received and
+      // (inferred) dropped packet counts since priming or the last clock reset.
+      private double minDeviceIntervalMs = double.MaxValue;
+      private long receivedInWindow;
+      private long missingInWindow;
+
+      public void RecordArrival(
+        double arrivalMs, int deviceTimestamp, int byteCount) {
         packetCount++;
         if (!primed) {
           // First packet only establishes the baseline; no interval yet.
           primed = true;
           lastArrivalMs = arrivalMs;
           lastDeviceTimestamp = deviceTimestamp;
+          receivedInWindow = 1;
+          meanPacketBytes = byteCount;
           return;
         }
 
@@ -310,11 +327,38 @@ namespace Spectrum {
         meanIntervalMs = meanIntervalMs == 0
           ? hostInterval
           : meanIntervalMs + (hostInterval - meanIntervalMs) * IntervalGain;
+        meanPacketBytes += (byteCount - meanPacketBytes) * PacketBytesGain;
+
+        if (deviceInterval < 0) {
+          // The device clock ran backwards: the wand was power-cycled (its
+          // timestamp is ms since power-on) or a datagram arrived badly out of
+          // order. Restart the loss window so a clock reset isn't scored as a
+          // huge burst of dropped packets.
+          receivedInWindow = 1;
+          missingInWindow = 0;
+          return;
+        }
+        receivedInWindow++;
+
+        // The wand sends on a fixed cadence, so the smallest device-timestamp
+        // gap between consecutive packets is that send period. Track it, then
+        // score any larger gap as dropped packets: a gap rounding to k send
+        // periods means k-1 packets went missing between the two we received.
+        // Rounding makes this robust to small send-clock jitter — a near-period
+        // gap snaps to k=1 (no loss). Skip until a period is known.
+        if (deviceInterval > 0 && deviceInterval < minDeviceIntervalMs) {
+          minDeviceIntervalMs = deviceInterval;
+        }
+        if (minDeviceIntervalMs != double.MaxValue) {
+          long slots = (long)Math.Round(deviceInterval / minDeviceIntervalMs);
+          if (slots > 1) {
+            missingInWindow += slots - 1;
+          }
+        }
 
         // Interarrival jitter: the variation in network transit time, taking
         // the device's own send timestamps as the reference clock. Skip
-        // degenerate device-clock deltas (reordering, or a power-cycle reset —
-        // the same >1000ms case the device-state update guards against) so a
+        // degenerate deltas (>1000ms, already handled as a reset above) so a
         // clock jump doesn't spike the estimate.
         if (deviceInterval > 0 && deviceInterval < 1000) {
           double transitDelta = hostInterval - deviceInterval;
@@ -324,12 +368,16 @@ namespace Spectrum {
 
       public OrientationDeviceStats Snapshot(double nowMs) {
         double rateHz = meanIntervalMs > 0 ? 1000.0 / meanIntervalMs : 0.0;
+        long sent = receivedInWindow + missingInWindow;
+        double lossFraction = sent > 0 ? (double)missingInWindow / sent : 0.0;
         return new OrientationDeviceStats(
           rateHz,
           meanIntervalMs,
           jitterMs,
           packetCount,
-          primed ? nowMs - lastArrivalMs : 0.0
+          primed ? nowMs - lastArrivalMs : 0.0,
+          lossFraction,
+          rateHz * meanPacketBytes
         );
       }
     }
@@ -343,19 +391,28 @@ namespace Spectrum {
     public double JitterMs { get; }
     public long PacketCount { get; }
     public double MillisSinceLastPacket { get; }
+    // Estimated fraction (0..1) of the device's sent packets that never
+    // arrived, derived from its own send-timestamp cadence.
+    public double PacketLossFraction { get; }
+    // Smoothed received payload throughput, in bytes per second.
+    public double DataRateBytesPerSec { get; }
 
     public OrientationDeviceStats(
       double updateRateHz,
       double meanIntervalMs,
       double jitterMs,
       long packetCount,
-      double millisSinceLastPacket
+      double millisSinceLastPacket,
+      double packetLossFraction,
+      double dataRateBytesPerSec
     ) {
       this.UpdateRateHz = updateRateHz;
       this.MeanIntervalMs = meanIntervalMs;
       this.JitterMs = jitterMs;
       this.PacketCount = packetCount;
       this.MillisSinceLastPacket = millisSinceLastPacket;
+      this.PacketLossFraction = packetLossFraction;
+      this.DataRateBytesPerSec = dataRateBytesPerSec;
     }
   }
 }

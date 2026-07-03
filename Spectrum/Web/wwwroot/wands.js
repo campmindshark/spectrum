@@ -15,15 +15,18 @@
   // poll surfaces drops about as fast as the server times them out.
   const POLL_MS = 1000;
 
-  // Quality heuristic, mirroring WandRow: staleness or high jitter → Poor.
+  // Quality heuristic, mirroring WandRow: staleness, high jitter, or high
+  // packet loss → Poor.
   const STALE_MS = 400, JITTER_FAIR_MS = 8, JITTER_POOR_MS = 20;
+  const LOSS_FAIR_FRACTION = 0.01, LOSS_POOR_FRACTION = 0.05;
   const ROW_COLORS =
     { good: "#ddd", fair: "#ffd24d", poor: "#ff6b6b", wait: "#ddd" };
   const QUALITY_LABEL = { good: "Good", fair: "Fair", poor: "Poor", wait: "…" };
 
   const COLUMNS = [
     "ID", "Type", "Button", "Quality", "Rate (Hz)", "Jitter (ms)",
-    "Packets", "Last (ms)", "Orientation (W X Y Z)", "Speed",
+    "Loss (%)", "Data (kB/s)", "Packets", "Last (ms)",
+    "Orientation (W X Y Z)", "Speed",
   ];
 
   let summaryEl = null, tbodyEl = null, timer = null;
@@ -34,10 +37,14 @@
 
   function quality(row) {
     if (row.packetCount < 2) return "wait";
-    if (row.millisSinceLastPacket > STALE_MS || row.jitterMs > JITTER_POOR_MS) {
+    if (row.millisSinceLastPacket > STALE_MS || row.jitterMs > JITTER_POOR_MS ||
+        row.packetLossFraction > LOSS_POOR_FRACTION) {
       return "poor";
     }
-    if (row.jitterMs > JITTER_FAIR_MS) return "fair";
+    if (row.jitterMs > JITTER_FAIR_MS ||
+        row.packetLossFraction > LOSS_FAIR_FRACTION) {
+      return "fair";
+    }
     return "good";
   }
 
@@ -51,6 +58,8 @@
       QUALITY_LABEL[quality(row)],
       row.updateRateHz > 0 ? f(row.updateRateHz, 1) : "—",
       row.packetCount > 1 ? f(row.jitterMs, 2) : "—",
+      row.packetCount > 1 ? f(row.packetLossFraction * 100, 1) : "—",
+      row.dataRateBytesPerSec > 0 ? f(row.dataRateBytesPerSec / 1000, 2) : "—",
       row.packetCount,
       f(row.millisSinceLastPacket, 0),
       [row.w, row.x, row.y, row.z].map((n) => f(n, 2).padStart(6)).join(" "),
