@@ -86,10 +86,13 @@ namespace Spectrum {
         }
       }
 
+      // A wand can be connected (still transmitting) but not moving; only
+      // moving wands are visualized, so surface both counts.
+      int moving = snapshot.Values.Count(d => d.isMoving);
       this.summaryLabel.Text = this.rows.Count == 0
         ? "No wands connected."
         : this.rows.Count + (this.rows.Count == 1 ? " wand" : " wands") +
-          " connected.";
+          " connected, " + moving + " moving.";
     }
 
     private void CalibrateClicked(object sender, RoutedEventArgs e) {
@@ -131,6 +134,14 @@ namespace Spectrum {
     public string Action {
       get => this.action;
       private set => this.Set(ref this.action, value, nameof(this.Action));
+    }
+
+    // "Moving" while the device's motion detection considers it in use (and
+    // thus visualized); "Still" while it only transmits.
+    private string motion;
+    public string Motion {
+      get => this.motion;
+      private set => this.Set(ref this.motion, value, nameof(this.Motion));
     }
 
     private string orientation;
@@ -204,6 +215,7 @@ namespace Spectrum {
 
     public void Update(OrientationDevice device, OrientationDeviceStats stats) {
       this.Action = device.actionFlag == 0 ? "—" : "Button " + device.actionFlag;
+      this.Motion = device.isMoving ? "Moving" : "Still";
       var q = device.currentOrientation;
       this.Orientation = string.Format(
         CultureInfo.InvariantCulture,

@@ -26,6 +26,9 @@ namespace Spectrum.Web {
       public string typeName { get; set; }
       // 0 = no button held, otherwise the button number.
       public int actionFlag { get; set; }
+      // Whether the device's motion detection considers it physically in use;
+      // still-but-transmitting devices are excluded from the visualization.
+      public bool isMoving { get; set; }
       public double w { get; set; }
       public double x { get; set; }
       public double y { get; set; }
@@ -67,6 +70,7 @@ namespace Spectrum.Web {
           deviceId = kvp.Key,
           typeName = WandTypeNames.Of(device.deviceType),
           actionFlag = device.actionFlag,
+          isMoving = device.isMoving,
           w = q.W, x = q.X, y = q.Y, z = q.Z,
           hasSpeed = device.hasSpeed,
           speed = device.avgDistanceShort,

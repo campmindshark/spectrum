@@ -33,7 +33,6 @@ namespace Spectrum {
     private readonly static int DEVICE_LISTEN_PORT = 5005;
     private readonly static long DEVICE_TIMEOUT_MS = 1000;
     private readonly static long DEVICE_EVENT_TIMEOUT = 5;
-    private int n_poi = 0;
 
     public OrientationInput(Configuration config) {
       this.config = config;
@@ -164,6 +163,9 @@ namespace Spectrum {
             // debounce (per device!)
             if (currentTime - lastEvent[deviceId] > DEVICE_EVENT_TIMEOUT) {
               lastEvent[deviceId] = currentTime;
+              // A button press means someone is holding the wand, even if it
+              // isn't rotating.
+              device.NoteActivity(currentTime);
               if (actionFlag == 4) {
                 device.calibrate();
               } else if (actionFlag == 1 || actionFlag == 2 || actionFlag == 3) {
@@ -176,16 +178,22 @@ namespace Spectrum {
           if (timestamp > device.timestamp || timestamp < (device.timestamp - 1000)) {
             // the second conditional is just to catch a case where the device was power cycled;
             //   assuming it was off for more than a second
+            device.RecordMotion(
+              datagramOut.device.currentOrientation,
+              timestamp - device.timestamp,
+              currentTime);
             device.timestamp = timestamp;
             device.currentOrientation = datagramOut.device.currentOrientation;
             // This took me a while to track down. We must set the avgDistanceShort from the datagram
             device.avgDistanceShort = datagramOut.device.avgDistanceShort;
+          } else {
+            // Duplicate/stale timestamp: no orientation to score, but the
+            // moving flag still has to decay.
+            device.RefreshMoving(currentTime);
           }
         } else {
+          datagramOut.device.NoteActivity(currentTime);
           devices.Add(deviceId, datagramOut.device);
-          if (devices[deviceId].deviceType == 2) {
-            n_poi++;
-          }
         }
       }
     }
@@ -209,9 +217,6 @@ namespace Spectrum {
           List<int> removedDevices = new List<int>();
           foreach (KeyValuePair<int, long> kvp in lastSeen) {
             if ((currentTime - kvp.Value) > DEVICE_TIMEOUT_MS) {
-              if (devices[kvp.Key].deviceType == 2) {
-                n_poi--;
-              }
               devices.Remove(kvp.Key);
               stats.Remove(kvp.Key);
               removedDevices.Add(kvp.Key);
@@ -262,17 +267,6 @@ namespace Spectrum {
     public Quaternion deviceCalibration(int deviceId) {
       lock (mLock) {
         return devices.TryGetValue(deviceId, out var device) ? device.calibrationOrigin : new Quaternion(0, 0, 0, 1);
-      }
-    }
-
-    // onlyPoi is used to change visualization to accentuate poi
-    public bool onlyPoi() {
-      lock (mLock) {
-        // All devices are not poi if there are no devices.
-        if (devices.Count == 0) {
-          return false;
-        }
-        return n_poi == devices.Count;
       }
     }
 

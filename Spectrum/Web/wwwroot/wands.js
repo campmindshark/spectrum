@@ -24,7 +24,7 @@
   const QUALITY_LABEL = { good: "Good", fair: "Fair", poor: "Poor", wait: "…" };
 
   const COLUMNS = [
-    "ID", "Type", "Button", "Quality", "Rate (Hz)", "Jitter (ms)",
+    "ID", "Type", "Button", "Motion", "Quality", "Rate (Hz)", "Jitter (ms)",
     "Loss (%)", "Data (kB/s)", "Packets", "Last (ms)",
     "Orientation (W X Y Z)", "Speed",
   ];
@@ -55,6 +55,9 @@
       row.deviceId,
       row.typeName,
       row.actionFlag === 0 ? "—" : "Button " + row.actionFlag,
+      // "Still" = transmitting but not physically moving, so excluded from
+      // the visualization (mirrors the native Motion column).
+      row.isMoving ? "Moving" : "Still",
       QUALITY_LABEL[quality(row)],
       row.updateRateHz > 0 ? f(row.updateRateHz, 1) : "—",
       row.packetCount > 1 ? f(row.jitterMs, 2) : "—",
@@ -114,9 +117,11 @@
   }
 
   function update(rows) {
+    const moving = rows.filter((r) => r.isMoving).length;
     summaryEl.textContent = rows.length === 0
       ? "No wands connected."
-      : `${rows.length} wand${rows.length === 1 ? "" : "s"} connected.`;
+      : `${rows.length} wand${rows.length === 1 ? "" : "s"} connected, ` +
+        `${moving} moving.`;
     tbodyEl.innerHTML = "";
     rows.forEach((row) => {
       const tr = document.createElement("tr");

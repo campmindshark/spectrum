@@ -31,9 +31,9 @@ namespace Spectrum.Visualizers {
     private static readonly Vector3 spot = new Vector3(-1, 0, 0);
     private static readonly Vector3 negSpot = new Vector3(1, 0, 0);
 
-    // Idle screen-saver tuning.
-    private const int IDLE_TIME = 1000;
-    private const float SENSOR_THRESHOLD = .0001f;
+    // Idle screen-saver tuning. (Whether a wand counts as moving is decided
+    // per device by OrientationDevice's motion detection; the screen-saver
+    // engages when no connected device is moving.)
     private const double IDLE_NOISE = 0.0001;
     private const double IDLE_MOMENTUM_LIMIT = .001;
 
@@ -86,16 +86,19 @@ namespace Spectrum.Visualizers {
 
     // Reused each frame to avoid per-frame allocation in the hot path.
     private readonly List<DeviceFrame> activeDevices = new List<DeviceFrame>();
+    // Reused each frame: the connected devices currently scored as moving.
+    // Still-but-transmitting wands stay connected (and listed in Wand Status)
+    // but are excluded from the visualization.
+    private readonly List<KeyValuePair<int, OrientationDevice>> movingDevices =
+      new List<KeyValuePair<int, OrientationDevice>>();
 
     // Wall-clock frame timing. frameTimer measures the gap since the previous
     // Visualize() call; frameScale converts that into nominal-frame units.
     private readonly Stopwatch frameTimer = new Stopwatch();
     private double frameScale = 1;
 
-    // Idle detection / drift.
+    // Idle drift state.
     private Quaternion currentOrientation = new Quaternion(0, 0, 0, 1);
-    private Quaternion lastOrientation = new Quaternion(0, 0, 0, 1);
-    private double idleTimer = 0;
     private bool idle = false;
     private double yaw = 0, pitch = -.25, roll = 0;
     private double yawMomentum = 0, pitchMomentum = 0.0005, rollMomentum = 0;
@@ -213,41 +216,26 @@ namespace Spectrum.Visualizers {
       counter += frameScale;
     }
 
-    // Snapshots the wands once, runs idle detection / drift, and resolves the
-    // spotlight and effect center for this frame. Each wand's currentRotation()
-    // is computed exactly once here, into activeDevices.
+    // Snapshots the wands once, filters them down to the ones actually moving,
+    // and resolves the spotlight and effect center for this frame. Each wand's
+    // currentRotation() is computed exactly once here, into activeDevices.
     private void UpdateDeviceFrame(double level) {
       // Snapshot device state so we don't race the receive thread mid-frame.
       Dictionary<int, OrientationDevice> devices = orientationInput.DevicesSnapshot();
-      bool onlyPoi = orientationInput.onlyPoi();
-      bool hasConfiguredSpotlight = devices.ContainsKey(config.orientationDeviceSpotlight);
       activeDevices.Clear();
+      movingDevices.Clear();
 
-      // Idle detection: only meaningful with a single wand. With several we
-      // first wait for them to turn off; with none we go idle immediately.
-      if (devices.Count == 0) {
-        idle = true;
-      } else if (devices.Count == 1) {
-        var en = devices.Values.GetEnumerator();
-        en.MoveNext();
-        currentOrientation = en.Current.currentRotation();
-        en.Dispose();
-        double diff = Math.Abs(1 - Quaternion.Dot(lastOrientation, currentOrientation));
-        if (diff < SENSOR_THRESHOLD || IsZero(currentOrientation)) {
-          if (idleTimer > 0) {
-            idleTimer -= frameScale;
-          }
-        } else {
-          idle = false;
-          idleTimer = IDLE_TIME;
+      // A wand that keeps transmitting but isn't physically moving is excluded
+      // from the visualization (it stays connected, so the Wand Status views
+      // still list it). OrientationDevice scores the motion per device on the
+      // receive thread; the screen-saver engages when nothing is moving.
+      foreach (var kvp in devices) {
+        if (kvp.Value.isMoving) {
+          movingDevices.Add(kvp);
         }
-        lastOrientation = currentOrientation;
-        if (idleTimer <= 0) {
-          idle = true;
-        }
-      } else {
-        idle = false;
       }
+
+      idle = movingDevices.Count == 0;
 
       // Hack to temporarily ignore all wands if the spotlight ID is -2.
       if (config.orientationDeviceSpotlight == -2) {
@@ -258,7 +246,7 @@ namespace Spectrum.Visualizers {
         DriftIdleOrientation(level);
         spotlightId = -1;
       } else {
-        BuildActiveDevices(devices, onlyPoi, hasConfiguredSpotlight);
+        BuildActiveDevices();
       }
 
       currentCenter = spotlightId == -1 ? currentOrientation : spotlightCenter;
@@ -282,14 +270,22 @@ namespace Spectrum.Visualizers {
       currentOrientation = Quaternion.Normalize(dummy);
     }
 
-    // Resolve each connected wand's rotation and scaling once, and pick the
-    // spotlight (the configured one if present, else the first wand seen).
-    private void BuildActiveDevices(
-      Dictionary<int, OrientationDevice> devices,
-      bool onlyPoi,
-      bool hasConfiguredSpotlight
-    ) {
-      foreach (var kvp in devices) {
+    // Resolve each moving wand's rotation and scaling once, and pick the
+    // spotlight (the configured one if it's moving, else the first moving wand
+    // seen). Only called when movingDevices is non-empty.
+    private void BuildActiveDevices() {
+      // Poi take over the dome only when every *moving* device is a poi — a
+      // wand lying still with its transmitter on shouldn't veto poi mode.
+      bool onlyPoi = true;
+      foreach (var kvp in movingDevices) {
+        if (kvp.Value.deviceType != 2) {
+          onlyPoi = false;
+          break;
+        }
+      }
+
+      spotlightId = -1;
+      foreach (var kvp in movingDevices) {
         OrientationDevice device = kvp.Value;
         DeviceFrame frame = new DeviceFrame();
         frame.rotation = device.currentRotation();
@@ -298,7 +294,7 @@ namespace Spectrum.Visualizers {
         int flag = device.actionFlag;
         frame.bonus = (flag == 1 || flag == 2 || flag == 3) ? 4 : 1;
 
-        // If only poi are connected, their visualization takes over the dome;
+        // If only poi are moving, their visualization takes over the dome;
         // otherwise they are wands on strings. Numbers track the poi firmware
         // (tested against commit 'a194981' of the dome-poi control repo) and
         // will be tweaked as those calculations change.
@@ -308,18 +304,11 @@ namespace Spectrum.Visualizers {
         }
 
         activeDevices.Add(frame);
-      }
 
-      if (hasConfiguredSpotlight) {
-        spotlightId = config.orientationDeviceSpotlight;
-        spotlightCenter = devices[spotlightId].currentRotation();
-      } else {
-        // For simplicity just assign the first one we see as the spotlight.
-        var en = devices.GetEnumerator();
-        en.MoveNext();
-        spotlightId = en.Current.Key;
-        spotlightCenter = en.Current.Value.currentRotation();
-        en.Dispose();
+        if (kvp.Key == config.orientationDeviceSpotlight || spotlightId == -1) {
+          spotlightId = kvp.Key;
+          spotlightCenter = frame.rotation;
+        }
       }
     }
 
@@ -567,10 +556,6 @@ namespace Spectrum.Visualizers {
 
     private float Nudge(double scale) {
       return (float)((this.rand.NextDouble() - .5) * 2 * scale);
-    }
-
-    private static bool IsZero(Quaternion q) {
-      return q.W == 0 && q.X == 0 && q.Y == 0 && q.Z == 0;
     }
   }
 }
