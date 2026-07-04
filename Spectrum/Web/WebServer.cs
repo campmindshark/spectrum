@@ -275,6 +275,11 @@ namespace Spectrum.Web {
       app.MapGet("/api/maintenance/wands", () =>
         Results.Json(this.wands.Snapshot()));
 
+      // Serial (USB-CDC ESP-NOW) receiver: port list, selection, and liveness.
+      // Port selection uses the existing PUT .../parameters/wandSerialPort.
+      app.MapGet("/api/maintenance/wands/serial", () =>
+        Results.Json(this.wands.SerialInfo()));
+
       app.MapPost("/api/maintenance/wands/calibrate", () => {
         this.wands.CalibrateAll();
         return Results.Ok();

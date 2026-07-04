@@ -120,6 +120,13 @@ namespace Spectrum {
     // Packet-loss bands (fraction of sent packets missing).
     private const double LossFairFraction = 0.01;
     private const double LossPoorFraction = 0.05;
+    // Update-rate bands, as fractions of the wands' 400 Hz transmit cap
+    // (OrientationInput.WandMaxTransmitRateHz). A wand that stays connected but
+    // whose rate has collapsed well below the ceiling — RF congestion, a dying
+    // battery — is degraded even when jitter and loss still read benign, so the
+    // rate feeds the rating too.
+    private const double RateFairFraction = 0.6;
+    private const double RatePoorFraction = 0.3;
 
     private static readonly Brush GoodBrush = Frozen(0xDD, 0xDD, 0xDD);
     private static readonly Brush FairBrush = Frozen(0xFF, 0xD2, 0x4D);
@@ -254,13 +261,17 @@ namespace Spectrum {
         this.QualityBrush = GoodBrush;
         return;
       }
+      double rateFraction =
+        stats.UpdateRateHz / OrientationInput.WandMaxTransmitRateHz;
       if (stats.MillisSinceLastPacket > StaleMs ||
           stats.JitterMs > JitterPoorMs ||
-          stats.PacketLossFraction > LossPoorFraction) {
+          stats.PacketLossFraction > LossPoorFraction ||
+          rateFraction < RatePoorFraction) {
         this.Quality = "Poor";
         this.QualityBrush = PoorBrush;
       } else if (stats.JitterMs > JitterFairMs ||
-                 stats.PacketLossFraction > LossFairFraction) {
+                 stats.PacketLossFraction > LossFairFraction ||
+                 rateFraction < RateFairFraction) {
         this.Quality = "Fair";
         this.QualityBrush = FairBrush;
       } else {
@@ -292,6 +303,7 @@ namespace Spectrum {
         case 2: return "Poi";
         case 3: return "Wand v2";
         case 4: return "Wristband";
+        case 6: return "Wand v3";
         default: return "Unknown (" + deviceType + ")";
       }
     }

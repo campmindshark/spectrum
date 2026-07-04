@@ -50,7 +50,7 @@
               DisplayMemberBinding="{Binding Motion}" />
             <GridViewColumn Header="Quality" Width="60"
               DisplayMemberBinding="{Binding Quality}" />
-            <GridViewColumn Header="Rate (Hz)" Width="70"
+            <GridViewColumn Header="Rate (Hz, ≤400)" Width="90"
               DisplayMemberBinding="{Binding Rate}" />
             <GridViewColumn Header="Jitter (ms)" Width="75"
               DisplayMemberBinding="{Binding Jitter}" />

@@ -15,21 +15,33 @@
   // poll surfaces drops about as fast as the server times them out.
   const POLL_MS = 1000;
 
+  // The serial receiver is alive when the most recent heartbeat OR data frame
+  // arrived within this window (~3 missed 500ms heartbeats). Mirrors
+  // WandSerialReceiver.RECEIVER_ALIVE_MS — the two surfaces must agree.
+  const RECEIVER_ALIVE_MS = 1500;
+
   // Quality heuristic, mirroring WandRow: staleness, high jitter, or high
   // packet loss → Poor.
   const STALE_MS = 400, JITTER_FAIR_MS = 8, JITTER_POOR_MS = 20;
   const LOSS_FAIR_FRACTION = 0.01, LOSS_POOR_FRACTION = 0.05;
+  // The wand radios transmit at a hard 400 Hz ceiling; a rate that has
+  // collapsed well below it is a degraded link even when jitter/loss read fine.
+  // Mirrors OrientationInput.WandMaxTransmitRateHz and WandRow's RateFair/Poor
+  // fractions — the surfaces must agree.
+  const WAND_MAX_RATE_HZ = 400;
+  const RATE_FAIR_FRACTION = 0.6, RATE_POOR_FRACTION = 0.3;
   const ROW_COLORS =
     { good: "#ddd", fair: "#ffd24d", poor: "#ff6b6b", wait: "#ddd" };
   const QUALITY_LABEL = { good: "Good", fair: "Fair", poor: "Poor", wait: "…" };
 
   const COLUMNS = [
-    "ID", "Type", "Button", "Motion", "Quality", "Rate (Hz)", "Jitter (ms)",
+    "ID", "Type", "Button", "Motion", "Quality", "Rate (Hz, ≤400)", "Jitter (ms)",
     "Loss (%)", "Data (kB/s)", "Packets", "Last (ms)",
     "Orientation (W X Y Z)", "Speed",
   ];
 
   let summaryEl = null, tbodyEl = null, timer = null;
+  let receiverSelect = null, receiverStatusEl = null;
 
   function status(msg, isError) {
     if (window.spectrumStatus) window.spectrumStatus(msg, isError);
@@ -37,12 +49,15 @@
 
   function quality(row) {
     if (row.packetCount < 2) return "wait";
+    const rateFraction = row.updateRateHz / WAND_MAX_RATE_HZ;
     if (row.millisSinceLastPacket > STALE_MS || row.jitterMs > JITTER_POOR_MS ||
-        row.packetLossFraction > LOSS_POOR_FRACTION) {
+        row.packetLossFraction > LOSS_POOR_FRACTION ||
+        rateFraction < RATE_POOR_FRACTION) {
       return "poor";
     }
     if (row.jitterMs > JITTER_FAIR_MS ||
-        row.packetLossFraction > LOSS_FAIR_FRACTION) {
+        row.packetLossFraction > LOSS_FAIR_FRACTION ||
+        rateFraction < RATE_FAIR_FRACTION) {
       return "fair";
     }
     return "good";
@@ -79,6 +94,78 @@
     }
   }
 
+  // Genuine user pick of a receiver port. Writes the real port value (never the
+  // label) through the same param path as every other maintenance control.
+  // app.js putValue sends exactly { "value": ... } with a JSON content-type
+  // (app.js:150,160); this small duplication is faithful to that.
+  async function onReceiverChange() {
+    const value = receiverSelect.value;
+    try {
+      const res = await fetch(
+        "/api/maintenance/parameters/wandSerialPort",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ value }),
+        }
+      );
+      status(
+        res.ok ? `Receiver port: ${value || "(none)"}` : `port: ${res.status}`,
+        !res.ok
+      );
+    } catch (e) {
+      status(`port: ${e}`, true);
+    }
+  }
+
+  // Rebuild the <select> from the server snapshot. The server value is
+  // authoritative for the displayed selection and always keeps the
+  // configured-but-missing port as an option. Setting options/value here is
+  // programmatic and never fires 'change'. Skip the rebuild while the element is
+  // focused so it doesn't fight a user mid-selection.
+  function rebuildReceiver(serial) {
+    if (document.activeElement === receiverSelect) return;
+    const ports = serial.availablePorts || [];
+    const selected = serial.selectedPort || "";
+    const opts = [""].concat(ports);
+    if (selected && !ports.includes(selected)) opts.push(selected);
+
+    receiverSelect.innerHTML = "";
+    opts.forEach((p) => {
+      const o = document.createElement("option");
+      o.value = p;
+      o.textContent = p === ""
+        ? "(none)"
+        : (ports.includes(p) ? p : `${p} (missing)`);
+      receiverSelect.appendChild(o);
+    });
+    receiverSelect.value = selected;
+  }
+
+  function updateReceiverStatus(serial) {
+    const r = serial.receiver || {};
+    const selected = serial.selectedPort || "";
+    let text, color;
+    if (!selected) {
+      text = "No port selected"; color = "#cba";
+    } else if (r.lastError) {
+      text = `Error: ${r.lastError}`; color = "#ff6b6b";
+    } else if (!r.portOpen) {
+      text = "Opening…"; color = "#cba";
+    } else {
+      const since = Math.min(
+        r.millisSinceLastHeartbeat, r.millisSinceLastFrame);
+      if (since < RECEIVER_ALIVE_MS) {
+        text = `Receiver connected (${(since / 1000).toFixed(1)} s ago)`;
+        color = "#6fdf6f";
+      } else {
+        text = "Port open — no data"; color = "#ff6b6b";
+      }
+    }
+    receiverStatusEl.textContent = text;
+    receiverStatusEl.style.color = color;
+  }
+
   // Build the static structure once so the poll only swaps table rows — the
   // Calibrate All button and header keep their identity across refreshes.
   function mount() {
@@ -86,6 +173,21 @@
     const title = document.createElement("h2");
     title.textContent = "Wand status";
     container.appendChild(title);
+
+    // Wand receiver (USB-CDC ESP-NOW) port selector + liveness, above the table.
+    const receiverRow = document.createElement("div");
+    receiverRow.className = "calib-status";
+    const receiverLabel = document.createElement("label");
+    receiverLabel.textContent = "Wand receiver: ";
+    receiverSelect = document.createElement("select");
+    receiverSelect.addEventListener("change", onReceiverChange);
+    receiverLabel.appendChild(receiverSelect);
+    receiverRow.appendChild(receiverLabel);
+    receiverStatusEl = document.createElement("span");
+    receiverStatusEl.style.marginLeft = "0.6rem";
+    receiverStatusEl.textContent = "…";
+    receiverRow.appendChild(receiverStatusEl);
+    container.appendChild(receiverRow);
 
     summaryEl = document.createElement("div");
     summaryEl.className = "calib-status";
@@ -138,10 +240,22 @@
   async function poll() {
     try {
       const res = await fetch("/api/maintenance/wands");
-      if (!res.ok) { status(`wands: ${res.status}`, true); return; }
-      update(await res.json());
+      if (!res.ok) { status(`wands: ${res.status}`, true); }
+      else update(await res.json());
     } catch (e) {
       status(`wands: ${e}`, true);
+    }
+
+    try {
+      const res = await fetch("/api/maintenance/wands/serial");
+      if (!res.ok) { status(`wands serial: ${res.status}`, true); }
+      else {
+        const serial = await res.json();
+        rebuildReceiver(serial);
+        updateReceiverStatus(serial);
+      }
+    } catch (e) {
+      status(`wands serial: ${e}`, true);
     }
   }
 

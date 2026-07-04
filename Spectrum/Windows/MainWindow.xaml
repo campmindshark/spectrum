@@ -279,7 +279,15 @@
                         </Border>
                         <Label Content="Wands" HorizontalAlignment="Left" Margin="4,1,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
                         <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
-                            <Button x:Name="wandStatusButton" Content="Wand Status…" Width="210" Height="26" Click="OpenWandStatus" />
+                            <StackPanel>
+                                <Label Content="Receiver port" Padding="0" Margin="0,0,0,2" />
+                                <ComboBox x:Name="wandSerialPortSelector" Width="210" HorizontalAlignment="Left"
+                                          DropDownOpened="WandSerialPortDropDownOpened"
+                                          SelectionChanged="WandSerialPortSelectionChanged" />
+                                <TextBlock x:Name="wandReceiverStatus" Text="No port selected" Margin="0,3,0,5"
+                                           TextWrapping="Wrap" Width="210" HorizontalAlignment="Left" Foreground="Gray" />
+                                <Button x:Name="wandStatusButton" Content="Wand Status…" Width="210" Height="26" Click="OpenWandStatus" />
+                            </StackPanel>
                         </Border>
                     </WrapPanel>
                     <CheckBox x:Name="domeThreadCheckbox" Content="Call LED dome in separate thread(s)" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />

@@ -17,8 +17,14 @@ namespace Spectrum {
     private Dictionary<int, long> lastSeen;
     private long[] lastEvent;
     // Per-device connection-quality stats (arrival rate, jitter, packet count),
-    // accumulated on the receive thread under mLock alongside the device map.
+    // accumulated by the receive threads (UDP callback + serial worker),
+    // serialized by mLock alongside the device map.
     private Dictionary<int, DeviceStats> stats;
+
+    // Wands also reach us over USB-CDC serial from the ESP-NOW receiver, fed
+    // into this same sink via ProcessDatagram. Runs additively with the UDP
+    // listener; each remote uses exactly one transport.
+    public WandSerialReceiver WandSerial { get; }
 
     // High-resolution monotonic clock for arrival timing. DateTime.Now (used for
     // the 1s device timeout) is too coarse to measure jitter on a stream that
@@ -34,6 +40,17 @@ namespace Spectrum {
     private readonly static long DEVICE_TIMEOUT_MS = 1000;
     private readonly static long DEVICE_EVENT_TIMEOUT = 5;
 
+    // The wand remotes' radio firmware transmits at a hard ceiling of 400 Hz
+    // (one packet every 2.5 ms); no device can physically send faster. This is
+    // the reference "full rate" the connection-quality diagnostics score the
+    // measured update rate against, and the physical floor for the inferred
+    // send period the packet-loss estimator uses. Kept public so the wand
+    // status view (WandRow) reads the same number; the web surface duplicates
+    // it in wands.js with a "must agree" note, as it already does for the other
+    // quality thresholds.
+    public const double WandMaxTransmitRateHz = 400.0;
+    private const double WandMinSendIntervalMs = 1000.0 / WandMaxTransmitRateHz;
+
     public OrientationInput(Configuration config) {
       this.config = config;
       devices = new Dictionary<int, OrientationDevice>();
@@ -41,6 +58,7 @@ namespace Spectrum {
       lastSeen = new Dictionary<int, long>();
       lastEvent = new long[256];
       stats = new Dictionary<int, DeviceStats>();
+      WandSerial = new WandSerialReceiver(config, this);
     }
 
     private bool active;
@@ -64,6 +82,10 @@ namespace Spectrum {
           } else {
             StopListening();
           }
+          // The serial receiver follows Active too. This is only a flag write +
+          // signal (never a blocking port call), so it's safe under
+          // lifecycleLock.
+          WandSerial.SetActive(value);
         }
       }
     }
@@ -123,15 +145,23 @@ namespace Spectrum {
       }
     }
 
-    private void ProcessDatagram(byte[] buffer) {
-      // This is an unauthenticated UDP listener on 0.0.0.0, so any short or
-      // spoofed datagram must be ignored rather than indexed blindly.
-      if (buffer.Length < DatagramHandler.MinDatagramLength) {
+    // Shared sink for both transports: the UDP ReceiveCallback and the serial
+    // worker thread call this directly. Everything below runs under mLock, so
+    // the two producers are serialized. (The serial receiver filters its own
+    // deviceType-5 heartbeats out before calling here — a heartbeat is not a
+    // device datagram.)
+    public void ProcessDatagram(byte[] buffer) {
+      // This is an unauthenticated UDP listener on 0.0.0.0 (and an equally
+      // untrusted serial stream), so any short or spoofed datagram must be
+      // ignored rather than indexed blindly. TryReadHeader also classifies the
+      // two header layouts (legacy vs. the seq-carrying types 5/6), so the
+      // timestamp and deviceType below are read from the correct offsets.
+      if (!DatagramHandler.TryReadHeader(buffer, out var header)) {
         return;
       }
-      var deviceId = buffer[0];
-      var timestamp = BitConverter.ToInt32(buffer, 1);
-      int deviceType = buffer[5];
+      var deviceId = header.DeviceId;
+      var timestamp = header.Timestamp;
+      int deviceType = header.DeviceType;
       if (buffer.Length < DatagramHandler.RequiredLength(deviceType)) {
         return;
       }
@@ -150,12 +180,15 @@ namespace Spectrum {
 
         // Connection-quality accounting. Uses the high-res arrival time and the
         // device's own send timestamp (buffer[1..4], ms) as the reference clock
-        // for jitter; both are valid even for an as-yet-unknown deviceType.
+        // for jitter; both are valid even for an as-yet-unknown deviceType. The
+        // header's uint8 packet sequence number (header.Sequence, or -1 for the
+        // legacy layout that carries none) drives the packet-loss estimate.
         if (!stats.TryGetValue(deviceId, out var deviceStats)) {
           deviceStats = new DeviceStats();
           stats[deviceId] = deviceStats;
         }
-        deviceStats.RecordArrival(arrivalMs, timestamp, buffer.Length);
+        deviceStats.RecordArrival(
+          arrivalMs, timestamp, buffer.Length, header.Sequence);
 
         // Device state update
         if (devices.TryGetValue(deviceId, out var device)) {
@@ -270,11 +303,14 @@ namespace Spectrum {
       }
     }
 
-    // Mutable per-device accumulator, only ever touched on the receive thread
-    // under mLock. Tracks a smoothed inter-arrival interval (→ update rate), an
+    // Mutable per-device accumulator, only ever touched on the receive threads
+    // (UDP callback + serial worker), serialized by mLock. Tracks a smoothed
+    // inter-arrival interval (→ update rate), an
     // RFC 3550-style interarrival jitter estimate, a smoothed payload byte rate
-    // (→ data rate), and a packet-loss estimate derived from the device's own
-    // send timestamps.
+    // (→ data rate), and a packet-loss estimate. Loss is counted directly from
+    // the uint8 packet sequence number for devices that carry one (wand v3 /
+    // type 6); devices with no sequence number (poi, legacy wands) fall back to
+    // inferring loss from the device's own send-timestamp cadence.
     private class DeviceStats {
       // RFC 3550 jitter smoothing gain (J += (|D| - J)/16).
       private const double JitterGain = 1.0 / 16.0;
@@ -291,17 +327,29 @@ namespace Spectrum {
       private long packetCount;
       private double meanPacketBytes;
 
-      // Packet-loss accounting in the device's own timestamp domain (ms since
-      // the wand powered on). minDeviceIntervalMs is the smallest gap seen
-      // between two consecutive received packets, taken as the wand's true send
-      // period; receivedInWindow/missingInWindow accumulate the received and
-      // (inferred) dropped packet counts since priming or the last clock reset.
-      private double minDeviceIntervalMs = double.MaxValue;
+      // Packet-loss accounting. receivedInWindow/missingInWindow accumulate the
+      // received and (counted or inferred) dropped packet counts since priming
+      // or the last clock reset; PacketLossFraction is missing/(received+missing).
       private long receivedInWindow;
       private long missingInWindow;
 
+      // Sequence-number path (wand v3 / type 6): the wand stamps every packet
+      // with a uint8 counter that increments by one per send and wraps at 256,
+      // so the signed 8-bit gap between consecutive received sequence numbers is
+      // exactly the number of packets sent in between — no send period to infer.
+      // hasSequence latches on the first packet that carries one (>= 0).
+      private bool hasSequence;
+      private int lastSequence;
+
+      // Timestamp-cadence fallback (poi / legacy wands, no sequence number).
+      // minDeviceIntervalMs is the smallest gap seen between two consecutive
+      // received packets in the device's own timestamp domain (ms since power-on),
+      // taken as the wand's true send period so a larger gap can be scored as
+      // dropped packets.
+      private double minDeviceIntervalMs = double.MaxValue;
+
       public void RecordArrival(
-        double arrivalMs, int deviceTimestamp, int byteCount) {
+        double arrivalMs, int deviceTimestamp, int byteCount, int sequence) {
         packetCount++;
         if (!primed) {
           // First packet only establishes the baseline; no interval yet.
@@ -310,6 +358,8 @@ namespace Spectrum {
           lastDeviceTimestamp = deviceTimestamp;
           receivedInWindow = 1;
           meanPacketBytes = byteCount;
+          hasSequence = sequence >= 0;
+          lastSequence = sequence;
           return;
         }
 
@@ -327,26 +377,55 @@ namespace Spectrum {
           // The device clock ran backwards: the wand was power-cycled (its
           // timestamp is ms since power-on) or a datagram arrived badly out of
           // order. Restart the loss window so a clock reset isn't scored as a
-          // huge burst of dropped packets.
+          // huge burst of dropped packets, and re-baseline the sequence counter
+          // (a power cycle also resets it to 0).
           receivedInWindow = 1;
           missingInWindow = 0;
+          lastSequence = sequence;
           return;
         }
         receivedInWindow++;
 
-        // The wand sends on a fixed cadence, so the smallest device-timestamp
-        // gap between consecutive packets is that send period. Track it, then
-        // score any larger gap as dropped packets: a gap rounding to k send
-        // periods means k-1 packets went missing between the two we received.
-        // Rounding makes this robust to small send-clock jitter — a near-period
-        // gap snaps to k=1 (no loss). Skip until a period is known.
-        if (deviceInterval > 0 && deviceInterval < minDeviceIntervalMs) {
-          minDeviceIntervalMs = deviceInterval;
-        }
-        if (minDeviceIntervalMs != double.MaxValue) {
-          long slots = (long)Math.Round(deviceInterval / minDeviceIntervalMs);
-          if (slots > 1) {
-            missingInWindow += slots - 1;
+        if (hasSequence) {
+          // The sequence number counts sent packets directly. A signed 8-bit
+          // delta absorbs the uint8 wrap: an in-order packet advances by 1 (no
+          // loss), a forward gap of d means d-1 packets dropped, and a zero or
+          // negative delta is a duplicate or a late-arriving reorder — no new
+          // packet to charge as loss. Only advance the baseline on forward
+          // progress, so a straggler doesn't rewind it and manufacture a huge
+          // phantom gap on the next in-order packet.
+          int delta = (sbyte)(sequence - lastSequence);
+          if (delta > 1) {
+            missingInWindow += delta - 1;
+          }
+          if (delta > 0) {
+            lastSequence = sequence;
+          }
+        } else {
+          // No sequence number: fall back to inferring loss from the send
+          // cadence. The wand sends on a fixed cadence, so the smallest
+          // device-timestamp gap between consecutive packets is that send
+          // period. Track it, then score any larger gap as dropped packets: a
+          // gap rounding to k send periods means k-1 packets went missing
+          // between the two we received. Rounding makes this robust to small
+          // send-clock jitter — a near-period gap snaps to k=1 (no loss). Skip
+          // until a period is known.
+          if (deviceInterval > 0 && deviceInterval < minDeviceIntervalMs) {
+            minDeviceIntervalMs = deviceInterval;
+          }
+          if (minDeviceIntervalMs != double.MaxValue) {
+            // The wand can't send faster than the 400 Hz cap, so integer-ms
+            // timestamp quantization occasionally reporting a sub-2.5ms gap is
+            // an artifact, not the true period. Clamp the inferred period up to
+            // the physical floor before scoring, so a normal ~3ms gap doesn't
+            // round to "one packet missing" off a spuriously small
+            // minDeviceIntervalMs.
+            double sendPeriodMs =
+              Math.Max(minDeviceIntervalMs, WandMinSendIntervalMs);
+            long slots = (long)Math.Round(deviceInterval / sendPeriodMs);
+            if (slots > 1) {
+              missingInWindow += slots - 1;
+            }
           }
         }
 
@@ -385,8 +464,9 @@ namespace Spectrum {
     public double JitterMs { get; }
     public long PacketCount { get; }
     public double MillisSinceLastPacket { get; }
-    // Estimated fraction (0..1) of the device's sent packets that never
-    // arrived, derived from its own send-timestamp cadence.
+    // Fraction (0..1) of the device's sent packets that never arrived, counted
+    // from the uint8 packet sequence number where the device carries one and
+    // otherwise inferred from its own send-timestamp cadence.
     public double PacketLossFraction { get; }
     // Smoothed received payload throughput, in bytes per second.
     public double DataRateBytesPerSec { get; }

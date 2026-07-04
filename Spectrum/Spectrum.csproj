@@ -24,6 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.IO.Ports" Version="10.0.0" />
     <PackageReference Include="WriteableBitmapEx" Version="1.6.11" />
     <PackageReference Include="XSerializer" Version="0.4.4" />
   </ItemGroup>

@@ -411,6 +411,15 @@ namespace Spectrum {
       get => _orientationShowContours;
       set => SetField(ref _orientationShowContours, value);
     }
+    // Initialized to "" (not left null) so both the receiver's IsNullOrEmpty
+    // check and StringParameter.Coerce/Get have a real string, and a
+    // spectrum_config.xml predating this property (which leaves the field
+    // untouched on deserialize) still reads as "no serial input".
+    private string _wandSerialPort = "";
+    public string wandSerialPort {
+      get => _wandSerialPort;
+      set => SetField(ref _wandSerialPort, value);
+    }
   }
 
 }

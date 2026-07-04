@@ -20,6 +20,16 @@ namespace Spectrum {
 
   public partial class MainWindow : Window {
 
+    // One entry in the wand receiver-port combo. The display string is kept
+    // separate from the value so picking an item shown as "COM7 (missing)" or
+    // "(none)" writes the real port ("COM7" / "") into config.wandSerialPort,
+    // not the label.
+    private class PortItem {
+      public string Display { get; set; }
+      public string Value { get; set; }
+      public override string ToString() => this.Display;
+    }
+
     private class MidiDeviceEntry {
 
       public int DeviceID { get; set; }
@@ -72,6 +82,10 @@ namespace Spectrum {
     private StageSimulatorWindow stageSimulatorWindow;
     private VJHUDWindow vjHUDWindow;
     private WandStatusWindow wandStatusWindow;
+    // Guards programmatic repopulate/preselect of wandSerialPortSelector so it
+    // never writes config back; only a genuine user pick does.
+    private bool repopulatingWandPorts = false;
+    private System.Windows.Threading.DispatcherTimer wandReceiverStatusTimer;
     private int? currentlyEditingPreset = null;
     private int? currentlyEditingBinding = null;
     private Timer configSaveTimer = null;
@@ -127,6 +141,16 @@ namespace Spectrum {
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
       if (configPropertiesToRebootOn.Contains(e.PropertyName)) {
         this.op.Reboot();
+      }
+      // The wand receiver-port combo has a host-dependent item set, so it can't
+      // use the two-way WPF Bind() every other control gets. Instead re-run the
+      // guarded repopulate + preselect when the value changes externally (e.g. a
+      // web PUT landing on the Dispatcher) — the dynamic-item equivalent of the
+      // two-way binding. The repopulating flag stops the resulting
+      // SelectionChanged from writing back.
+      if (e.PropertyName == nameof(this.config.wandSerialPort)) {
+        this.Dispatcher.BeginInvoke(
+          new Action(this.RepopulateWandSerialPorts));
       }
       if (!configPropertiesIgnored.Contains(e.PropertyName)) {
         this.EventuallySaveConfig();
@@ -263,6 +287,8 @@ namespace Spectrum {
       this.Bind("stageBrightness", this.stageBrightnessSlider, Slider.ValueProperty);
       this.Bind("stageBrightness", this.stageBrightnessLabel, Label.ContentProperty);
       this.Bind("vjHUDEnabled", this.vjHUDEnabled, CheckBox.IsCheckedProperty);
+
+      this.InitWandSerialUI();
 
       MainWindow.LoadingConfig = false;
     }
@@ -1228,6 +1254,102 @@ namespace Spectrum {
 
     private void DomeMappingClosed(object sender, EventArgs e) {
       this.domeMappingWindow = null;
+    }
+
+    private void InitWandSerialUI() {
+      this.RepopulateWandSerialPorts();
+      // The receiver's status fields are computed from stored timestamps at
+      // snapshot time, so polling on a UI timer is enough to keep the indicator
+      // fresh without any push machinery.
+      this.wandReceiverStatusTimer = new System.Windows.Threading.DispatcherTimer {
+        Interval = TimeSpan.FromMilliseconds(500),
+      };
+      this.wandReceiverStatusTimer.Tick += this.UpdateWandReceiverStatus;
+      this.wandReceiverStatusTimer.Start();
+    }
+
+    // Rebuilds the port combo: (none) + live ports, plus the configured value as
+    // a "(missing)" item if it isn't present (so an unplugged receiver's saved
+    // port is never dropped and stays preselected). Guarded so it never writes
+    // config back. Preselect matches on item Value, not the display label.
+    private void RepopulateWandSerialPorts() {
+      this.repopulatingWandPorts = true;
+      try {
+        var selector = this.wandSerialPortSelector;
+        selector.Items.Clear();
+        selector.Items.Add(new PortItem { Display = "(none)", Value = "" });
+
+        string configured = this.config.wandSerialPort ?? "";
+        bool configuredPresent = false;
+        foreach (var port in WandSerialReceiver.AvailablePorts()) {
+          selector.Items.Add(new PortItem { Display = port, Value = port });
+          if (port == configured) {
+            configuredPresent = true;
+          }
+        }
+        if (!string.IsNullOrEmpty(configured) && !configuredPresent) {
+          selector.Items.Add(new PortItem {
+            Display = configured + " (missing)",
+            Value = configured,
+          });
+        }
+
+        foreach (PortItem item in selector.Items) {
+          if (item.Value == configured) {
+            selector.SelectedItem = item;
+            break;
+          }
+        }
+      } finally {
+        this.repopulatingWandPorts = false;
+      }
+    }
+
+    private void WandSerialPortDropDownOpened(object sender, EventArgs e) {
+      this.RepopulateWandSerialPorts();
+    }
+
+    private void WandSerialPortSelectionChanged(
+      object sender, SelectionChangedEventArgs e
+    ) {
+      // Only a genuine user pick writes config; programmatic repopulate is
+      // guarded. The value ("" only when the user picks (none)) is the real
+      // port, never the display label.
+      if (this.repopulatingWandPorts) {
+        return;
+      }
+      if (this.wandSerialPortSelector.SelectedItem is PortItem item) {
+        this.config.wandSerialPort = item.Value;
+      }
+    }
+
+    private void UpdateWandReceiverStatus(object sender, EventArgs e) {
+      var status = this.op.OrientationInput.WandSerial.StatusSnapshot();
+      string text;
+      Brush color;
+      if (string.IsNullOrEmpty(this.config.wandSerialPort)) {
+        text = "No port selected";
+        color = Brushes.Gray;
+      } else if (status.LastError != null) {
+        text = "Error: " + status.LastError;
+        color = Brushes.OrangeRed;
+      } else if (!status.PortOpen) {
+        text = "Opening…";
+        color = Brushes.Gray;
+      } else {
+        double since = Math.Min(
+          status.MillisSinceLastHeartbeat, status.MillisSinceLastFrame);
+        if (since < WandSerialReceiver.RECEIVER_ALIVE_MS) {
+          text = "Receiver connected (" +
+            (since / 1000.0).ToString("0.0") + " s ago)";
+          color = Brushes.ForestGreen;
+        } else {
+          text = "Port open — no data";
+          color = Brushes.OrangeRed;
+        }
+      }
+      this.wandReceiverStatus.Text = text;
+      this.wandReceiverStatus.Foreground = color;
     }
 
     private void OpenWandStatus(object sender, RoutedEventArgs e) {

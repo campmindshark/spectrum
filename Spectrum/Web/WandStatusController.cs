@@ -85,6 +85,25 @@ namespace Spectrum.Web {
       return rows;
     }
 
+    // Serial-receiver read model for the maintenance "Wand receiver" row: the
+    // available COM ports, the configured selection, and a compact status of the
+    // USB-CDC ESP-NOW receiver. Uses only thread-safe snapshots, so it never
+    // races the serial worker thread. The millis-since fields are large finite
+    // sentinels (never ∞) when the event hasn't been seen, so they serialize.
+    public object SerialInfo() {
+      var status = this.orientation.WandSerial.StatusSnapshot();
+      return new {
+        availablePorts = WandSerialReceiver.AvailablePorts(),
+        selectedPort = this.config.wandSerialPort,
+        receiver = new {
+          portOpen = status.PortOpen,
+          millisSinceLastHeartbeat = status.MillisSinceLastHeartbeat,
+          millisSinceLastFrame = status.MillisSinceLastFrame,
+          lastError = status.LastError,
+        },
+      };
+    }
+
     // Fires the global recalibration the native Calibrate All button does:
     // OrientationInput.OperatorUpdate picks up the flag, calibrates every device
     // to its current orientation, and clears it. Marshaled through the gateway

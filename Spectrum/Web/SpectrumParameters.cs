@@ -139,6 +139,12 @@ namespace Spectrum.Web {
         new StringParameter("stageBeagleboneOPCAddress", maint,
           c => c.stageBeagleboneOPCAddress, (c, v) => c.stageBeagleboneOPCAddress = v),
 
+        // Wand USB-CDC receiver COM port ("" = no serial input). The receiver
+        // reacts live via PropertyChanged; the port list is served separately by
+        // GET /api/maintenance/wands/serial.
+        new StringParameter("wandSerialPort", maint,
+          c => c.wandSerialPort, (c, v) => c.wandSerialPort = v),
+
         // Threading flags (these trigger an Operator reboot in MainWindow)
         new BoolParameter("midiInputInSeparateThread", maint,
           c => c.midiInputInSeparateThread, (c, v) => c.midiInputInSeparateThread = v),
