@@ -384,6 +384,7 @@
                                 <ComboBoxItem x:Name="domeActiveVisualizerQuaternionMultiTest" Content='Quaternion Multi Test' />
                                 <ComboBoxItem x:Name="domeActiveVisualizerQuaternionPaintbrush" Content='Quaternion Paintbrush' />
                                 <ComboBoxItem x:Name="domeActiveVisualizerSplat" Content='Splat' />
+                                <ComboBoxItem x:Name="domeActiveVisualizerTVStatic" Content='TV Static' />
                             </ComboBox>
                         </Grid>
                         <Grid Height="24">

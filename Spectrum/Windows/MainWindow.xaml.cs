@@ -242,7 +242,8 @@ namespace Spectrum {
         [4] = this.domeActiveVisualizerQuaternionTest,
         [5] = this.domeActiveVisualizerQuaternionMultiTest,
         [6] = this.domeActiveVisualizerQuaternionPaintbrush,
-        [7] = this.domeActiveVisualizerSplat
+        [7] = this.domeActiveVisualizerSplat,
+        [8] = this.domeActiveVisualizerTVStatic
       }, true));
       this.Bind("domeEnabled", this.domeEnabled, CheckBox.IsCheckedProperty);
       this.Bind("domeSimulationEnabled", this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
