@@ -97,6 +97,12 @@ namespace Spectrum.Web {
         new EnumIntParameter("domeActiveVis", user, DomeVisNames,
           c => c.domeActiveVis, (c, v) => c.domeActiveVis = v),
 
+        // Orientation controls — mirrors the "Display contours" checkbox in the
+        // VJ HUD (VJHUDWindow orientationContours), toggling contour lines in the
+        // Quaternion Paintbrush visualizer.
+        new BoolParameter("orientationShowContours", user,
+          c => c.orientationShowContours, (c, v) => c.orientationShowContours = v),
+
         // Stage / global flash
         new DoubleParameter("stageTracerSpeed", user, 0.0, 4.0,
           c => c.stageTracerSpeed, (c, v) => c.stageTracerSpeed = v),
