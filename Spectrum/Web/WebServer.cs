@@ -163,6 +163,13 @@ namespace Spectrum.Web {
       app.MapPut("/api/parameters/{key}", (string key, HttpContext ctx) =>
         this.HandleWrite(key, ctx, ControlRole.User));
 
+      // Read-only wand status for the user surface's slimmed-down "Wand status"
+      // box (ID/Type/Motion/Quality). Same snapshot the maintenance table polls,
+      // exposed under the user namespace so the user page never reaches into
+      // /api/maintenance/*.
+      app.MapGet("/api/wands", () =>
+        Results.Json(this.wands.Snapshot()));
+
       // ---- Maintenance scope (same host, just the full parameter set) ----
       app.MapGet("/api/maintenance/parameters", (HttpContext ctx) =>
         Results.Json(this.controls.Describe(ControlRole.Maintenance)));
