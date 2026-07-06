@@ -274,10 +274,29 @@ namespace Spectrum.Visualizers {
     // spotlight (the configured one if it's moving, else the first moving wand
     // seen). Only called when movingDevices is non-empty.
     private void BuildActiveDevices() {
-      // Poi take over the dome only when every *moving* device is a poi — a
-      // wand lying still with its transmitter on shouldn't veto poi mode.
+      // If a specific wand is spotlighted and it is currently moving, only that
+      // wand contributes to the visualization; every other device is ignored.
+      // When the spotlight is -1 (or the chosen wand isn't moving), every moving
+      // wand renders.
+      int spotlight = config.orientationDeviceSpotlight;
+      bool spotlightMoving = false;
+      if (spotlight >= 0) {
+        foreach (var kvp in movingDevices) {
+          if (kvp.Key == spotlight) {
+            spotlightMoving = true;
+            break;
+          }
+        }
+      }
+
+      // Poi take over the dome only when every *moving* device we render is a
+      // poi — a wand lying still with its transmitter on shouldn't veto poi
+      // mode, and a spotlighted wand decides poi mode on its own.
       bool onlyPoi = true;
       foreach (var kvp in movingDevices) {
+        if (spotlightMoving && kvp.Key != spotlight) {
+          continue;
+        }
         if (kvp.Value.deviceType != 2) {
           onlyPoi = false;
           break;
@@ -286,6 +305,12 @@ namespace Spectrum.Visualizers {
 
       spotlightId = -1;
       foreach (var kvp in movingDevices) {
+        // Spotlight: when one wand is selected, skip every other device so only
+        // it renders.
+        if (spotlightMoving && kvp.Key != spotlight) {
+          continue;
+        }
+
         OrientationDevice device = kvp.Value;
         DeviceFrame frame = new DeviceFrame();
         frame.rotation = device.currentRotation();

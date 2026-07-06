@@ -246,8 +246,8 @@ namespace Spectrum {
       // Disabled device removal - can we run this less often?
       var currentTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
       if ((currentTime - lastCheckedDevices) > DEVICE_TIMEOUT_MS) {
+        List<int> removedDevices = new List<int>();
         lock (mLock) {
-          List<int> removedDevices = new List<int>();
           foreach (KeyValuePair<int, long> kvp in lastSeen) {
             if ((currentTime - kvp.Value) > DEVICE_TIMEOUT_MS) {
               devices.Remove(kvp.Key);
@@ -258,6 +258,14 @@ namespace Spectrum {
           foreach (int deviceId in removedDevices) {
             lastSeen.Remove(deviceId);
           }
+        }
+        // If the wand currently chosen as the orientation "spotlight" has
+        // disconnected, clear the choice back to -1 so the dome renders every
+        // connected wand again rather than a device that is no longer present.
+        // Done outside mLock so PropertyChanged isn't raised under the device
+        // lock. -1/-2 never match a real device id, so idle/all stay untouched.
+        if (removedDevices.Contains(config.orientationDeviceSpotlight)) {
+          config.orientationDeviceSpotlight = -1;
         }
         lastCheckedDevices = currentTime;
       }

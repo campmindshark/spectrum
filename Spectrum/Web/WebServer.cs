@@ -164,11 +164,30 @@ namespace Spectrum.Web {
         this.HandleWrite(key, ctx, ControlRole.User));
 
       // Read-only wand status for the user surface's slimmed-down "Wand status"
-      // box (ID/Type/Motion/Quality). Same snapshot the maintenance table polls,
-      // exposed under the user namespace so the user page never reaches into
-      // /api/maintenance/*.
+      // box (ID/Type/Motion/Quality). Wraps the same row snapshot the
+      // maintenance table polls together with the current spotlight value, so
+      // the user page can reflect which spotlight radio is selected (the rows
+      // alone can't distinguish -1/all from -2/idle). Exposed under the user
+      // namespace so the user page never reaches into /api/maintenance/*.
       app.MapGet("/api/wands", () =>
-        Results.Json(this.wands.Snapshot()));
+        Results.Json(new {
+          spotlight = this.wands.CurrentSpotlight(),
+          rows = this.wands.Snapshot(),
+        }));
+
+      // Set the orientation "spotlight" wand from the user surface's wand view
+      // (one radio per connected device). deviceId = -1 clears the spotlight so
+      // every wand renders again; -2 forces the dome idle (every wand ignored,
+      // screen-saver on). Momentary config write, marshaled through the gateway
+      // like the native VJ HUD text box — no advisory lease.
+      app.MapPost("/api/wands/spotlight", (SpotlightBody body) => {
+        if (body == null) {
+          return Results.BadRequest(
+            new { error = "body must be {\"deviceId\": <int>}" });
+        }
+        this.wands.SetSpotlight(body.deviceId);
+        return Results.Ok();
+      });
 
       // ---- Maintenance scope (same host, just the full parameter set) ----
       app.MapGet("/api/maintenance/parameters", (HttpContext ctx) =>
@@ -441,6 +460,10 @@ namespace Spectrum.Web {
 
     private sealed class TempoBody {
       public double bpm { get; set; }
+    }
+
+    private sealed class SpotlightBody {
+      public int deviceId { get; set; }
     }
 
     private sealed class AcquireBody {

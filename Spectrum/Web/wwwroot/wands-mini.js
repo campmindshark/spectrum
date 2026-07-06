@@ -28,12 +28,43 @@
     { good: "#ddd", fair: "#ffd24d", poor: "#ff6b6b", wait: "#ddd" };
   const QUALITY_LABEL = { good: "Good", fair: "Fair", poor: "Poor", wait: "…" };
 
-  const COLUMNS = ["ID", "Type", "Motion", "Quality"];
+  const COLUMNS = ["ID", "Type", "Motion", "Quality", "Spotlight"];
 
   let summaryEl = null, tbodyEl = null, timer = null;
+  let spotlightAll = null, spotlightIdle = null;
 
   function status(msg, isError) {
     if (window.spectrumStatus) window.spectrumStatus(msg, isError);
+  }
+
+  // Radio group name shared by the "All wands" option and the per-row radios so
+  // they act as one mutually-exclusive selection.
+  const SPOTLIGHT_GROUP = "wand-spotlight";
+
+  // Make one wand the orientation "spotlight" (only that wand's motion drives
+  // the dome), -1 to clear it and render every connected wand, or -2 to force
+  // the dome idle (ignore every wand and run the screen-saver). The server also
+  // clears it to -1 on its own if the chosen wand disconnects.
+  async function setSpotlight(deviceId) {
+    try {
+      const res = await fetch("/api/wands/spotlight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId }),
+      });
+      status(
+        res.ok
+          ? (deviceId === -2
+              ? "Spotlight: idle (no wands)."
+              : deviceId === -1
+                ? "Spotlight: all wands."
+                : `Spotlight: wand ${deviceId}.`)
+          : `spotlight: ${res.status}`,
+        !res.ok
+      );
+    } catch (e) {
+      status(`spotlight: ${e}`, true);
+    }
   }
 
   function quality(row) {
@@ -75,6 +106,36 @@
     summaryEl.textContent = "Listening for devices…";
     container.appendChild(summaryEl);
 
+    // Spotlight selector: an "All wands" option (config -1, the default) and an
+    // "Idle" option (config -2 — ignore every wand and run the screen-saver),
+    // both sharing a radio group with the per-wand radios rendered in the
+    // table's Spotlight column below. Picking a wand makes only that device's
+    // orientation drive the dome.
+    const spotlightRow = document.createElement("div");
+    spotlightRow.className = "wand-summary";
+
+    const allLabel = document.createElement("label");
+    allLabel.style.marginRight = "1rem";
+    spotlightAll = document.createElement("input");
+    spotlightAll.type = "radio";
+    spotlightAll.name = SPOTLIGHT_GROUP;
+    spotlightAll.checked = true;
+    spotlightAll.addEventListener("change", () => setSpotlight(-1));
+    allLabel.appendChild(spotlightAll);
+    allLabel.appendChild(document.createTextNode(" Spotlight: all wands"));
+    spotlightRow.appendChild(allLabel);
+
+    const idleLabel = document.createElement("label");
+    spotlightIdle = document.createElement("input");
+    spotlightIdle.type = "radio";
+    spotlightIdle.name = SPOTLIGHT_GROUP;
+    spotlightIdle.addEventListener("change", () => setSpotlight(-2));
+    idleLabel.appendChild(spotlightIdle);
+    idleLabel.appendChild(document.createTextNode(" Idle (no wands)"));
+    spotlightRow.appendChild(idleLabel);
+
+    container.appendChild(spotlightRow);
+
     const table = document.createElement("table");
     table.className = "wand-table";
     const thead = document.createElement("thead");
@@ -91,12 +152,19 @@
     container.appendChild(table);
   }
 
-  function update(rows) {
+  function update(rows, spotlight) {
     const moving = rows.filter((r) => r.isMoving).length;
     summaryEl.textContent = rows.length === 0
       ? "No wands connected."
       : `${rows.length} wand${rows.length === 1 ? "" : "s"} connected, ` +
         `${moving} moving.`;
+    // With no connected wand as the spotlight, the choice is one of the two
+    // no-wand options: "Idle" for -2, otherwise "All wands" (-1, or a stale
+    // device id the server is about to reset to -1). When a wand is spotlit its
+    // own per-row radio below is checked instead, so neither of these is.
+    const spotWand = rows.some((r) => r.isSpotlight);
+    spotlightIdle.checked = !spotWand && spotlight === -2;
+    spotlightAll.checked = !spotWand && spotlight !== -2;
     tbodyEl.innerHTML = "";
     rows.forEach((row) => {
       const tr = document.createElement("tr");
@@ -106,6 +174,15 @@
         td.textContent = val;
         tr.appendChild(td);
       });
+      // Spotlight column: a radio that makes this wand the sole dome driver.
+      const spotTd = document.createElement("td");
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = SPOTLIGHT_GROUP;
+      radio.checked = row.isSpotlight;
+      radio.addEventListener("change", () => setSpotlight(row.deviceId));
+      spotTd.appendChild(radio);
+      tr.appendChild(spotTd);
       tbodyEl.appendChild(tr);
     });
   }
@@ -114,7 +191,10 @@
     try {
       const res = await fetch("/api/wands");
       if (!res.ok) { status(`wands: ${res.status}`, true); }
-      else update(await res.json());
+      else {
+        const data = await res.json();
+        update(data.rows, data.spotlight);
+      }
     } catch (e) {
       status(`wands: ${e}`, true);
     }

@@ -29,6 +29,10 @@ namespace Spectrum.Web {
       // Whether the device's motion detection considers it physically in use;
       // still-but-transmitting devices are excluded from the visualization.
       public bool isMoving { get; set; }
+      // Whether this device is the current orientation "spotlight" — the single
+      // wand whose orientation drives the dome, all others ignored. At most one
+      // row is true; none are when the spotlight is -1 (render every wand).
+      public bool isSpotlight { get; set; }
       public double w { get; set; }
       public double x { get; set; }
       public double y { get; set; }
@@ -71,6 +75,7 @@ namespace Spectrum.Web {
           typeName = WandTypeNames.Of(device.deviceType),
           actionFlag = device.actionFlag,
           isMoving = device.isMoving,
+          isSpotlight = kvp.Key == this.config.orientationDeviceSpotlight,
           w = q.W, x = q.X, y = q.Y, z = q.Z,
           hasSpeed = device.hasSpeed,
           speed = device.avgDistanceShort,
@@ -111,6 +116,25 @@ namespace Spectrum.Web {
     // idempotent, so — like the native button — it takes no advisory lease.
     public void CalibrateAll() {
       this.gateway.Post(() => this.config.orientationCalibrate = true);
+    }
+
+    // The current spotlight config value: -2 (idle — force the screen-saver and
+    // ignore every wand), -1 (all wands render), or a device id. Read straight
+    // off the shared config; the row list alone can't tell -1 from -2 (neither
+    // matches a real device id), so the user surface needs this to reflect which
+    // radio is selected. A plain read of an int property — no lock needed.
+    public int CurrentSpotlight() {
+      return this.config.orientationDeviceSpotlight;
+    }
+
+    // Sets which wand is the orientation "spotlight" — the single device whose
+    // orientation drives the dome, with every other wand ignored. -1 clears the
+    // spotlight so all connected wands render again; -2 forces the dome idle
+    // (every wand ignored, screen-saver on). Marshaled through the gateway so it
+    // lands on the operator/UI thread like a native write, matching the VJ HUD's
+    // orientationDeviceSpotlight text box.
+    public void SetSpotlight(int deviceId) {
+      this.gateway.Post(() => this.config.orientationDeviceSpotlight = deviceId);
     }
   }
 }
