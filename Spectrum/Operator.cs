@@ -46,6 +46,16 @@ namespace Spectrum {
     private readonly List<Visualizer> alwaysRunVisualizers =
       new List<Visualizer>();
 
+    // Visualizers that have thrown too many times are quarantined: the
+    // scheduling pass skips them so a consistently-broken visualizer can't take
+    // the output down every frame (and can't spam the log). Keyed by visualizer,
+    // valued by cumulative throw count; once the count crosses
+    // VisualizerQuarantineThreshold the visualizer is treated as unavailable.
+    // Only touched on the operator thread, so it needs no synchronization.
+    private const int VisualizerQuarantineThreshold = 10;
+    private readonly Dictionary<Visualizer, int> visualizerFailureCounts =
+      new Dictionary<Visualizer, int>();
+
     public Operator(Configuration config) {
       this.config = config;
 
@@ -232,6 +242,12 @@ namespace Spectrum {
             if (!AllInputsEnabled(visualizer)) {
               continue;
             }
+            // Skip visualizers that have been quarantined for throwing too
+            // often, so the output falls through to a lower-priority tier
+            // instead of going dark every frame.
+            if (this.IsQuarantined(visualizer)) {
+              continue;
+            }
             int pri = visualizer.Priority;
             bool canAdd = false;
             if (pri == -1) {
@@ -278,17 +294,63 @@ namespace Spectrum {
         }
 
         foreach (var input in activeInputs) {
-          input.OperatorUpdate();
+          try {
+            input.OperatorUpdate();
+          } catch (Exception e) {
+            // An unhandled throw on this background thread would terminate the
+            // whole process; for a live installation the loop must survive it.
+            Debug.WriteLine(
+              "Operator: input " + input.GetType().Name +
+              " threw in OperatorUpdate: " + e);
+          }
         }
 
         foreach (var visualizer in activeVisualizers) {
-          visualizer.Visualize();
+          try {
+            visualizer.Visualize();
+          } catch (Exception e) {
+            // Keep the engine running even if one visualizer throws mid-frame
+            // (see findings 1-2 in docs/viz_issues.md for reachable render-path
+            // throws). Repeat offenders are quarantined so they stop taking the
+            // output down and stop spamming the log.
+            this.RecordVisualizerFailure(visualizer, e);
+          }
         }
 
         foreach (var output in activeOutputs) {
-          output.OperatorUpdate();
+          try {
+            output.OperatorUpdate();
+          } catch (Exception e) {
+            Debug.WriteLine(
+              "Operator: output " + output.GetType().Name +
+              " threw in OperatorUpdate: " + e);
+          }
         }
       }
+    }
+
+    // Tracks a visualizer throw and quarantines the visualizer once it has
+    // failed VisualizerQuarantineThreshold times, so a persistently-broken
+    // visualizer is dropped from scheduling instead of throwing every frame.
+    private void RecordVisualizerFailure(Visualizer visualizer, Exception e) {
+      this.visualizerFailureCounts.TryGetValue(visualizer, out int count);
+      count++;
+      this.visualizerFailureCounts[visualizer] = count;
+      if (count == VisualizerQuarantineThreshold) {
+        Debug.WriteLine(
+          "Operator: quarantining visualizer " + visualizer.GetType().Name +
+          " after " + count + " failures; last error: " + e);
+      } else if (count < VisualizerQuarantineThreshold) {
+        Debug.WriteLine(
+          "Operator: visualizer " + visualizer.GetType().Name +
+          " threw in Visualize: " + e);
+      }
+    }
+
+    private bool IsQuarantined(Visualizer visualizer) {
+      return this.visualizerFailureCounts.TryGetValue(
+        visualizer, out int count
+      ) && count >= VisualizerQuarantineThreshold;
     }
 
     // Blocks until roughly one frame budget (1/MaxFramesPerSecond) has elapsed
