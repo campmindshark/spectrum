@@ -20,13 +20,4 @@ namespace Spectrum.Base {
     public int color;
   }
 
-  public struct BarLEDCommand {
-    public bool isFlush;
-    // rest doesn't matter if isFlush
-    // isRunner: false - infinity strip(s); true - runner strip
-    public bool isRunner;
-    public int ledIndex;
-    public int color;
-  }
-
 }

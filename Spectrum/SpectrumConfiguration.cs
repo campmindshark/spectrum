@@ -52,11 +52,6 @@ namespace Spectrum {
       get => _midiInputEnabled;
       set => SetField(ref _midiInputEnabled, value);
     }
-    private bool _barEnabled = false;
-    public bool barEnabled {
-      get => _barEnabled;
-      set => SetField(ref _barEnabled, value);
-    }
 
     private bool _midiInputInSeparateThread = false;
     public bool midiInputInSeparateThread {
@@ -67,11 +62,6 @@ namespace Spectrum {
     public bool domeOutputInSeparateThread {
       get => _domeOutputInSeparateThread;
       set => SetField(ref _domeOutputInSeparateThread, value);
-    }
-    private bool _barOutputInSeparateThread = false;
-    public bool barOutputInSeparateThread {
-      get => _barOutputInSeparateThread;
-      set => SetField(ref _barOutputInSeparateThread, value);
     }
 
     // Whenever adding one of these, also update MainWindow.configPropertiesIgnored
@@ -87,49 +77,6 @@ namespace Spectrum {
     public int domeBeagleboneOPCFPS {
       get => _domeBeagleboneOPCFPS;
       set => SetField(ref _domeBeagleboneOPCFPS, value);
-    }
-    private int _barBeagleboneOPCFPS = 0;
-    [XmlIgnore]
-    public int barBeagleboneOPCFPS {
-      get => _barBeagleboneOPCFPS;
-      set => SetField(ref _barBeagleboneOPCFPS, value);
-    }
-
-
-    private string _barBeagleboneOPCAddress = "";
-    public string barBeagleboneOPCAddress {
-      get => _barBeagleboneOPCAddress;
-      set => SetField(ref _barBeagleboneOPCAddress, value);
-    }
-    private bool _barSimulationEnabled = false;
-    public bool barSimulationEnabled {
-      get => _barSimulationEnabled;
-      set => SetField(ref _barSimulationEnabled, value);
-    }
-    private int _barInfinityWidth = 0;
-    public int barInfinityWidth {
-      get => _barInfinityWidth;
-      set => SetField(ref _barInfinityWidth, value);
-    }
-    private int _barInfinityLength = 0;
-    public int barInfinityLength {
-      get => _barInfinityLength;
-      set => SetField(ref _barInfinityLength, value);
-    }
-    private int _barRunnerLength = 0;
-    public int barRunnerLength {
-      get => _barRunnerLength;
-      set => SetField(ref _barRunnerLength, value);
-    }
-    private double _barBrightness = 0.1;
-    public double barBrightness {
-      get => _barBrightness;
-      set => SetField(ref _barBrightness, value);
-    }
-    private int _barTestPattern = 0;
-    public int barTestPattern {
-      get => _barTestPattern;
-      set => SetField(ref _barTestPattern, value);
     }
 
     private string _domeBeagleboneOPCAddress = "";
@@ -335,9 +282,6 @@ namespace Spectrum {
     [XmlIgnore]
     public ConcurrentQueue<DomeLEDCommand> domeCommandQueue { get; } =
       new ConcurrentQueue<DomeLEDCommand>();
-    [XmlIgnore]
-    public ConcurrentQueue<BarLEDCommand> barCommandQueue { get; } =
-      new ConcurrentQueue<BarLEDCommand>();
 
     // 0 = human, 1 = Madmom, 2 = Pro DJ Link
     private int _beatInput = 0;

@@ -293,49 +293,6 @@
                     <CheckBox x:Name="domeThreadCheckbox" Content="Call LED dome in separate thread(s)" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
                 </Grid>
             </TabItem>
-            <TabItem Header="Bar">
-                <Grid>
-                    <Grid HorizontalAlignment="Left" Width="317">
-                        <Label Content="General" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
-                            <Grid>
-                                <CheckBox x:Name="barEnabled" Content="Enabled" VerticalAlignment="Top" IsChecked="False" FontWeight="Bold" Margin="0,3,0,0" />
-                                <CheckBox x:Name="barSimulationEnabled" Content="Simulate" VerticalAlignment="Top" Margin="150,3,0,0" IsChecked="False" Checked="OpenBarSimulator" Unchecked="CloseBarSimulator" />
-                                <Label Content="Long infinity strip" Margin="0,26,0,0" Padding="0" />
-                                <TextBox x:Name="barInfinityLength" Margin="104,26,0,0" Width="192" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                                <Label Content="Short infinity strip" HorizontalAlignment="Left" Padding="0" Margin="0,51,0,0" />
-                                <TextBox x:Name="barInfiniteWidth" Margin="104,51,0,0" Width="192" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                                <Label Content="Runner strip" HorizontalAlignment="Left" Padding="0" Margin="0,76,0,0" />
-                                <TextBox x:Name="barRunnerLength" Margin="104,76,0,0" Width="192" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                                <Label Content="Brightness" HorizontalAlignment="Left" Padding="0" Margin="0,101,0,0" />
-                                <Slider x:Name="barBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="100,101,0,0" VerticalAlignment="Top" Height="20" Width="160" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                                <Label x:Name="barBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="265,101,0,0" Padding="0" ContentStringFormat="F3" />
-                            </Grid>
-                        </Border>
-                    </Grid>
-                    <WrapPanel HorizontalAlignment="Right" Width="240" Margin="0,0,5,0">
-                        <Label Content="Hardware" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
-                            <Grid>
-                                <Label Content="Host and port" Padding="0" />
-                                <TextBox x:Name="barBeagleboneOPCHostAndPort" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="115" />
-                                <Label x:Name="barBeagleboneOPCFPSLabel" Content="0" VerticalAlignment="Top" Margin="197,0,-0.6,-0.6" Padding="5,2,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                            </Grid>
-                        </Border>
-                        <Label Content="Diagnostics" HorizontalAlignment="Left" Margin="4,1,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
-                            <Grid>
-                                <Label Content="Test pattern" Margin="0,3,0,0" Padding="0" />
-                                <ComboBox x:Name="barTestPattern" HorizontalAlignment="Left" VerticalAlignment="Top" Width="140" Margin="80,0,0,0">
-                                    <ComboBoxItem x:Name="barTestPatternNone" Content="None" IsSelected="True" />
-                                    <ComboBoxItem x:Name="barTestPatternFlashColors" Content="Flash colors" />
-                                </ComboBox>
-                            </Grid>
-                        </Border>
-                    </WrapPanel>
-                    <CheckBox x:Name="barThreadCheckbox" Content="Call bar in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
-                </Grid>
-            </TabItem>
         </TabControl>
     </Grid>
 </Window>

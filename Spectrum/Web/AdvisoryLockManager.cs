@@ -160,7 +160,6 @@ namespace Spectrum.Web {
     public static string ResourceForKey(string key) {
       switch (key) {
         case "domeTestPattern": return "domeTest";
-        case "barTestPattern": return "barTest";
         default: return null;
       }
     }

@@ -53,8 +53,6 @@ namespace Spectrum.Web {
           "operatorFPS", c => c.operatorFPS),
         new TelemetryItem("domeOPCFPS", TelemetrySource.Config,
           "domeBeagleboneOPCFPS", c => c.domeBeagleboneOPCFPS),
-        new TelemetryItem("barOPCFPS", TelemetrySource.Config,
-          "barBeagleboneOPCFPS", c => c.barBeagleboneOPCFPS),
         new TelemetryItem("bpm", TelemetrySource.Beat,
           "BPMString", c => c.beatBroadcaster.BPMString),
       };

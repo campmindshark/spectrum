@@ -35,10 +35,6 @@ namespace Spectrum.Web {
       "None", "Flash Colors By Strut", "Iterate Through Struts",
       "Strip Test", "Full Color Flash",
     };
-    // Bar test patterns use this two-option set.
-    private static readonly IReadOnlyList<string> FlashTestPatternNames = new[] {
-      "None", "Flash Colors",
-    };
     // BPM source selection (beatInput index) — mirrors the Tempo radio group in
     // the VJ HUD (VJHUDWindow: tempoSelectorHuman/Madmom/Link).
     private static readonly IReadOnlyList<string> BeatInputNames = new[] {
@@ -58,8 +54,6 @@ namespace Spectrum.Web {
           c => c.domeBrightness, (c, v) => c.domeBrightness = v),
         new DoubleParameter("domeMaxBrightness", user, 0.0, 1.0,
           c => c.domeMaxBrightness, (c, v) => c.domeMaxBrightness = v),
-        new DoubleParameter("barBrightness", user, 0.0, 1.0,
-          c => c.barBrightness, (c, v) => c.barBrightness = v),
 
         // Dome global speeds/effects
         new DoubleParameter("domeGlobalFadeSpeed", user, 0.0, 3.0,
@@ -116,8 +110,6 @@ namespace Spectrum.Web {
         // Device enable flags
         new BoolParameter("domeEnabled", maint,
           c => c.domeEnabled, (c, v) => c.domeEnabled = v),
-        new BoolParameter("barEnabled", maint,
-          c => c.barEnabled, (c, v) => c.barEnabled = v),
         new BoolParameter("midiInputEnabled", maint,
           c => c.midiInputEnabled, (c, v) => c.midiInputEnabled = v),
         new BoolParameter("vjHUDEnabled", maint,
@@ -126,14 +118,10 @@ namespace Spectrum.Web {
         // Simulators
         new BoolParameter("domeSimulationEnabled", maint,
           c => c.domeSimulationEnabled, (c, v) => c.domeSimulationEnabled = v),
-        new BoolParameter("barSimulationEnabled", maint,
-          c => c.barSimulationEnabled, (c, v) => c.barSimulationEnabled = v),
 
         // OPC addresses
         new StringParameter("domeBeagleboneOPCAddress", maint,
           c => c.domeBeagleboneOPCAddress, (c, v) => c.domeBeagleboneOPCAddress = v),
-        new StringParameter("barBeagleboneOPCAddress", maint,
-          c => c.barBeagleboneOPCAddress, (c, v) => c.barBeagleboneOPCAddress = v),
 
         // Wand USB-CDC receiver COM port ("" = no serial input). The receiver
         // reacts live via PropertyChanged; the port list is served separately by
@@ -146,26 +134,16 @@ namespace Spectrum.Web {
           c => c.midiInputInSeparateThread, (c, v) => c.midiInputInSeparateThread = v),
         new BoolParameter("domeOutputInSeparateThread", maint,
           c => c.domeOutputInSeparateThread, (c, v) => c.domeOutputInSeparateThread = v),
-        new BoolParameter("barOutputInSeparateThread", maint,
-          c => c.barOutputInSeparateThread, (c, v) => c.barOutputInSeparateThread = v),
 
         // Test patterns (modal — will get advisory locks in step 5)
         new EnumIntParameter("domeTestPattern", maint, DomeTestPatternNames,
           c => c.domeTestPattern, (c, v) => c.domeTestPattern = v),
-        new EnumIntParameter("barTestPattern", maint, FlashTestPatternNames,
-          c => c.barTestPattern, (c, v) => c.barTestPattern = v),
 
-        // Misc dome/bar geometry & timing
+        // Misc dome geometry & timing
         new IntParameter("domeVolumeAnimationSize", maint, 1, 16,
           c => c.domeVolumeAnimationSize, (c, v) => c.domeVolumeAnimationSize = v),
         new IntParameter("domeAutoFlashDelay", maint, 0, 1000,
           c => c.domeAutoFlashDelay, (c, v) => c.domeAutoFlashDelay = v),
-        new IntParameter("barInfinityWidth", maint, 0, 1000,
-          c => c.barInfinityWidth, (c, v) => c.barInfinityWidth = v),
-        new IntParameter("barInfinityLength", maint, 0, 1000,
-          c => c.barInfinityLength, (c, v) => c.barInfinityLength = v),
-        new IntParameter("barRunnerLength", maint, 0, 1000,
-          c => c.barRunnerLength, (c, v) => c.barRunnerLength = v),
       };
 
       return new ParameterRegistry(descriptors);

@@ -559,10 +559,6 @@ namespace Spectrum.LEDs {
       }
     }
 
-    public void SetBarPixel(int pixelIndex, int color) {
-      this.SetDevicePixel(5, pixelIndex, color);
-    }
-
     public void ReserveStrut(int strutIndex) {
       if (this.reservedStruts.Contains(strutIndex)) {
         throw new Exception("User attempted to reserve unavailable strut");

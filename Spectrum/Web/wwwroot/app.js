@@ -433,7 +433,7 @@
   const telemetryEl = document.getElementById("telemetry");
   const telemetryRows = {};
   const TELEMETRY_LABELS = {
-    operatorFPS: "Engine FPS", domeOPCFPS: "Dome OPC", barOPCFPS: "Bar OPC",
+    operatorFPS: "Engine FPS", domeOPCFPS: "Dome OPC",
     bpm: "BPM",
   };
   function applyTelemetry(key, value) {

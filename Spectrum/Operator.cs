@@ -65,8 +65,6 @@ namespace Spectrum {
       this.outputs = new List<Output>();
       var dome = new LEDDomeOutput(config);
       this.outputs.Add(dome);
-      var bar = new LEDBarOutput(config, dome);
-      this.outputs.Add(bar);
 
       this.visualizers = new List<Visualizer>();
       this.visualizers.Add(new LEDDomeMidiTestVisualizer(
@@ -145,10 +143,6 @@ namespace Spectrum {
         audio,
         midi,
         dome
-      ));
-      this.visualizers.Add(new LEDBarFlashColorsDiagnosticVisualizer(
-        this.config,
-        bar
       ));
     }
 

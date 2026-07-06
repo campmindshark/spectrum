@@ -6,22 +6,14 @@
   <ledBoardEnabled>false</ledBoardEnabled>
   <domeEnabled>true</domeEnabled>
   <midiInputEnabled>false</midiInputEnabled>
-  <barEnabled>true</barEnabled>
   <huesOutputInSeparateThread>false</huesOutputInSeparateThread>
   <ledBoardOutputInSeparateThread>true</ledBoardOutputInSeparateThread>
   <midiInputInSeparateThread>false</midiInputInSeparateThread>
   <domeOutputInSeparateThread>true</domeOutputInSeparateThread>
-  <barOutputInSeparateThread>true</barOutputInSeparateThread>
   <boardBeagleboneOPCAddress>192.168.7.2:7890</boardBeagleboneOPCAddress>
   <boardRowLength>30</boardRowLength>
   <boardRowsPerStrip>5</boardRowsPerStrip>
   <boardBrightness>0.326415094339623</boardBrightness>
-  <barSimulationEnabled>false</barSimulationEnabled>
-  <barInfinityWidth>50</barInfinityWidth>
-  <barInfinityLength>50</barInfinityLength>
-  <barRunnerLength>50</barRunnerLength>
-  <barBrightness>0.814093959731544</barBrightness>
-  <barTestPattern>1</barTestPattern>
   <domeBeagleboneOPCAddress>192.168.1.69:7890</domeBeagleboneOPCAddress>
   <domeSimulationEnabled>false</domeSimulationEnabled>
   <domeMaxBrightness>1</domeMaxBrightness>

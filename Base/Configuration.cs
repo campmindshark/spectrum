@@ -14,29 +14,15 @@ namespace Spectrum.Base {
 
     bool domeEnabled { get; set; }
     bool midiInputEnabled { get; set; }
-    bool barEnabled { get; set; }
 
     // If this is true, we will poll the input/output APIs in a thread separate
     // to the one running the visualizers. If it is false, a single thread will
     // first poll the input/output APIs and then run the visualizers.
     bool midiInputInSeparateThread { get; set; }
     bool domeOutputInSeparateThread { get; set; }
-    bool barOutputInSeparateThread { get; set; }
 
     int operatorFPS { get; set; }
     int domeBeagleboneOPCFPS { get; set; }
-    int barBeagleboneOPCFPS { get; set; }
-
-
-    string barBeagleboneOPCAddress { get; set; }
-    bool barSimulationEnabled { get; set; }
-    // Dimensions (in terms of pixel count)
-    int barInfinityWidth { get; set; }
-    int barInfinityLength { get; set; }
-    int barRunnerLength { get; set; }
-    double barBrightness { get; set; }
-    // 0 - None, 1 - Flash colors
-    int barTestPattern { get; set; }
 
     string domeBeagleboneOPCAddress { get; set; }
 
@@ -100,7 +86,6 @@ namespace Spectrum.Base {
     // whole organizing principle here, but the UI needs to know what's going on
     // with LEDDomeOutput, and the config is the only reference they share.
     ConcurrentQueue<DomeLEDCommand> domeCommandQueue { get; }
-    ConcurrentQueue<BarLEDCommand> barCommandQueue { get; }
 
     // 0 = human, 1 = Madmom, 2 = Pro DJ Link
     int beatInput { get; set; }
