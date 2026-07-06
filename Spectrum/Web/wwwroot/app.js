@@ -434,7 +434,7 @@
   const telemetryRows = {};
   const TELEMETRY_LABELS = {
     operatorFPS: "Engine FPS", domeOPCFPS: "Dome OPC", barOPCFPS: "Bar OPC",
-    stageOPCFPS: "Stage OPC", bpm: "BPM",
+    bpm: "BPM",
   };
   function applyTelemetry(key, value) {
     if (!telemetryEl) return;

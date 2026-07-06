@@ -67,8 +67,6 @@ namespace Spectrum {
       this.outputs.Add(dome);
       var bar = new LEDBarOutput(config, dome);
       this.outputs.Add(bar);
-      var stage = new LEDStageOutput(config);
-      this.outputs.Add(stage);
 
       this.visualizers = new List<Visualizer>();
       this.visualizers.Add(new LEDDomeMidiTestVisualizer(
@@ -151,19 +149,6 @@ namespace Spectrum {
       this.visualizers.Add(new LEDBarFlashColorsDiagnosticVisualizer(
         this.config,
         bar
-      ));
-      this.visualizers.Add(new LEDStageFlashColorsDiagnosticVisualizer(
-        this.config,
-        stage
-      ));
-      this.visualizers.Add(new LEDStageTracerVisualizer(
-        this.config,
-        stage
-      ));
-      this.visualizers.Add(new LEDStageDepthLevelVisualizer(
-        this.config,
-        audio,
-        stage
       ));
     }
 

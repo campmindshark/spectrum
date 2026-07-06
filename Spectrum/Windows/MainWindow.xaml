@@ -336,45 +336,6 @@
                     <CheckBox x:Name="barThreadCheckbox" Content="Call bar in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
                 </Grid>
             </TabItem>
-            <TabItem Header="Stage">
-                <Grid>
-                    <Grid HorizontalAlignment="Left" Width="317">
-                        <Label Content="General" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
-                            <Grid>
-                                <CheckBox x:Name="stageEnabled" Content="Enabled" VerticalAlignment="Top" IsChecked="False" FontWeight="Bold" Margin="0,3,0,0" />
-                                <CheckBox x:Name="stageSimulationEnabled" Content="Simulate" VerticalAlignment="Top" Margin="150,3,0,0" IsChecked="False" Checked="OpenStageSimulator" Unchecked="CloseStageSimulator" />
-                                <Label Content="Side lengths" Margin="0,26,0,0" Padding="0" />
-                                <TextBox x:Name="stageSideLengths" Margin="94,26,0,0" Width="202" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                                <Label Content="Brightness" HorizontalAlignment="Left" Padding="0" Margin="0,51,0,0" />
-                                <Slider x:Name="stageBrightnessSlider" Value="0.1" HorizontalAlignment="Left" Margin="90,51,0,0" VerticalAlignment="Top" Height="20" Width="170" Maximum="1.0" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                                <Label x:Name="stageBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="265,51,0,0" Padding="0" ContentStringFormat="F3" />
-                            </Grid>
-                        </Border>
-                    </Grid>
-                    <WrapPanel HorizontalAlignment="Right" Width="240" Margin="0,0,5,0">
-                        <Label Content="Hardware" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
-                            <Grid>
-                                <Label Content="Host and port" Padding="0" />
-                                <TextBox x:Name="stageBeagleboneOPCHostAndPort" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="115" />
-                                <Label x:Name="stageBeagleboneOPCFPSLabel" Content="0" VerticalAlignment="Top" Margin="197,0,-0.6,-0.6" Padding="5,2,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                            </Grid>
-                        </Border>
-                        <Label Content="Diagnostics" HorizontalAlignment="Left" Margin="4,1,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
-                            <Grid>
-                                <Label Content="Test pattern" Margin="0,3,0,0" Padding="0" />
-                                <ComboBox x:Name="stageTestPattern" HorizontalAlignment="Left" VerticalAlignment="Top" Width="140" Margin="80,0,0,0">
-                                    <ComboBoxItem x:Name="stageTestPatternNone" Content="None" IsSelected="True" />
-                                    <ComboBoxItem x:Name="stageTestPatternFlashColors" Content="Flash colors" />
-                                </ComboBox>
-                            </Grid>
-                        </Border>
-                    </WrapPanel>
-                    <CheckBox x:Name="stageThreadCheckbox" Content="Call stage in separate thread" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
-                </Grid>
-            </TabItem>
         </TabControl>
     </Grid>
 </Window>

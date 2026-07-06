@@ -477,18 +477,6 @@
                             <Label x:Name="domeRadialCenterDistanceLabel" Content="1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
                         </Grid>
                         <Grid Height="24">
-              <Label Content="Stage 1" Margin="-2,3,2.4,0" Padding="0" />
-                            <ComboBox x:Name="stagePrimaryRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
-                                <ComboBoxItem x:Name="sprs0" Content="0" IsSelected="True" />
-                                <ComboBoxItem x:Name="sprs1" Content="1/8" />
-                                <ComboBoxItem x:Name="sprs2" Content="1/4" />
-                                <ComboBoxItem x:Name="sprs3" Content="1/2" />
-                                <ComboBoxItem x:Name="sprs4" Content="1" />
-                                <ComboBoxItem x:Name="sprs5" Content="2" />
-                                <ComboBoxItem x:Name="sprs6" Content="4" />
-                            </ComboBox>
-                        </Grid>
-                        <Grid Height="24">
               <Label Content="Flash" Margin="-2,3,2.4,0" Padding="0" />
                             <ComboBox x:Name="flashRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
                                 <ComboBoxItem x:Name="frs0" Content="0" IsSelected="True" />

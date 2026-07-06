@@ -57,11 +57,6 @@ namespace Spectrum {
       get => _barEnabled;
       set => SetField(ref _barEnabled, value);
     }
-    private bool _stageEnabled = false;
-    public bool stageEnabled {
-      get => _stageEnabled;
-      set => SetField(ref _stageEnabled, value);
-    }
 
     private bool _midiInputInSeparateThread = false;
     public bool midiInputInSeparateThread {
@@ -77,11 +72,6 @@ namespace Spectrum {
     public bool barOutputInSeparateThread {
       get => _barOutputInSeparateThread;
       set => SetField(ref _barOutputInSeparateThread, value);
-    }
-    private bool _stageOutputInSeparateThread = false;
-    public bool stageOutputInSeparateThread {
-      get => _stageOutputInSeparateThread;
-      set => SetField(ref _stageOutputInSeparateThread, value);
     }
 
     // Whenever adding one of these, also update MainWindow.configPropertiesIgnored
@@ -103,12 +93,6 @@ namespace Spectrum {
     public int barBeagleboneOPCFPS {
       get => _barBeagleboneOPCFPS;
       set => SetField(ref _barBeagleboneOPCFPS, value);
-    }
-    private int _stageBeagleboneOPCFPS = 0;
-    [XmlIgnore]
-    public int stageBeagleboneOPCFPS {
-      get => _stageBeagleboneOPCFPS;
-      set => SetField(ref _stageBeagleboneOPCFPS, value);
     }
 
 
@@ -146,37 +130,6 @@ namespace Spectrum {
     public int barTestPattern {
       get => _barTestPattern;
       set => SetField(ref _barTestPattern, value);
-    }
-
-    private string _stageBeagleboneOPCAddress = "";
-    public string stageBeagleboneOPCAddress {
-      get => _stageBeagleboneOPCAddress;
-      set => SetField(ref _stageBeagleboneOPCAddress, value);
-    }
-    private bool _stageSimulationEnabled = false;
-    public bool stageSimulationEnabled {
-      get => _stageSimulationEnabled;
-      set => SetField(ref _stageSimulationEnabled, value);
-    }
-    private int[] _stageSideLengths = null;
-    public int[] stageSideLengths {
-      get => _stageSideLengths;
-      set => SetField(ref _stageSideLengths, value);
-    }
-    private double _stageBrightness = 0.1;
-    public double stageBrightness {
-      get => _stageBrightness;
-      set => SetField(ref _stageBrightness, value);
-    }
-    private int _stageTestPattern = 0;
-    public int stageTestPattern {
-      get => _stageTestPattern;
-      set => SetField(ref _stageTestPattern, value);
-    }
-    private double _stageTracerSpeed = 1.0;
-    public double stageTracerSpeed {
-      get => _stageTracerSpeed;
-      set => SetField(ref _stageTracerSpeed, value);
     }
 
     private string _domeBeagleboneOPCAddress = "";
@@ -385,9 +338,6 @@ namespace Spectrum {
     [XmlIgnore]
     public ConcurrentQueue<BarLEDCommand> barCommandQueue { get; } =
       new ConcurrentQueue<BarLEDCommand>();
-    [XmlIgnore]
-    public ConcurrentQueue<StageLEDCommand> stageCommandQueue { get; } =
-      new ConcurrentQueue<StageLEDCommand>();
 
     // 0 = human, 1 = Madmom, 2 = Pro DJ Link
     private int _beatInput = 0;

@@ -161,7 +161,6 @@ namespace Spectrum.Web {
       switch (key) {
         case "domeTestPattern": return "domeTest";
         case "barTestPattern": return "barTest";
-        case "stageTestPattern": return "stageTest";
         default: return null;
       }
     }

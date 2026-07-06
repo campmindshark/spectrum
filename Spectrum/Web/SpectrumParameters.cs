@@ -35,7 +35,7 @@ namespace Spectrum.Web {
       "None", "Flash Colors By Strut", "Iterate Through Struts",
       "Strip Test", "Full Color Flash",
     };
-    // Bar/stage test patterns share the same two-option set.
+    // Bar test patterns use this two-option set.
     private static readonly IReadOnlyList<string> FlashTestPatternNames = new[] {
       "None", "Flash Colors",
     };
@@ -60,8 +60,6 @@ namespace Spectrum.Web {
           c => c.domeMaxBrightness, (c, v) => c.domeMaxBrightness = v),
         new DoubleParameter("barBrightness", user, 0.0, 1.0,
           c => c.barBrightness, (c, v) => c.barBrightness = v),
-        new DoubleParameter("stageBrightness", user, 0.0, 1.0,
-          c => c.stageBrightness, (c, v) => c.stageBrightness = v),
 
         // Dome global speeds/effects
         new DoubleParameter("domeGlobalFadeSpeed", user, 0.0, 3.0,
@@ -103,9 +101,7 @@ namespace Spectrum.Web {
         new BoolParameter("orientationShowContours", user,
           c => c.orientationShowContours, (c, v) => c.orientationShowContours = v),
 
-        // Stage / global flash
-        new DoubleParameter("stageTracerSpeed", user, 0.0, 4.0,
-          c => c.stageTracerSpeed, (c, v) => c.stageTracerSpeed = v),
+        // Global flash
         new DoubleParameter("flashSpeed", user, 0.0, 32.0,
           c => c.flashSpeed, (c, v) => c.flashSpeed = v),
         new IntParameter("colorPaletteIndex", user, 0, 7,
@@ -122,8 +118,6 @@ namespace Spectrum.Web {
           c => c.domeEnabled, (c, v) => c.domeEnabled = v),
         new BoolParameter("barEnabled", maint,
           c => c.barEnabled, (c, v) => c.barEnabled = v),
-        new BoolParameter("stageEnabled", maint,
-          c => c.stageEnabled, (c, v) => c.stageEnabled = v),
         new BoolParameter("midiInputEnabled", maint,
           c => c.midiInputEnabled, (c, v) => c.midiInputEnabled = v),
         new BoolParameter("vjHUDEnabled", maint,
@@ -134,16 +128,12 @@ namespace Spectrum.Web {
           c => c.domeSimulationEnabled, (c, v) => c.domeSimulationEnabled = v),
         new BoolParameter("barSimulationEnabled", maint,
           c => c.barSimulationEnabled, (c, v) => c.barSimulationEnabled = v),
-        new BoolParameter("stageSimulationEnabled", maint,
-          c => c.stageSimulationEnabled, (c, v) => c.stageSimulationEnabled = v),
 
         // OPC addresses
         new StringParameter("domeBeagleboneOPCAddress", maint,
           c => c.domeBeagleboneOPCAddress, (c, v) => c.domeBeagleboneOPCAddress = v),
         new StringParameter("barBeagleboneOPCAddress", maint,
           c => c.barBeagleboneOPCAddress, (c, v) => c.barBeagleboneOPCAddress = v),
-        new StringParameter("stageBeagleboneOPCAddress", maint,
-          c => c.stageBeagleboneOPCAddress, (c, v) => c.stageBeagleboneOPCAddress = v),
 
         // Wand USB-CDC receiver COM port ("" = no serial input). The receiver
         // reacts live via PropertyChanged; the port list is served separately by
@@ -158,16 +148,12 @@ namespace Spectrum.Web {
           c => c.domeOutputInSeparateThread, (c, v) => c.domeOutputInSeparateThread = v),
         new BoolParameter("barOutputInSeparateThread", maint,
           c => c.barOutputInSeparateThread, (c, v) => c.barOutputInSeparateThread = v),
-        new BoolParameter("stageOutputInSeparateThread", maint,
-          c => c.stageOutputInSeparateThread, (c, v) => c.stageOutputInSeparateThread = v),
 
         // Test patterns (modal — will get advisory locks in step 5)
         new EnumIntParameter("domeTestPattern", maint, DomeTestPatternNames,
           c => c.domeTestPattern, (c, v) => c.domeTestPattern = v),
         new EnumIntParameter("barTestPattern", maint, FlashTestPatternNames,
           c => c.barTestPattern, (c, v) => c.barTestPattern = v),
-        new EnumIntParameter("stageTestPattern", maint, FlashTestPatternNames,
-          c => c.stageTestPattern, (c, v) => c.stageTestPattern = v),
 
         // Misc dome/bar geometry & timing
         new IntParameter("domeVolumeAnimationSize", maint, 1, 16,

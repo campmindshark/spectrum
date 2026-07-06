@@ -55,8 +55,6 @@ namespace Spectrum.Web {
           "domeBeagleboneOPCFPS", c => c.domeBeagleboneOPCFPS),
         new TelemetryItem("barOPCFPS", TelemetrySource.Config,
           "barBeagleboneOPCFPS", c => c.barBeagleboneOPCFPS),
-        new TelemetryItem("stageOPCFPS", TelemetrySource.Config,
-          "stageBeagleboneOPCFPS", c => c.stageBeagleboneOPCFPS),
         new TelemetryItem("bpm", TelemetrySource.Beat,
           "BPMString", c => c.beatBroadcaster.BPMString),
       };

@@ -56,17 +56,14 @@ namespace Spectrum {
       "midiInputInSeparateThread",
       "domeOutputInSeparateThread",
       "barOutputInSeparateThread",
-      "stageOutputInSeparateThread",
     };
     private static readonly HashSet<string> configPropertiesIgnored = new HashSet<string>() {
       "operatorFPS",
       "domeBeagleboneOPCFPS",
       "barBeagleboneOPCFPS",
-      "stageBeagleboneOPCFPS",
       "beatBroadcaster",
       "domeCommandQueue",
       "barCommandQueue",
-      "stageCommandQueue",
       "domeCalibrationActive",
       "domeCalibrationCableIndex",
     };
@@ -79,7 +76,6 @@ namespace Spectrum {
     private DomeSimulatorWindow domeSimulatorWindow;
     private DomeMappingWindow domeMappingWindow;
     private BarSimulatorWindow barSimulatorWindow;
-    private StageSimulatorWindow stageSimulatorWindow;
     private VJHUDWindow vjHUDWindow;
     private WandStatusWindow wandStatusWindow;
     // Guards programmatic repopulate/preselect of wandSerialPortSelector so it
@@ -235,7 +231,6 @@ namespace Spectrum {
       this.Bind("midiInputInSeparateThread", this.midiThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("domeOutputInSeparateThread", this.domeThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("barOutputInSeparateThread", this.barThreadCheckbox, CheckBox.IsCheckedProperty);
-      this.Bind("stageOutputInSeparateThread", this.stageThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind("operatorFPS", this.operatorFPSLabel, Label.ContentProperty);
       this.Bind("operatorFPS", this.operatorFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
       this.Bind("domeBeagleboneOPCAddress", this.domeBeagleboneOPCHostAndPort, TextBox.TextProperty);
@@ -260,12 +255,6 @@ namespace Spectrum {
       this.Bind("barOutputInSeparateThread", this.barBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
       this.Bind("barOutputInSeparateThread", this.barBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("barTestPattern", this.barTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.barTestPatternNone, [1] = this.barTestPatternFlashColors }, true));
-      this.Bind("stageBeagleboneOPCAddress", this.stageBeagleboneOPCHostAndPort, TextBox.TextProperty);
-      this.Bind("stageBeagleboneOPCFPS", this.stageBeagleboneOPCFPSLabel, Label.ContentProperty);
-      this.Bind("stageBeagleboneOPCFPS", this.stageBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("stageOutputInSeparateThread", this.stageBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("stageOutputInSeparateThread", this.stageBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
-      this.Bind("stageTestPattern", this.stageTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.stageTestPatternNone, [1] = this.stageTestPatternFlashColors }, true));
       this.Bind("domeEnabled", this.domeEnabled, CheckBox.IsCheckedProperty);
       this.Bind("domeSimulationEnabled", this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
       this.Bind("domeMaxBrightness", this.domeMaxBrightnessSlider, Slider.ValueProperty);
@@ -281,11 +270,6 @@ namespace Spectrum {
       this.Bind("barRunnerLength", this.barRunnerLength, TextBox.TextProperty);
       this.Bind("barBrightness", this.barBrightnessSlider, Slider.ValueProperty);
       this.Bind("barBrightness", this.barBrightnessLabel, Label.ContentProperty);
-      this.Bind("stageEnabled", this.stageEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("stageSimulationEnabled", this.stageSimulationEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("stageSideLengths", this.stageSideLengths, TextBox.TextProperty, BindingMode.TwoWay, new StringJoinConverter());
-      this.Bind("stageBrightness", this.stageBrightnessSlider, Slider.ValueProperty);
-      this.Bind("stageBrightness", this.stageBrightnessLabel, Label.ContentProperty);
       this.Bind("vjHUDEnabled", this.vjHUDEnabled, CheckBox.IsCheckedProperty);
 
       this.InitWandSerialUI();
@@ -1382,21 +1366,6 @@ namespace Spectrum {
 
     private void BarSimulatorClosed(object sender, EventArgs e) {
       this.config.barSimulationEnabled = false;
-    }
-
-    private void OpenStageSimulator(object sender, RoutedEventArgs e) {
-      this.stageSimulatorWindow = new StageSimulatorWindow(this.config);
-      this.stageSimulatorWindow.Closed += StageSimulatorClosed;
-      this.stageSimulatorWindow.Show();
-    }
-
-    private void CloseStageSimulator(object sender, RoutedEventArgs e) {
-      this.stageSimulatorWindow.Close();
-      this.stageSimulatorWindow = null;
-    }
-
-    private void StageSimulatorClosed(object sender, EventArgs e) {
-      this.config.stageSimulationEnabled = false;
     }
 
   }

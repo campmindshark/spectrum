@@ -7,13 +7,11 @@
   <domeEnabled>true</domeEnabled>
   <midiInputEnabled>false</midiInputEnabled>
   <barEnabled>true</barEnabled>
-  <stageEnabled>false</stageEnabled>
   <huesOutputInSeparateThread>false</huesOutputInSeparateThread>
   <ledBoardOutputInSeparateThread>true</ledBoardOutputInSeparateThread>
   <midiInputInSeparateThread>false</midiInputInSeparateThread>
   <domeOutputInSeparateThread>true</domeOutputInSeparateThread>
   <barOutputInSeparateThread>true</barOutputInSeparateThread>
-  <stageOutputInSeparateThread>true</stageOutputInSeparateThread>
   <boardBeagleboneOPCAddress>192.168.7.2:7890</boardBeagleboneOPCAddress>
   <boardRowLength>30</boardRowLength>
   <boardRowsPerStrip>5</boardRowsPerStrip>
@@ -24,60 +22,6 @@
   <barRunnerLength>50</barRunnerLength>
   <barBrightness>0.814093959731544</barBrightness>
   <barTestPattern>1</barTestPattern>
-  <stageSimulationEnabled>false</stageSimulationEnabled>
-  <stageSideLengths>
-    <Int32>18</Int32>
-    <Int32>19</Int32>
-    <Int32>17</Int32>
-    <Int32>17</Int32>
-    <Int32>17</Int32>
-    <Int32>17</Int32>
-    <Int32>18</Int32>
-    <Int32>19</Int32>
-    <Int32>17</Int32>
-    <Int32>18</Int32>
-    <Int32>19</Int32>
-    <Int32>17</Int32>
-    <Int32>19</Int32>
-    <Int32>20</Int32>
-    <Int32>20</Int32>
-    <Int32>19</Int32>
-    <Int32>20</Int32>
-    <Int32>20</Int32>
-    <Int32>18</Int32>
-    <Int32>18</Int32>
-    <Int32>19</Int32>
-    <Int32>19</Int32>
-    <Int32>20</Int32>
-    <Int32>20</Int32>
-    <Int32>17</Int32>
-    <Int32>18</Int32>
-    <Int32>19</Int32>
-    <Int32>17</Int32>
-    <Int32>17</Int32>
-    <Int32>17</Int32>
-    <Int32>17</Int32>
-    <Int32>18</Int32>
-    <Int32>19</Int32>
-    <Int32>17</Int32>
-    <Int32>18</Int32>
-    <Int32>19</Int32>
-    <Int32>19</Int32>
-    <Int32>20</Int32>
-    <Int32>20</Int32>
-    <Int32>18</Int32>
-    <Int32>18</Int32>
-    <Int32>19</Int32>
-    <Int32>20</Int32>
-    <Int32>20</Int32>
-    <Int32>19</Int32>
-    <Int32>19</Int32>
-    <Int32>20</Int32>
-    <Int32>20</Int32>
-  </stageSideLengths>
-  <stageBrightness>0.834591194968554</stageBrightness>
-  <stageTestPattern>0</stageTestPattern>
-  <stageTracerSpeed>2</stageTracerSpeed>
   <domeBeagleboneOPCAddress>192.168.1.69:7890</domeBeagleboneOPCAddress>
   <domeSimulationEnabled>false</domeSimulationEnabled>
   <domeMaxBrightness>1</domeMaxBrightness>
@@ -184,14 +128,6 @@
             <startValue>0.125</startValue>
             <BindingType>4</BindingType>
             <BindingName>dome gradient speed</BindingName>
-          </IMidiBindingConfig>
-          <IMidiBindingConfig xsi:type="DiscreteLogarithmicKnobMidiBindingConfig">
-            <knobIndex>7</knobIndex>
-            <configPropertyName>stageTracerSpeed</configPropertyName>
-            <numPossibleValues>6</numPossibleValues>
-            <startValue>0.125</startValue>
-            <BindingType>4</BindingType>
-            <BindingName>stage tracer speed</BindingName>
           </IMidiBindingConfig>
           <IMidiBindingConfig xsi:type="AdsrLevelDriverMidiBindingConfig">
             <indexRangeStart>48</indexRangeStart>

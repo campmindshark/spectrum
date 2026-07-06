@@ -15,7 +15,6 @@ namespace Spectrum.Base {
     bool domeEnabled { get; set; }
     bool midiInputEnabled { get; set; }
     bool barEnabled { get; set; }
-    bool stageEnabled { get; set; }
 
     // If this is true, we will poll the input/output APIs in a thread separate
     // to the one running the visualizers. If it is false, a single thread will
@@ -23,12 +22,10 @@ namespace Spectrum.Base {
     bool midiInputInSeparateThread { get; set; }
     bool domeOutputInSeparateThread { get; set; }
     bool barOutputInSeparateThread { get; set; }
-    bool stageOutputInSeparateThread { get; set; }
 
     int operatorFPS { get; set; }
     int domeBeagleboneOPCFPS { get; set; }
     int barBeagleboneOPCFPS { get; set; }
-    int stageBeagleboneOPCFPS { get; set; }
 
 
     string barBeagleboneOPCAddress { get; set; }
@@ -40,17 +37,6 @@ namespace Spectrum.Base {
     double barBrightness { get; set; }
     // 0 - None, 1 - Flash colors
     int barTestPattern { get; set; }
-
-    string stageBeagleboneOPCAddress { get; set; }
-    bool stageSimulationEnabled { get; set; }
-    // 48 individual side lengths (in LED count)
-    int[] stageSideLengths { get; set; }
-    // Brightness of the stage
-    double stageBrightness { get; set; }
-    // 0 - None, 1 - Flash colors
-    int stageTestPattern { get; set; }
-    // Config params for animations
-    double stageTracerSpeed { get; set; }
 
     string domeBeagleboneOPCAddress { get; set; }
 
@@ -115,7 +101,6 @@ namespace Spectrum.Base {
     // with LEDDomeOutput, and the config is the only reference they share.
     ConcurrentQueue<DomeLEDCommand> domeCommandQueue { get; }
     ConcurrentQueue<BarLEDCommand> barCommandQueue { get; }
-    ConcurrentQueue<StageLEDCommand> stageCommandQueue { get; }
 
     // 0 = human, 1 = Madmom, 2 = Pro DJ Link
     int beatInput { get; set; }
