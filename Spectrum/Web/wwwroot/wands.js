@@ -24,18 +24,18 @@
   // packet loss → Poor.
   const STALE_MS = 400, JITTER_FAIR_MS = 8, JITTER_POOR_MS = 20;
   const LOSS_FAIR_FRACTION = 0.01, LOSS_POOR_FRACTION = 0.05;
-  // The wand radios transmit at a hard 400 Hz ceiling; a rate that has
+  // The wand radios transmit at a hard 200 Hz ceiling; a rate that has
   // collapsed well below it is a degraded link even when jitter/loss read fine.
   // Mirrors OrientationInput.WandMaxTransmitRateHz and WandRow's RateFair/Poor
   // fractions — the surfaces must agree.
-  const WAND_MAX_RATE_HZ = 400;
+  const WAND_MAX_RATE_HZ = 200;
   const RATE_FAIR_FRACTION = 0.6, RATE_POOR_FRACTION = 0.3;
   const ROW_COLORS =
     { good: "#ddd", fair: "#ffd24d", poor: "#ff6b6b", wait: "#ddd" };
   const QUALITY_LABEL = { good: "Good", fair: "Fair", poor: "Poor", wait: "…" };
 
   const COLUMNS = [
-    "ID", "Type", "Button", "Motion", "Quality", "Rate (Hz, ≤400)", "Jitter (ms)",
+    "ID", "Type", "Button", "Motion", "Quality", "Rate (Hz, ≤200)", "Jitter (ms)",
     "Loss (%)", "Data (kB/s)", "Packets", "Last (ms)",
     "Orientation (W X Y Z)", "Speed",
   ];

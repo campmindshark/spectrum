@@ -40,15 +40,15 @@ namespace Spectrum {
     private readonly static long DEVICE_TIMEOUT_MS = 1000;
     private readonly static long DEVICE_EVENT_TIMEOUT = 5;
 
-    // The wand remotes' radio firmware transmits at a hard ceiling of 400 Hz
-    // (one packet every 2.5 ms); no device can physically send faster. This is
+    // The wand remotes' radio firmware transmits at a hard ceiling of 200 Hz
+    // (one packet every 5 ms); no device can physically send faster. This is
     // the reference "full rate" the connection-quality diagnostics score the
     // measured update rate against, and the physical floor for the inferred
     // send period the packet-loss estimator uses. Kept public so the wand
     // status view (WandRow) reads the same number; the web surface duplicates
     // it in wands.js with a "must agree" note, as it already does for the other
     // quality thresholds.
-    public const double WandMaxTransmitRateHz = 400.0;
+    public const double WandMaxTransmitRateHz = 200.0;
     private const double WandMinSendIntervalMs = 1000.0 / WandMaxTransmitRateHz;
 
     public OrientationInput(Configuration config) {
@@ -414,8 +414,8 @@ namespace Spectrum {
             minDeviceIntervalMs = deviceInterval;
           }
           if (minDeviceIntervalMs != double.MaxValue) {
-            // The wand can't send faster than the 400 Hz cap, so integer-ms
-            // timestamp quantization occasionally reporting a sub-2.5ms gap is
+            // The wand can't send faster than the 200 Hz cap, so integer-ms
+            // timestamp quantization occasionally reporting a sub-5ms gap is
             // an artifact, not the true period. Clamp the inferred period up to
             // the physical floor before scoring, so a normal ~3ms gap doesn't
             // round to "one packet missing" off a spuriously small

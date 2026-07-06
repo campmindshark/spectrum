@@ -120,7 +120,7 @@ namespace Spectrum {
     // Packet-loss bands (fraction of sent packets missing).
     private const double LossFairFraction = 0.01;
     private const double LossPoorFraction = 0.05;
-    // Update-rate bands, as fractions of the wands' 400 Hz transmit cap
+    // Update-rate bands, as fractions of the wands' 200 Hz transmit cap
     // (OrientationInput.WandMaxTransmitRateHz). A wand that stays connected but
     // whose rate has collapsed well below the ceiling — RF congestion, a dying
     // battery — is degraded even when jitter and loss still read benign, so the
