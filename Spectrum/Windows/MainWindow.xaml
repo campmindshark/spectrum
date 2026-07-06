@@ -31,7 +31,6 @@
                         <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
                             <Grid>
                                 <CheckBox x:Name="midiEnabled" Content="Enabled" VerticalAlignment="Top" IsChecked="False" FontWeight="Bold" Margin="0,2,0,0" />
-                                <CheckBox x:Name="vjHUDEnabled" Content="VJ Heads-up display" VerticalAlignment="Top" Margin="150,2,0,0" IsChecked="False" Checked="OpenVJHUD" Unchecked="CloseVJHUD" />
                                 <ListView x:Name="midiDeviceList" Width="298" Height="66" VerticalAlignment="Top" Margin="1,22,1,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="MidiDeviceListSelectionChanged">
                                     <ListView.View>
                                         <GridView>
@@ -291,6 +290,7 @@
                         </Border>
                     </WrapPanel>
                     <CheckBox x:Name="domeThreadCheckbox" Content="Call LED dome in separate thread(s)" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,5" IsChecked="False" />
+                    <CheckBox x:Name="vjHUDEnabled" Content="VJ Heads-up display" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="5,0,0,25" IsChecked="False" Checked="OpenVJHUD" Unchecked="CloseVJHUD" />
                 </Grid>
             </TabItem>
         </TabControl>
