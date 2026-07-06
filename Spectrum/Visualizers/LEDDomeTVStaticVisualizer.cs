@@ -11,6 +11,7 @@ namespace Spectrum {
 
     private readonly Configuration config;
     private readonly LEDDomeOutput dome;
+    private readonly LEDDomeOutputBuffer buffer;
 
     private Random random = new Random();
 
@@ -21,6 +22,7 @@ namespace Spectrum {
       this.config = config;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
+      this.buffer = this.dome.MakeDomeOutputBuffer();
     }
 
     public int Priority {
@@ -36,12 +38,10 @@ namespace Spectrum {
     }
 
     public void Static() {
-      for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-        Strut strut = Strut.FromIndex(i);
-        for (int j = 0; j < strut.Length; j++) {
-          this.dome.SetPixel(i, j, this.RandomColor());
-        }
+      for (int i = 0; i < this.buffer.pixels.Length; i++) {
+        this.buffer.pixels[i].color = this.RandomColor();
       }
+      this.dome.WriteBuffer(this.buffer);
     }
 
     public void Visualize() {

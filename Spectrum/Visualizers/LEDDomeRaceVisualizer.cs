@@ -16,6 +16,15 @@ namespace Spectrum {
     private readonly AudioInput audio;
     private readonly MidiInput midi;
     private readonly LEDDomeOutput dome;
+    private readonly LEDDomeOutputBuffer buffer;
+
+    // Static per-pixel geometry, baked once in the constructor: the racer lookup
+    // only needs each pixel's angle around the dome and its vertical height, and
+    // both are fixed. Precomputing them avoids the four-Tuple-allocating
+    // Atan2/Sqrt call (GetProjectedLEDPointParametric) that used to run for every
+    // one of the ~4,500 pixels every frame.
+    private readonly double[] pixelAngle;
+    private readonly double[] pixelHeight;
 
     public enum Rotation { Still, Constant, Volume, VolumeSquared, Beat, };
     public enum Size { Small, Medium, Large, Full };
@@ -202,6 +211,20 @@ namespace Spectrum {
       // Visualizer when comparing priorities for LEDDomeOutput. If you skip it
       // your Visualizer will never run
       this.dome.RegisterVisualizer(this);
+      this.buffer = this.dome.MakeDomeOutputBuffer();
+
+      // Bake each pixel's angle and height from its strut/LED identity once.
+      this.pixelAngle = new double[this.buffer.pixels.Length];
+      this.pixelHeight = new double[this.buffer.pixels.Length];
+      for (int i = 0; i < this.buffer.pixels.Length; i++) {
+        var pixel = this.buffer.pixels[i];
+        var parametric = StrutLayoutFactory.GetProjectedLEDPointParametric(
+          pixel.strutIndex,
+          pixel.strutLEDIndex
+        );
+        this.pixelAngle[i] = parametric.Item3;
+        this.pixelHeight[i] = 1.0 - parametric.Item4;
+      }
     }
 
     public int Priority {
@@ -277,25 +300,19 @@ namespace Spectrum {
       // SETTING LEDS
       //-----------------------------------------------------------------------
 
-      for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-        Strut strut = Strut.FromIndex(i);
-        var leds = LEDDomeOutput.GetNumLEDs(i);
-        for (int j = 0; j < leds; j++) {
-          var pixel_p = StrutLayoutFactory.GetProjectedLEDPointParametric(i, j);
-          // Vertical height
-          var y = 1.0 - pixel_p.Item4;
-          var rad = pixel_p.Item3;
-          Tuple<Racer, double, double, Racer> loc = this.GetRacer(y, rad);
-          if (loc == null) {
-            // color = 0 is off.
-            this.dome.SetPixel(i, j, 0);
-          } else {
-            // Let the racer choose its color
-            var color = loc.Item4.Color(dome, config, loc.Item2, loc.Item3);
-            this.dome.SetPixel(i, j, color);
-          }
+      for (int i = 0; i < this.buffer.pixels.Length; i++) {
+        Tuple<Racer, double, double, Racer> loc =
+          this.GetRacer(this.pixelHeight[i], this.pixelAngle[i]);
+        if (loc == null) {
+          // color = 0 is off.
+          this.buffer.pixels[i].color = 0;
+        } else {
+          // Let the racer choose its color
+          this.buffer.pixels[i].color =
+            loc.Item4.Color(dome, config, loc.Item2, loc.Item3);
         }
       }
+      this.dome.WriteBuffer(this.buffer);
 
       // No messages will be sent to the Beaglebone until Flush is called. This
       // makes it imperative that you call Flush at the end of Visualize, or

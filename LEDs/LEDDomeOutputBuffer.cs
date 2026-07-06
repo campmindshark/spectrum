@@ -160,8 +160,36 @@ namespace Spectrum.LEDs {
   public class LEDDomeOutputBuffer {
     public LEDDomeOutputPixel[] pixels;
 
+    // Maps a strut index to the position in `pixels` of that strut's LED 0.
+    // MakeDomeOutputBuffer lays every strut's LEDs down contiguously in
+    // ascending strutLEDIndex order, so pixel (strut, led) lives at
+    // strutStartIndex[strut] + led. This lets strut-addressed visualizers write
+    // through the buffer (and WriteBuffer) instead of the per-pixel dome.SetPixel
+    // path. The mapping depends only on strut/LED identity (not the cable
+    // permutation), so it survives RebakeBuffer unchanged.
+    private readonly int[] strutStartIndex;
+
     public LEDDomeOutputBuffer(LEDDomeOutputPixel[] pixels) {
       this.pixels = pixels;
+      int maxStrut = -1;
+      for (int i = 0; i < pixels.Length; i++) {
+        if (pixels[i].strutIndex > maxStrut) {
+          maxStrut = pixels[i].strutIndex;
+        }
+      }
+      this.strutStartIndex = new int[maxStrut + 1];
+      for (int i = 0; i < pixels.Length; i++) {
+        if (pixels[i].strutLEDIndex == 0) {
+          this.strutStartIndex[pixels[i].strutIndex] = i;
+        }
+      }
+    }
+
+    // Writes a pixel addressed by strut and LED-within-strut — the same
+    // addressing the legacy LEDDomeOutput.SetPixel path used — so strut-based
+    // visualizers can render into the buffer and flush it once via WriteBuffer.
+    public void SetPixel(int strutIndex, int ledIndex, int color) {
+      this.pixels[this.strutStartIndex[strutIndex] + ledIndex].color = color;
     }
 
     public void Fade(double mul, double sub) {

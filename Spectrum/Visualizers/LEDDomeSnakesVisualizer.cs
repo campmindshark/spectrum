@@ -17,6 +17,7 @@ namespace Spectrum {
     private readonly AudioInput audio;
     private readonly Configuration config;
     private readonly LEDDomeOutput dome;
+    private readonly LEDDomeOutputBuffer buffer;
     private readonly Random random = new Random();
     private readonly Queue<TriangleSegment>[] snakes = new Queue<TriangleSegment>[] { new Queue<TriangleSegment>(), new Queue<TriangleSegment>() };
     private readonly TriangleSegment[] triangleSegments;
@@ -35,6 +36,7 @@ namespace Spectrum {
       this.dome = dome;
 
       this.dome.RegisterVisualizer(this);
+      this.buffer = this.dome.MakeDomeOutputBuffer();
 
       var triangleFactory = new TriangleSegmentFactory();
       triangleSegments = triangleFactory.GetAll();
@@ -91,6 +93,7 @@ namespace Spectrum {
       colorPaletteIndex = (colorPaletteIndex + 1) % (colorPaletteCount - 1);
       lastUpdate = DateTime.Now;
 
+      this.dome.WriteBuffer(this.buffer);
       this.dome.Flush();
     }
 
@@ -155,7 +158,7 @@ namespace Spectrum {
 
     private void SetStrutColor(Strut strut, int color) {
       for (int j = 0; j < strut.Length; j++) {
-        this.dome.SetPixel(strut.Index, j, color);
+        this.buffer.SetPixel(strut.Index, j, color);
       }
     }
   }

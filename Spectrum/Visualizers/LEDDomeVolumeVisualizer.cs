@@ -15,6 +15,7 @@ namespace Spectrum {
     private readonly Configuration config;
     private readonly AudioInput audio;
     private readonly LEDDomeOutput dome;
+    private readonly LEDDomeOutputBuffer buffer;
     private int animationSize;
     private int centerOffset;
 
@@ -40,6 +41,7 @@ namespace Spectrum {
       this.audio = audio;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
+      this.buffer = this.dome.MakeDomeOutputBuffer();
       this.animationSize = 0;
       this.centerOffset = 0;
       this.spokeLayout = this.BuildSpokeLayout();
@@ -142,7 +144,7 @@ namespace Spectrum {
         for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
           Strut strut = Strut.FromIndex(i);
           for (int j = 0; j < strut.Length; j++) {
-            this.dome.SetPixel(i, j, 0x000000);
+            this.buffer.SetPixel(i, j, 0x000000);
           }
         }
         this.wipeStrutsNextCycle = false;
@@ -198,6 +200,7 @@ namespace Spectrum {
           }
         }
       }
+      this.dome.WriteBuffer(this.buffer);
       this.dome.Flush();
     }
 
@@ -206,20 +209,18 @@ namespace Spectrum {
         return;
       }
       if (newAnimationSize > this.animationSize) {
-        for (int i = this.animationSize; i < newAnimationSize; i++) {
-          foreach (Strut strut in this.partLayout.GetSegment(i).GetStruts()) {
-            this.dome.ReserveStrut(strut.Index);
-          }
-        }
+        // Growing: the newly animated parts are painted by the Visualize loop
+        // this frame, so there's nothing to do here but record the new size.
         this.animationSize = newAnimationSize;
         return;
       }
+      // Shrinking: the parts we're dropping won't be repainted this frame, so
+      // they must be blacked out explicitly (the buffer persists across frames).
       for (int i = this.animationSize - 1; i >= newAnimationSize; i--) {
         foreach (Strut strut in this.partLayout.GetSegment(i).GetStruts()) {
           for (int j = 0; j < strut.Length; j++) {
-            this.dome.SetPixel(strut.Index, j, 0x000000);
+            this.buffer.SetPixel(strut.Index, j, 0x000000);
           }
-          this.dome.ReleaseStrut(strut.Index);
         }
       }
       this.animationSize = newAnimationSize;
@@ -266,7 +267,7 @@ namespace Spectrum {
         } else {
           color = 0x000000;
         }
-        this.dome.SetPixel(strut.Index, i, color);
+        this.buffer.SetPixel(strut.Index, i, color);
       }
     }
 

@@ -169,7 +169,6 @@ namespace Spectrum.LEDs {
     private OPCAPI opcAPI;
     private readonly Configuration config;
     private readonly List<Visualizer> visualizers;
-    private readonly HashSet<int> reservedStruts;
     private static readonly int maxStripLength;
 
     // The dome is wired as 10 "cables": each of the 5 control boxes drives 8
@@ -228,7 +227,6 @@ namespace Spectrum.LEDs {
     public LEDDomeOutput(Configuration config) {
       this.config = config;
       this.visualizers = new List<Visualizer>();
-      this.reservedStruts = new HashSet<int>();
       this.RebuildCableMapping();
       this.config.PropertyChanged += ConfigUpdated;
     }
@@ -557,24 +555,6 @@ namespace Spectrum.LEDs {
           frame = frame,
         });
       }
-    }
-
-    public void ReserveStrut(int strutIndex) {
-      if (this.reservedStruts.Contains(strutIndex)) {
-        throw new Exception("User attempted to reserve unavailable strut");
-      }
-      this.reservedStruts.Add(strutIndex);
-    }
-
-    public void ReleaseStrut(int strutIndex) {
-      if (!this.reservedStruts.Contains(strutIndex)) {
-        throw new Exception("User attempted to release available strut");
-      }
-      this.reservedStruts.Remove(strutIndex);
-    }
-
-    public HashSet<int> ReservedStruts() {
-      return this.reservedStruts;
     }
 
     /**
