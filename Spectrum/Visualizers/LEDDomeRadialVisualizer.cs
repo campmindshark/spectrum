@@ -77,7 +77,7 @@ namespace Spectrum {
       );
 
       for (int i = 0; i < buffer.pixels.Length; i++) {
-        var pixel = buffer.pixels[i];
+        ref var pixel = ref buffer.pixels[i];
 
         // The static projected (x, y) is precomputed once in
         // MakeDomeOutputBuffer (pixel.x/pixel.y come straight from
@@ -151,7 +151,7 @@ namespace Spectrum {
         if(val <= sizeLimit) {
           // use level to determine which colors to use
           int whichGradient = (int)(level * 8);
-          buffer.pixels[i].color = this.dome.GetGradientColor(
+          pixel.color = this.dome.GetGradientColor(
               whichGradient,
               gradientVal,
               currentGradient,

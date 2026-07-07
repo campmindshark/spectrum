@@ -490,11 +490,19 @@ namespace Spectrum.LEDs {
       this.frameColorCacheValid = true;
     }
 
+    // Only feed domeCommandQueue when simulation is on AND something is
+    // actually draining the queue. Without the consumer check, setting
+    // domeSimulationEnabled with no simulator window open (e.g. flipped on over
+    // the web) would grow the queue without bound — a fresh int[] frame
+    // snapshot up to 400x/sec with nobody dequeuing it.
+    private bool ShouldEnqueueDomeCommand =>
+      this.config.domeSimulationEnabled && this.config.domeCommandQueueHasConsumer;
+
     public void Flush() {
       if (this.opcAPI != null) {
          this.opcAPI.Flush();
       }
-      if (this.config.domeSimulationEnabled) {
+      if (this.ShouldEnqueueDomeCommand) {
         this.config.domeCommandQueue.Enqueue(
           new DomeLEDCommand() { isFlush = true }
         );
@@ -559,7 +567,7 @@ namespace Spectrum.LEDs {
       Tuple<int, int> deviceIndexes = this.GetDeviceIndexes(strutIndex, ledIndex);
       this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
 
-      if (this.config.domeSimulationEnabled) {
+      if (this.ShouldEnqueueDomeCommand) {
         this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
           strutIndex = strutIndex,
           ledIndex = ledIndex,
@@ -576,7 +584,7 @@ namespace Spectrum.LEDs {
         this.GetDeviceIndexesRaw(strutIndex, ledIndex);
       this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
 
-      if (this.config.domeSimulationEnabled) {
+      if (this.ShouldEnqueueDomeCommand) {
         this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
           strutIndex = strutIndex,
           ledIndex = ledIndex,
@@ -647,7 +655,7 @@ namespace Spectrum.LEDs {
       // than re-deriving the control-box/pixel mapping for every pixel every
       // frame (P3).
       int stride = maxStripLength * 8;
-      bool simulationEnabled = this.config.domeSimulationEnabled;
+      bool simulationEnabled = this.ShouldEnqueueDomeCommand;
       // When simulating, snapshot the whole frame's colors and hand the
       // simulator a single command, instead of enqueueing one command per pixel
       // (~4000 interlocked ConcurrentQueue ops + an equal number of dequeues and
@@ -749,7 +757,12 @@ namespace Spectrum.LEDs {
         return 0x000000;
       }
       if (!this.config.colorPalette.colors[absoluteIndex].IsGradient) {
-        return this.GetSingleColor(absoluteIndex);
+        // absoluteIndex is already offset; call the palette directly rather
+        // than this.GetSingleColor, which would apply the palette offset again.
+        return LEDColor.ScaleColor(
+          this.config.colorPalette.GetSingleColor(absoluteIndex),
+          this.frameBrightness
+        );
       }
       return LEDColor.ScaleColor(
         this.config.colorPalette.GetGradientColor(
@@ -778,13 +791,24 @@ namespace Spectrum.LEDs {
         return 0x000000;
       }
       var num_colors = maxIndex - minIndex;
-      int minColorIdx = (int)(pixelPos * num_colors);
-      int maxColorIdx = (int)(pixelPos * num_colors + 1);
-      // Rescale the position, so it's between the colors
-      // (pixelPos - min_color_idx/num_colors)*num_colors
-      double scaledPixelPos = (pixelPos - 1.0 * minColorIdx / num_colors) * num_colors;
-      if (scaledPixelPos < 0 || scaledPixelPos > 1) {
-        throw new ArgumentException("Pixel Position out of range: " + pixelPos.ToString());
+      // Which adjacent pair of palette slots pixelPos lands between, as an
+      // offset from minIndex. Clamp so pixelPos == 1.0 maps to the last pair
+      // (maxIndex-1, maxIndex) instead of overrunning past maxIndex.
+      int segment = (int)(pixelPos * num_colors);
+      if (segment >= num_colors) {
+        segment = num_colors - 1;
+      }
+      // Offset by minIndex so "gradient between colors 59-63" actually reads
+      // slots 59-63 rather than 0-4 of the current palette.
+      int minColorIdx = minIndex + segment;
+      int maxColorIdx = minColorIdx + 1;
+      // Rescale the position so it runs 0..1 between the two chosen slots,
+      // clamping to guard against floating-point rounding landing just outside.
+      double scaledPixelPos = pixelPos * num_colors - segment;
+      if (scaledPixelPos < 0) {
+        scaledPixelPos = 0;
+      } else if (scaledPixelPos > 1) {
+        scaledPixelPos = 1;
       }
       int absoluteIndexMin = LEDColor.GetAbsoluteColorIndex(
         minColorIdx, this.config.colorPaletteIndex
@@ -807,11 +831,17 @@ namespace Spectrum.LEDs {
         return 0x000000;
       }
       if (!this.config.colorPalette.colors[absoluteIndexMin].IsGradient) {
-        return this.GetSingleColor(absoluteIndexMin);
+        // minColorIdx is palette-relative; GetSingleColor re-applies the palette
+        // offset itself, so pass it the relative index (not absoluteIndexMin).
+        return this.GetSingleColor(minColorIdx);
       }
+      // Blend Color1 of the two adjacent slots. Read the palette directly
+      // (unscaled) and apply frameBrightness exactly once at the end — routing
+      // the endpoints through this.GetSingleColor would pre-scale each by
+      // frameBrightness, making the result quadratic in the brightness slider.
       LEDColor color = new LEDColor(
-        this.GetSingleColor(minColorIdx),
-        this.GetSingleColor(maxColorIdx));
+        this.config.colorPalette.GetSingleColor(absoluteIndexMin),
+        this.config.colorPalette.GetSingleColor(absoluteIndexMax));
       return LEDColor.ScaleColor(
         color.GradientColor(scaledPixelPos, focusPos, wrap),
         this.frameBrightness

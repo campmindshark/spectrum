@@ -97,6 +97,13 @@ namespace Spectrum.Base {
     // with LEDDomeOutput, and the config is the only reference they share.
     ConcurrentQueue<DomeLEDCommand> domeCommandQueue { get; }
 
+    // True while a consumer (the dome simulator window) is actually draining
+    // domeCommandQueue. LEDDomeOutput gates enqueue on this in addition to
+    // domeSimulationEnabled, so the queue can't grow without bound when the
+    // flag is set with nobody reading it — e.g. flipped on over the web with
+    // no simulator window open.
+    bool domeCommandQueueHasConsumer { get; set; }
+
     // 0 = human, 1 = Madmom, 2 = Pro DJ Link
     int beatInput { get; set; }
 

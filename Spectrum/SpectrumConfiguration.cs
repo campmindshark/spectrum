@@ -293,6 +293,13 @@ namespace Spectrum {
     public ConcurrentQueue<DomeLEDCommand> domeCommandQueue { get; } =
       new ConcurrentQueue<DomeLEDCommand>();
 
+    // Transient (not persisted, no PropertyChanged): the dome simulator window
+    // sets this while it is open and draining domeCommandQueue. A plain bool
+    // read/write is atomic, which is all the operator thread needs to gate its
+    // enqueues on a live consumer.
+    [XmlIgnore]
+    public bool domeCommandQueueHasConsumer { get; set; } = false;
+
     // 0 = human, 1 = Madmom, 2 = Pro DJ Link
     private int _beatInput = 0;
     public int beatInput {

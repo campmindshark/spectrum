@@ -29,6 +29,7 @@ namespace Spectrum.LEDs {
 
     private readonly int index;
     private readonly bool reversed;
+    private readonly int length;
 
     private Strut(
       int index,
@@ -36,6 +37,11 @@ namespace Spectrum.LEDs {
     ) {
       this.index = index;
       this.reversed = reversed;
+      // Strut is immutable and interned, and GetNumLEDs is a pure function of
+      // the strut index (its inputs are all static readonly), so the LED count
+      // never changes — bake it once instead of walking controlBoxStrutOrder on
+      // every Length access.
+      this.length = LEDDomeOutput.GetNumLEDs(index);
     }
 
     public int Index {
@@ -52,7 +58,7 @@ namespace Spectrum.LEDs {
 
     public int Length {
       get {
-        return LEDDomeOutput.GetNumLEDs(this.index);
+        return this.length;
       }
     }
 
@@ -65,7 +71,7 @@ namespace Spectrum.LEDs {
       double endLitRange,
       int led
     ) {
-      int ledIndex = this.Reversed ? this.Length - led : led;
+      int ledIndex = this.Reversed ? this.Length - 1 - led : led;
       double step = (endLitRange - startLitRange)
         / (this.Length * percentageLit);
       double gradientPos = startLitRange + ledIndex * step;

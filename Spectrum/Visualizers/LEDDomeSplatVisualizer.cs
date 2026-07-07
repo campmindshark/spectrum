@@ -65,13 +65,13 @@ namespace Spectrum {
         var color = rand.Next() % 8;
 
         for (int i = 0; i < buffer.pixels.Length; i++) {
-          var pixel = buffer.pixels[i];
+          ref var pixel = ref buffer.pixels[i];
 
           var dx = pixel.x - cx;
           var dy = pixel.y - cy;
           var dist = Math.Sqrt(dx * dx + dy * dy);
           if (dist < radius) {
-            buffer.pixels[i].color = this.dome.GetGradientColor(
+            pixel.color = this.dome.GetGradientColor(
               color,
               dist/radius,
               0,

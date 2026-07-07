@@ -49,9 +49,17 @@ namespace Spectrum {
     private readonly double[] strutDeltaY;
     private readonly int[] strutNumLEDs;
 
+    private DispatcherTimer timer;
+
     public DomeSimulatorWindow(Configuration config) {
       this.InitializeComponent();
       this.config = config;
+
+      // Announce that a consumer is now draining domeCommandQueue, so
+      // LEDDomeOutput starts feeding it (and stops when we close). Without this
+      // the queue would only be gated on domeSimulationEnabled, which the web
+      // surface can set with no window open — growing the queue without bound.
+      this.config.domeCommandQueueHasConsumer = true;
 
       this.rect = new Int32Rect(0, 0, 750, 750);
       this.bitmap = new WriteableBitmap(
@@ -120,10 +128,27 @@ namespace Spectrum {
 
     private void WindowLoaded(object sender, RoutedEventArgs e) {
       this.Draw();
-      DispatcherTimer timer = new DispatcherTimer();
-      timer.Tick += Update;
-      timer.Interval = new TimeSpan(100000); // every 10 milliseconds
-      timer.Start();
+      this.timer = new DispatcherTimer();
+      this.timer.Tick += Update;
+      this.timer.Interval = new TimeSpan(100000); // every 10 milliseconds
+      this.timer.Start();
+    }
+
+    protected override void OnClosed(EventArgs e) {
+      // Stop our update timer. A DispatcherTimer is rooted by the dispatcher, so
+      // if we leave it running it keeps this closed window alive and keeps
+      // draining domeCommandQueue — a documented single-consumer queue — racing
+      // any simulator opened later into the "Someone else is dequeueing!" throw.
+      if (this.timer != null) {
+        this.timer.Stop();
+        this.timer.Tick -= Update;
+        this.timer = null;
+      }
+      // Stop LEDDomeOutput feeding the queue and drop whatever we didn't drain,
+      // so a stale backlog of int[] frame snapshots isn't held after we're gone.
+      this.config.domeCommandQueueHasConsumer = false;
+      this.config.domeCommandQueue.Clear();
+      base.OnClosed(e);
     }
 
     private void Draw() {

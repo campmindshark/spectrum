@@ -21,6 +21,13 @@ namespace Spectrum {
 
     private StrutLayout partLayout, indexLayout, sectionLayout;
 
+    // There are only 4 possible centerOffset values (0-3), and each maps to a
+    // fixed set of layouts. Precompute all four in the constructor and swap by
+    // index in UpdateLayouts, rather than rerunning the allocation-heavy
+    // ConcentricFromStartingPoints graph traversal up to 4x/beat on the
+    // operator thread.
+    private readonly StrutLayout[][] layoutsByCenterOffset = new StrutLayout[4][];
+
     // For color-from-part mode, maps each part to a color
     private readonly int[] partColors = new int[4];
     // For color-from-index mode, maps each index to a color
@@ -45,6 +52,9 @@ namespace Spectrum {
       this.animationSize = 0;
       this.centerOffset = 0;
       this.spokeLayout = this.BuildSpokeLayout();
+      for (int offset = 0; offset < this.layoutsByCenterOffset.Length; offset++) {
+        this.layoutsByCenterOffset[offset] = this.BuildLayouts(offset);
+      }
       this.UpdateLayouts();
     }
 
@@ -91,19 +101,23 @@ namespace Spectrum {
       return new StrutLayout(segments);
     }
 
-    private void UpdateLayouts() {
+    private StrutLayout[] BuildLayouts(int centerOffset) {
       int[] points = new int[] { 22, 26, 30, 34, 38, 70 };
       for (int i = 0; i < 5; i++) {
-        points[i] += this.centerOffset;
+        points[i] += centerOffset;
       }
       if (points[4] >= 40) {
         points[4] -= 20;
       }
-      StrutLayout[] layouts = StrutLayoutFactory.ConcentricFromStartingPoints(
+      return StrutLayoutFactory.ConcentricFromStartingPoints(
         this.config,
         new HashSet<int>(points),
         4
       );
+    }
+
+    private void UpdateLayouts() {
+      StrutLayout[] layouts = this.layoutsByCenterOffset[this.centerOffset];
       this.partLayout = layouts[0];
       this.indexLayout = layouts[1];
       this.sectionLayout = layouts[2];
