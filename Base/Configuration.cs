@@ -36,7 +36,17 @@ namespace Spectrum.Base {
     double domeGradientSpeed { get; set; }
     // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts, 3 - Strip test
     int domeTestPattern { get; set; }
+    // Deprecated single-visualizer selector, kept as a write-only compatibility
+    // alias: writing it replaces layer 0 of domeLayerStack with that visualizer
+    // (see the alias subscriber in Operator). The layer stack below is the real
+    // state that drives the compositor.
     int domeActiveVis { get; set; }
+
+    // The dome's compositing stack, index 0 = background (bottom), last = front.
+    // Persisted. Writers replace the whole list (snapshot swap) so PropertyChanged
+    // fires and the operator thread never observes a mid-mutation list. A missing
+    // / null value is migrated from domeActiveVis on config load.
+    List<DomeLayerSettings> domeLayerStack { get; set; }
 
     // Dome cable mapping. The dome is wired as 10 cables (5 control boxes, each
     // with two ethernet cables: A = strands 0-3, B = strands 4-7), identified by

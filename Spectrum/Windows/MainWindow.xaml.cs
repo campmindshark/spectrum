@@ -84,6 +84,7 @@ namespace Spectrum {
     private Web.WebServer webServer = null;
     private Web.ConfigEventStream webEventStream = null;
     private const int WebServerPort = 8080;
+    private DomeLayersController domeLayersController;
 
     public MainWindow() {
       this.InitializeComponent();
@@ -124,9 +125,12 @@ namespace Spectrum {
       // the human tap tempo (and switches the source to Human) through the
       // gateway, the same as a native tap.
       var tempo = new Web.TempoController(this.config, gateway);
+      // The dome layer stack: whole-stack last-write-wins through the same
+      // gateway (replaces the old domeActiveVis dropdown, broadcast over SSE).
+      var layers = new Web.LayersController(gateway, this.config);
       this.webServer = new Web.WebServer(
         controls, this.webEventStream, locks, calibration, wands,
-        operatorControl, tempo, WebServerPort);
+        operatorControl, tempo, layers, WebServerPort);
       this.webServer.Start();
     }
 
@@ -217,6 +221,7 @@ namespace Spectrum {
       if (this.config == null) {
         this.config = new SpectrumConfiguration();
       }
+      this.MigrateDomeLayerStack();
       this.op = new Operator(this.config);
 
       this.RefreshAudioDevices(null, null);
@@ -234,17 +239,8 @@ namespace Spectrum {
       this.Bind("domeOutputInSeparateThread", this.domeBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
       this.Bind("domeOutputInSeparateThread", this.domeBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
       this.Bind("domeTestPattern", this.domeTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.domeTestPatternNone, [1] = this.domeTestPatternFlashColorsByStrut, [2] = this.domeTestPatternIterateThroughStruts, [3] = this.domeTestPatternStripTest, [4] = this.domeTestPatternFullColorFlash }, true));
-      this.Bind("domeActiveVis", this.domeActiveVisualizer, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> {
-        [0] = this.domeActiveVisualizerVolume,
-        [1] = this.domeActiveVisualizerRadial,
-        [2] = this.domeActiveVisualizerRace,
-        [3] = this.domeActiveVisualizerSnakes,
-        [4] = this.domeActiveVisualizerQuaternionTest,
-        [5] = this.domeActiveVisualizerQuaternionMultiTest,
-        [6] = this.domeActiveVisualizerQuaternionPaintbrush,
-        [7] = this.domeActiveVisualizerSplat,
-        [8] = this.domeActiveVisualizerTVStatic
-      }, true));
+      this.domeLayersController = new DomeLayersController(
+        this.config, this.domeLayersItemsControl, this.domeAddLayerButton);
       this.Bind("domeEnabled", this.domeEnabled, CheckBox.IsCheckedProperty);
       this.Bind("domeSimulationEnabled", this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
       this.Bind("domeMaxBrightness", this.domeMaxBrightnessSlider, Slider.ValueProperty);
@@ -258,6 +254,43 @@ namespace Spectrum {
       this.InitWandSerialUI();
 
       MainWindow.LoadingConfig = false;
+    }
+
+    // If the loaded config has no usable domeLayerStack (missing from an older
+    // config file, empty, or referencing unknown keys), synthesize a single
+    // background layer from the legacy domeActiveVis selector — reproducing the
+    // pre-layering single-visualizer behavior exactly. Runs before the Operator
+    // is constructed, while LoadingConfig is true and nothing subscribes to the
+    // config yet.
+    private void MigrateDomeLayerStack() {
+      List<DomeLayerSettings> stack = this.config.domeLayerStack;
+      bool valid = stack != null && stack.Count > 0;
+      if (valid) {
+        foreach (DomeLayerSettings layer in stack) {
+          if (
+            layer == null || layer.VisualizerKey == null ||
+            Array.IndexOf(
+              DomeLayerSettings.LegacyVisKeys, layer.VisualizerKey
+            ) < 0
+          ) {
+            valid = false;
+            break;
+          }
+        }
+      }
+      if (valid) {
+        return;
+      }
+      string key = DomeLayerSettings.KeyForLegacyVis(this.config.domeActiveVis)
+        ?? DomeLayerSettings.LegacyVisKeys[0];
+      this.config.domeLayerStack = new List<DomeLayerSettings>() {
+        new DomeLayerSettings() {
+          VisualizerKey = key,
+          BlendMode = DomeBlendMode.Over,
+          Opacity = 1.0,
+          Enabled = true,
+        },
+      };
     }
 
     private void Bind(

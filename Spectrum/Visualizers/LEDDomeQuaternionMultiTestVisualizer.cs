@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace Spectrum.Visualizers {
-  class LEDDomeQuaternionMultiTestVisualizer : Visualizer {
+  class LEDDomeQuaternionMultiTestVisualizer : DomeLayerVisualizer {
 
 
     private Configuration config;
@@ -31,9 +31,14 @@ namespace Spectrum.Visualizers {
 
     public int Priority {
       get {
-        return this.config.domeActiveVis == 5 ? 2 : 0;
+        return DomeLayerSettings.StackActivates(
+          this.config.domeLayerStack, "quaternion-multi-test"
+        ) ? 2 : 0;
       }
     }
+
+    public string LayerKey => "quaternion-multi-test";
+    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 
@@ -83,12 +88,10 @@ namespace Spectrum.Visualizers {
           }
         }
       }
-      dome.WriteBuffer(buffer);
     }
 
     public void Visualize() {
       Render();
-      dome.Flush();
     }
   }
 }

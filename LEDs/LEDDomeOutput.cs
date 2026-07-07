@@ -169,6 +169,14 @@ namespace Spectrum.LEDs {
     private OPCAPI opcAPI;
     private readonly Configuration config;
     private readonly List<Visualizer> visualizers;
+    // The subset of `visualizers` that are layerable (implement
+    // DomeLayerVisualizer), plus a key→visualizer index. Populated at
+    // registration (startup) alongside `visualizers`. The compositor blends
+    // these; debug visualizers are not layerable and are absent here.
+    private readonly List<DomeLayerVisualizer> layerVisualizers =
+      new List<DomeLayerVisualizer>();
+    private readonly Dictionary<string, DomeLayerVisualizer>
+      layerVisualizersByKey = new Dictionary<string, DomeLayerVisualizer>();
     private static readonly int maxStripLength;
 
     // The dome is wired as 10 "cables": each of the 5 control boxes drives 8
@@ -278,6 +286,10 @@ namespace Spectrum.LEDs {
     public void RegisterVisualizer(Visualizer visualizer) {
       this.visualizers.Add(visualizer);
       this.visualizersArray = null;
+      if (visualizer is DomeLayerVisualizer layerVisualizer) {
+        this.layerVisualizers.Add(layerVisualizer);
+        this.layerVisualizersByKey[layerVisualizer.LayerKey] = layerVisualizer;
+      }
     }
 
     // Cached snapshot of `visualizers`, rebuilt only when a visualizer is
@@ -291,6 +303,11 @@ namespace Spectrum.LEDs {
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
       if (e.PropertyName == "domeCableMapping") {
         this.RebuildCableMapping();
+        return;
+      }
+      if (e.PropertyName == "domeLayerStack") {
+        // Force the operator thread to re-resolve the stack next Composite.
+        this.resolvedStackValid = false;
         return;
       }
       if (
@@ -347,6 +364,13 @@ namespace Spectrum.LEDs {
     }
 
     public void OperatorUpdate() {
+      // Blend this frame's layer stack and push it to the wire/simulator BEFORE
+      // opcAPI.OperatorUpdate() sends and before we invalidate the frame color
+      // cache. The visualizers ran (into their own buffers) earlier this frame
+      // with the cache still valid; Composite reads only their buffers, so the
+      // ordering composite -> opc send -> cache invalidate is required. See the
+      // GetGradientColor cache note in EnsureFrameColorCache.
+      this.Composite();
       if (this.opcAPI != null) {
          this.opcAPI.OperatorUpdate();
       }
@@ -355,6 +379,93 @@ namespace Spectrum.LEDs {
       // the per-frame color snapshot so the next frame's first pixel recomputes
       // it. See EnsureFrameColorCache.
       this.frameColorCacheValid = false;
+    }
+
+    // Scratch composite frame the layer stack blends into, reused every frame.
+    // Lazily created via MakeDomeOutputBuffer so it participates in cable-mapping
+    // rebakes and is index-aligned pixel-for-pixel with every layer buffer.
+    private LEDDomeOutputBuffer compositeBuffer;
+
+    // One layer of config.domeLayerStack resolved to a live visualizer plus its
+    // blend settings, cached so the per-frame path allocates nothing. Whether the
+    // visualizer actually ran (Enabled) is still checked per frame, not cached.
+    private struct ResolvedLayer {
+      public DomeLayerVisualizer visualizer;
+      public DomeBlendMode blendMode;
+      public double opacity;
+    }
+    // Rebuilt lazily on the operator thread whenever the stack changes. volatile
+    // so a set-false from ConfigUpdated (UI/web thread) is seen promptly by the
+    // operator thread; the resolved array is only ever read/written on the
+    // operator thread.
+    private volatile bool resolvedStackValid = false;
+    private ResolvedLayer[] resolvedStack = System.Array.Empty<ResolvedLayer>();
+
+    private void EnsureResolvedStack() {
+      if (this.resolvedStackValid) {
+        return;
+      }
+      var resolved = new List<ResolvedLayer>();
+      List<DomeLayerSettings> stack = this.config.domeLayerStack;
+      if (stack != null) {
+        foreach (DomeLayerSettings layer in stack) {
+          if (
+            layer == null || !layer.Enabled || layer.VisualizerKey == null
+          ) {
+            continue;
+          }
+          if (!this.layerVisualizersByKey.TryGetValue(
+            layer.VisualizerKey, out DomeLayerVisualizer visualizer
+          )) {
+            continue;
+          }
+          resolved.Add(new ResolvedLayer {
+            visualizer = visualizer,
+            blendMode = layer.BlendMode,
+            opacity = layer.Opacity,
+          });
+        }
+      }
+      this.resolvedStack = resolved.ToArray();
+      this.resolvedStackValid = true;
+    }
+
+    // Blends the active layer stack into compositeBuffer and pushes exactly one
+    // frame (one WriteBuffer + one Flush) to the wire and simulator. No-ops when
+    // no layer ran this frame: either a debug visualizer owns the frame via its
+    // own SetPixel + self-Flush path (which passes through untouched), or nothing
+    // is eligible at all and the dome holds its last frame.
+    private void Composite() {
+      this.EnsureResolvedStack();
+      ResolvedLayer[] stack = this.resolvedStack;
+
+      // A layer contributes only if the Operator scheduled its visualizer this
+      // frame (Enabled true: inputs enabled, not quarantined). The bottom-most
+      // such layer seeds the composite; the rest blend over it in stack order.
+      bool destInitialized = false;
+      for (int s = 0; s < stack.Length; s++) {
+        ResolvedLayer layer = stack[s];
+        if (!layer.visualizer.Enabled) {
+          continue;
+        }
+        LEDDomeOutputBuffer src = layer.visualizer.LayerBuffer;
+        if (this.compositeBuffer == null) {
+          this.compositeBuffer = this.MakeDomeOutputBuffer();
+        }
+        if (!destInitialized) {
+          this.compositeBuffer.CompositeBottom(src, layer.opacity);
+          destInitialized = true;
+        } else {
+          this.compositeBuffer.CompositeBlend(
+            src, layer.blendMode, layer.opacity
+          );
+        }
+      }
+      if (!destInitialized) {
+        return;
+      }
+      this.WriteBuffer(this.compositeBuffer);
+      this.Flush();
     }
 
     // Per-frame snapshot of the beat/brightness state that every GetSingleColor /
@@ -489,7 +600,10 @@ namespace Spectrum.LEDs {
           pixel.controlBoxPixelIndex = deviceIndexes.Item2;
           pixel.x = point.Item1;
           pixel.y = point.Item2;
-          pixel.color = 0;
+          // Leave color/coverage at their struct defaults (0 => transparent
+          // black). Going through the `color` setter here would mark every pixel
+          // opaque (_a = 1), which would make a foreground Over layer paint solid
+          // black everywhere it hadn't drawn yet.
 
           pixels.Add(pixel);
         }

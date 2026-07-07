@@ -24,6 +24,20 @@
   <domeGradientSpeed>0.25</domeGradientSpeed>
   <domeTestPattern>0</domeTestPattern>
   <domeActiveVis>0</domeActiveVis>
+  <domeLayerStack>
+    <DomeLayerSettings>
+      <VisualizerKey>radial</VisualizerKey>
+      <BlendMode>Over</BlendMode>
+      <Opacity>1</Opacity>
+      <Enabled>true</Enabled>
+    </DomeLayerSettings>
+    <DomeLayerSettings>
+      <VisualizerKey>quaternion-paintbrush</VisualizerKey>
+      <BlendMode>Add</BlendMode>
+      <Opacity>1</Opacity>
+      <Enabled>true</Enabled>
+    </DomeLayerSettings>
+  </domeLayerStack>
   <domeRadialSize>1.0</domeRadialSize>
   <domeRadialFrequency>1</domeRadialFrequency>
   <hueDelay>125</hueDelay>

@@ -462,6 +462,8 @@
           applyTelemetry(frame.key, frame.value);
         } else if (frame.kind === "operator") {
           applyOperator(frame.value);
+        } else if (frame.kind === "layers") {
+          if (window.spectrumApplyLayers) window.spectrumApplyLayers(frame.value);
         } else {
           applyPush(frame.key, frame.value);
         }
@@ -493,6 +495,7 @@
       if (locksEl) { pollForeignLocks(); setInterval(pollForeignLocks, 3000); }
       if (window.spectrumCalibrationInit) window.spectrumCalibrationInit();
       if (window.spectrumWandsInit) window.spectrumWandsInit();
+      if (window.spectrumLayersInit) window.spectrumLayersInit();
     } catch (e) {
       setStatus(`load failed: ${e}`, true);
     }

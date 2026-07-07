@@ -31,6 +31,7 @@ namespace Spectrum.Web {
     private readonly WandStatusController wands;
     private readonly OperatorController operatorControl;
     private readonly TempoController tempo;
+    private readonly LayersController layers;
     private readonly int port;
     private WebApplication app;
 
@@ -61,6 +62,7 @@ namespace Spectrum.Web {
       WandStatusController wands,
       OperatorController operatorControl,
       TempoController tempo,
+      LayersController layers,
       int port
     ) {
       this.controls = controls;
@@ -70,6 +72,7 @@ namespace Spectrum.Web {
       this.wands = wands;
       this.operatorControl = operatorControl;
       this.tempo = tempo;
+      this.layers = layers;
       this.port = port;
     }
 
@@ -162,6 +165,19 @@ namespace Spectrum.Web {
 
       app.MapPut("/api/parameters/{key}", (string key, HttpContext ctx) =>
         this.HandleWrite(key, ctx, ControlRole.User));
+
+      // ---- Dome layer stack (user scope — it replaces the old domeActiveVis
+      // selector, which was user-level). Whole-stack last-write-wins: the client
+      // always PUTs its full edited copy, so no advisory lease is needed. The
+      // result is broadcast on the SSE "layers" frame, converging every client.
+      app.MapGet("/api/layers", () => Results.Json(this.layers.State()));
+
+      app.MapPut("/api/layers", async (LayersBody body) => {
+        (bool ok, string error) = await this.layers.ReplaceAsync(body?.layers);
+        return ok
+          ? Results.Json(this.layers.State())
+          : Results.BadRequest(new { error });
+      });
 
       // Read-only wand status for the user surface's slimmed-down "Wand status"
       // box (ID/Type/Motion/Quality). Wraps the same row snapshot the
@@ -477,6 +493,12 @@ namespace Spectrum.Web {
     private sealed class SwapBody {
       public int a { get; set; }
       public int b { get; set; }
+    }
+
+    private sealed class LayersBody {
+      public System.Collections.Generic.List<LayersController.LayerDto> layers {
+        get; set;
+      }
     }
   }
 }

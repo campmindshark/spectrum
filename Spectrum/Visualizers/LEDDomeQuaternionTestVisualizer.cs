@@ -4,7 +4,7 @@ using System;
 using System.Numerics;
 
 namespace Spectrum.Visualizers {
-  class LEDDomeQuaternionTestVisualizer : Visualizer{
+  class LEDDomeQuaternionTestVisualizer : DomeLayerVisualizer {
 
 
     private Configuration config;
@@ -26,9 +26,14 @@ namespace Spectrum.Visualizers {
 
     public int Priority {
       get {
-        return this.config.domeActiveVis == 4 ? 2 : 0;
+        return DomeLayerSettings.StackActivates(
+          this.config.domeLayerStack, "quaternion-test"
+        ) ? 2 : 0;
       }
     }
+
+    public string LayerKey => "quaternion-test";
+    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 
@@ -57,13 +62,10 @@ namespace Spectrum.Visualizers {
         }
         buffer.pixels[i].color = color.ToInt();
       }
-      this.dome.WriteBuffer(buffer);
     }
 
     public void Visualize() {
       this.Render();
-
-      this.dome.Flush();
     }
     
     // Returns the index of the maximum item in a vector

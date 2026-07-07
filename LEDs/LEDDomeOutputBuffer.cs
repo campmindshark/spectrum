@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Spectrum.Base;
 
 namespace Spectrum.LEDs {
 
@@ -21,6 +22,12 @@ namespace Spectrum.LEDs {
     private double _r;
     private double _g;
     private double _b;
+    // Coverage / opacity of this pixel, 0..1, used only by the Over blend in the
+    // layer compositor (additive modes and the wire ignore it). A freshly
+    // constructed pixel is fully transparent (_a == 0); drawing a color makes it
+    // opaque (_a == 1, in the color setter); Fade decays it back toward 0 so
+    // faded-out trails stop occluding lower layers under Over.
+    private double _a;
 
     // color
     public int color {
@@ -33,7 +40,24 @@ namespace Spectrum.LEDs {
         _r = r;
         _g = g;
         _b = b;
+        // Drawing means opaque. Untouched pixels keep _a == 0 (transparent).
+        _a = 1;
       }
+    }
+
+    public double a {
+      get { return _a; }
+    }
+
+    // Erase to fully transparent black — distinct from `color = 0`, which is
+    // opaque black. Use where a visualizer means "reveal the layers below here"
+    // rather than "paint this black".
+    public void Clear() {
+      _color = 0;
+      _r = 0;
+      _g = 0;
+      _b = 0;
+      _a = 0;
     }
 
     private void updateColor() {
@@ -79,13 +103,19 @@ namespace Spectrum.LEDs {
     // these are throughput optimizations, not visual changes.
 
     public void Fade(double mul, double sub) {
-      // Matches the old "if (color != 0)" guard; black pixels stay black.
-      if (_color == 0) {
+      // Nothing to do for a fully transparent black pixel. (The old guard was
+      // just "_color == 0"; we also require _a == 0 now so an opaque-but-black
+      // pixel's coverage still decays instead of freezing.)
+      if (_color == 0 && _a == 0) {
         return;
       }
       _r = _r * mul - sub;
       _g = _g * mul - sub;
       _b = _b * mul - sub;
+      // Coverage decays with the same multiplier (floor 0) so a fading trail
+      // stops occluding lower layers under Over as it dims. mul is in (0,1) and
+      // _a >= 0, so the product stays >= 0.
+      _a *= mul;
       updateColor();
     }
 
@@ -155,6 +185,65 @@ namespace Spectrum.LEDs {
         updateColor();
       }
     }
+
+    // Compositing (M-series perf note carries over): the layer compositor works
+    // on the double-precision _r/_g/_b channels and packs once per pixel via a
+    // single updateColor(), clamping only at pack time. src is another pixel of
+    // the same buffer shape (index-aligned), so accessing its private channels
+    // is fine (same struct type). o is the source layer's opacity, 0..1.
+
+    // Bottom-most active layer: seed this composite pixel from src scaled by
+    // opacity. Coverage is carried through (not scaled by opacity) so a
+    // subsequent Over layer blends against the base's real alpha.
+    public void CompositeCopyScaled(LEDDomeOutputPixel src, double o) {
+      _r = src._r * o;
+      _g = src._g * o;
+      _b = src._b * o;
+      _a = src._a;
+      updateColor();
+    }
+
+    // Blend src (the layer above) into this composite pixel per blend mode. All
+    // math is on the 0..255 double channels; see the blend table in the layers
+    // design doc. Add/Screen/Lighten/Multiply ignore coverage (black is
+    // identity); Over uses src's alpha so a foreground layer only paints where it
+    // actually drew (w = o * S.a), and accumulates coverage into the composite.
+    public void CompositeBlend(
+      LEDDomeOutputPixel src, DomeBlendMode mode, double o
+    ) {
+      double sr = src._r, sg = src._g, sb = src._b;
+      switch (mode) {
+        case DomeBlendMode.Add:
+          _r += sr * o;
+          _g += sg * o;
+          _b += sb * o;
+          break;
+        case DomeBlendMode.Screen:
+          _r = 255 - (255 - _r) * (255 - sr * o) / 255;
+          _g = 255 - (255 - _g) * (255 - sg * o) / 255;
+          _b = 255 - (255 - _b) * (255 - sb * o) / 255;
+          break;
+        case DomeBlendMode.Lighten:
+          _r = Math.Max(_r, sr * o);
+          _g = Math.Max(_g, sg * o);
+          _b = Math.Max(_b, sb * o);
+          break;
+        case DomeBlendMode.Multiply:
+          _r = _r * (255 - o * (255 - sr)) / 255;
+          _g = _g * (255 - o * (255 - sg)) / 255;
+          _b = _b * (255 - o * (255 - sb)) / 255;
+          break;
+        case DomeBlendMode.Over:
+        default:
+          double w = o * src._a;
+          _r = sr * w + _r * (1 - w);
+          _g = sg * w + _g * (1 - w);
+          _b = sb * w + _b * (1 - w);
+          _a = w + _a * (1 - w);
+          break;
+      }
+      updateColor();
+    }
   }
 
   public class LEDDomeOutputBuffer {
@@ -192,6 +281,12 @@ namespace Spectrum.LEDs {
       this.pixels[this.strutStartIndex[strutIndex] + ledIndex].color = color;
     }
 
+    // Erase a strut-addressed pixel to fully transparent black (see
+    // LEDDomeOutputPixel.Clear) — "reveal below", not "paint black".
+    public void ClearPixel(int strutIndex, int ledIndex) {
+      this.pixels[this.strutStartIndex[strutIndex] + ledIndex].Clear();
+    }
+
     public void Fade(double mul, double sub) {
       for (int i = 0; i < pixels.Length; i++) {
         pixels[i].Fade(mul, sub);
@@ -201,6 +296,22 @@ namespace Spectrum.LEDs {
     public void HueRotate(double rate) {
       for (int i = 0; i < pixels.Length; i++) {
         pixels[i].HueRotate(rate);
+      }
+    }
+
+    // Seed this composite buffer from a bottom layer scaled by opacity.
+    public void CompositeBottom(LEDDomeOutputBuffer src, double opacity) {
+      for (int i = 0; i < pixels.Length; i++) {
+        pixels[i].CompositeCopyScaled(src.pixels[i], opacity);
+      }
+    }
+
+    // Blend an upper layer into this composite buffer.
+    public void CompositeBlend(
+      LEDDomeOutputBuffer src, DomeBlendMode mode, double opacity
+    ) {
+      for (int i = 0; i < pixels.Length; i++) {
+        pixels[i].CompositeBlend(src.pixels[i], mode, opacity);
       }
     }
   }

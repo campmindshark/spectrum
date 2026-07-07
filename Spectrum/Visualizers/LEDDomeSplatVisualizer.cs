@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace Spectrum {
 
-  class LEDDomeSplatVisualizer : Visualizer {
+  class LEDDomeSplatVisualizer : DomeLayerVisualizer {
 
     private Configuration config;
     private AudioInput audio;
@@ -31,9 +31,14 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return this.config.domeActiveVis == 7 ? 2 : 0;
+        return DomeLayerSettings.StackActivates(
+          this.config.domeLayerStack, "splat"
+        ) ? 2 : 0;
       }
     }
+
+    public string LayerKey => "splat";
+    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 
@@ -76,14 +81,11 @@ namespace Spectrum {
         }
       }
 
-      this.dome.WriteBuffer(buffer);
       this.lastProgress = progress;
     }
 
     public void Visualize() {
       this.Render();
-
-      this.dome.Flush();
     }
 
     // Clamp value x inside range a-b

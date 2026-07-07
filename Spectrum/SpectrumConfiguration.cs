@@ -130,6 +130,16 @@ namespace Spectrum {
       get => _domeActiveVis;
       set => SetField(ref _domeActiveVis, value);
     }
+    // Left null by default (not a pre-filled list): XSerializer deserializes a
+    // collection property by calling IList.Add on the *existing* instance, so a
+    // non-null default would double up the persisted entries on load. A null /
+    // empty stack is synthesized from domeActiveVis in MainWindow.LoadConfig.
+    // Persisted (no [XmlIgnore]), so it is NOT in configPropertiesIgnored.
+    private List<DomeLayerSettings> _domeLayerStack = null;
+    public List<DomeLayerSettings> domeLayerStack {
+      get => _domeLayerStack;
+      set => SetField(ref _domeLayerStack, value);
+    }
     // Left null by default (rather than a pre-filled identity array): XSerializer
     // deserializes an array property by calling IList.Add on the *existing*
     // instance, and a non-null array is fixed-size, so a pre-initialized default

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Threading;
 using Spectrum.Base;
 using Spectrum.Audio;
@@ -148,6 +149,52 @@ namespace Spectrum {
         this.config,
         dome
       ));
+
+      // domeActiveVis is a deprecated write-only alias for the layer stack.
+      // Wire the subscriber here (not in a UI) so old MIDI bindings, the
+      // not-yet-replaced dropdowns, and the existing web parameter keep working
+      // regardless of which front-end is running.
+      this.config.PropertyChanged += this.DomeActiveVisAliasChanged;
+    }
+
+    // Whenever domeActiveVis is written, replace layer 0 (the background) of the
+    // stack with that visualizer, preserving any layers stacked above it. This
+    // keeps the legacy single-visualizer selector working as a shortcut for the
+    // background layer. Writes replace the whole list (snapshot swap); the
+    // resulting domeLayerStack PropertyChanged is not domeActiveVis, so this
+    // doesn't re-enter.
+    private void DomeActiveVisAliasChanged(
+      object sender, PropertyChangedEventArgs e
+    ) {
+      if (e.PropertyName != "domeActiveVis") {
+        return;
+      }
+      string key = DomeLayerSettings.KeyForLegacyVis(this.config.domeActiveVis);
+      if (key == null) {
+        return;
+      }
+      List<DomeLayerSettings> current = this.config.domeLayerStack;
+      var replacement = new List<DomeLayerSettings>();
+      if (current != null && current.Count > 0) {
+        DomeLayerSettings bottom = current[0];
+        replacement.Add(new DomeLayerSettings() {
+          VisualizerKey = key,
+          BlendMode = bottom?.BlendMode ?? DomeBlendMode.Over,
+          Opacity = bottom?.Opacity ?? 1.0,
+          Enabled = bottom?.Enabled ?? true,
+        });
+        for (int i = 1; i < current.Count; i++) {
+          replacement.Add(current[i]);
+        }
+      } else {
+        replacement.Add(new DomeLayerSettings() {
+          VisualizerKey = key,
+          BlendMode = DomeBlendMode.Over,
+          Opacity = 1.0,
+          Enabled = true,
+        });
+      }
+      this.config.domeLayerStack = replacement;
     }
 
     private bool enabled;

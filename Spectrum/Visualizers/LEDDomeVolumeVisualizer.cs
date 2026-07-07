@@ -10,7 +10,7 @@ using System.Diagnostics;
 
 namespace Spectrum {
 
-  class LEDDomeVolumeVisualizer : Visualizer {
+  class LEDDomeVolumeVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
     private readonly AudioInput audio;
@@ -111,12 +111,14 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        if (this.config.domeActiveVis != 0) {
-          return 0;
-        }
-        return 2;
+        return DomeLayerSettings.StackActivates(
+          this.config.domeLayerStack, "volume"
+        ) ? 2 : 0;
       }
     }
+
+    public string LayerKey => "volume";
+    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
 
     private bool enabled = false;
     public bool Enabled {
@@ -144,7 +146,9 @@ namespace Spectrum {
         for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
           Strut strut = Strut.FromIndex(i);
           for (int j = 0; j < strut.Length; j++) {
-            this.buffer.SetPixel(i, j, 0x000000);
+            // Erase (transparent), not opaque black: an unlit strut should
+            // reveal lower layers when Volume is a foreground Over layer.
+            this.buffer.ClearPixel(i, j);
           }
         }
         this.wipeStrutsNextCycle = false;
@@ -200,8 +204,6 @@ namespace Spectrum {
           }
         }
       }
-      this.dome.WriteBuffer(this.buffer);
-      this.dome.Flush();
     }
 
     private void UpdateAnimationSize(int newAnimationSize) {
@@ -219,7 +221,9 @@ namespace Spectrum {
       for (int i = this.animationSize - 1; i >= newAnimationSize; i--) {
         foreach (Strut strut in this.partLayout.GetSegment(i).GetStruts()) {
           for (int j = 0; j < strut.Length; j++) {
-            this.buffer.SetPixel(strut.Index, j, 0x000000);
+            // Dropped parts are erased (transparent), so a foreground Volume
+            // layer reveals what's below instead of stamping black.
+            this.buffer.ClearPixel(strut.Index, j);
           }
         }
       }
@@ -258,16 +262,17 @@ namespace Spectrum {
       for (int i = 0; i < strut.Length; i++) {
         double gradientPos =
           strut.GetGradientPos(percentageLit, startLitRange, endLitRange, i);
-        int color;
         if (gradientPos != -1.0) {
-          color = this.ColorFromPart(strut.Index, gradientPos, gradientFocus);
+          int color = this.ColorFromPart(strut.Index, gradientPos, gradientFocus);
           //color = this.ColorFromIndex(strut.Index, gradientPos, gradientFocus);
           //color = this.ColorFromRandom(strut.Index);
           //color = this.ColorFromPartAndSpoke(strut.Index, gradientPos, gradientFocus);
+          this.buffer.SetPixel(strut.Index, i, color);
         } else {
-          color = 0x000000;
+          // Unlit portion of a partially-lit strut: erase (transparent) so lower
+          // layers show through under Over, instead of painting opaque black.
+          this.buffer.ClearPixel(strut.Index, i);
         }
-        this.buffer.SetPixel(strut.Index, i, color);
       }
     }
 

@@ -38,17 +38,36 @@
       border-bottom: 1px solid #333; padding: 0.15rem 0.4rem; white-space: nowrap; }
     .wand-table td { padding: 0.15rem 0.4rem; white-space: nowrap;
       font-variant-numeric: tabular-nums; }
+    .layers { border-top: 1px solid #333; margin-top: 1.5rem; padding-top: 0.5rem;
+      margin-bottom: 1rem; }
+    .layers h2 { font-size: 1rem; margin: 0 0 0.5rem; }
+    .layers .hint { font-size: 0.75rem; color: #888; margin: 0 0 0.5rem; }
+    .layer-row { background: #1c1c22; border-radius: 6px; padding: 0.5rem;
+      margin-bottom: 0.5rem; }
+    .layer-row .top { display: flex; gap: 0.4rem; align-items: center;
+      margin-bottom: 0.4rem; }
+    .layer-row .top select { flex: 1; min-width: 0; }
+    .layer-row .bottom { display: flex; gap: 0.4rem; align-items: center; }
+    .layer-row .bottom input[type=range] { flex: 1; min-width: 0; }
+    .layer-row button { background: #333; color: #eee; border: none;
+      border-radius: 4px; padding: 0.3rem 0.5rem; cursor: pointer; }
+    .layer-row button:disabled { opacity: 0.4; cursor: default; }
+    .layers .add { background: #185018; color: #fff; border: none;
+      border-radius: 6px; padding: 0.5rem 0.8rem; cursor: pointer;
+      font-size: 0.9rem; }
   </style>
 </head>
 <body>
   <h1>Spectrum &mdash; Controls</h1>
   <div class="operator" id="operator"></div>
   <div class="telemetry" id="telemetry"></div>
+  <div class="layers" id="layers"></div>
   <div id="params"></div>
   <div class="wands" id="wands"></div>
   <div class="status" id="status">loading&hellip;</div>
   <p style="font-size:0.75rem"><a href="/maintenance.html">Maintenance &rarr;</a></p>
   <script src="app.js"></script>
+  <script src="layers.js"></script>
   <script src="wands-mini.js"></script>
 </body>
 </html>

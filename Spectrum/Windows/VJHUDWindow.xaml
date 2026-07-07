@@ -373,20 +373,31 @@
                 <Label Content="Visualizer Settings" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
                 <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
                     <WrapPanel Margin="0,0,0,0">
-                        <Grid Height="24">
-                            <Label Content="Active Visualizer" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="domeActiveVisualizer" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
-                                <ComboBoxItem x:Name="domeActiveVisualizerVolume" Content='"Volume" (OG)' IsSelected="True" />
-                                <ComboBoxItem x:Name="domeActiveVisualizerRadial" Content='Radial Effects' />
-                                <ComboBoxItem x:Name="domeActiveVisualizerRace" Content='Race' />
-                                <ComboBoxItem x:Name="domeActiveVisualizerSnakes" Content='Snakes' />
-                                <ComboBoxItem x:Name="domeActiveVisualizerQuaternionTest" Content='Quaternion Test' />
-                                <ComboBoxItem x:Name="domeActiveVisualizerQuaternionMultiTest" Content='Quaternion Multi Test' />
-                                <ComboBoxItem x:Name="domeActiveVisualizerQuaternionPaintbrush" Content='Quaternion Paintbrush' />
-                                <ComboBoxItem x:Name="domeActiveVisualizerSplat" Content='Splat' />
-                                <ComboBoxItem x:Name="domeActiveVisualizerTVStatic" Content='TV Static' />
-                            </ComboBox>
-                        </Grid>
+                        <StackPanel Width="240">
+                            <Label Content="Layers (top = front)" Margin="0,0,0,0" Padding="0" />
+                            <ItemsControl x:Name="domeLayersItemsControl">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="2" Margin="0,1,0,1" Padding="2">
+                                            <StackPanel>
+                                                <DockPanel LastChildFill="True">
+                                                    <Button DockPanel.Dock="Right" Content="✕" Command="{Binding RemoveCommand}" Width="20" ToolTip="Remove layer" />
+                                                    <CheckBox DockPanel.Dock="Right" IsChecked="{Binding LayerEnabled}" VerticalAlignment="Center" Margin="0,0,4,0" ToolTip="Enabled" />
+                                                    <ComboBox ItemsSource="{Binding VisualizerOptions}" SelectedValuePath="Key" DisplayMemberPath="Label" SelectedValue="{Binding VisualizerKey}" />
+                                                </DockPanel>
+                                                <DockPanel LastChildFill="True" Margin="0,2,0,0">
+                                                    <Button DockPanel.Dock="Right" Content="▼" Command="{Binding MoveDownCommand}" Width="20" ToolTip="Move back" />
+                                                    <Button DockPanel.Dock="Right" Content="▲" Command="{Binding MoveUpCommand}" Width="20" ToolTip="Move front" />
+                                                    <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding BlendModes}" SelectedItem="{Binding BlendMode}" Width="80" ToolTip="Blend mode" />
+                                                    <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}" VerticalAlignment="Center" Margin="4,0,4,0" ToolTip="Opacity" />
+                                                </DockPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button x:Name="domeAddLayerButton" Content="Add layer" HorizontalAlignment="Left" Width="90" Margin="0,3,0,3" />
+                        </StackPanel>
                         <Grid Height="24">
                             <Label Content="Rotation Speed" Margin="0,3,0,0" Padding="0" />
                             <ComboBox x:Name="domeVolumeRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">

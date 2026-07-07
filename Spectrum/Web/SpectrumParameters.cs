@@ -21,11 +21,6 @@ namespace Spectrum.Web {
    */
   public static class SpectrumParameters {
 
-    // Labels for the dome active-visualizer dropdown (domeActiveVis index).
-    private static readonly IReadOnlyList<string> DomeVisNames = new[] {
-      "Volume", "Radial", "Race", "Snakes", "Quaternion Test",
-      "Quaternion Multi Test", "Quaternion Paintbrush", "Splat",
-    };
     // Labels for the dome radial-effect dropdown (domeRadialEffect index).
     private static readonly IReadOnlyList<string> DomeRadialEffectNames = new[] {
       "Radar", "Pulse", "Spiral", "Bubbles",
@@ -85,9 +80,9 @@ namespace Spectrum.Web {
         new DoubleParameter("domeRadialCenterSpeed", user, 0.0, 4.0,
           c => c.domeRadialCenterSpeed, (c, v) => c.domeRadialCenterSpeed = v),
 
-        // Which dome visualizer is active
-        new EnumIntParameter("domeActiveVis", user, DomeVisNames,
-          c => c.domeActiveVis, (c, v) => c.domeActiveVis = v),
+        // The dome layer stack replaces the old single-visualizer selector; it
+        // is compound state served by LayersController (GET/PUT /api/layers) and
+        // broadcast on the SSE "layers" frame, not a field-level parameter here.
 
         // Orientation controls — mirrors the "Display contours" checkbox in the
         // VJ HUD (VJHUDWindow orientationContours), toggling contour lines in the

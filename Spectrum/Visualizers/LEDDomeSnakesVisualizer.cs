@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace Spectrum {
 
-  class LEDDomeSnakesVisualizer : Visualizer {
+  class LEDDomeSnakesVisualizer : DomeLayerVisualizer {
     // Simple visualizer enbracing the triangles
     // A couple of snakes randomly run around leaving colors in their wake
 
@@ -44,19 +44,14 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        // The mapping between Visualizers and their corresponding domeActiveVis
-        // integer value is determined in the condition below, as well as in the
-        // Bind call for domeActiveVis in MainWindow.xaml.cs
-        if (this.config.domeActiveVis != 3) {
-          // By setting the priority to 0, we guarantee that this Visualizer
-          // will not run
-          return 0;
-        }
-        // You can return any number higher than 1 here to make sure this
-        // Visualizer runs and the screensaver Visualizer doesn't
-        return 2;
+        return DomeLayerSettings.StackActivates(
+          this.config.domeLayerStack, "snakes"
+        ) ? 2 : 0;
       }
     }
+
+    public string LayerKey => "snakes";
+    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
 
     public bool Enabled {
       get {
@@ -92,9 +87,6 @@ namespace Spectrum {
       }
       colorPaletteIndex = (colorPaletteIndex + 1) % (colorPaletteCount - 1);
       lastUpdate = DateTime.Now;
-
-      this.dome.WriteBuffer(this.buffer);
-      this.dome.Flush();
     }
 
     private void ProgressSnake(Queue<TriangleSegment> snake, int snakeColor, int trailingColor) {

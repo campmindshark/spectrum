@@ -23,7 +23,7 @@ namespace Spectrum.Visualizers {
   //    brighter color" (the old BlendLightPaint), so we track the winning
   //    (hue,sat,val) in locals and pack to an int once, instead of allocating
   //    several Color objects per drawn pixel.
-  class LEDDomeQuaternionPaintbrushVisualizer : Visualizer {
+  class LEDDomeQuaternionPaintbrushVisualizer : DomeLayerVisualizer {
 
     // The "forward" direction calibration assigns to a wand. Opposite ends of
     // the hemisphere are identified, so we measure distance to both spot and
@@ -156,9 +156,14 @@ namespace Spectrum.Visualizers {
 
     public int Priority {
       get {
-        return this.config.domeActiveVis == 6 ? 2 : 0;
+        return DomeLayerSettings.StackActivates(
+          this.config.domeLayerStack, "quaternion-paintbrush"
+        ) ? 2 : 0;
       }
     }
+
+    public string LayerKey => "quaternion-paintbrush";
+    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 
@@ -180,8 +185,6 @@ namespace Spectrum.Visualizers {
       RenderPixels(level);
 
       lastProgress = progress;
-      dome.WriteBuffer(buffer);
-      this.dome.Flush();
     }
 
     // Measures the real time elapsed since the previous frame and converts it

@@ -113,6 +113,10 @@ namespace Spectrum.Web {
       if (this.op != null) {
         frames.Add(Frame("operator", "enabled", this.op.Enabled));
       }
+      // Seed the current layer stack so a client that opens the stream before its
+      // initial GET (or without one) still renders the panel from server truth.
+      frames.Add(
+        Frame("layers", "layers", LayersController.SerializeStack(this.config)));
       return frames;
     }
 
@@ -127,6 +131,18 @@ namespace Spectrum.Web {
       if (this.registry.TryGet(e.PropertyName, out ParameterDescriptor d)) {
         object value = d.Get(this.config);
         this.Fan(Frame("param", d.Key, value), d);
+        return;
+      }
+      // The layer stack is compound state (not in the ParameterRegistry), so it
+      // gets its own frame kind carrying the whole stack. Not role-gated: it
+      // replaces the user-level domeActiveVis selector, and the stack leaks
+      // nothing. Any writer (native panel, web PUT, the domeActiveVis alias)
+      // triggers this.
+      if (e.PropertyName == "domeLayerStack") {
+        this.Fan(
+          Frame("layers", "layers", LayersController.SerializeStack(this.config)),
+          null
+        );
         return;
       }
       if (this.configTelemetry.TryGetValue(e.PropertyName, out TelemetryItem item)) {

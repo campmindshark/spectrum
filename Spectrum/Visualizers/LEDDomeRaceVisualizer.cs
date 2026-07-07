@@ -7,7 +7,7 @@ using System.Collections.Generic;
 
 namespace Spectrum {
 
-  class LEDDomeRaceVisualizer : Visualizer {
+  class LEDDomeRaceVisualizer : DomeLayerVisualizer {
     /**
      * Visualizes spinning bands (racers) going around the dome. Each moves at a speed proportional 
      * to volume, beats, constant, or still. See RacerConfig below to configure the bands.
@@ -229,19 +229,16 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        // The mapping between Visualizers and their corresponding domeActiveVis
-        // integer value is determined in the condition below, as well as in the
-        // Bind call for domeActiveVis in MainWindow.xaml.cs
-        if (this.config.domeActiveVis != 2) {
-          // By setting the priority to 0, we guarantee that this Visualizer
-          // will not run
-          return 0;
-        }
-        // You can return any number higher than 1 here to make sure this
-        // Visualizer runs and the screensaver Visualizer doesn't
-        return 2;
+        // Priority 2 (ties all run) whenever an enabled layer names this
+        // visualizer; the compositor blends the winning layers in stack order.
+        return DomeLayerSettings.StackActivates(
+          this.config.domeLayerStack, "race"
+        ) ? 2 : 0;
       }
     }
+
+    public string LayerKey => "race";
+    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
 
     // When the Operator determines that this Visualizer has the highest
     // priority for LEDDomeOutput, it will set the Enabled property below to
@@ -304,7 +301,8 @@ namespace Spectrum {
         Tuple<Racer, double, double, Racer> loc =
           this.GetRacer(this.pixelHeight[i], this.pixelAngle[i]);
         if (loc == null) {
-          // color = 0 is off.
+          // color = 0 is off. Intentionally opaque black (not Clear): a
+          // foreground Race layer under Over occludes with black between racers.
           this.buffer.pixels[i].color = 0;
         } else {
           // Let the racer choose its color
@@ -312,13 +310,6 @@ namespace Spectrum {
             loc.Item4.Color(dome, config, loc.Item2, loc.Item3);
         }
       }
-      this.dome.WriteBuffer(this.buffer);
-
-      // No messages will be sent to the Beaglebone until Flush is called. This
-      // makes it imperative that you call Flush at the end of Visualize, or
-      // whenever you want to update the LEDs. The LEDs themselves are stateful,
-      // and will maintain whatever color you set them to until they lose power.
-      this.dome.Flush();
     }
   }
 }

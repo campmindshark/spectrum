@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace Spectrum {
 
-  class LEDDomeRadialVisualizer : Visualizer {
+  class LEDDomeRadialVisualizer : DomeLayerVisualizer {
 
     private Configuration config;
     private AudioInput audio;
@@ -34,9 +34,14 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return this.config.domeActiveVis == 1 ? 2 : 0;
+        return DomeLayerSettings.StackActivates(
+          this.config.domeLayerStack, "radial"
+        ) ? 2 : 0;
       }
     }
+
+    public string LayerKey => "radial";
+    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 
@@ -154,7 +159,6 @@ namespace Spectrum {
             );
         }
       }
-      this.dome.WriteBuffer(buffer);
     }
 
     // Map value x from range a-b to range c-d
@@ -211,8 +215,6 @@ namespace Spectrum {
 
     public void Visualize() {
       this.Render();
-
-      this.dome.Flush();
     }
 
   }

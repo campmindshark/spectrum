@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace Spectrum {
 
-  class LEDDomeTVStaticVisualizer : Visualizer {
+  class LEDDomeTVStaticVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
     private readonly LEDDomeOutput dome;
@@ -27,9 +27,14 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return this.config.domeActiveVis == 8 ? 2 : 0;
+        return DomeLayerSettings.StackActivates(
+          this.config.domeLayerStack, "tv-static"
+        ) ? 2 : 0;
       }
     }
+
+    public string LayerKey => "tv-static";
+    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 
@@ -41,12 +46,10 @@ namespace Spectrum {
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         this.buffer.pixels[i].color = this.RandomColor();
       }
-      this.dome.WriteBuffer(this.buffer);
     }
 
     public void Visualize() {
       this.Static();
-      this.dome.Flush();
     }
 
     private int RandomColor() {
