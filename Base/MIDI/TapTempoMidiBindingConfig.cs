@@ -25,7 +25,7 @@ namespace Spectrum.Base {
       };
     }
 
-    public override Binding[] GetBindings(Configuration config) {
+    public override Binding[] GetBindings(Configuration config, BeatBroadcaster beat) {
       Binding binding = new Binding();
       binding.key = new BindingKey(this.buttonType, this.buttonIndex);
       binding.config = this;
@@ -33,7 +33,7 @@ namespace Spectrum.Base {
         if (val == 0.0) {
           return null;
         }
-        config.beatBroadcaster.AddTap();
+        beat.AddTap();
         return "tap registered!";
       };
       return new Binding[] { binding };

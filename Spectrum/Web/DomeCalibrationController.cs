@@ -10,19 +10,19 @@ namespace Spectrum.Web {
    * The server-side dome-mapping calibration flow for the web
    * (docs/web_architecture.md — the modal op the native DomeMappingWindow drives
    * in-process). It is the exact same state machine: light one controller cable
-   * at a time via config.domeCalibrationCableIndex (rendered by
+   * at a time via the shared DomeCalibrationState (rendered by
    * LEDDomeMappingCalibrationVisualizer, which takes over the dome while
-   * domeCalibrationActive is true), let the operator report which physical
-   * endpoint lit, and on completion write the discovered permutation to
-   * config.domeCableMapping.
+   * Active is true), let the operator report which physical endpoint lit, and
+   * on completion write the discovered permutation to config.domeCableMapping.
    *
    * This holds the transient picks/step state server-side (the dome mapping is a
    * compound int[] write, kept maintenance-only and off the field-level
    * last-write-wins path). It is a modal resource: every mutating call requires
    * the caller to hold the "domeCalibration" advisory lease, so two operators
-   * can't drive the flow into each other. All Configuration writes go through the
-   * ControlGateway, so domeCalibrationActive/CableIndex/domeCableMapping change
-   * on the same thread a native GUI write would.
+   * can't drive the flow into each other. The domeCableMapping write goes
+   * through the ControlGateway (it's persisted config with PropertyChanged
+   * subscribers); the calibration selection is plain shared state the
+   * visualizer polls, written directly.
    *
    * Cable and endpoint are both identified by box*2 + half (half 0 = ethernet A,
    * 1 = B), matching DomeMappingWindow and LEDDomeOutput.
@@ -86,6 +86,7 @@ namespace Spectrum.Web {
 
     private readonly ControlGateway gateway;
     private readonly Configuration config;
+    private readonly DomeCalibrationState calibration;
     private readonly int numCables;
     private readonly string[] cableLabels;
     private readonly string[] endpointLabels;
@@ -105,10 +106,12 @@ namespace Spectrum.Web {
     public DomeCalibrationController(
       ControlGateway gateway,
       Configuration config,
+      DomeCalibrationState calibration,
       int numCables
     ) {
       this.gateway = gateway;
       this.config = config;
+      this.calibration = calibration;
       this.numCables = numCables;
       this.picks = new int[numCables];
       this.cableLabels = new string[numCables];
@@ -376,21 +379,16 @@ namespace Spectrum.Web {
 
     public CalibrationState State() => this.Snapshot();
 
-    // Push the current active/cable-index selection to Configuration through the
-    // gateway, then return a fresh snapshot. The gateway serializes the write
-    // onto the UI thread so PropertyChanged fires exactly as a native GUI write.
-    private async Task<CalibrationState> DriveAndSnapshot() {
-      bool active;
-      int index;
+    // Push the current active/cable-index selection to the shared calibration
+    // state, then return a fresh snapshot. The fields are volatile and the only
+    // reader (the calibration visualizer) polls, so no thread marshalling is
+    // needed — unlike persisted config writes, which still go via the gateway.
+    private Task<CalibrationState> DriveAndSnapshot() {
       lock (this.gate) {
-        active = this.active;
-        index = this.CableIndexLocked();
+        this.calibration.Active = this.active;
+        this.calibration.CableIndex = this.CableIndexLocked();
       }
-      await this.gateway.InvokeAsync(() => {
-        this.config.domeCalibrationActive = active;
-        this.config.domeCalibrationCableIndex = index;
-      });
-      return this.Snapshot();
+      return Task.FromResult(this.Snapshot());
     }
 
     private bool IsCompleteLocked(out string error) {

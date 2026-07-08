@@ -1,5 +1,4 @@
 ﻿using System;
-using System.ComponentModel;
 using System.Threading;
 using Spectrum.Base;
 using Spectrum.Audio;
@@ -23,6 +22,23 @@ namespace Spectrum {
     // live orientation-device state. Stable for the Operator's lifetime — Reboot
     // only toggles threads, it doesn't rebuild this instance.
     public OrientationInput OrientationInput { get; }
+    // Live runtime state and services, split off Configuration (which carries
+    // only persisted settings — arch_issues item 5). All stable for the
+    // Operator's lifetime, like OrientationInput above:
+    //  - BeatBroadcaster: the tempo service every beat consumer reads and the
+    //    beat detectors / tap sources report into.
+    //  - Telemetry: FPS counters for the native labels and the web SSE feed.
+    //  - MidiLog: the rolling binding log (owned by MidiInput), shown by the
+    //    VJ HUD.
+    //  - DomeCalibration: the transient dome-mapping calibration selection
+    //    shared by both calibration UIs and the calibration visualizer.
+    //  - DomeOutput: the dome device, exposed for the simulator window to drain
+    //    its frame queue directly from the producer.
+    public BeatBroadcaster BeatBroadcaster { get; }
+    public RuntimeTelemetry Telemetry { get; }
+    public ObservableMidiLog MidiLog { get; }
+    public DomeCalibrationState DomeCalibration { get; }
+    public LEDDomeOutput DomeOutput { get; }
     private readonly Stopwatch frameRateStopwatch;
     private int framesThisSecond;
 
@@ -59,23 +75,28 @@ namespace Spectrum {
 
     public Operator(Configuration config) {
       this.config = config;
+      this.BeatBroadcaster = new BeatBroadcaster(config);
+      this.Telemetry = new RuntimeTelemetry();
+      this.DomeCalibration = new DomeCalibrationState();
 
       this.frameRateStopwatch = new Stopwatch();
       this.frameRateStopwatch.Start();
       this.framesThisSecond = 0;
 
       this.inputs = new List<Input>();
-      var audio = new AudioInput(config);
+      var audio = new AudioInput(config, this.BeatBroadcaster);
       this.inputs.Add(audio);
-      var midi = new MidiInput(config);
+      var midi = new MidiInput(config, this.BeatBroadcaster);
       this.inputs.Add(midi);
+      this.MidiLog = midi.MidiLog;
       var orientation = new OrientationInput(config);
       this.inputs.Add(orientation);
       this.OrientationInput = orientation;
 
       this.outputs = new List<Output>();
-      var dome = new LEDDomeOutput(config);
+      var dome = new LEDDomeOutput(config, this.Telemetry, this.BeatBroadcaster);
       this.outputs.Add(dome);
+      this.DomeOutput = dome;
 
       this.visualizers = new List<Visualizer>();
       this.visualizers.Add(new LEDDomeMidiTestVisualizer(
@@ -97,6 +118,7 @@ namespace Spectrum {
       ));
       this.visualizers.Add(new LEDDomeMappingCalibrationVisualizer(
         this.config,
+        this.DomeCalibration,
         dome
       ));
       this.visualizers.Add(new LEDDomeFullColorFlashDiagnosticVisualizer(
@@ -106,16 +128,19 @@ namespace Spectrum {
       this.visualizers.Add(new LEDDomeVolumeVisualizer(
         this.config,
         audio,
+        this.BeatBroadcaster,
         dome
       ));
       this.visualizers.Add(new LEDDomeRadialVisualizer(
         this.config,
         audio,
+        this.BeatBroadcaster,
         dome
       ));
       this.visualizers.Add(new LEDDomeSplatVisualizer(
         this.config,
         audio,
+        this.BeatBroadcaster,
         dome
       ));
       this.visualizers.Add(new LEDDomeQuaternionTestVisualizer(
@@ -132,12 +157,14 @@ namespace Spectrum {
         this.config,
         audio,
         orientation,
+        this.BeatBroadcaster,
         dome
         ));
       this.visualizers.Add(new LEDDomeRaceVisualizer(
         this.config,
         audio,
         midi,
+        this.BeatBroadcaster,
         dome
       ));
       this.visualizers.Add(new LEDDomeSnakesVisualizer(
@@ -149,52 +176,14 @@ namespace Spectrum {
         this.config,
         dome
       ));
-
-      // domeActiveVis is a deprecated write-only alias for the layer stack.
-      // Wire the subscriber here (not in a UI) so old MIDI bindings, the
-      // not-yet-replaced dropdowns, and the existing web parameter keep working
-      // regardless of which front-end is running.
-      this.config.PropertyChanged += this.DomeActiveVisAliasChanged;
-    }
-
-    // Whenever domeActiveVis is written, replace layer 0 (the background) of the
-    // stack with that visualizer, preserving any layers stacked above it. This
-    // keeps the legacy single-visualizer selector working as a shortcut for the
-    // background layer. Writes replace the whole list (snapshot swap); the
-    // resulting domeLayerStack PropertyChanged is not domeActiveVis, so this
-    // doesn't re-enter.
-    private void DomeActiveVisAliasChanged(
-      object sender, PropertyChangedEventArgs e
-    ) {
-      if (e.PropertyName != "domeActiveVis") {
-        return;
-      }
-      string key = DomeLayerSettings.KeyForLegacyVis(this.config.domeActiveVis);
-      if (key == null) {
-        return;
-      }
-      List<DomeLayerSettings> current = this.config.domeLayerStack;
-      var replacement = new List<DomeLayerSettings>();
-      if (current != null && current.Count > 0) {
-        DomeLayerSettings bottom = current[0];
-        replacement.Add(new DomeLayerSettings() {
-          VisualizerKey = key,
-          BlendMode = bottom?.BlendMode ?? DomeBlendMode.Over,
-          Opacity = bottom?.Opacity ?? 1.0,
-          Enabled = bottom?.Enabled ?? true,
-        });
-        for (int i = 1; i < current.Count; i++) {
-          replacement.Add(current[i]);
-        }
-      } else {
-        replacement.Add(new DomeLayerSettings() {
-          VisualizerKey = key,
-          BlendMode = DomeBlendMode.Over,
-          Opacity = 1.0,
-          Enabled = true,
-        });
-      }
-      this.config.domeLayerStack = replacement;
+      this.visualizers.Add(new LEDDomeTwinkleVisualizer(
+        this.config,
+        dome
+      ));
+      this.visualizers.Add(new LEDDomeWaveVisualizer(
+        this.config,
+        dome
+      ));
     }
 
     private bool enabled;
@@ -260,7 +249,7 @@ namespace Spectrum {
 
         if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
           this.frameRateStopwatch.Restart();
-          this.config.operatorFPS = this.framesThisSecond;
+          this.Telemetry.OperatorFPS = this.framesThisSecond;
           this.framesThisSecond = 0;
         }
         this.framesThisSecond++;

@@ -47,13 +47,16 @@ namespace Spectrum.Web {
     private readonly ParameterRegistry registry;
     private readonly Configuration config;
     private readonly BeatBroadcaster beat;
+    // Live engine counters (FPS), split out of Configuration; raises its own
+    // PropertyChanged from the operator/OPC threads.
+    private readonly RuntimeTelemetry telemetry;
     // The engine on/off source. Its EnabledChanged fires outside Configuration
     // entirely (Enabled is live Operator state, not a config property), so it
     // gets its own subscription and its own frame kind ("operator").
     private readonly Operator op;
     // Telemetry items indexed by the PropertyChanged name that triggers them,
     // split by which object raises that event.
-    private readonly Dictionary<string, TelemetryItem> configTelemetry =
+    private readonly Dictionary<string, TelemetryItem> runtimeTelemetry =
       new Dictionary<string, TelemetryItem>();
     private readonly Dictionary<string, TelemetryItem> beatTelemetry =
       new Dictionary<string, TelemetryItem>();
@@ -61,16 +64,18 @@ namespace Spectrum.Web {
       new ConcurrentDictionary<Guid, Subscriber>();
 
     public ConfigEventStream(
-      ParameterRegistry registry, Configuration config, Operator op
+      ParameterRegistry registry, Configuration config, Operator op,
+      RuntimeTelemetry telemetry, BeatBroadcaster beat
     ) {
       this.registry = registry;
       this.config = config;
       this.op = op;
-      this.beat = config.beatBroadcaster;
+      this.telemetry = telemetry;
+      this.beat = beat;
       foreach (TelemetryItem item in TelemetryCatalog.Items) {
         switch (item.Source) {
-          case TelemetrySource.Config:
-            this.configTelemetry[item.SourceProperty] = item;
+          case TelemetrySource.Runtime:
+            this.runtimeTelemetry[item.SourceProperty] = item;
             break;
           case TelemetrySource.Beat:
             this.beatTelemetry[item.SourceProperty] = item;
@@ -78,6 +83,9 @@ namespace Spectrum.Web {
         }
       }
       this.config.PropertyChanged += this.OnConfigChanged;
+      if (this.telemetry != null) {
+        this.telemetry.PropertyChanged += this.OnTelemetryChanged;
+      }
       if (this.beat != null) {
         this.beat.PropertyChanged += this.OnBeatChanged;
       }
@@ -120,10 +128,9 @@ namespace Spectrum.Web {
       return frames;
     }
 
-    // Fires wherever the write landed — the UI/Dispatcher thread for a
-    // parameter (every write funnels through the gateway), or the Operator/OPC
-    // threads for the FPS telemetry counters. Reading a scalar and fanning a
-    // string onto thread-safe channels is safe from any of them.
+    // Fires on the UI/Dispatcher thread — every config write funnels through
+    // the gateway or the native GUI. Reading a scalar and fanning a string onto
+    // thread-safe channels is safe regardless.
     private void OnConfigChanged(object sender, PropertyChangedEventArgs e) {
       if (e.PropertyName == null) {
         return;
@@ -135,17 +142,21 @@ namespace Spectrum.Web {
       }
       // The layer stack is compound state (not in the ParameterRegistry), so it
       // gets its own frame kind carrying the whole stack. Not role-gated: it
-      // replaces the user-level domeActiveVis selector, and the stack leaks
-      // nothing. Any writer (native panel, web PUT, the domeActiveVis alias)
-      // triggers this.
-      if (e.PropertyName == "domeLayerStack") {
+      // replaced the user-level visualizer selector, and the stack leaks
+      // nothing. Any writer (native panel, web PUT) triggers this.
+      if (e.PropertyName == nameof(this.config.domeLayerStack)) {
         this.Fan(
           Frame("layers", "layers", LayersController.SerializeStack(this.config)),
           null
         );
-        return;
       }
-      if (this.configTelemetry.TryGetValue(e.PropertyName, out TelemetryItem item)) {
+    }
+
+    // Fires on the Operator/OPC threads (the FPS counters' writers); fanning
+    // onto the thread-safe channels is safe from there.
+    private void OnTelemetryChanged(object sender, PropertyChangedEventArgs e) {
+      if (e.PropertyName != null &&
+          this.runtimeTelemetry.TryGetValue(e.PropertyName, out TelemetryItem item)) {
         this.Fan(Frame("telemetry", item.Key, SafeRead(item)), null);
       }
     }
@@ -177,7 +188,7 @@ namespace Spectrum.Web {
 
     private object SafeRead(TelemetryItem item) {
       try {
-        return item.Read(this.config);
+        return item.Read(this.telemetry, this.beat);
       } catch (Exception) {
         // A telemetry getter should never throw, but never let one kill the
         // change feed.
@@ -190,6 +201,9 @@ namespace Spectrum.Web {
 
     public void Dispose() {
       this.config.PropertyChanged -= this.OnConfigChanged;
+      if (this.telemetry != null) {
+        this.telemetry.PropertyChanged -= this.OnTelemetryChanged;
+      }
       if (this.beat != null) {
         this.beat.PropertyChanged -= this.OnBeatChanged;
       }

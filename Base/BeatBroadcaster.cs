@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Media;
 using System.ComponentModel;
 using System.Timers;
 
@@ -163,7 +162,7 @@ namespace Spectrum.Base {
     private void TapTempoConcluded(object sender, ElapsedEventArgs e) {
       this.PropertyChanged?.Invoke(
         this,
-        new PropertyChangedEventArgs("TapCounterBrush")
+        new PropertyChangedEventArgs("TapTempoActive")
       );
       this.PropertyChanged?.Invoke(
         this,
@@ -212,12 +211,13 @@ namespace Spectrum.Base {
       }
     }
 
-    public Brush TapCounterBrush {
+    // True while a tap-tempo sequence is in progress (a tap has landed and the
+    // conclusion timeout has not yet elapsed). The HUD maps this to the tap
+    // button's colour via TapCounterBrushConverter; the Brush itself is kept out
+    // of Base so the project needs no WPF reference (docs/arch_issues.md item 6).
+    public bool TapTempoActive {
       get {
-        if (this.IsTapTempoConcluded()) {
-          return new SolidColorBrush(Colors.Black);
-        }
-        return new SolidColorBrush(Colors.ForestGreen);
+        return !this.IsTapTempoConcluded();
       }
     }
 

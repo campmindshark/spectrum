@@ -55,7 +55,11 @@ namespace Spectrum.Base {
     private void CallPropertyChanged() {
       this.PropertyChanged?.Invoke(
         this,
-        new PropertyChangedEventArgs(System.Windows.Data.Binding.IndexerName)
+        // "Item[]" is WPF's Binding.IndexerName sentinel: it tells indexer
+        // bindings (the LEDColorPalette[i, whichColor] getter below) that an
+        // element changed. Spelled as a literal so Base needs no
+        // System.Windows.Data reference (docs/arch_issues.md item 6).
+        new PropertyChangedEventArgs("Item[]")
       );
     }
 

@@ -31,6 +31,7 @@ namespace Spectrum {
     }
 
     private readonly Configuration config;
+    private readonly LEDDomeOutput dome;
     private readonly WriteableBitmap bitmap;
     private Int32Rect rect;
     private readonly byte[] pixels;
@@ -51,15 +52,16 @@ namespace Spectrum {
 
     private DispatcherTimer timer;
 
-    public DomeSimulatorWindow(Configuration config) {
+    public DomeSimulatorWindow(Configuration config, LEDDomeOutput dome) {
       this.InitializeComponent();
       this.config = config;
+      this.dome = dome;
 
-      // Announce that a consumer is now draining domeCommandQueue, so
+      // Announce that a consumer is now draining SimulatorCommandQueue, so
       // LEDDomeOutput starts feeding it (and stops when we close). Without this
       // the queue would only be gated on domeSimulationEnabled, which the web
       // surface can set with no window open — growing the queue without bound.
-      this.config.domeCommandQueueHasConsumer = true;
+      this.dome.SimulatorHasConsumer = true;
 
       this.rect = new Int32Rect(0, 0, 750, 750);
       this.bitmap = new WriteableBitmap(
@@ -137,8 +139,9 @@ namespace Spectrum {
     protected override void OnClosed(EventArgs e) {
       // Stop our update timer. A DispatcherTimer is rooted by the dispatcher, so
       // if we leave it running it keeps this closed window alive and keeps
-      // draining domeCommandQueue — a documented single-consumer queue — racing
-      // any simulator opened later into the "Someone else is dequeueing!" throw.
+      // draining SimulatorCommandQueue — a documented single-consumer queue —
+      // racing any simulator opened later into the "Someone else is
+      // dequeueing!" throw.
       if (this.timer != null) {
         this.timer.Stop();
         this.timer.Tick -= Update;
@@ -146,8 +149,8 @@ namespace Spectrum {
       }
       // Stop LEDDomeOutput feeding the queue and drop whatever we didn't drain,
       // so a stale backlog of int[] frame snapshots isn't held after we're gone.
-      this.config.domeCommandQueueHasConsumer = false;
-      this.config.domeCommandQueue.Clear();
+      this.dome.SimulatorHasConsumer = false;
+      this.dome.SimulatorCommandQueue.Clear();
       base.OnClosed(e);
     }
 
@@ -200,7 +203,7 @@ namespace Spectrum {
     }
 
     private void Update(object sender, EventArgs e) {
-      int queueLength = this.config.domeCommandQueue.Count;
+      int queueLength = this.dome.SimulatorCommandQueue.Count;
       if (queueLength == 0) {
         return;
       }
@@ -211,7 +214,7 @@ namespace Spectrum {
       for (int k = 0; k < queueLength; k++) {
         DomeLEDCommand command;
         bool result =
-          this.config.domeCommandQueue.TryDequeue(out command);
+          this.dome.SimulatorCommandQueue.TryDequeue(out command);
         if (!result) {
           throw new Exception("Someone else is dequeueing!");
         }

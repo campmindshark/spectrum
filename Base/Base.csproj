@@ -4,8 +4,6 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Base</RootNamespace>
     <AssemblyName>Base</AssemblyName>
-    <!-- BeatBroadcaster / LEDColor use System.Windows.Media (PresentationCore). -->
-    <UseWPF>true</UseWPF>
   </PropertyGroup>
 
 </Project>

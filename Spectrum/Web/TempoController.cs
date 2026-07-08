@@ -21,10 +21,14 @@ namespace Spectrum.Web {
   public sealed class TempoController {
 
     private readonly Configuration config;
+    private readonly BeatBroadcaster beat;
     private readonly ControlGateway gateway;
 
-    public TempoController(Configuration config, ControlGateway gateway) {
+    public TempoController(
+      Configuration config, BeatBroadcaster beat, ControlGateway gateway
+    ) {
       this.config = config;
+      this.beat = beat;
       this.gateway = gateway;
     }
 
@@ -33,7 +37,7 @@ namespace Spectrum.Web {
     public async Task SetManualBPMAsync(double bpm) {
       await this.gateway.InvokeAsync(() => {
         this.config.beatInput = 0;
-        this.config.beatBroadcaster.SetManualBPM(bpm);
+        this.beat.SetManualBPM(bpm);
       });
     }
   }

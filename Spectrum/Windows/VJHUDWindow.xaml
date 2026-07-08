@@ -12,6 +12,9 @@
   Width="900"
   WindowState="Maximized"
 >
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="boolToVis" />
+    </Window.Resources>
     <DockPanel>
         <DockPanel DockPanel.Dock="Top">
             <Grid HorizontalAlignment="Left" VerticalAlignment="Top">
@@ -391,6 +394,22 @@
                                                     <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding BlendModes}" SelectedItem="{Binding BlendMode}" Width="80" ToolTip="Blend mode" />
                                                     <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}" VerticalAlignment="Center" Margin="4,0,4,0" ToolTip="Opacity" />
                                                 </DockPanel>
+                                                <ItemsControl ItemsSource="{Binding Params}" Margin="0,2,0,0">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Grid Margin="0,1,0,0">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="70" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                                <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}" VerticalAlignment="Center" Visibility="{Binding IsDouble, Converter={StaticResource boolToVis}}" />
+                                                                <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}" VerticalAlignment="Center" HorizontalAlignment="Left" Visibility="{Binding IsBool, Converter={StaticResource boolToVis}}" />
+                                                                <ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedIndex="{Binding IntValue}" Visibility="{Binding IsEnum, Converter={StaticResource boolToVis}}" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>
@@ -398,51 +417,6 @@
                             </ItemsControl>
                             <Button x:Name="domeAddLayerButton" Content="Add layer" HorizontalAlignment="Left" Width="90" Margin="0,3,0,3" />
                         </StackPanel>
-                        <Grid Height="24">
-                            <Label Content="Rotation Speed" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="domeVolumeRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
-                                <ComboBoxItem x:Name="dprs0" Content="0" IsSelected="True" />
-                                <ComboBoxItem x:Name="dprs1" Content="1/8" />
-                                <ComboBoxItem x:Name="dprs2" Content="1/4" />
-                                <ComboBoxItem x:Name="dprs3" Content="1/2" />
-                                <ComboBoxItem x:Name="dprs4" Content="1" />
-                                <ComboBoxItem x:Name="dprs5" Content="2" />
-                                <ComboBoxItem x:Name="dprs6" Content="4" />
-                            </ComboBox>
-                        </Grid>
-                        <Grid Height="24">
-                            <Label Content="Radial Center Speed" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="domeRadialCenterSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
-                                <ComboBoxItem x:Name="rcs0" Content="0" IsSelected="True" />
-                                <ComboBoxItem x:Name="rcs1" Content="1/8" />
-                                <ComboBoxItem x:Name="rcs2" Content="1/4" />
-                                <ComboBoxItem x:Name="rcs3" Content="1/2" />
-                                <ComboBoxItem x:Name="rcs4" Content="1" />
-                                <ComboBoxItem x:Name="rcs5" Content="2" />
-                                <ComboBoxItem x:Name="rcs6" Content="4" />
-                            </ComboBox>
-                        </Grid>
-                        <Grid Height="24">
-                            <Label Content="Gradient Speed" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="domeGradientSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
-                                <ComboBoxItem x:Name="dsrs0" Content="0" IsSelected="True" />
-                                <ComboBoxItem x:Name="dsrs1" Content="1/8" />
-                                <ComboBoxItem x:Name="dsrs2" Content="1/4" />
-                                <ComboBoxItem x:Name="dsrs3" Content="1/2" />
-                                <ComboBoxItem x:Name="dsrs4" Content="1" />
-                                <ComboBoxItem x:Name="dsrs5" Content="2" />
-                                <ComboBoxItem x:Name="dsrs6" Content="4" />
-                            </ComboBox>
-                        </Grid>
-                        <Grid Height="24">
-                            <Label Content="Radial Effect" Margin="0,3,0,0" Padding="0" />
-                            <ComboBox x:Name="domeRadialEffect" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
-                                <ComboBoxItem x:Name="dre0" Content="Radar" IsSelected="True" />
-                                <ComboBoxItem x:Name="dre1" Content="Pulse" />
-                                <ComboBoxItem x:Name="dre2" Content="Spiral" />
-                                <ComboBoxItem x:Name="dre3" Content="Bubbles" />
-                            </ComboBox>
-                        </Grid>
                         <Grid Height="24">
                             <Label Content="Global Fade Speed" Margin="-2,3,2.4,0" Padding="0" />
                             <Slider x:Name="domeGlobalFadeSpeedSlider" Value="0" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Maximum="3.0" LargeChange="1" SmallChange="0.2" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
@@ -452,41 +426,6 @@
                             <Label Content="Global Hue Speed" Margin="-2,3,2.4,0" Padding="0" />
                             <Slider x:Name="domeGlobalHueSpeedSlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="1.0" Maximum="3.0" LargeChange="1" SmallChange="0.2" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                             <Label x:Name="domeGlobalHueSpeedLabel" Content="0" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
-                        </Grid>
-                        <Grid Height="24">
-                            <Label Content="Twinkle Density" Margin="-2,3,2.4,0" Padding="0" />
-                            <Slider x:Name="domeTwinkleDensitySlider" Value="0" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="0.0" Maximum="0.001" LargeChange="0.00025" SmallChange="0.0001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                            <Label x:Name="domeTwinkleDensityLabel" Content="0" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
-                        </Grid>
-                        <Grid Height="24">
-                            <Label Content="Ripple Cooldown" Margin="-2,3,2.4,0" Padding="0" />
-                            <Slider x:Name="domeRippleCDStepSlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="0.0" Maximum="10" LargeChange="1" SmallChange="0.1" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                            <Label x:Name="domeRippleCDStepLabel" Content="1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
-                        </Grid>
-                        <Grid Height="24">
-                            <Label Content="Ripple Speed" Margin="-2,3,2.4,0" Padding="0" />
-                            <Slider x:Name="domeRippleStepSlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="0.0" Maximum="4" LargeChange="1" SmallChange="0.1" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                            <Label x:Name="domeRippleStepLabel" Content="1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
-                        </Grid>
-                        <Grid Height="24">
-                            <Label Content="Radial Size" Margin="-2,3,2.4,0" Padding="0" />
-                            <Slider x:Name="domeRadialSizeSlider" Value="0.1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Maximum="4.0" LargeChange="0.1" SmallChange="0.02" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                            <Label x:Name="domeRadialSizeLabel" Content="0.1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
-                        </Grid>
-                        <Grid Height="24">
-              <Label Content="Radial Frequency" Margin="-2,3,2.4,0" Padding="0" />
-                            <Slider x:Name="domeRadialFrequencySlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="1" Maximum="12" LargeChange="1" SmallChange="1" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                            <Label x:Name="domeRadialFrequencyLabel" Content="1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
-                        </Grid>
-                        <Grid Height="24">
-              <Label Content="Radial Center Angle" Margin="-2,3,2.4,0" Padding="0" />
-                            <Slider x:Name="domeRadialCenterAngleSlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="-3.14159" Maximum="3.14159" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                            <Label x:Name="domeRadialCenterAngleLabel" Content="1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
-                        </Grid>
-                        <Grid Height="24">
-              <Label Content="Radial Center Distance" Margin="-2,3,2.4,0" Padding="0" />
-                            <Slider x:Name="domeRadialCenterDistanceSlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="0" Maximum="1" LargeChange="0.1" SmallChange="0.001" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                            <Label x:Name="domeRadialCenterDistanceLabel" Content="1" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
                         </Grid>
                         <Grid Height="24">
               <Label Content="Flash" Margin="-2,3,2.4,0" Padding="0" />

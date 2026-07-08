@@ -44,7 +44,7 @@ namespace Spectrum.Web {
     // WindowClosed handler; the web flow has no such guaranteed hook. A client
     // that navigates away, closes the tab, or drops off the LAN only releases
     // the lease (app.js pagehide) or lets it lapse on TTL — it never cancels the
-    // flow. Left unreconciled, domeCalibrationActive stays true and
+    // flow. Left unreconciled, DomeCalibrationState.Active stays true and
     // LEDDomeMappingCalibrationVisualizer keeps its priority-10000 override,
     // seizing the dome so no normal visualizer runs again. This sweep restores
     // the native contract: once nobody holds the domeCalibration lease, a

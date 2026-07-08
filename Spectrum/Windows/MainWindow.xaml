@@ -13,6 +13,9 @@
   Icon="pack://siteoforigin:,,,/Resources/s.PNG"
   Closing="HandleClose"
 >
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="boolToVis" />
+    </Window.Resources>
     <Grid Margin="4">
         <TabControl Margin="4,0,4,4">
             <TabItem Header="Home">
@@ -214,26 +217,6 @@
                                 <Label x:Name="domeBrightnessLabel" Content="0.100" HorizontalAlignment="Left" Margin="265,51,0,0" Padding="0" ContentStringFormat="F3" />
                             </Grid>
                         </Border>
-                        <Label Content="Volume animation" HorizontalAlignment="Left" Margin="4,131,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,151,0,0" Padding="5" VerticalAlignment="Top">
-                            <Grid>
-                                <Label Content="Animation size" Margin="0,3,0,0" Padding="0" />
-                                <ComboBox x:Name="domeVolumeAnimationSize" HorizontalAlignment="Left" VerticalAlignment="Top" Width="120" Margin="94,0,0,0">
-                                    <ComboBoxItem Content="0" IsSelected="True" />
-                                    <ComboBoxItem Content="1" />
-                                    <ComboBoxItem Content="2" />
-                                    <ComboBoxItem Content="3" />
-                                    <ComboBoxItem Content="4" />
-                                </ComboBox>
-                            </Grid>
-                        </Border>
-                        <Label Content="Flasher" HorizontalAlignment="Left" Margin="4,188,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,208,0,0" Padding="5" VerticalAlignment="Top">
-                            <Grid>
-                                <Label Content="Auto flash delay" Padding="0" />
-                                <TextBox x:Name="domeAutoFlashDelay" Margin="94,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="202" />
-                            </Grid>
-                        </Border>
                     </Grid>
                     <WrapPanel HorizontalAlignment="Right" Width="240" Margin="0,0,5,0">
                         <Label Content="Hardware" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
@@ -275,6 +258,22 @@
                                                             <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding BlendModes}" SelectedItem="{Binding BlendMode}" Width="80" ToolTip="Blend mode" />
                                                             <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}" VerticalAlignment="Center" Margin="4,0,4,0" ToolTip="Opacity" />
                                                         </DockPanel>
+                                                        <ItemsControl ItemsSource="{Binding Params}" Margin="0,2,0,0">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Grid Margin="0,1,0,0">
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="70" />
+                                                                            <ColumnDefinition Width="*" />
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                                        <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}" VerticalAlignment="Center" Visibility="{Binding IsDouble, Converter={StaticResource boolToVis}}" />
+                                                                        <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}" VerticalAlignment="Center" HorizontalAlignment="Left" Visibility="{Binding IsBool, Converter={StaticResource boolToVis}}" />
+                                                                        <ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedIndex="{Binding IntValue}" Visibility="{Binding IsEnum, Converter={StaticResource boolToVis}}" />
+                                                                    </Grid>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
                                                     </StackPanel>
                                                 </Border>
                                             </DataTemplate>

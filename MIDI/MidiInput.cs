@@ -36,6 +36,9 @@ namespace Spectrum.MIDI {
     };
 
     private readonly Configuration config;
+    // The live tempo service, needed by tap-tempo/ADSR bindings (owned by the
+    // Operator, not part of Configuration).
+    private readonly BeatBroadcaster beat;
     private Dictionary<int, InputDevice> devices;
     private readonly ConcurrentQueue<MidiCommand> buffer;
     private readonly Dictionary<int, Dictionary<int, double>> knobValues;
@@ -43,8 +46,13 @@ namespace Spectrum.MIDI {
     private MidiCommand[] commandsSinceLastTick;
     private Dictionary<InnerBindingKey, List<Binding>> bindings;
 
-    public MidiInput(Configuration config) {
+    // The rolling log of triggered bindings, owned here (its writer) and shown
+    // by the VJ HUD; it raises its own PropertyChanged on append.
+    public ObservableMidiLog MidiLog { get; } = new ObservableMidiLog();
+
+    public MidiInput(Configuration config, BeatBroadcaster beat) {
       this.config = config;
+      this.beat = beat;
       this.buffer = new ConcurrentQueue<MidiCommand>();
       this.knobValues = new Dictionary<int, Dictionary<int, double>>();
       this.noteVelocities = new Dictionary<int, Dictionary<int, double>>();
@@ -54,7 +62,8 @@ namespace Spectrum.MIDI {
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (e.PropertyName == "midiDevices" || e.PropertyName == "midiPresets") {
+      if (e.PropertyName == nameof(this.config.midiDevices) ||
+          e.PropertyName == nameof(this.config.midiPresets)) {
         this.SetBindings();
       }
     }
@@ -97,7 +106,7 @@ namespace Spectrum.MIDI {
       );
       foreach (var pair in activePresets) {
         foreach (IMidiBindingConfig config in pair.Value.Bindings) {
-          Binding[] bindings = config.GetBindings(this.config);
+          Binding[] bindings = config.GetBindings(this.config, this.beat);
           foreach (Binding binding in bindings) {
             this.AddBinding(binding, pair.Key);
           }
@@ -195,7 +204,7 @@ namespace Spectrum.MIDI {
           index = e.Message.Data1,
           value = value,
         };
-        this.config.midiLog.Append(
+        this.MidiLog.Append(
           "MIDI message on " + MidiInput.GetDeviceName(deviceIndex) +
           " channel " + e.Message.MidiChannel +
           " updating knob #" + e.Message.Data1 +
@@ -213,7 +222,7 @@ namespace Spectrum.MIDI {
           value = value,
         };
         var onOrOff = e.Message.Command == ChannelCommand.NoteOn ? "ON" : "OFF";
-        this.config.midiLog.Append(
+        this.MidiLog.Append(
           "MIDI message on " + MidiInput.GetDeviceName(deviceIndex) +
           " channel " + e.Message.MidiChannel +
           " updating note #" + e.Message.Data1 +
@@ -226,7 +235,7 @@ namespace Spectrum.MIDI {
           type = MidiCommandType.Program,
           index = e.Message.Data1,
         };
-        this.config.midiLog.Append(
+        this.MidiLog.Append(
           "MIDI message on " + MidiInput.GetDeviceName(deviceIndex) +
           " channel " + e.Message.MidiChannel +
           " updating program to #" + e.Message.Data1
@@ -248,7 +257,7 @@ namespace Spectrum.MIDI {
       foreach (Binding binding in triggered) {
         string message = binding.callback(command.index, command.value);
         if (message != null) {
-          this.config.midiLog.Append(
+          this.MidiLog.Append(
             "Binding \"" + binding.config.BindingName +
             "\" triggered: " + message
           );

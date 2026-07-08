@@ -19,7 +19,7 @@ namespace Spectrum.Base {
       };
     }
 
-    public override Binding[] GetBindings(Configuration config) {
+    public override Binding[] GetBindings(Configuration config, BeatBroadcaster beat) {
       Binding binding = new Binding();
       binding.key = new BindingKey(MidiCommandType.Note, -1);
       binding.config = this;

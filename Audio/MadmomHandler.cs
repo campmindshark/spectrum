@@ -12,17 +12,22 @@ namespace Spectrum.Audio {
 
     private readonly Configuration config;
     private readonly AudioInput audio;
+    // The tempo service detected beats are reported into (owned by the
+    // Operator, not part of Configuration).
+    private readonly BeatBroadcaster beat;
 
     private Process process;
 
-    public MadmomHandler(Configuration config, AudioInput audio) {
+    public MadmomHandler(Configuration config, AudioInput audio, BeatBroadcaster beat) {
       this.config = config;
       this.audio = audio;
+      this.beat = beat;
       this.config.PropertyChanged += ConfigUpdated;
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (e.PropertyName == "audioDeviceID" || e.PropertyName == "beatInput") {
+      if (e.PropertyName == nameof(this.config.audioDeviceID) ||
+          e.PropertyName == nameof(this.config.beatInput)) {
         this.UpdateEnabled();
       }
     }
@@ -120,7 +125,7 @@ namespace Spectrum.Audio {
       )) {
         return;
       }
-      this.config.beatBroadcaster.ReportMadmomBeat((long)(seconds * 1000));
+      this.beat.ReportMadmomBeat((long)(seconds * 1000));
     }
 
   }

@@ -12,8 +12,8 @@ namespace Spectrum {
   // Drives a dome layers panel: binds an ItemsControl (one row per layer) and an
   // "Add layer" button to config.domeLayerStack, translating every UI mutation
   // into a whole-stack snapshot swap and rebuilding the rows when the stack
-  // changes underneath us (the domeActiveVis alias, a web PUT, or the other
-  // window). Shared by MainWindow and the VJ HUD.
+  // changes underneath us (a web PUT or the other window). Shared by
+  // MainWindow and the VJ HUD.
   //
   // Row order is front-to-back: the top row is the front (last stack entry) and
   // the bottom row is the background (stack index 0), matching common layer-panel
@@ -76,6 +76,9 @@ namespace Spectrum {
         Opacity = settings.Opacity,
         LayerEnabled = settings.Enabled,
       };
+      // Seed param values from the saved bag (the setters above installed schema
+      // defaults); do this before wiring Changed so it doesn't republish.
+      vm.LoadParams(settings.Params);
       vm.Changed += this.Publish;
       vm.RemoveRequested += this.RemoveRow;
       vm.MoveUpRequested += this.MoveRowUp;
@@ -130,11 +133,21 @@ namespace Spectrum {
       var stack = new List<DomeLayerSettings>();
       for (int i = this.Rows.Count - 1; i >= 0; i--) {
         DomeLayerRowViewModel vm = this.Rows[i];
+        // Snapshot the row's param VMs into a fresh bag; null when the layer has
+        // no params (an absent bag reads as all-defaults everywhere).
+        Dictionary<string, double> paramBag = null;
+        if (vm.Params.Count > 0) {
+          paramBag = new Dictionary<string, double>();
+          foreach (LayerParamViewModel p in vm.Params) {
+            paramBag[p.Key] = p.Value;
+          }
+        }
         stack.Add(new DomeLayerSettings {
           VisualizerKey = vm.VisualizerKey,
           BlendMode = vm.BlendMode,
           Opacity = vm.Opacity,
           Enabled = vm.LayerEnabled,
+          Params = paramBag,
         });
       }
       this.lastPublished = stack;

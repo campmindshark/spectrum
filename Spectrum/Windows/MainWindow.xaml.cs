@@ -53,17 +53,27 @@ namespace Spectrum {
     }
 
     private static readonly HashSet<string> configPropertiesToRebootOn = new HashSet<string>() {
-      "midiInputInSeparateThread",
-      "domeOutputInSeparateThread",
+      nameof(SpectrumConfiguration.midiInputInSeparateThread),
+      nameof(SpectrumConfiguration.domeOutputInSeparateThread),
     };
-    private static readonly HashSet<string> configPropertiesIgnored = new HashSet<string>() {
-      "operatorFPS",
-      "domeBeagleboneOPCFPS",
-      "beatBroadcaster",
-      "domeCommandQueue",
-      "domeCalibrationActive",
-      "domeCalibrationCableIndex",
-    };
+    // Property changes that never warrant a config save, derived from the one
+    // marker that already means "not persisted": [XmlIgnore]. Deriving it (vs.
+    // the old hand-maintained list) can't drift when a property is added — and
+    // it covers midiLog, whose forwarded change events used to trigger a
+    // (debounced) save for every MIDI message.
+    private static readonly HashSet<string> configPropertiesIgnored =
+      BuildNonPersistedPropertyNames();
+    private static HashSet<string> BuildNonPersistedPropertyNames() {
+      var names = new HashSet<string>();
+      foreach (PropertyInfo property in
+          typeof(SpectrumConfiguration).GetProperties()) {
+        if (property.GetCustomAttribute<
+              System.Xml.Serialization.XmlIgnoreAttribute>() != null) {
+          names.Add(property.Name);
+        }
+      }
+      return names;
+    }
 
     private Operator op;
     private SpectrumConfiguration config;
@@ -104,15 +114,19 @@ namespace Spectrum {
       // The event stream subscribes to config.PropertyChanged (and the
       // Operator's EnabledChanged) and fans changes out to connected browsers
       // over SSE.
-      this.webEventStream = new Web.ConfigEventStream(registry, this.config, this.op);
+      this.webEventStream = new Web.ConfigEventStream(
+        registry, this.config, this.op, this.op.Telemetry,
+        this.op.BeatBroadcaster);
       // Advisory locks guard modal ops (calibration, per-device test patterns)
       // against concurrent maintenance users.
       var locks = new Web.AdvisoryLockManager();
       // The dome-mapping calibration flow: same state machine as
       // DomeMappingWindow, driven over REST and guarded by the domeCalibration
-      // lease. Writes to Configuration go through the same gateway.
+      // lease. Persisted config writes go through the same gateway; the
+      // transient cable selection is the Operator's shared calibration state.
       var calibration = new Web.DomeCalibrationController(
-        gateway, this.config, LEDs.LEDDomeOutput.NumCables);
+        gateway, this.config, this.op.DomeCalibration,
+        LEDs.LEDDomeOutput.NumCables);
       // Read-only wand/orientation-device diagnostics (the web port of
       // WandStatusWindow), plus its Calibrate All action through the gateway.
       var wands = new Web.WandStatusController(
@@ -124,7 +138,8 @@ namespace Spectrum {
       // The maintenance "Tap" tempo button: applies a browser-computed BPM as
       // the human tap tempo (and switches the source to Human) through the
       // gateway, the same as a native tap.
-      var tempo = new Web.TempoController(this.config, gateway);
+      var tempo = new Web.TempoController(
+        this.config, this.op.BeatBroadcaster, gateway);
       // The dome layer stack: whole-stack last-write-wins through the same
       // gateway (replaces the old domeActiveVis dropdown, broadcast over SSE).
       var layers = new Web.LayersController(gateway, this.config);
@@ -221,76 +236,41 @@ namespace Spectrum {
       if (this.config == null) {
         this.config = new SpectrumConfiguration();
       }
-      this.MigrateDomeLayerStack();
+      // Synthesizes a missing/invalid layer stack and seeds per-layer params
+      // from any retired global properties still present in the file.
+      LegacyLayerParamMigration.Apply(this.config, loadFile);
       this.op = new Operator(this.config);
 
       this.RefreshAudioDevices(null, null);
       this.RefreshMidiDevices(null, null);
       this.LoadPresets();
 
-      this.Bind("midiInputEnabled", this.midiEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("midiInputInSeparateThread", this.midiThreadCheckbox, CheckBox.IsCheckedProperty);
-      this.Bind("domeOutputInSeparateThread", this.domeThreadCheckbox, CheckBox.IsCheckedProperty);
-      this.Bind("operatorFPS", this.operatorFPSLabel, Label.ContentProperty);
-      this.Bind("operatorFPS", this.operatorFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("domeBeagleboneOPCAddress", this.domeBeagleboneOPCHostAndPort, TextBox.TextProperty);
-      this.Bind("domeBeagleboneOPCFPS", this.domeBeagleboneOPCFPSLabel, Label.ContentProperty);
-      this.Bind("domeBeagleboneOPCFPS", this.domeBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind("domeOutputInSeparateThread", this.domeBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
-      this.Bind("domeTestPattern", this.domeTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.domeTestPatternNone, [1] = this.domeTestPatternFlashColorsByStrut, [2] = this.domeTestPatternIterateThroughStruts, [3] = this.domeTestPatternStripTest, [4] = this.domeTestPatternFullColorFlash }, true));
+      this.Bind(nameof(this.config.midiInputEnabled), this.midiEnabled, CheckBox.IsCheckedProperty);
+      this.Bind(nameof(this.config.midiInputInSeparateThread), this.midiThreadCheckbox, CheckBox.IsCheckedProperty);
+      this.Bind(nameof(this.config.domeOutputInSeparateThread), this.domeThreadCheckbox, CheckBox.IsCheckedProperty);
+      // FPS counters are runtime telemetry, not config — bind to the Operator's
+      // RuntimeTelemetry (WPF marshals its background-thread notifications).
+      this.Bind(nameof(this.op.Telemetry.OperatorFPS), this.operatorFPSLabel, Label.ContentProperty, BindingMode.OneWay, null, this.op.Telemetry);
+      this.Bind(nameof(this.op.Telemetry.OperatorFPS), this.operatorFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter(), this.op.Telemetry);
+      this.Bind(nameof(this.config.domeBeagleboneOPCAddress), this.domeBeagleboneOPCHostAndPort, TextBox.TextProperty);
+      this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.domeBeagleboneOPCFPSLabel, Label.ContentProperty, BindingMode.OneWay, null, this.op.Telemetry);
+      this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.domeBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter(), this.op.Telemetry);
+      this.Bind(nameof(this.config.domeOutputInSeparateThread), this.domeBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
+      this.Bind(nameof(this.config.domeOutputInSeparateThread), this.domeBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.Bind(nameof(this.config.domeTestPattern), this.domeTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.domeTestPatternNone, [1] = this.domeTestPatternFlashColorsByStrut, [2] = this.domeTestPatternIterateThroughStruts, [3] = this.domeTestPatternStripTest, [4] = this.domeTestPatternFullColorFlash }, true));
       this.domeLayersController = new DomeLayersController(
         this.config, this.domeLayersItemsControl, this.domeAddLayerButton);
-      this.Bind("domeEnabled", this.domeEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("domeSimulationEnabled", this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
-      this.Bind("domeMaxBrightness", this.domeMaxBrightnessSlider, Slider.ValueProperty);
-      this.Bind("domeMaxBrightness", this.domeMaxBrightnessLabel, Label.ContentProperty);
-      this.Bind("domeBrightness", this.domeBrightnessSlider, Slider.ValueProperty);
-      this.Bind("domeBrightness", this.domeBrightnessLabel, Label.ContentProperty);
-      this.Bind("domeVolumeAnimationSize", this.domeVolumeAnimationSize, ComboBox.SelectedIndexProperty);
-      this.Bind("domeAutoFlashDelay", this.domeAutoFlashDelay, TextBox.TextProperty);
-      this.Bind("vjHUDEnabled", this.vjHUDEnabled, CheckBox.IsCheckedProperty);
+      this.Bind(nameof(this.config.domeEnabled), this.domeEnabled, CheckBox.IsCheckedProperty);
+      this.Bind(nameof(this.config.domeSimulationEnabled), this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
+      this.Bind(nameof(this.config.domeMaxBrightness), this.domeMaxBrightnessSlider, Slider.ValueProperty);
+      this.Bind(nameof(this.config.domeMaxBrightness), this.domeMaxBrightnessLabel, Label.ContentProperty);
+      this.Bind(nameof(this.config.domeBrightness), this.domeBrightnessSlider, Slider.ValueProperty);
+      this.Bind(nameof(this.config.domeBrightness), this.domeBrightnessLabel, Label.ContentProperty);
+      this.Bind(nameof(this.config.vjHUDEnabled), this.vjHUDEnabled, CheckBox.IsCheckedProperty);
 
       this.InitWandSerialUI();
 
       MainWindow.LoadingConfig = false;
-    }
-
-    // If the loaded config has no usable domeLayerStack (missing from an older
-    // config file, empty, or referencing unknown keys), synthesize a single
-    // background layer from the legacy domeActiveVis selector — reproducing the
-    // pre-layering single-visualizer behavior exactly. Runs before the Operator
-    // is constructed, while LoadingConfig is true and nothing subscribes to the
-    // config yet.
-    private void MigrateDomeLayerStack() {
-      List<DomeLayerSettings> stack = this.config.domeLayerStack;
-      bool valid = stack != null && stack.Count > 0;
-      if (valid) {
-        foreach (DomeLayerSettings layer in stack) {
-          if (
-            layer == null || layer.VisualizerKey == null ||
-            Array.IndexOf(
-              DomeLayerSettings.LegacyVisKeys, layer.VisualizerKey
-            ) < 0
-          ) {
-            valid = false;
-            break;
-          }
-        }
-      }
-      if (valid) {
-        return;
-      }
-      string key = DomeLayerSettings.KeyForLegacyVis(this.config.domeActiveVis)
-        ?? DomeLayerSettings.LegacyVisKeys[0];
-      this.config.domeLayerStack = new List<DomeLayerSettings>() {
-        new DomeLayerSettings() {
-          VisualizerKey = key,
-          BlendMode = DomeBlendMode.Over,
-          Opacity = 1.0,
-          Enabled = true,
-        },
-      };
     }
 
     private void Bind(
@@ -1213,7 +1193,8 @@ namespace Spectrum {
     }
 
     private void OpenVJHUD(object sender, RoutedEventArgs e) {
-      this.vjHUDWindow = new VJHUDWindow(this.config);
+      this.vjHUDWindow = new VJHUDWindow(
+        this.config, this.op.BeatBroadcaster, this.op.MidiLog);
       this.vjHUDWindow.Closed += VJHUDClosed;
       this.vjHUDWindow.Show();
     }
@@ -1228,7 +1209,8 @@ namespace Spectrum {
     }
 
     private void OpenDomeSimulator(object sender, RoutedEventArgs e) {
-      this.domeSimulatorWindow = new DomeSimulatorWindow(this.config);
+      this.domeSimulatorWindow = new DomeSimulatorWindow(
+        this.config, this.op.DomeOutput);
       this.domeSimulatorWindow.Closed += DomeSimulatorClosed;
       this.domeSimulatorWindow.Show();
     }
@@ -1247,7 +1229,8 @@ namespace Spectrum {
         this.domeMappingWindow.Activate();
         return;
       }
-      this.domeMappingWindow = new DomeMappingWindow(this.config);
+      this.domeMappingWindow = new DomeMappingWindow(
+        this.config, this.op.DomeCalibration);
       this.domeMappingWindow.Closed += DomeMappingClosed;
       this.domeMappingWindow.Show();
     }

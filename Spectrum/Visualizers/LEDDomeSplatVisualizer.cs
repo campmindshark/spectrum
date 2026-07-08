@@ -12,6 +12,7 @@ namespace Spectrum {
 
     private Configuration config;
     private AudioInput audio;
+    private BeatBroadcaster beat;
     private LEDDomeOutput dome;
     private LEDDomeOutputBuffer buffer;
 
@@ -20,10 +21,12 @@ namespace Spectrum {
     public LEDDomeSplatVisualizer(
       Configuration config,
       AudioInput audio,
+      BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
       this.config = config;
       this.audio = audio;
+      this.beat = beat;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
@@ -53,7 +56,7 @@ namespace Spectrum {
       // Sqrt makes values larger and gives more resolution for lower values
       double adjustedLevel = Clamp(Math.Sqrt(level), 0.1, 1);
 
-      double progress = this.config.beatBroadcaster.ProgressThroughMeasure;
+      double progress = this.beat.ProgressThroughMeasure;
 
       buffer.Fade(0.96, 0);
 

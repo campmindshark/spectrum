@@ -15,6 +15,7 @@ namespace Spectrum {
     private readonly Configuration config;
     private readonly AudioInput audio;
     private readonly MidiInput midi;
+    private readonly BeatBroadcaster beat;
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
 
@@ -82,13 +83,16 @@ namespace Spectrum {
         AccumulatedSeconds = 0;
       }
 
-      public void Move(double numSeconds, AudioInput audio, Configuration config) {
+      // `speed` is the layer's speed param (formerly the global
+      // domeVolumeRotationSpeed knob this visualizer borrowed); `beat` is the
+      // live tempo service.
+      public void Move(double numSeconds, AudioInput audio, BeatBroadcaster beat, double speed) {
         // Could use classes for this, but eh.
         double revsPerSec =
-          conf.rotation == Rotation.Volume ? RevsPerSecondVolume(audio, config) :
-          conf.rotation == Rotation.VolumeSquared ? RevsPerSecondVolumeSquared(audio, config) :
-          conf.rotation == Rotation.Beat ? RevsPerSecondBeats(audio, config) :
-          conf.rotation == Rotation.Constant ? RevsPerSecondConstant(audio, config) :
+          conf.rotation == Rotation.Volume ? RevsPerSecondVolume(audio, speed) :
+          conf.rotation == Rotation.VolumeSquared ? RevsPerSecondVolumeSquared(audio, speed) :
+          conf.rotation == Rotation.Beat ? RevsPerSecondBeats(audio, beat) :
+          conf.rotation == Rotation.Constant ? RevsPerSecondConstant(audio, speed) :
           0;
         double radsPerSecond = Math.PI * 2 * revsPerSec;
         MoveRads(numSeconds, radsPerSecond);
@@ -125,27 +129,27 @@ namespace Spectrum {
         AccumulatedSeconds = 0;
       }
 
-      public double RevsPerSecondVolume(AudioInput audio, Configuration config) {
+      public double RevsPerSecondVolume(AudioInput audio, double speed) {
         // Square the volume to give a bigger umph.
-        return audio.Volume + config.domeVolumeRotationSpeed / 12;
+        return audio.Volume + speed / 12;
       }
 
-      public double RevsPerSecondVolumeSquared(AudioInput audio, Configuration config) {
+      public double RevsPerSecondVolumeSquared(AudioInput audio, double speed) {
         // Square the volume to give a bigger umph.
-        return audio.Volume * audio.Volume + config.domeVolumeRotationSpeed / 12;
+        return audio.Volume * audio.Volume + speed / 12;
       }
 
-      public double RevsPerSecondBeats(AudioInput audio, Configuration config) {
+      public double RevsPerSecondBeats(AudioInput audio, BeatBroadcaster beat) {
         double BPS =
           // If we don't have a beet counter, fake it as 60 BPM.
-          config.beatBroadcaster.MeasureLength == -1 ? 1 :
+          beat.MeasureLength == -1 ? 1 :
           // Taken from the BPM toString method, and multiply by 60 for seconds.
-          1000.0 / config.beatBroadcaster.MeasureLength;
+          1000.0 / beat.MeasureLength;
         // Make a full revolution after 4 beats.
         return 1.0 * BPS / 4;
       }
-      public double RevsPerSecondConstant(AudioInput audio, Configuration config) {
-        return 1.0 * config.domeVolumeRotationSpeed / 4;
+      public double RevsPerSecondConstant(AudioInput audio, double speed) {
+        return 1.0 * speed / 4;
       }
     }
 
@@ -194,11 +198,13 @@ namespace Spectrum {
      Configuration config,
      AudioInput audio,
      MidiInput midi,
+     BeatBroadcaster beat,
      LEDDomeOutput dome
      ) {
       this.config = config;
       this.audio = audio;
       this.midi = midi;
+      this.beat = beat;
       this.dome = dome;
       // Create new racers.
       this.Racers = new Racer[racerConfig.Length];
@@ -281,14 +287,20 @@ namespace Spectrum {
       // SETTING THE RACERS
       //-----------------------------------------------------------------------
 
-      this.racer_spacing = this.config.domeRadialSize > 1 ? 1.0 : this.config.domeRadialSize;
+      // This layer's own tuning, resolved once per frame from its stack entry
+      // (formerly the shared domeRadialSize / domeVolumeRotationSpeed knobs).
+      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
+      this.racer_spacing =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "spacing");
+      double speed =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "speed");
       var curTicks = DateTime.Now.Ticks;
       if (this.lastTicks == -1) {
         this.lastTicks = curTicks;
       } else {
         double numSeconds = ((double)(curTicks - this.lastTicks)) / (1000 * 1000 * 10);
         foreach (Racer r in Racers) {
-          r.Move(numSeconds, audio, config);
+          r.Move(numSeconds, audio, this.beat, speed);
         }
         this.lastTicks = curTicks;
       }

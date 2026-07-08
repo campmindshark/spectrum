@@ -21,10 +21,6 @@ namespace Spectrum.Web {
    */
   public static class SpectrumParameters {
 
-    // Labels for the dome radial-effect dropdown (domeRadialEffect index).
-    private static readonly IReadOnlyList<string> DomeRadialEffectNames = new[] {
-      "Radar", "Pulse", "Spiral", "Bubbles",
-    };
     // Dome test patterns (domeTestPattern index).
     private static readonly IReadOnlyList<string> DomeTestPatternNames = new[] {
       "None", "Flash Colors By Strut", "Iterate Through Struts",
@@ -50,35 +46,13 @@ namespace Spectrum.Web {
         new DoubleParameter("domeMaxBrightness", user, 0.0, 1.0,
           c => c.domeMaxBrightness, (c, v) => c.domeMaxBrightness = v),
 
-        // Dome global speeds/effects
+        // Dome global speeds — cross-layer scene state. Per-visualizer tuning
+        // (radial size, ripple steps, twinkle density, ...) lives in each
+        // layer's Params bag, served by LayersController rather than here.
         new DoubleParameter("domeGlobalFadeSpeed", user, 0.0, 3.0,
           c => c.domeGlobalFadeSpeed, (c, v) => c.domeGlobalFadeSpeed = v),
         new DoubleParameter("domeGlobalHueSpeed", user, 1.0, 3.0,
           c => c.domeGlobalHueSpeed, (c, v) => c.domeGlobalHueSpeed = v),
-        new DoubleParameter("domeTwinkleDensity", user, 0.0, 0.001,
-          c => c.domeTwinkleDensity, (c, v) => c.domeTwinkleDensity = v),
-        new DoubleParameter("domeRippleCDStep", user, 0.0, 10.0,
-          c => c.domeRippleCDStep, (c, v) => c.domeRippleCDStep = v),
-        new DoubleParameter("domeRippleStep", user, 0.0, 4.0,
-          c => c.domeRippleStep, (c, v) => c.domeRippleStep = v),
-        new DoubleParameter("domeVolumeRotationSpeed", user, 0.0, 4.0,
-          c => c.domeVolumeRotationSpeed, (c, v) => c.domeVolumeRotationSpeed = v),
-        new DoubleParameter("domeGradientSpeed", user, 0.0, 4.0,
-          c => c.domeGradientSpeed, (c, v) => c.domeGradientSpeed = v),
-
-        // Dome radial visualizer
-        new EnumIntParameter("domeRadialEffect", user, DomeRadialEffectNames,
-          c => c.domeRadialEffect, (c, v) => c.domeRadialEffect = v),
-        new DoubleParameter("domeRadialSize", user, 0.0, 4.0,
-          c => c.domeRadialSize, (c, v) => c.domeRadialSize = v),
-        new IntParameter("domeRadialFrequency", user, 1, 12,
-          c => c.domeRadialFrequency, (c, v) => c.domeRadialFrequency = v),
-        new DoubleParameter("domeRadialCenterAngle", user, -3.14159, 3.14159,
-          c => c.domeRadialCenterAngle, (c, v) => c.domeRadialCenterAngle = v),
-        new DoubleParameter("domeRadialCenterDistance", user, 0.0, 1.0,
-          c => c.domeRadialCenterDistance, (c, v) => c.domeRadialCenterDistance = v),
-        new DoubleParameter("domeRadialCenterSpeed", user, 0.0, 4.0,
-          c => c.domeRadialCenterSpeed, (c, v) => c.domeRadialCenterSpeed = v),
 
         // The dome layer stack replaces the old single-visualizer selector; it
         // is compound state served by LayersController (GET/PUT /api/layers) and
@@ -133,12 +107,6 @@ namespace Spectrum.Web {
         // Test patterns (modal — will get advisory locks in step 5)
         new EnumIntParameter("domeTestPattern", maint, DomeTestPatternNames,
           c => c.domeTestPattern, (c, v) => c.domeTestPattern = v),
-
-        // Misc dome geometry & timing
-        new IntParameter("domeVolumeAnimationSize", maint, 1, 16,
-          c => c.domeVolumeAnimationSize, (c, v) => c.domeVolumeAnimationSize = v),
-        new IntParameter("domeAutoFlashDelay", maint, 0, 1000,
-          c => c.domeAutoFlashDelay, (c, v) => c.domeAutoFlashDelay = v),
       };
 
       return new ParameterRegistry(descriptors);

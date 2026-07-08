@@ -12,6 +12,7 @@ namespace Spectrum {
 
     private Configuration config;
     private AudioInput audio;
+    private BeatBroadcaster beat;
     private LEDDomeOutput dome;
     private LEDDomeOutputBuffer buffer;
 
@@ -23,10 +24,12 @@ namespace Spectrum {
     public LEDDomeRadialVisualizer(
       Configuration config,
       AudioInput audio,
+      BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
       this.config = config;
       this.audio = audio;
+      this.beat = beat;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
@@ -51,29 +54,49 @@ namespace Spectrum {
     }
 
     void Render() {
+      // This layer's own tuning, resolved once per frame from its stack entry
+      // (fade/hue speed stay global — they are shared scene state, not layer
+      // params).
+      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
+      int effect =
+        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "effect");
+      double size = DomeLayerSettings.ParamValue(stack, this.LayerKey, "size");
+      double frequency =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "frequency");
+      double centerAngle =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "centerAngle");
+      double centerDistance =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "centerDistance");
+      double centerSpeed =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "centerSpeed");
+      double rotationSpeed =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "rotationSpeed");
+      double gradientSpeed =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "gradientSpeed");
+
       buffer.Fade(1 - Math.Pow(10, -this.config.domeGlobalFadeSpeed), 0);
       buffer.HueRotate(Math.Pow(10, -this.config.domeGlobalHueSpeed));
       double level = this.audio.Volume;
       // Sqrt makes values larger and gives more resolution for lower values
       double adjustedLevel = Clamp(Math.Sqrt(level), 0.1, 1);
 
-      double progress = this.config.beatBroadcaster.ProgressThroughMeasure;
+      double progress = this.beat.ProgressThroughMeasure;
       // rotation is scaled by 1/4
       // otherwise it is way too fast and will make people vomit
-      currentAngle += this.config.domeVolumeRotationSpeed *
+      currentAngle += rotationSpeed *
         Wrap(progress - this.lastProgress, 0, 1) * 0.25;
       currentAngle = Wrap(currentAngle, 0, 1);
-      currentGradient += this.config.domeGradientSpeed *
+      currentGradient += gradientSpeed *
         Wrap(progress - this.lastProgress, 0, 1);
       currentGradient = Wrap(currentGradient, 0, 1);
-      currentCenterAngle += this.config.domeRadialCenterSpeed *
+      currentCenterAngle += centerSpeed *
         Wrap(progress - this.lastProgress, 0, 1) * 0.25;
       currentCenterAngle = Wrap(currentCenterAngle, 0, 1);
       this.lastProgress = progress;
 
       var centerOffset = StrutLayoutFactory.PolarToCartesian(
-        config.domeRadialCenterAngle + currentCenterAngle * 2 * Math.PI,
-        config.domeRadialCenterDistance
+        centerAngle + currentCenterAngle * 2 * Math.PI,
+        centerDistance
       );
 
       for (int i = 0; i < buffer.pixels.Length; i++) {
@@ -95,12 +118,12 @@ namespace Spectrum {
         double val = 0;
         double gradientVal = 0;
 
-        switch (this.config.domeRadialEffect) {
+        switch (effect) {
           case 0:
             // radar mapping
             val = MapWrap(angle, currentAngle, 1 + currentAngle, 0, 1);
             // scale val according to radial frequency
-            val = Wrap(val * this.config.domeRadialFrequency, 0, 1);
+            val = Wrap(val * frequency, 0, 1);
             // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
             val = Math.Abs(Map(val, 0, 1, -1, 1));
 
@@ -110,7 +133,7 @@ namespace Spectrum {
             // pulse mapping
             val = MapWrap(dist, currentAngle, 1 + currentAngle, 0, 1);
             // scale val according to radial frequency
-            val = Wrap(val * this.config.domeRadialFrequency, 0, 1);
+            val = Wrap(val * frequency, 0, 1);
             // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
             val = Math.Abs(Map(val, 0, 1, -1, 1));
 
@@ -119,14 +142,14 @@ namespace Spectrum {
           case 2:
             // spiral mapping
             val = MapWrap(
-              angle + dist / this.config.domeRadialFrequency,
+              angle + dist / frequency,
               currentAngle,
               1 + currentAngle,
               0,
               1
             );
             // scale val according to radial frequency
-            val = Wrap(val * this.config.domeRadialFrequency, 0, 1);
+            val = Wrap(val * frequency, 0, 1);
             // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
             val = Math.Abs(Map(val, 0, 1, -1, 1));
 
@@ -136,7 +159,7 @@ namespace Spectrum {
             // bubble mapping
             var a = MapWrap(angle, currentAngle, 1 + currentAngle, 0, 1);
             // scale val according to radial frequency
-            a = Wrap(a * this.config.domeRadialFrequency, 0, 1);
+            a = Wrap(a * frequency, 0, 1);
             // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
             a = Math.Abs(Map(a, 0, 1, -1, 1));
             val = Clamp(dist - a, 0, 1);
@@ -145,9 +168,9 @@ namespace Spectrum {
             break;
         }
 
-        // size limit is scaled according the size slider and the current
+        // size limit is scaled according the size param and the current
         // level
-        var sizeLimit = this.config.domeRadialSize * adjustedLevel;
+        var sizeLimit = size * adjustedLevel;
         if(val <= sizeLimit) {
           // use level to determine which colors to use
           int whichGradient = (int)(level * 8);

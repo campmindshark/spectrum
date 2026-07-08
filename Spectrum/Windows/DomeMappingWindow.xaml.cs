@@ -16,7 +16,7 @@ namespace Spectrum {
 
   /**
    * Interactive "Set Dome Mapping" calibration. The dome lights one controller
-   * cable at a time (driven via config.domeCalibrationCableIndex, rendered by
+   * cable at a time (driven via the shared DomeCalibrationState, rendered by
    * LEDDomeMappingCalibrationVisualizer); the user clicks the sector + cable on
    * the diagram that physically lit. After all 10 cables are identified the
    * resulting permutation is saved to config.domeCableMapping, which
@@ -32,6 +32,7 @@ namespace Spectrum {
     private const double DomeOffset = 20;
 
     private readonly Configuration config;
+    private readonly DomeCalibrationState calibration;
     private readonly int[] picks = new int[LEDDomeOutput.NumCables];
     // Which controller cable we are currently lighting; equals NumCables once
     // every cable has been answered.
@@ -48,9 +49,12 @@ namespace Spectrum {
     private readonly Point[] endpointCentroids = new Point[LEDDomeOutput.NumCables];
     private readonly WColor[] endpointColors = new WColor[LEDDomeOutput.NumCables];
 
-    public DomeMappingWindow(Configuration config) {
+    public DomeMappingWindow(
+      Configuration config, DomeCalibrationState calibration
+    ) {
       this.InitializeComponent();
       this.config = config;
+      this.calibration = calibration;
       this.BuildDiagram();
       this.PopulateSwapCombos();
     }
@@ -180,7 +184,7 @@ namespace Spectrum {
 
     private void WindowLoaded(object sender, RoutedEventArgs e) {
       this.started = false;
-      this.config.domeCalibrationActive = false;
+      this.calibration.Active = false;
       // If a valid mapping is already on file, load it for review/editing
       // (treated as fully recorded) instead of opening empty.
       if (this.TryLoadExistingMapping()) {
@@ -221,20 +225,20 @@ namespace Spectrum {
       this.ResetPicks();
       this.currentStep = 0;
       this.started = true;
-      this.config.domeCalibrationActive = true;
+      this.calibration.Active = true;
       this.UpdateForStep();
     }
 
     private void WindowClosed(object sender, EventArgs e) {
-      this.config.domeCalibrationCableIndex = -1;
-      this.config.domeCalibrationActive = false;
+      this.calibration.CableIndex = -1;
+      this.calibration.Active = false;
     }
 
     // Pushes the current step to the dome (which cable to light) and refreshes
     // all of the UI to match the recorded picks.
     private void UpdateForStep() {
       bool done = this.started && this.currentStep >= LEDDomeOutput.NumCables;
-      this.config.domeCalibrationCableIndex =
+      this.calibration.CableIndex =
         (this.started && !done) ? this.currentStep : -1;
 
       if (!this.started) {

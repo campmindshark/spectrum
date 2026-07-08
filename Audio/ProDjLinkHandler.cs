@@ -53,6 +53,9 @@ namespace Spectrum.Audio {
     private const double MaxPlausibleBpm = 500.0;
 
     private readonly Configuration config;
+    // The tempo service received beats are reported into (owned by the
+    // Operator, not part of Configuration).
+    private readonly BeatBroadcaster beat;
 
     // Touched only from the receive thread, so no locking is needed. Tracks which
     // broadcasting device (CDJ or mixer) we're currently treating as the tempo
@@ -64,13 +67,14 @@ namespace Spectrum.Audio {
     private Thread receiveThread;
     private volatile bool running;
 
-    public ProDjLinkHandler(Configuration config) {
+    public ProDjLinkHandler(Configuration config, BeatBroadcaster beat) {
       this.config = config;
+      this.beat = beat;
       this.config.PropertyChanged += ConfigUpdated;
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (e.PropertyName == "beatInput") {
+      if (e.PropertyName == nameof(this.config.beatInput)) {
         this.UpdateEnabled();
       }
     }
@@ -214,7 +218,7 @@ namespace Spectrum.Audio {
       if (!this.ShouldFollow(deviceNumber)) {
         return;
       }
-      this.config.beatBroadcaster.ReportProDjLinkBeat(effectiveBpm, beatWithinBar);
+      this.beat.ReportProDjLinkBeat(effectiveBpm, beatWithinBar);
     }
 
     // Every playing deck plus the mixer broadcasts beats, so we pick one device to

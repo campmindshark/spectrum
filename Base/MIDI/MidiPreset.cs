@@ -44,7 +44,9 @@ namespace Spectrum.Base {
     int BindingType { get; set; }
     string BindingName { get; set; }
 
-    Binding[] GetBindings(Configuration config);
+    // `beat` is the live tempo service (owned by the Operator, not part of
+    // Configuration); only the tap-tempo and ADSR bindings use it.
+    Binding[] GetBindings(Configuration config, BeatBroadcaster beat);
 
   }
 
@@ -55,7 +57,7 @@ namespace Spectrum.Base {
 
     public abstract object Clone();
 
-    public abstract Binding[] GetBindings(Configuration config);
+    public abstract Binding[] GetBindings(Configuration config, BeatBroadcaster beat);
 
   }
 

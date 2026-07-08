@@ -7,17 +7,19 @@ namespace Spectrum {
    * Drives the dome during "Set Dome Mapping" calibration. It lights exactly one
    * physical controller cable at a time (raw, ignoring the saved permutation) so
    * the user can see which sector/cable that controller output actually reaches
-   * and record it. It is controlled entirely through the shared Configuration:
-   *   - domeCalibrationActive gates it; while true it returns a very high
-   *     priority so it overrides every other dome visualizer (exclusive control).
-   *   - domeCalibrationCableIndex selects which controller cable to light,
-   *     encoded as box*2 + half (half 0 = ethernet A, 1 = B), or -1 for all-off.
+   * and record it. It is controlled through the shared DomeCalibrationState
+   * (written by both calibration UIs):
+   *   - Active gates it; while true it returns a very high priority so it
+   *     overrides every other dome visualizer (exclusive control).
+   *   - CableIndex selects which controller cable to light, encoded as
+   *     box*2 + half (half 0 = ethernet A, 1 = B), or -1 for all-off.
    * It only repaints when that selection changes, so the lit cable simply holds
    * between user clicks.
    */
   class LEDDomeMappingCalibrationVisualizer : Visualizer {
 
     private readonly Configuration config;
+    private readonly DomeCalibrationState calibration;
     private readonly LEDDomeOutput dome;
     // Last rendered selection; -2 is a sentinel that never equals a real cable
     // index or -1, so the first Visualize() always paints.
@@ -26,16 +28,18 @@ namespace Spectrum {
 
     public LEDDomeMappingCalibrationVisualizer(
       Configuration config,
+      DomeCalibrationState calibration,
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.calibration = calibration;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
     }
 
     public int Priority {
       get {
-        return this.config.domeCalibrationActive ? 10000 : 0;
+        return this.calibration.Active ? 10000 : 0;
       }
     }
 
@@ -57,8 +61,8 @@ namespace Spectrum {
     }
 
     public void Visualize() {
-      int cableIndex = this.config.domeCalibrationCableIndex;
-      bool active = this.config.domeCalibrationActive;
+      int cableIndex = this.calibration.CableIndex;
+      bool active = this.calibration.Active;
       if (active == this.lastActive && cableIndex == this.lastCableIndex) {
         return;
       }

@@ -31,14 +31,22 @@ namespace Spectrum {
     }
 
     private readonly Configuration config;
+    // Live services owned by the Operator (not part of Configuration): the
+    // tempo the tap button drives, and the MIDI binding log shown below.
+    private readonly BeatBroadcaster beat;
+    private readonly ObservableMidiLog midiLog;
     private string currentlyEditingLevelDriverPreset;
     private readonly Dictionary<LevelDriverSource, ComboBox[]> channelComboBoxes;
     private DomeLayersController domeLayersController;
 
-    public VJHUDWindow(Configuration config) {
+    public VJHUDWindow(
+      Configuration config, BeatBroadcaster beat, ObservableMidiLog midiLog
+    ) {
       this.InitializeComponent();
       this.config = config;
-      this.config.PropertyChanged += ConfigUpdated;
+      this.beat = beat;
+      this.midiLog = midiLog;
+      this.midiLog.PropertyChanged += MidiLogUpdated;
       this.logBox.Document = new FlowDocument();
       this.logBox.ScrollToVerticalOffset(this.logBox.ExtentHeight);
       this.InitializeBindings();
@@ -46,11 +54,15 @@ namespace Spectrum {
       this.LoadLevelDriverPresets();
     }
 
-    private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (!String.Equals(e.PropertyName, "midiLog")) {
-        return;
-      }
-      MidiLogMessage[] newMessages = this.config.midiLog.DequeueAllMessages();
+    protected override void OnClosed(EventArgs e) {
+      // Unsubscribe so a closed HUD doesn't keep draining the log's messages
+      // out from under a later-opened one (DequeueAllMessages is destructive).
+      this.midiLog.PropertyChanged -= MidiLogUpdated;
+      base.OnClosed(e);
+    }
+
+    private void MidiLogUpdated(object sender, PropertyChangedEventArgs e) {
+      MidiLogMessage[] newMessages = this.midiLog.DequeueAllMessages();
       this.Dispatcher.Invoke(() => {
         bool isScrolledToEnd = this.logBox.VerticalOffset >=
           this.logBox.ExtentHeight - this.logBox.ActualHeight;
@@ -101,51 +113,32 @@ namespace Spectrum {
           );
         }
       }
-      this.Bind("TapCounterBrush", this.tapTempoButton, Button.ForegroundProperty, BindingMode.OneWay, null, this.config.beatBroadcaster);
-      this.Bind("TapCounterText", this.tapTempoButton, Button.ContentProperty, BindingMode.OneWay, null, this.config.beatBroadcaster);
-      this.Bind("BPMString", this.bpmLabel, Label.ContentProperty, BindingMode.OneWay, null, this.config.beatBroadcaster);
+      this.Bind(nameof(this.beat.TapTempoActive), this.tapTempoButton, Button.ForegroundProperty, BindingMode.OneWay, new TapCounterBrushConverter(), this.beat);
+      this.Bind(nameof(this.beat.TapCounterText), this.tapTempoButton, Button.ContentProperty, BindingMode.OneWay, null, this.beat);
+      this.Bind(nameof(this.beat.BPMString), this.bpmLabel, Label.ContentProperty, BindingMode.OneWay, null, this.beat);
 
       this.domeLayersController = new DomeLayersController(
         this.config, this.domeLayersItemsControl, this.domeAddLayerButton);
-      this.Bind("domeVolumeRotationSpeed", this.domeVolumeRotationSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.dprs0, [0.125] = this.dprs1, [0.25] = this.dprs2, [0.5] = this.dprs3, [1.0] = this.dprs4, [2.0] = this.dprs5, [4.0] = this.dprs6 }, true));
-      this.Bind("domeGradientSpeed", this.domeGradientSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.dsrs0, [0.125] = this.dsrs1, [0.25] = this.dsrs2, [0.5] = this.dsrs3, [1.0] = this.dsrs4, [2.0] = this.dsrs5, [4.0] = this.dsrs6 }, true));
-      this.Bind("domeRadialCenterSpeed", this.domeRadialCenterSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.rcs0, [0.125] = this.rcs1, [0.25] = this.rcs2, [0.5] = this.rcs3, [1.0] = this.rcs4, [2.0] = this.rcs5, [4.0] = this.rcs6 }, true));
-
-      this.Bind("domeGlobalFadeSpeed", this.domeGlobalFadeSpeedSlider, Slider.ValueProperty);
-      this.Bind("domeGlobalFadeSpeed", this.domeGlobalFadeSpeedLabel, Label.ContentProperty);
-      this.Bind("domeGlobalHueSpeed", this.domeGlobalHueSpeedSlider, Slider.ValueProperty);
-      this.Bind("domeGlobalHueSpeed", this.domeGlobalHueSpeedLabel, Label.ContentProperty);
-      this.Bind("domeTwinkleDensity", this.domeTwinkleDensitySlider, Slider.ValueProperty);
-      this.Bind("domeTwinkleDensity", this.domeTwinkleDensityLabel, Label.ContentProperty);
-      this.Bind("domeRippleCDStep", this.domeRippleCDStepSlider, Slider.ValueProperty);
-      this.Bind("domeRippleCDStep", this.domeRippleCDStepLabel, Label.ContentProperty);
-      this.Bind("domeRippleStep", this.domeRippleStepSlider, Slider.ValueProperty);
-      this.Bind("domeRippleStep", this.domeRippleStepLabel, Label.ContentProperty);
-      this.Bind("domeRadialEffect", this.domeRadialEffect, ComboBox.SelectedIndexProperty, BindingMode.TwoWay);
-      this.Bind("domeRadialSize", this.domeRadialSizeSlider, Slider.ValueProperty);
-      this.Bind("domeRadialSize", this.domeRadialSizeLabel, Label.ContentProperty);
-      this.Bind("domeRadialFrequency", this.domeRadialFrequencySlider, Slider.ValueProperty);
-      this.Bind("domeRadialFrequency", this.domeRadialFrequencyLabel, Label.ContentProperty);
-      this.Bind("domeRadialCenterAngle", this.domeRadialCenterAngleSlider, Slider.ValueProperty);
-      this.Bind("domeRadialCenterAngle", this.domeRadialCenterAngleLabel, Label.ContentProperty);
-      this.Bind("domeRadialCenterDistance", this.domeRadialCenterDistanceSlider, Slider.ValueProperty);
-      this.Bind("domeRadialCenterDistance", this.domeRadialCenterDistanceLabel, Label.ContentProperty);
-
-
-
-      this.Bind("flashSpeed", this.flashRotationSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.frs0, [0.5] = this.frs1, [1] = this.frs2, [2] = this.frs3, [4] = this.frs4, [8] = this.frs5, [16] = this.frs6, [32] = this.frs7 }, true));
-      this.Bind("colorPaletteIndex", this.colorPalette1, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(0));
-      this.Bind("colorPaletteIndex", this.colorPalette2, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(1));
-      this.Bind("colorPaletteIndex", this.colorPalette3, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(2));
-      this.Bind("colorPaletteIndex", this.colorPalette4, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(3));
-      this.Bind("colorPaletteIndex", this.colorPalette5, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(4));
-      this.Bind("colorPaletteIndex", this.colorPalette6, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(5));
-      this.Bind("colorPaletteIndex", this.colorPalette7, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(6));
-      this.Bind("colorPaletteIndex", this.colorPalette8, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(7));
-      this.Bind("beatInput", this.tempoSelectorHuman, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(0));
-      this.Bind("beatInput", this.tempoSelectorMadmom, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(1));
-      this.Bind("beatInput", this.tempoSelectorLink, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(2));
-      this.Bind("orientationShowContours", this.orientationContours, CheckBox.IsCheckedProperty);
+      // Per-visualizer tuning (radial size, ripple steps, ...) is edited in the
+      // generic per-layer param rows above; only cross-layer state keeps a
+      // dedicated control here.
+      this.Bind(nameof(this.config.domeGlobalFadeSpeed), this.domeGlobalFadeSpeedSlider, Slider.ValueProperty);
+      this.Bind(nameof(this.config.domeGlobalFadeSpeed), this.domeGlobalFadeSpeedLabel, Label.ContentProperty);
+      this.Bind(nameof(this.config.domeGlobalHueSpeed), this.domeGlobalHueSpeedSlider, Slider.ValueProperty);
+      this.Bind(nameof(this.config.domeGlobalHueSpeed), this.domeGlobalHueSpeedLabel, Label.ContentProperty);
+      this.Bind(nameof(this.config.flashSpeed), this.flashRotationSpeed, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<double, ComboBoxItem>(new Dictionary<double, ComboBoxItem> { [0] = this.frs0, [0.5] = this.frs1, [1] = this.frs2, [2] = this.frs3, [4] = this.frs4, [8] = this.frs5, [16] = this.frs6, [32] = this.frs7 }, true));
+      this.Bind(nameof(this.config.colorPaletteIndex), this.colorPalette1, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(0));
+      this.Bind(nameof(this.config.colorPaletteIndex), this.colorPalette2, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(1));
+      this.Bind(nameof(this.config.colorPaletteIndex), this.colorPalette3, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(2));
+      this.Bind(nameof(this.config.colorPaletteIndex), this.colorPalette4, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(3));
+      this.Bind(nameof(this.config.colorPaletteIndex), this.colorPalette5, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(4));
+      this.Bind(nameof(this.config.colorPaletteIndex), this.colorPalette6, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(5));
+      this.Bind(nameof(this.config.colorPaletteIndex), this.colorPalette7, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(6));
+      this.Bind(nameof(this.config.colorPaletteIndex), this.colorPalette8, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(7));
+      this.Bind(nameof(this.config.beatInput), this.tempoSelectorHuman, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(0));
+      this.Bind(nameof(this.config.beatInput), this.tempoSelectorMadmom, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(1));
+      this.Bind(nameof(this.config.beatInput), this.tempoSelectorLink, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(2));
+      this.Bind(nameof(this.config.orientationShowContours), this.orientationContours, CheckBox.IsCheckedProperty);
     }
 
     private void Bind(
@@ -205,11 +198,11 @@ namespace Spectrum {
 
     private void TapTempoButtonClicked(object sender, RoutedEventArgs e) {
       this.config.beatInput = 0;
-      this.config.beatBroadcaster.AddTap();
+      this.beat.AddTap();
     }
 
     private void ClearTempoButtonClicked(object sender, RoutedEventArgs e) {
-      this.config.beatBroadcaster.Reset();
+      this.beat.Reset();
     }
 
     private void LoadLevelDriverPresets() {

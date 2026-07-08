@@ -20,10 +20,12 @@ namespace Spectrum.Audio {
     private readonly MadmomHandler madmomHandler;
     private readonly ProDjLinkHandler proDjLinkHandler;
 
-    public AudioInput(Configuration config) {
+    // `beat` is the tempo service the two beat detectors report into (owned by
+    // the Operator, not part of Configuration).
+    public AudioInput(Configuration config, BeatBroadcaster beat) {
       this.config = config;
-      this.madmomHandler = new MadmomHandler(config, this);
-      this.proDjLinkHandler = new ProDjLinkHandler(config);
+      this.madmomHandler = new MadmomHandler(config, this, beat);
+      this.proDjLinkHandler = new ProDjLinkHandler(config, beat);
     }
 
     private bool active;

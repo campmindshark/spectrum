@@ -14,6 +14,7 @@ namespace Spectrum {
 
     private readonly Configuration config;
     private readonly AudioInput audio;
+    private readonly BeatBroadcaster beat;
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
     private int animationSize;
@@ -42,10 +43,12 @@ namespace Spectrum {
     public LEDDomeVolumeVisualizer(
       Configuration config,
       AudioInput audio,
+      BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
       this.config = config;
       this.audio = audio;
+      this.beat = beat;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
@@ -168,18 +171,27 @@ namespace Spectrum {
         this.wipeStrutsNextCycle = false;
       }
 
-      this.UpdateCenter();
-      this.UpdateAnimationSize(this.config.domeVolumeAnimationSize);
+      // This layer's own tuning, resolved once per frame from its stack entry.
+      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
+      int newAnimationSize = (int)DomeLayerSettings.ParamValue(
+        stack, this.LayerKey, "animationSize");
+      double rotationSpeed = DomeLayerSettings.ParamValue(
+        stack, this.LayerKey, "rotationSpeed");
+      double gradientSpeed = DomeLayerSettings.ParamValue(
+        stack, this.LayerKey, "gradientSpeed");
+
+      this.UpdateCenter(rotationSpeed);
+      this.UpdateAnimationSize(newAnimationSize);
 
       // The gradient focus position advances with the beat but is identical for
       // every pixel this frame, so compute it once here rather than calling
       // ProgressThroughBeat (a lock + DateTime.Now) per pixel inside ColorFromPart.
-      double gradientFocus = this.config.beatBroadcaster.ProgressThroughBeat(
-        this.config.domeGradientSpeed
+      double gradientFocus = this.beat.ProgressThroughBeat(
+        gradientSpeed
       );
 
       int subdivisions = this.partLayout.NumSegments / 2;
-      int totalParts = this.config.domeVolumeAnimationSize;
+      int totalParts = newAnimationSize;
       int volumeSplitInto = 2 * ((totalParts - 1) / 2 + 1);
       for (int part = 0; part < totalParts; part += 2) {
         var outwardSegment = this.partLayout.GetSegment(part);
@@ -244,10 +256,10 @@ namespace Spectrum {
       this.animationSize = newAnimationSize;
     }
 
-    private void UpdateCenter() {
+    private void UpdateCenter(double rotationSpeed) {
       int newCenterOffset = (int)(
-        this.config.beatBroadcaster.ProgressThroughBeat(
-          this.config.domeVolumeRotationSpeed
+        this.beat.ProgressThroughBeat(
+          rotationSpeed
         ) * 4);
       if (newCenterOffset == this.centerOffset) {
         return;

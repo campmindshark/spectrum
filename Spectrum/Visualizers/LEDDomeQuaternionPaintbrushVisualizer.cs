@@ -75,6 +75,7 @@ namespace Spectrum.Visualizers {
     private readonly Configuration config;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
+    private readonly BeatBroadcaster beat;
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
     private readonly Random rand;
@@ -130,11 +131,13 @@ namespace Spectrum.Visualizers {
       Configuration config,
       AudioInput audio,
       OrientationInput orientationInput,
+      BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
       this.config = config;
       this.audio = audio;
       this.orientationInput = orientationInput;
+      this.beat = beat;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
@@ -174,15 +177,26 @@ namespace Spectrum.Visualizers {
 
     public void Visualize() {
       UpdateFrameScale();
-      double progress = this.config.beatBroadcaster.ProgressThroughMeasure;
+      double progress = this.beat.ProgressThroughMeasure;
       double level = this.audio.Volume;
+
+      // This layer's own tuning, resolved once per frame from its stack entry
+      // (fade/hue speed stay global — shared scene state, not layer params).
+      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
+      double size = DomeLayerSettings.ParamValue(stack, this.LayerKey, "size");
+      double twinkle =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "twinkleDensity");
+      double rippleCDStep =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "rippleCDStep");
+      double rippleStep =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "rippleStep");
 
       ApplyGlobalEffects(progress);
       UpdateDeviceFrame(level);
       UpdateStamp(progress, level);
-      UpdateRipple();
+      UpdateRipple(rippleCDStep, rippleStep);
       UpdateContour(level);
-      RenderPixels(level);
+      RenderPixels(level, size, twinkle);
 
       lastProgress = progress;
     }
@@ -361,15 +375,15 @@ namespace Spectrum.Visualizers {
     }
 
     // Ripple state machine: a color wave expanding from a center, optionally
-    // following the wand.
-    private void UpdateRipple() {
+    // following the wand. Both step rates are this layer's params.
+    private void UpdateRipple(double rippleCDStep, double rippleStep) {
       if (rippleCounter > RIPPLE_PERIOD) {
         rippleCounter = 0;
         rippleFiring = false;
       }
 
       if (!rippleFiring) {
-        rippleCooldown -= this.config.domeRippleCDStep * frameScale;
+        rippleCooldown -= rippleCDStep * frameScale;
       }
 
       if (rippleCooldown < 0) {
@@ -380,7 +394,7 @@ namespace Spectrum.Visualizers {
       }
 
       if (rippleFiring) {
-        rippleCounter += this.config.domeRippleStep * frameScale;
+        rippleCounter += rippleStep * frameScale;
         if (rippleType == 1) {
           rippleCenter = currentCenter; // follower ripple tracks the wand
         }
@@ -399,15 +413,15 @@ namespace Spectrum.Visualizers {
     // contour lines, the ripple wave, and stamps. Everything but twinkle and
     // stamps is a "keep the brighter color" blend, so we accumulate the winning
     // (hue,sat,val) and pack to an int once per pixel.
-    private void RenderPixels(double level) {
-      double thresholdFactor = (config.domeRadialSize / 4) + level + .01;
+    private void RenderPixels(double level, double size, double twinkle) {
+      double thresholdFactor = (size / 4) + level + .01;
       double threshold = 2 / thresholdFactor;
       // High volumes desaturate the metaball.
       double metaballSaturation = Clamp(1.3 / level - 1, .2, 1);
       bool showContours = config.orientationShowContours;
       // Twinkle is a per-pixel chance each frame, so scale the probability by
       // frameScale to hold the twinkle rate (dots per second) steady.
-      double twinkleDensity = config.domeTwinkleDensity * frameScale;
+      double twinkleDensity = twinkle * frameScale;
 
       // Per-frame ripple geometry (constant across pixels).
       double rippleRadius = rippleCounter / 300d;

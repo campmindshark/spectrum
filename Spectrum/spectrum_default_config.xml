@@ -18,28 +18,45 @@
   <domeSimulationEnabled>false</domeSimulationEnabled>
   <domeMaxBrightness>1</domeMaxBrightness>
   <domeBrightness>0.356915762888129</domeBrightness>
-  <domeVolumeAnimationSize>4</domeVolumeAnimationSize>
-  <domeAutoFlashDelay>5</domeAutoFlashDelay>
-  <domeVolumeRotationSpeed>0.25</domeVolumeRotationSpeed>
-  <domeGradientSpeed>0.25</domeGradientSpeed>
   <domeTestPattern>0</domeTestPattern>
-  <domeActiveVis>0</domeActiveVis>
   <domeLayerStack>
     <DomeLayerSettings>
       <VisualizerKey>radial</VisualizerKey>
       <BlendMode>Over</BlendMode>
       <Opacity>1</Opacity>
       <Enabled>true</Enabled>
+      <Params>
+        <Item>
+          <Key>size</Key>
+          <Value>1</Value>
+        </Item>
+        <Item>
+          <Key>frequency</Key>
+          <Value>1</Value>
+        </Item>
+        <Item>
+          <Key>rotationSpeed</Key>
+          <Value>0.25</Value>
+        </Item>
+        <Item>
+          <Key>gradientSpeed</Key>
+          <Value>0.25</Value>
+        </Item>
+      </Params>
     </DomeLayerSettings>
     <DomeLayerSettings>
       <VisualizerKey>quaternion-paintbrush</VisualizerKey>
       <BlendMode>Add</BlendMode>
       <Opacity>1</Opacity>
       <Enabled>true</Enabled>
+      <Params>
+        <Item>
+          <Key>size</Key>
+          <Value>1</Value>
+        </Item>
+      </Params>
     </DomeLayerSettings>
   </domeLayerStack>
-  <domeRadialSize>1.0</domeRadialSize>
-  <domeRadialFrequency>1</domeRadialFrequency>
   <hueDelay>125</hueDelay>
   <hueIdleOnSilent>true</hueIdleOnSilent>
   <lightsOff>false</lightsOff>
@@ -96,44 +113,13 @@
             <BindingType>2</BindingType>
             <BindingName>dome brightness</BindingName>
           </IMidiBindingConfig>
-          <IMidiBindingConfig xsi:type="DiscreteKnobMidiBindingConfig">
+          <IMidiBindingConfig xsi:type="ContinuousKnobMidiBindingConfig">
             <knobIndex>1</knobIndex>
-            <configPropertyName>domeVolumeAnimationSize</configPropertyName>
-            <numPossibleValues>5</numPossibleValues>
-            <BindingType>3</BindingType>
-            <BindingName>dome volume animation size</BindingName>
-          </IMidiBindingConfig>
-          <IMidiBindingConfig xsi:type="DiscreteLogarithmicKnobMidiBindingConfig">
-            <knobIndex>2</knobIndex>
-            <configPropertyName>domeVolumeRotationSpeed</configPropertyName>
-            <numPossibleValues>6</numPossibleValues>
-            <startValue>0.125</startValue>
-            <BindingType>3</BindingType>
-            <BindingName>dome volume rotation speed</BindingName>
-          </IMidiBindingConfig>
-          <IMidiBindingConfig xsi:type="ContinuousKnobMidiBindingConfig">
-            <knobIndex>3</knobIndex>
-            <configPropertyName>kickT</configPropertyName>
+            <configPropertyName>domeGlobalFadeSpeed</configPropertyName>
             <startValue>0</startValue>
-            <endValue>4</endValue>
+            <endValue>3</endValue>
             <BindingType>2</BindingType>
-            <BindingName>kickT</BindingName>
-          </IMidiBindingConfig>
-          <IMidiBindingConfig xsi:type="ContinuousKnobMidiBindingConfig">
-            <knobIndex>3</knobIndex>
-            <configPropertyName>snareT</configPropertyName>
-            <startValue>0</startValue>
-            <endValue>4</endValue>
-            <BindingType>2</BindingType>
-            <BindingName>snareT</BindingName>
-          </IMidiBindingConfig>
-          <IMidiBindingConfig xsi:type="DiscreteLogarithmicKnobMidiBindingConfig">
-            <knobIndex>4</knobIndex>
-            <configPropertyName>domeGradientSpeed</configPropertyName>
-            <numPossibleValues>6</numPossibleValues>
-            <startValue>0.125</startValue>
-            <BindingType>4</BindingType>
-            <BindingName>dome gradient speed</BindingName>
+            <BindingName>global fade speed</BindingName>
           </IMidiBindingConfig>
           <IMidiBindingConfig xsi:type="AdsrLevelDriverMidiBindingConfig">
             <indexRangeStart>48</indexRangeStart>

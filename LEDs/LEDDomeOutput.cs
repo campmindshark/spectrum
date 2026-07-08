@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -168,6 +169,11 @@ namespace Spectrum.LEDs {
 
     private OPCAPI opcAPI;
     private readonly Configuration config;
+    // Live counters, not config: the OPC send rate is reported here.
+    private readonly RuntimeTelemetry telemetry;
+    // The tempo service (owned by the Operator, not part of Configuration),
+    // read for the beat-synced flash-off in the per-frame color cache.
+    private readonly BeatBroadcaster beat;
     private readonly List<Visualizer> visualizers;
     // The subset of `visualizers` that are layerable (implement
     // DomeLayerVisualizer), plus a key→visualizer index. Populated at
@@ -232,8 +238,12 @@ namespace Spectrum.LEDs {
       domeStrutsPerBox = total;
     }
 
-    public LEDDomeOutput(Configuration config) {
+    public LEDDomeOutput(
+      Configuration config, RuntimeTelemetry telemetry, BeatBroadcaster beat
+    ) {
       this.config = config;
+      this.telemetry = telemetry;
+      this.beat = beat;
       this.visualizers = new List<Visualizer>();
       this.RebuildCableMapping();
       this.config.PropertyChanged += ConfigUpdated;
@@ -301,11 +311,11 @@ namespace Spectrum.LEDs {
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (e.PropertyName == "domeCableMapping") {
+      if (e.PropertyName == nameof(this.config.domeCableMapping)) {
         this.RebuildCableMapping();
         return;
       }
-      if (e.PropertyName == "domeLayerStack") {
+      if (e.PropertyName == nameof(this.config.domeLayerStack)) {
         // Force the operator thread to re-resolve the stack next Composite.
         this.resolvedStackValid = false;
         return;
@@ -334,7 +344,7 @@ namespace Spectrum.LEDs {
       this.opcAPI = new OPCAPI(
         opcAddress,
         this.config.domeOutputInSeparateThread,
-        newFPS => this.config.domeBeagleboneOPCFPS = newFPS
+        newFPS => this.telemetry.DomeBeagleboneOPCFPS = newFPS
       );
       this.opcAPI.Active = this.active;
     }
@@ -393,6 +403,11 @@ namespace Spectrum.LEDs {
       public DomeLayerVisualizer visualizer;
       public DomeBlendMode blendMode;
       public double opacity;
+      // Compositor-consumed layer params, resolved once here from the layer's
+      // Params bag (never looked up per pixel). Two scalars cover Desaturate
+      // (style + threshold); widen if a future blend needs more.
+      public double blendParam0;
+      public double blendParam1;
     }
     // Rebuilt lazily on the operator thread whenever the stack changes. volatile
     // so a set-false from ConfigUpdated (UI/web thread) is seen promptly by the
@@ -423,11 +438,28 @@ namespace Spectrum.LEDs {
             visualizer = visualizer,
             blendMode = layer.BlendMode,
             opacity = layer.Opacity,
+            blendParam0 = ResolveBlendParam(layer, 0),
+            blendParam1 = ResolveBlendParam(layer, 1),
           });
         }
       }
       this.resolvedStack = resolved.ToArray();
       this.resolvedStackValid = true;
+    }
+
+    // The value of the `index`-th compositor-consumed param of `layer`'s blend
+    // mode, read from the layer's Params bag with the descriptor default as
+    // fallback (defaults stay single-sourced in ParamsForBlend). Returns 0 when
+    // the blend has no param at that slot, so the resolved scalars are always
+    // defined; blends that ignore p0/p1 never look at them anyway.
+    private static double ResolveBlendParam(DomeLayerSettings layer, int index) {
+      IReadOnlyList<DomeLayerParam> schema =
+        DomeLayerSettings.ParamsForBlend(layer.BlendMode);
+      if (index >= schema.Count) {
+        return 0;
+      }
+      DomeLayerParam param = schema[index];
+      return layer.GetParam(param.Key, param.Default);
     }
 
     // Blends the active layer stack into compositeBuffer and pushes exactly one
@@ -457,7 +489,8 @@ namespace Spectrum.LEDs {
           destInitialized = true;
         } else {
           this.compositeBuffer.CompositeBlend(
-            src, layer.blendMode, layer.opacity
+            src, layer.blendMode, layer.opacity,
+            layer.blendParam0, layer.blendParam1
           );
         }
       }
@@ -484,26 +517,37 @@ namespace Spectrum.LEDs {
       if (this.frameColorCacheValid) {
         return;
       }
-      this.frameFlashedOff = this.config.beatBroadcaster.CurrentlyFlashedOff;
+      this.frameFlashedOff = this.beat.CurrentlyFlashedOff;
       this.frameBrightness =
         this.config.domeMaxBrightness * this.config.domeBrightness;
       this.frameColorCacheValid = true;
     }
 
-    // Only feed domeCommandQueue when simulation is on AND something is
+    // Frames for the on-screen dome simulator. The queue lives here, with its
+    // producer (split off Configuration — arch_issues item 5); the single
+    // consumer is DomeSimulatorWindow, which reaches it via Operator.DomeOutput.
+    public ConcurrentQueue<DomeLEDCommand> SimulatorCommandQueue { get; } =
+      new ConcurrentQueue<DomeLEDCommand>();
+
+    // True while the simulator window is open and actually draining
+    // SimulatorCommandQueue. A plain bool read/write is atomic, which is all
+    // the operator thread needs to gate its enqueues on a live consumer.
+    public bool SimulatorHasConsumer { get; set; }
+
+    // Only feed SimulatorCommandQueue when simulation is on AND something is
     // actually draining the queue. Without the consumer check, setting
     // domeSimulationEnabled with no simulator window open (e.g. flipped on over
     // the web) would grow the queue without bound — a fresh int[] frame
     // snapshot up to 400x/sec with nobody dequeuing it.
     private bool ShouldEnqueueDomeCommand =>
-      this.config.domeSimulationEnabled && this.config.domeCommandQueueHasConsumer;
+      this.config.domeSimulationEnabled && this.SimulatorHasConsumer;
 
     public void Flush() {
       if (this.opcAPI != null) {
          this.opcAPI.Flush();
       }
       if (this.ShouldEnqueueDomeCommand) {
-        this.config.domeCommandQueue.Enqueue(
+        this.SimulatorCommandQueue.Enqueue(
           new DomeLEDCommand() { isFlush = true }
         );
       }
@@ -568,7 +612,7 @@ namespace Spectrum.LEDs {
       this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
 
       if (this.ShouldEnqueueDomeCommand) {
-        this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
+        this.SimulatorCommandQueue.Enqueue(new DomeLEDCommand() {
           strutIndex = strutIndex,
           ledIndex = ledIndex,
           color = color,
@@ -585,7 +629,7 @@ namespace Spectrum.LEDs {
       this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
 
       if (this.ShouldEnqueueDomeCommand) {
-        this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
+        this.SimulatorCommandQueue.Enqueue(new DomeLEDCommand() {
           strutIndex = strutIndex,
           ledIndex = ledIndex,
           color = color,
@@ -673,7 +717,7 @@ namespace Spectrum.LEDs {
         }
       }
       if (simulationEnabled) {
-        this.config.domeCommandQueue.Enqueue(new DomeLEDCommand() {
+        this.SimulatorCommandQueue.Enqueue(new DomeLEDCommand() {
           frame = frame,
         });
       }
