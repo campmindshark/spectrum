@@ -13,20 +13,15 @@ namespace Spectrum.Visualizers {
   // two-consumer split in docs/layer_params_implementation.md).
   //
   // Per-layer params (visualizer-consumed, read each frame from this layer's own
-  // stack entry): bandWidth, sweep speed, and the axis (dome height vs. angle).
-  // Edges are hard by design — no partial alpha.
+  // stack entry): bandWidth, sweep speed, and the sweep center (angle/distance,
+  // same knobs as Radial Effects). The band always sweeps by height (distance
+  // from the center point, flipped so 1 is at the center/top). Edges are hard
+  // by design — no partial alpha.
   class LEDDomeWaveVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
-
-    // Each pixel's position along the two sweep axes, baked once and normalized
-    // to 0..1 (periodic): height (1 at the dome's top/center, 0 at the rim) and
-    // angle around the dome. The band test picks one per frame from the `axis`
-    // param.
-    private readonly double[] pixelHeight;
-    private readonly double[] pixelAngle;
 
     // Sweep phase (the band center, 0..1) accumulated from wall-clock time so the
     // sweep speed is frame-rate independent.
@@ -42,23 +37,6 @@ namespace Spectrum.Visualizers {
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
-
-      // Bake each pixel's normalized height and angle from its strut/LED identity
-      // once, exactly like Race, so Visualize allocates nothing per pixel.
-      this.pixelHeight = new double[this.buffer.pixels.Length];
-      this.pixelAngle = new double[this.buffer.pixels.Length];
-      for (int i = 0; i < this.buffer.pixels.Length; i++) {
-        var pixel = this.buffer.pixels[i];
-        var parametric = StrutLayoutFactory.GetProjectedLEDPointParametric(
-          pixel.strutIndex,
-          pixel.strutLEDIndex
-        );
-        // Item4 is radial distance (0 center .. ~1 rim); flip so 1 is the top,
-        // then clamp into 0..1 for the periodic band test.
-        this.pixelHeight[i] = Math.Clamp(1.0 - parametric.Item4, 0, 1);
-        // Item3 is the angle in radians (-pi..pi); map to 0..1.
-        this.pixelAngle[i] = (parametric.Item3 / (2 * Math.PI)) + 0.5;
-      }
     }
 
     public int Priority {
@@ -86,9 +64,10 @@ namespace Spectrum.Visualizers {
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "bandWidth");
       double speed =
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "speed");
-      // 0 = Height, 1 = Angle
-      bool useAngle =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "axis") >= 0.5;
+      double centerAngle =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "centerAngle");
+      double centerDistance =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "centerDistance");
 
       // Advance the band center by speed (cycles/second) * elapsed wall time,
       // wrapped into 0..1. Speed may be negative (sweep the other way).
@@ -101,10 +80,24 @@ namespace Spectrum.Visualizers {
       }
       double center = this.phase;
 
-      double[] coords = useAngle ? this.pixelAngle : this.pixelHeight;
+      // Same center-offset construction as Radial: shift the unit-square
+      // coordinates by a point at (centerAngle, centerDistance) before
+      // recovering the per-pixel height, so the sweep can be re-centered off
+      // the dome's origin.
+      var centerOffset = StrutLayoutFactory.PolarToCartesian(
+        centerAngle, centerDistance
+      );
+
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
-        // Distance to the band center on a 0..1 ring (both axes are periodic).
-        double d = Math.Abs(coords[i] - center);
+        ref var pixel = ref this.buffer.pixels[i];
+        double px = (pixel.x + centerOffset.Item1) * 2 - 1;
+        double py = (pixel.y + centerOffset.Item2) * 2 - 1;
+        // 1 at the center point, 0 at the rim; clamp for pixels that fall
+        // outside the unit disc once the center is offset.
+        double height = Math.Clamp(1.0 - Math.Sqrt(px * px + py * py), 0, 1);
+
+        // Distance to the band center on a 0..1 ring (periodic).
+        double d = Math.Abs(height - center);
         if (d > 0.5) {
           d = 1 - d;
         }
@@ -112,10 +105,10 @@ namespace Spectrum.Visualizers {
           // Opaque white mask: the alpha (1) is what an adjustment blend reads;
           // the color is irrelevant to Desaturate but matters if the layer runs
           // under a color blend, so make it a plain reveal-all white.
-          this.buffer.pixels[i].color = 0xFFFFFF;
+          pixel.color = 0xFFFFFF;
         } else {
           // Transparent: reveal the layers below unchanged (alpha 0).
-          this.buffer.pixels[i].Clear();
+          pixel.Clear();
         }
       }
     }

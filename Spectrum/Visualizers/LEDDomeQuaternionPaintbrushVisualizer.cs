@@ -91,6 +91,7 @@ namespace Spectrum.Visualizers {
       Configuration config,
       AudioInput audio,
       OrientationInput orientationInput,
+      OrientationCenter center,
       BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
@@ -102,7 +103,7 @@ namespace Spectrum.Visualizers {
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
       this.rand = new Random();
-      this.center = new OrientationCenter(config, orientationInput);
+      this.center = center;
 
       // Bake the static unit-sphere position of every pixel once, plus whether
       // each pixel is high enough on the dome to twinkle (z > .2).
@@ -148,7 +149,7 @@ namespace Spectrum.Visualizers {
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "rippleStep");
 
       ApplyGlobalEffects(progress, frameScale);
-      this.center.Update(frameScale, level);
+      this.center.Update(level);
       UpdateStamp(progress, level);
       UpdateRipple(rippleCDStep, rippleStep, frameScale);
       UpdateContour(level, frameScale);

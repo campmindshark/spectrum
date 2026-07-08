@@ -92,6 +92,10 @@ namespace Spectrum {
       var orientation = new OrientationInput(config);
       this.inputs.Add(orientation);
       this.OrientationInput = orientation;
+      // Shared by every orientation-driven dome layer (Paintbrush, Ripple,
+      // Stamp, Metaball) so they idle-drift around the same wandering point
+      // instead of each running its own independent random walk.
+      var orientationCenter = new OrientationCenter(config, orientation);
 
       this.outputs = new List<Output>();
       var dome = new LEDDomeOutput(config, this.Telemetry, this.BeatBroadcaster);
@@ -157,6 +161,7 @@ namespace Spectrum {
         this.config,
         audio,
         orientation,
+        orientationCenter,
         this.BeatBroadcaster,
         dome
         ));
@@ -188,12 +193,14 @@ namespace Spectrum {
         this.config,
         audio,
         orientation,
+        orientationCenter,
         dome
       ));
       this.visualizers.Add(new LEDDomeStampVisualizer(
         this.config,
         audio,
         orientation,
+        orientationCenter,
         this.BeatBroadcaster,
         dome
       ));
@@ -201,6 +208,7 @@ namespace Spectrum {
         this.config,
         audio,
         orientation,
+        orientationCenter,
         dome
       ));
     }

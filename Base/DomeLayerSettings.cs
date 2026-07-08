@@ -9,8 +9,8 @@ namespace Spectrum.Base {
   // Persisted by name (XSerializer writes the enum member name), so members may
   // be appended freely; do not reorder or rename existing ones. Desaturate is an
   // adjustment blend: it ignores the source color and instead reprocesses the
-  // composite below it (masked by the source's alpha) into stark 1-bit
-  // black/white or grayscale — see CompositeBlend and ParamsForBlend.
+  // composite below it (masked by the source's alpha) into grayscale — see
+  // CompositeBlend.
   public enum DomeBlendMode { Over, Add, Screen, Lighten, Multiply, Desaturate }
 
   // The value type of a per-layer parameter. Values live in the bag as double
@@ -366,31 +366,16 @@ namespace Spectrum.Base {
         Min = -2, Max = 2, Step = 0.05, Default = 0.3,
       },
       new DomeLayerParam {
-        Key = "axis", Label = "Axis",
-        Type = DomeLayerParamType.Enum,
-        Options = new string[] { "Height", "Angle" }, Default = 0,
+        Key = "centerAngle", Label = "Center Angle",
+        Type = DomeLayerParamType.Double,
+        Min = -Math.PI, Max = Math.PI, Step = 0.01, Default = 0,
+      },
+      new DomeLayerParam {
+        Key = "centerDistance", Label = "Center Distance",
+        Type = DomeLayerParamType.Double,
+        Min = 0, Max = 1, Step = 0.01, Default = 0,
       },
     };
-
-    // Compositor-consumed params attached to the Desaturate blend (whatever
-    // layer runs it), resolved once/frame into ResolvedLayer and passed to
-    // CompositeBlend. The visualizer never sees these. Options is append-only
-    // (the persisted value is an index into it).
-    private static readonly DomeLayerParam[] DesaturateParams =
-      new DomeLayerParam[] {
-        new DomeLayerParam {
-          Key = "style", Label = "Style",
-          Type = DomeLayerParamType.Enum,
-          Options = new string[] { "Stark", "Grayscale" }, Default = 0,
-          CompositorConsumed = true,
-        },
-        new DomeLayerParam {
-          Key = "threshold", Label = "Threshold",
-          Type = DomeLayerParamType.Double,
-          Min = 0, Max = 1, Step = 0.01, Default = 0.5,
-          CompositorConsumed = true,
-        },
-      };
 
     // The visualizer-consumed schema for a layer key. Empty for every key that
     // has no tunables.
@@ -440,15 +425,10 @@ namespace Spectrum.Base {
     }
 
     // The compositor-consumed schema for a blend mode (params live on the layer
-    // that selects the blend, not on any one visualizer). Empty for blends with
-    // no tunables.
+    // that selects the blend, not on any one visualizer). Empty for every blend
+    // — Desaturate always runs as grayscale, with no tunables.
     public static IReadOnlyList<DomeLayerParam> ParamsForBlend(DomeBlendMode mode) {
-      switch (mode) {
-        case DomeBlendMode.Desaturate:
-          return DesaturateParams;
-        default:
-          return NoParams;
-      }
+      return NoParams;
     }
 
     // Allocation-free scan used on the scheduling hot path (visualizer Priority

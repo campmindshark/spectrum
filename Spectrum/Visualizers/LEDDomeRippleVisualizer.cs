@@ -50,6 +50,7 @@ namespace Spectrum.Visualizers {
       Configuration config,
       AudioInput audio,
       OrientationInput orientationInput,
+      OrientationCenter center,
       LEDDomeOutput dome
     ) {
       this.config = config;
@@ -58,7 +59,7 @@ namespace Spectrum.Visualizers {
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
-      this.center = new OrientationCenter(config, orientationInput);
+      this.center = center;
 
       // Bake the static unit-sphere position of every pixel once.
       this.pixelPositions = this.buffer.BakePixelPositions();
@@ -95,7 +96,7 @@ namespace Spectrum.Visualizers {
       double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
-      this.center.Update(frameScale, level);
+      this.center.Update(level);
       UpdateRipple(rippleCDStep, rippleStep, frameScale);
       RenderPixels();
     }

@@ -20,12 +20,16 @@ namespace Spectrum.Visualizers {
   // one that wants a *color* calls ColorCenterAt(pixelPoint) (metaball hue is
   // (1 + colorCenter.W) / 2, unchanged from the original inline math).
   //
-  // Each layer owns its own instance rather than sharing one across the
-  // stack: idle-drift phase and spotlight resolution can then diverge
-  // slightly between two orientation-driven layers during the idle
-  // screensaver, the same accepted tradeoff as per-layer fade speed drifting
-  // under CPU load (docs/arch_issues.md item 5) — simpler than threading a
-  // shared instance through the Operator's registry for a cosmetic edge case.
+  // One instance is shared across every orientation-driven layer (wired up
+  // once in Operator's constructor) so there is a single idle-drift dummy
+  // pointer and a single spotlight resolution for the whole stack — two
+  // layers active at once (e.g. Metaball + Ripple) must idle-drift around
+  // the same wandering point rather than each running its own independent
+  // random walk. Update() owns its own FrameClock rather than taking a
+  // frameScale from the caller, so calling it more than once per engine tick
+  // (once per active layer) is harmless: the second and later calls see
+  // near-zero elapsed wall time and contribute negligible extra drift,
+  // instead of compounding idle-drift speed by the number of active layers.
   class OrientationCenter {
 
     public static readonly Vector3 Spot = new Vector3(-1, 0, 0);
@@ -56,6 +60,12 @@ namespace Spectrum.Visualizers {
     private readonly Configuration config;
     private readonly OrientationInput orientationInput;
     private readonly Random rand = new Random();
+
+    // Owns the wall-clock timing for idle drift, so repeat calls to Update()
+    // within the same engine tick (from other active layers sharing this
+    // instance) see near-zero elapsed time rather than each applying a full
+    // frame's worth of drift.
+    private readonly FrameClock frameClock = new FrameClock();
 
     // Reused each frame to avoid per-frame allocation.
     private readonly List<DeviceFrame> activeDevices = new List<DeviceFrame>();
@@ -90,11 +100,13 @@ namespace Spectrum.Visualizers {
     public Quaternion CurrentCenter => this.currentCenter;
 
     // Snapshots devices, filters to the moving ones, resolves the spotlight,
-    // and advances the idle drift. Call once per frame before reading
-    // CurrentCenter/ColorCenterAt. level scales the idle drift's speed (as
-    // the original inline code did) and frameScale is the caller's own
-    // frame-rate-independence factor (see Paintbrush's UpdateFrameScale).
-    public void Update(double frameScale, double level) {
+    // and advances the idle drift. Every active layer calls this once per
+    // frame before reading CurrentCenter/ColorCenterAt; frameScale is derived
+    // from this instance's own clock (not the caller's), so a second call in
+    // the same engine tick is a cheap near-no-op rather than double drift.
+    // level scales the idle drift's speed, as the original inline code did.
+    public void Update(double level) {
+      double frameScale = this.frameClock.Tick();
       Dictionary<int, OrientationDevice> devices =
         this.orientationInput.DevicesSnapshot();
       this.activeDevices.Clear();

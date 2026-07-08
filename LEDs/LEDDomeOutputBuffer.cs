@@ -209,28 +209,23 @@ namespace Spectrum.LEDs {
     // design doc. Add/Screen/Lighten/Multiply ignore coverage (black is
     // identity); Over uses src's alpha so a foreground layer only paints where it
     // actually drew (w = o * S.a), and accumulates coverage into the composite.
-    // p0/p1 are compositor-consumed layer params, resolved once per frame in
-    // LEDDomeOutput.EnsureResolvedStack; only Desaturate reads them (style +
-    // threshold), the color-mixing modes ignore them.
     public void CompositeBlend(
-      LEDDomeOutputPixel src, DomeBlendMode mode, double o, double p0, double p1
+      LEDDomeOutputPixel src, DomeBlendMode mode, double o
     ) {
       double sr = src._r, sg = src._g, sb = src._b;
       switch (mode) {
         case DomeBlendMode.Desaturate: {
           // An adjustment blend: ignore src's color, use its alpha as a mask,
-          // and reprocess the composite D below it. Stark (p0 < 0.5) thresholds
-          // the luma to 1-bit black/white at p1; Grayscale keeps the luma. The
-          // mask w restricts the effect to where the layer above (the wave) drew.
+          // and reprocess the composite below it into grayscale luma. The mask
+          // w restricts the effect to where the layer above (the wave) drew.
           double mask = o * src._a;
           if (mask == 0) {
             break;
           }
           double luma = 0.299 * _r + 0.587 * _g + 0.114 * _b;
-          double target = p0 < 0.5 ? (luma >= p1 * 255 ? 255 : 0) : luma;
-          _r = target * mask + _r * (1 - mask);
-          _g = target * mask + _g * (1 - mask);
-          _b = target * mask + _b * (1 - mask);
+          _r = luma * mask + _r * (1 - mask);
+          _g = luma * mask + _g * (1 - mask);
+          _b = luma * mask + _b * (1 - mask);
           break;
         }
         case DomeBlendMode.Add:
@@ -345,15 +340,12 @@ namespace Spectrum.LEDs {
       }
     }
 
-    // Blend an upper layer into this composite buffer. p0/p1 are the layer's
-    // compositor-consumed params (resolved once per frame); only Desaturate
-    // reads them.
+    // Blend an upper layer into this composite buffer.
     public void CompositeBlend(
-      LEDDomeOutputBuffer src, DomeBlendMode mode, double opacity,
-      double p0, double p1
+      LEDDomeOutputBuffer src, DomeBlendMode mode, double opacity
     ) {
       for (int i = 0; i < pixels.Length; i++) {
-        pixels[i].CompositeBlend(src.pixels[i], mode, opacity, p0, p1);
+        pixels[i].CompositeBlend(src.pixels[i], mode, opacity);
       }
     }
   }

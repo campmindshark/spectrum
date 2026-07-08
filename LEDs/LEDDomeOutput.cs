@@ -403,11 +403,6 @@ namespace Spectrum.LEDs {
       public DomeLayerVisualizer visualizer;
       public DomeBlendMode blendMode;
       public double opacity;
-      // Compositor-consumed layer params, resolved once here from the layer's
-      // Params bag (never looked up per pixel). Two scalars cover Desaturate
-      // (style + threshold); widen if a future blend needs more.
-      public double blendParam0;
-      public double blendParam1;
     }
     // Rebuilt lazily on the operator thread whenever the stack changes. volatile
     // so a set-false from ConfigUpdated (UI/web thread) is seen promptly by the
@@ -438,28 +433,11 @@ namespace Spectrum.LEDs {
             visualizer = visualizer,
             blendMode = layer.BlendMode,
             opacity = layer.Opacity,
-            blendParam0 = ResolveBlendParam(layer, 0),
-            blendParam1 = ResolveBlendParam(layer, 1),
           });
         }
       }
       this.resolvedStack = resolved.ToArray();
       this.resolvedStackValid = true;
-    }
-
-    // The value of the `index`-th compositor-consumed param of `layer`'s blend
-    // mode, read from the layer's Params bag with the descriptor default as
-    // fallback (defaults stay single-sourced in ParamsForBlend). Returns 0 when
-    // the blend has no param at that slot, so the resolved scalars are always
-    // defined; blends that ignore p0/p1 never look at them anyway.
-    private static double ResolveBlendParam(DomeLayerSettings layer, int index) {
-      IReadOnlyList<DomeLayerParam> schema =
-        DomeLayerSettings.ParamsForBlend(layer.BlendMode);
-      if (index >= schema.Count) {
-        return 0;
-      }
-      DomeLayerParam param = schema[index];
-      return layer.GetParam(param.Key, param.Default);
     }
 
     // Blends the active layer stack into compositeBuffer and pushes exactly one
@@ -488,10 +466,7 @@ namespace Spectrum.LEDs {
           this.compositeBuffer.CompositeBottom(src, layer.opacity);
           destInitialized = true;
         } else {
-          this.compositeBuffer.CompositeBlend(
-            src, layer.blendMode, layer.opacity,
-            layer.blendParam0, layer.blendParam1
-          );
+          this.compositeBuffer.CompositeBlend(src, layer.blendMode, layer.opacity);
         }
       }
       if (!destInitialized) {
