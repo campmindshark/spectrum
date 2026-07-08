@@ -184,6 +184,25 @@ namespace Spectrum {
         this.config,
         dome
       ));
+      this.visualizers.Add(new LEDDomeRippleVisualizer(
+        this.config,
+        audio,
+        orientation,
+        dome
+      ));
+      this.visualizers.Add(new LEDDomeStampVisualizer(
+        this.config,
+        audio,
+        orientation,
+        this.BeatBroadcaster,
+        dome
+      ));
+      this.visualizers.Add(new LEDDomeMetaballVisualizer(
+        this.config,
+        audio,
+        orientation,
+        dome
+      ));
     }
 
     private bool enabled;

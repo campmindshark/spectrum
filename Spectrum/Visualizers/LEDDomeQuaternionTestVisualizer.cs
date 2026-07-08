@@ -12,6 +12,10 @@ namespace Spectrum.Visualizers {
     private LEDDomeOutput dome;
     private LEDDomeOutputBuffer buffer;
 
+    // Static per-pixel unit-sphere geometry, baked once (guarded z, shared with
+    // the layer visualizers via LEDDomeOutputBuffer.BakePixelPositions).
+    private readonly Vector3[] pixelPositions;
+
     public LEDDomeQuaternionTestVisualizer(
       Configuration config,
       OrientationInput orientation,
@@ -22,6 +26,7 @@ namespace Spectrum.Visualizers {
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.pixelPositions = this.buffer.BakePixelPositions();
     }
 
     public int Priority {
@@ -44,11 +49,7 @@ namespace Spectrum.Visualizers {
 
     void Render() {
       for (int i = 0; i < buffer.pixels.Length; i++) {
-        var p = buffer.pixels[i];
-        var x = 2 * p.x - 1; // now centered on (0, 0) and with range [0, 1]
-        var y = 1 - 2 * p.y; // this is because in the original mapping x, y come "out of" the top left corner
-        float z = (float)Math.Sqrt(1 - x * x - y * y);
-        Vector3 pixelPoint = new Vector3((float)x, (float)y, z);
+        Vector3 pixelPoint = this.pixelPositions[i];
         Vector3 pixelPointQuat = Vector3.Transform(pixelPoint, orientation.deviceRotation(config.orientationDeviceSpotlight));
         // Color maxes
         int maxIndex = MaxBy(pixelPointQuat);

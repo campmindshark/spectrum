@@ -55,7 +55,7 @@ namespace Spectrum.Visualizers {
         );
         // Item4 is radial distance (0 center .. ~1 rim); flip so 1 is the top,
         // then clamp into 0..1 for the periodic band test.
-        this.pixelHeight[i] = Clamp01(1.0 - parametric.Item4);
+        this.pixelHeight[i] = Math.Clamp(1.0 - parametric.Item4, 0, 1);
         // Item3 is the angle in radians (-pi..pi); map to 0..1.
         this.pixelAngle[i] = (parametric.Item3 / (2 * Math.PI)) + 0.5;
       }
@@ -118,12 +118,6 @@ namespace Spectrum.Visualizers {
           this.buffer.pixels[i].Clear();
         }
       }
-    }
-
-    private static double Clamp01(double x) {
-      if (x < 0) return 0;
-      if (x > 1) return 1;
-      return x;
     }
 
     // Positive fractional part, so a wrapped phase/coordinate stays in [0,1).

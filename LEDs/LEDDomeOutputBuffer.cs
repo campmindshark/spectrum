@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using Spectrum.Base;
@@ -304,6 +305,25 @@ namespace Spectrum.LEDs {
     // LEDDomeOutputPixel.Clear) — "reveal below", not "paint black".
     public void ClearPixel(int strutIndex, int ledIndex) {
       this.pixels[this.strutStartIndex[strutIndex] + ledIndex].Clear();
+    }
+
+    // Bakes the static unit-sphere position of every pixel: maps each pixel's
+    // normalized projected (x, y) — which come "out of" the top-left corner, so
+    // y is flipped — onto the unit hemisphere. z is guarded against the
+    // x² + y² > 1 case (a pixel projecting outside the disc) by flattening it to
+    // 0 instead of taking the square root of a negative. The orientation-driven
+    // layers cache this array once at construction rather than recomputing it
+    // per frame.
+    public Vector3[] BakePixelPositions() {
+      var positions = new Vector3[this.pixels.Length];
+      for (int i = 0; i < this.pixels.Length; i++) {
+        var p = this.pixels[i];
+        float x = (float)(2 * p.x - 1);
+        float y = (float)(1 - 2 * p.y);
+        float z = (x * x + y * y) > 1 ? 0 : (float)Math.Sqrt(1 - x * x - y * y);
+        positions[i] = new Vector3(x, y, z);
+      }
+      return positions;
     }
 
     public void Fade(double mul, double sub) {

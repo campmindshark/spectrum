@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using static Spectrum.MathUtil;
 
 namespace Spectrum {
 
@@ -54,7 +55,7 @@ namespace Spectrum {
 
       double level = this.audio.Volume;
       // Sqrt makes values larger and gives more resolution for lower values
-      double adjustedLevel = Clamp(Math.Sqrt(level), 0.1, 1);
+      double adjustedLevel = Math.Clamp(Math.Sqrt(level), 0.1, 1);
 
       double progress = this.beat.ProgressThroughMeasure;
 
@@ -89,24 +90,6 @@ namespace Spectrum {
 
     public void Visualize() {
       this.Render();
-    }
-
-    // Clamp value x inside range a-b
-    private static double Clamp(double x, double a, double b) {
-      if (x < a) return a;
-      if (x > b) return b;
-      return x;
-    }
-
-    // Map value x from range a-b to range c-d
-    private static double Map(
-      double x,
-      double a,
-      double b,
-      double c,
-      double d
-    ) {
-      return (x - a) * (d - c) / (b - a) + c;
     }
   }
 

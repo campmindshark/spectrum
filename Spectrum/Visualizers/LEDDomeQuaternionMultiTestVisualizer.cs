@@ -17,6 +17,10 @@ namespace Spectrum.Visualizers {
     private Vector3 spot = new Vector3(0, 1, 0);
     private readonly object mLock = new object();
 
+    // Static per-pixel unit-sphere geometry, baked once (shared with the layer
+    // visualizers via LEDDomeOutputBuffer.BakePixelPositions).
+    private readonly Vector3[] pixelPositions;
+
     public LEDDomeQuaternionMultiTestVisualizer(
       Configuration config,
       OrientationInput orientation,
@@ -27,6 +31,7 @@ namespace Spectrum.Visualizers {
       this.dome = dome;
       dome.RegisterVisualizer(this);
       buffer = dome.MakeDomeOutputBuffer();
+      this.pixelPositions = this.buffer.BakePixelPositions();
     }
 
     public int Priority {
@@ -58,11 +63,7 @@ namespace Spectrum.Visualizers {
       Dictionary<int, OrientationDevice> devices = orientation.DevicesSnapshot();
 
       for (int i = 0; i < buffer.pixels.Length; i++) {
-        var p = buffer.pixels[i];
-        var x = 2 * p.x - 1; // now centered on (0, 0) and with range [-1, 1]
-        var y = 1 - 2 * p.y; // this is because in the original mapping x, y come "out of" the top left corner
-        float z = (x * x + y * y) > 1 ? 0 : (float)Math.Sqrt(1 - x * x - y * y);
-        Vector3 pixelPoint = new Vector3((float)x, (float)y, z);
+        Vector3 pixelPoint = this.pixelPositions[i];
 
         // # Spotlight - orientation sensor dot
         // Calibration assigns (0, 1, 0) to be 'forward'

@@ -118,10 +118,10 @@ namespace Spectrum.Base {
     // indices that config migration depends on never shift. ExtraLayerLabels
     // is parallel (same order).
     private static readonly string[] ExtraLayerKeys = new string[] {
-      "twinkle", "wave",
+      "twinkle", "wave", "ripple", "stamp", "metaball",
     };
     private static readonly string[] ExtraLayerLabels = new string[] {
-      "Twinkle", "Wave",
+      "Twinkle", "Wave", "Ripple", "Stamp", "Metaball",
     };
 
     // The full set of layerable keys/labels offered in the UI pickers: the nine
@@ -298,6 +298,61 @@ namespace Spectrum.Base {
         },
       };
 
+    // Ripple's own tuning, independent of the copy still fused inside
+    // Paintbrush (docs/layers_inventory.md: twinkle's precedent — the two
+    // copies are separate and unremoved until the rest of the disassembly
+    // lands). No LegacySetting: a standalone "ripple" layer never existed in
+    // pre-layers config, so there is nothing to migrate it from.
+    private static readonly DomeLayerParam[] RippleParams = new DomeLayerParam[] {
+      new DomeLayerParam {
+        Key = "rippleCDStep", Label = "Ripple Cooldown",
+        Type = DomeLayerParamType.Double,
+        Min = 0, Max = 10, Step = 0.1, Default = 1,
+      },
+      new DomeLayerParam {
+        Key = "rippleStep", Label = "Ripple Speed",
+        Type = DomeLayerParamType.Double,
+        Min = 0, Max = 4, Step = 0.1, Default = 1,
+      },
+    };
+
+    // Stamp's own tuning: how long between fire attempts and how loud is
+    // loud enough. No LegacySetting — like Ripple, this is a new standalone
+    // layer with no pre-layers global to migrate from (the fused Paintbrush
+    // copy used hard-coded constants, not a config knob).
+    private static readonly DomeLayerParam[] StampParams = new DomeLayerParam[] {
+      new DomeLayerParam {
+        Key = "interval", Label = "Interval",
+        Type = DomeLayerParamType.Double,
+        Min = 60, Max = 4000, Step = 20, Default = 1000,
+      },
+      new DomeLayerParam {
+        Key = "level", Label = "Loudness Threshold",
+        Type = DomeLayerParamType.Double,
+        Min = 0, Max = 1, Step = 0.01, Default = 0.3,
+      },
+    };
+
+    // Metaball's own tuning, independent of the copy still fused inside
+    // Paintbrush (same unremoved-duplicate precedent as Ripple/Stamp). No
+    // LegacySetting on "contours": the retired orientationShowContours global
+    // was a bool, and LegacyLayerParamMigration's raw-XML reader only parses
+    // numeric elements, so a bool global can't seed a per-layer param this
+    // way — new stacks just default it off, same as the global's own default.
+    private static readonly DomeLayerParam[] MetaballParams = new DomeLayerParam[] {
+      new DomeLayerParam {
+        Key = "size", Label = "Size",
+        Type = DomeLayerParamType.Double,
+        Min = 0, Max = 4, Step = 0.05, Default = 0.1,
+        LegacySetting = "domeRadialSize",
+      },
+      new DomeLayerParam {
+        Key = "contours", Label = "Show Contours",
+        Type = DomeLayerParamType.Bool,
+        Default = 0,
+      },
+    };
+
     // Visualizer-consumed params for the wave layer: read in Visualize().
     private static readonly DomeLayerParam[] WaveParams = new DomeLayerParam[] {
       new DomeLayerParam {
@@ -353,6 +408,12 @@ namespace Spectrum.Base {
           return TwinkleParams;
         case "wave":
           return WaveParams;
+        case "ripple":
+          return RippleParams;
+        case "stamp":
+          return StampParams;
+        case "metaball":
+          return MetaballParams;
         default:
           return NoParams;
       }

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using static Spectrum.MathUtil;
 
 namespace Spectrum {
 
@@ -78,7 +79,7 @@ namespace Spectrum {
       buffer.HueRotate(Math.Pow(10, -this.config.domeGlobalHueSpeed));
       double level = this.audio.Volume;
       // Sqrt makes values larger and gives more resolution for lower values
-      double adjustedLevel = Clamp(Math.Sqrt(level), 0.1, 1);
+      double adjustedLevel = Math.Clamp(Math.Sqrt(level), 0.1, 1);
 
       double progress = this.beat.ProgressThroughMeasure;
       // rotation is scaled by 1/4
@@ -162,7 +163,7 @@ namespace Spectrum {
             a = Wrap(a * frequency, 0, 1);
             // center around val = 1/0 (0.5 maps to 0, 0 and 1 map to 1)
             a = Math.Abs(Map(a, 0, 1, -1, 1));
-            val = Clamp(dist - a, 0, 1);
+            val = Math.Clamp(dist - a, 0, 1);
 
             gradientVal = dist;
             break;
@@ -182,58 +183,6 @@ namespace Spectrum {
             );
         }
       }
-    }
-
-    // Map value x from range a-b to range c-d
-    private static double Map(
-      double x,
-      double a,
-      double b,
-      double c,
-      double d
-    ) {
-      return (x - a) * (d - c) / (b - a) + c;
-    }
-
-    // Map value x from range a-b to range c-d, clamp values outside of range
-    // c-d to c or d
-    private static double MapClamp(
-      double x,
-      double a,
-      double b,
-      double c,
-      double d
-    ) {
-      return Clamp(Map(x, a, b, c, d), c, d);
-    }
-
-    // Map value x from range a-b to range c-d, wrap values outside or range c-d
-    // Example: if we map to range 0-10, but get result 11.3, this is wrapped to
-    // 1.3
-    private static double MapWrap(
-      double x,
-      double a,
-      double b,
-      double c,
-      double d
-    ) {
-      return Wrap(Map(x, a, b, c, d), c, d);
-    }
-
-    // Clamp value x inside range a-b
-    private static double Clamp(double x, double a, double b) {
-      if (x < a) return a;
-      if (x > b) return b;
-      return x;
-    }
-
-    // Wrap value x around range a-b
-    // Example, 2.5 wrapped to 0-1 becomes 0.5
-    private static double Wrap(double x, double a, double b) {
-      var range = b - a;
-      while (x < a) x += range;
-      while (x > b) x -= range;
-      return x;
     }
 
     public void Visualize() {
