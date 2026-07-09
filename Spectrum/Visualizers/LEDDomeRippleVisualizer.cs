@@ -25,7 +25,6 @@ namespace Spectrum.Visualizers {
   class LEDDomeRippleVisualizer : DomeLayerVisualizer {
 
     private const int RIPPLE_PERIOD = 1000;
-    private const double RIPPLE_COOLDOWN_RESET = 100;
 
     private readonly Configuration config;
     private readonly AudioInput audio;
@@ -33,24 +32,26 @@ namespace Spectrum.Visualizers {
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
     private readonly OrientationCenter center;
+    private readonly LayerTrigger trigger;
 
     // Static per-pixel geometry, baked once (mirrors Paintbrush's mapping).
     private readonly Vector3[] pixelPositions;
 
     private readonly FrameClock frameClock = new FrameClock();
 
-    // Ripple state, unchanged from the fused version.
+    // Ripple playhead state. Firing is now driven by LayerTrigger
+    // (docs/triggers.md) rather than the old internal cooldown timer.
     private int rippleType = 0; // 0 - 'static' ripple; 1 - 'follower' ripple
     private Quaternion rippleCenter = new Quaternion(0, 0, 0, 1);
     private double rippleCounter = 0;
     private bool rippleFiring = false;
-    private double rippleCooldown = RIPPLE_COOLDOWN_RESET;
 
     public LEDDomeRippleVisualizer(
       Configuration config,
       AudioInput audio,
       OrientationInput orientationInput,
       OrientationCenter center,
+      BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
       this.config = config;
@@ -60,6 +61,8 @@ namespace Spectrum.Visualizers {
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
       this.center = center;
+      this.trigger = new LayerTrigger(
+        config, orientationInput, this.LayerKey, beat, audio);
 
       // Bake the static unit-sphere position of every pixel once.
       this.pixelPositions = this.buffer.BakePixelPositions();
@@ -88,36 +91,46 @@ namespace Spectrum.Visualizers {
       double level = this.audio.Volume;
 
       IList<DomeLayerSettings> stack = this.config.domeLayerStack;
-      double rippleCDStep =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "rippleCDStep");
       double rippleStep =
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "rippleStep");
+      int triggerSource =
+        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "trigger");
+      int button =
+        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "button");
+      double levelThreshold =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "level");
+      double interval =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "interval");
 
       double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
+      // Fired() must run every frame regardless of playhead state, so an edge
+      // occurring mid-ripple is never missed (docs/triggers.md).
+      bool fired = this.trigger.Fired(button, triggerSource, levelThreshold, interval);
+
       this.center.Update(level);
-      UpdateRipple(rippleCDStep, rippleStep, frameScale);
+      UpdateRipple(fired, rippleStep, frameScale);
       RenderPixels();
     }
 
-    // Ripple state machine: fires periodically, alternating pinned/following
-    // center binding, expanding until RIPPLE_PERIOD then resetting.
-    private void UpdateRipple(double rippleCDStep, double rippleStep, double frameScale) {
+    // Ripple playhead: a fire (from LayerTrigger) starts one expansion,
+    // alternating pinned/following center binding; it runs until RIPPLE_PERIOD
+    // then stops. Fires arriving mid-ripple are ignored (the !rippleFiring
+    // gate) so a full sweep always completes — a Beat trigger therefore relaunches
+    // on the first beat after the current ripple ends, preserving the big-sweep
+    // look rather than restarting to center every beat.
+    private void UpdateRipple(bool fired, double rippleStep, double frameScale) {
       if (this.rippleCounter > RIPPLE_PERIOD) {
         this.rippleCounter = 0;
         this.rippleFiring = false;
       }
 
-      if (!this.rippleFiring) {
-        this.rippleCooldown -= rippleCDStep * frameScale;
-      }
-
-      if (this.rippleCooldown < 0) {
+      if (!this.rippleFiring && fired) {
         this.rippleFiring = true;
+        this.rippleCounter = 0;
         this.rippleType = (this.rippleType + 1) % 2;
         this.rippleCenter = this.center.CurrentCenter;
-        this.rippleCooldown = RIPPLE_COOLDOWN_RESET;
       }
 
       if (this.rippleFiring) {

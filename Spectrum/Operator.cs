@@ -199,6 +199,7 @@ namespace Spectrum {
         audio,
         orientation,
         orientationCenter,
+        this.BeatBroadcaster,
         dome
       ));
       this.visualizers.Add(new LEDDomeStampVisualizer(

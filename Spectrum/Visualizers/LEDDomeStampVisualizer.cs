@@ -34,15 +34,16 @@ namespace Spectrum.Visualizers {
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
     private readonly OrientationCenter center;
+    private readonly LayerTrigger trigger;
 
     // Static per-pixel geometry, baked once (mirrors Paintbrush's mapping).
     private readonly Vector3[] pixelPositions;
 
     private readonly FrameClock frameClock = new FrameClock();
 
-    // Stamp state, unchanged from the fused version.
+    // Stamp playhead state. Firing is now driven by LayerTrigger
+    // (docs/triggers.md); the per-measure cooldown below is the playhead.
     private Quaternion stampCenter = new Quaternion(0, 0, 0, 1);
-    private double counter = 0;
     private int cooldown = 7;
     private double lastProgress = 0;
     private bool stampFired = false;
@@ -64,6 +65,8 @@ namespace Spectrum.Visualizers {
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
       this.center = center;
+      this.trigger = new LayerTrigger(
+        config, orientationInput, this.LayerKey, beat, audio);
 
       // Bake the static unit-sphere position of every pixel once.
       this.pixelPositions = this.buffer.BakePixelPositions();
@@ -93,6 +96,10 @@ namespace Spectrum.Visualizers {
       double level = this.audio.Volume;
 
       IList<DomeLayerSettings> stack = this.config.domeLayerStack;
+      int triggerSource =
+        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "trigger");
+      int button =
+        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "button");
       double interval =
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "interval");
       double levelThreshold =
@@ -101,20 +108,21 @@ namespace Spectrum.Visualizers {
       double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
+      // Fired() must run every frame regardless of playhead state, so an edge
+      // occurring mid-stamp is never missed (docs/triggers.md).
+      bool fired = this.trigger.Fired(button, triggerSource, levelThreshold, interval);
+
       this.center.Update(level);
-      counter += frameScale;
-      UpdateStamp(progress, level, interval, levelThreshold);
+      UpdateStamp(fired, progress);
       RenderPixels();
 
       lastProgress = progress;
     }
 
-    // Stamp state machine: fires when loud enough after an interval has
-    // passed, alternating between the grid and rhythm effects; the cooldown
-    // it fires with counts down once per beat measure, not per frame.
-    private void UpdateStamp(
-      double progress, double level, double interval, double levelThreshold
-    ) {
+    // Stamp playhead: a fire (from LayerTrigger) stamps the current shape,
+    // alternating between the grid and rhythm effects; the cooldown it fires
+    // with counts down once per beat measure, not per frame.
+    private void UpdateStamp(bool fired, double progress) {
       // A beat has wrapped while we are still rendering a stamp.
       if (this.cooldown > 0 && this.lastProgress > progress) {
         this.cooldown--;
@@ -122,10 +130,14 @@ namespace Spectrum.Visualizers {
           this.stampFired = false;
         }
       }
-      // Enough time has passed and something loud enough happened: fire.
-      if (this.counter > interval && level > levelThreshold) {
+      // The rhythm effect is a slow band that contracts over the full cooldown
+      // (many measures), so while one is still animating it owns the layer:
+      // ignore new fires until it completes, or a rapid re-fire (Beat, held
+      // audio) would reset it every measure and it would never play out. The
+      // grid effect is a momentary flash, so it may be replaced freely.
+      bool rhythmPlaying = this.stampFired && this.stampEffect == 2;
+      if (fired && !rhythmPlaying) {
         this.stampFired = true;
-        this.counter = 0;
         this.cooldown = STAMP_COOLDOWN;
         this.stampEffect = this.stampEffect == 1 ? 2 : 1; // alternate grid / rhythm
         this.stampCenter = this.center.CurrentCenter;

@@ -307,39 +307,74 @@ namespace Spectrum.Base {
         },
       };
 
+    // Trigger params shared by the triggerable one-shot layers (Ripple/Stamp),
+    // read by LayerTrigger (docs/triggers.md). `button` binds an optional wand
+    // button; `level`/`interval` tune the Audio source and only bite when
+    // trigger = Audio. `trigger` itself is declared per-layer below because its
+    // default differs (Ripple = Beat, Stamp = Audio). Manual (the native/web
+    // Fire button) is always live regardless of these.
+    private static readonly DomeLayerParam TriggerButtonParam =
+      new DomeLayerParam {
+        Key = "button", Label = "Button",
+        Type = DomeLayerParamType.Enum,
+        Options = new string[] { "Unbound", "1", "2", "3" },
+        Default = 0,
+      };
+    private static readonly DomeLayerParam TriggerLevelParam =
+      new DomeLayerParam {
+        Key = "level", Label = "Loudness Threshold",
+        Type = DomeLayerParamType.Double,
+        Min = 0, Max = 1, Step = 0.01, Default = 0.3,
+      };
+    private static readonly DomeLayerParam TriggerIntervalParam =
+      new DomeLayerParam {
+        Key = "interval", Label = "Audio Interval (ms)",
+        Type = DomeLayerParamType.Double,
+        Min = 50, Max = 4000, Step = 50, Default = 800,
+      };
+    // Options for the autonomous trigger-source selector: index matches the
+    // `source` arg LayerTrigger.Fired takes. Manual = fire only via the Fire
+    // button / bound wand button (no autonomous source).
+    private static readonly string[] TriggerSourceOptions =
+      new string[] { "Manual", "Beat", "Audio" };
+
     // Ripple's own tuning, independent of the copy still fused inside
     // Paintbrush (docs/layers_inventory.md: twinkle's precedent — the two
     // copies are separate and unremoved until the rest of the disassembly
     // lands). No LegacySetting: a standalone "ripple" layer never existed in
-    // pre-layers config, so there is nothing to migrate it from.
+    // pre-layers config, so there is nothing to migrate it from. Firing is
+    // driven by LayerTrigger (docs/triggers.md); rippleStep is the playhead
+    // expansion speed, unrelated to the trigger.
     private static readonly DomeLayerParam[] RippleParams = new DomeLayerParam[] {
-      new DomeLayerParam {
-        Key = "rippleCDStep", Label = "Ripple Cooldown",
-        Type = DomeLayerParamType.Double,
-        Min = 0, Max = 10, Step = 0.1, Default = 1,
-      },
       new DomeLayerParam {
         Key = "rippleStep", Label = "Ripple Speed",
         Type = DomeLayerParamType.Double,
         Min = 0, Max = 4, Step = 0.1, Default = 1,
       },
+      new DomeLayerParam {
+        Key = "trigger", Label = "Trigger",
+        Type = DomeLayerParamType.Enum,
+        Options = TriggerSourceOptions, Default = 1, // Beat
+      },
+      TriggerButtonParam,
+      TriggerLevelParam,
+      TriggerIntervalParam,
     };
 
-    // Stamp's own tuning: how long between fire attempts and how loud is
-    // loud enough. No LegacySetting — like Ripple, this is a new standalone
-    // layer with no pre-layers global to migrate from (the fused Paintbrush
-    // copy used hard-coded constants, not a config knob).
+    // Stamp's own tuning. No LegacySetting — like Ripple, this is a new
+    // standalone layer with no pre-layers global to migrate from (the fused
+    // Paintbrush copy used hard-coded constants, not a config knob). Firing is
+    // driven by LayerTrigger (docs/triggers.md), defaulting to the Audio source;
+    // level/interval tune that source.
     private static readonly DomeLayerParam[] StampParams = new DomeLayerParam[] {
       new DomeLayerParam {
-        Key = "interval", Label = "Interval",
-        Type = DomeLayerParamType.Double,
-        Min = 60, Max = 4000, Step = 20, Default = 1000,
+        Key = "trigger", Label = "Trigger",
+        Type = DomeLayerParamType.Enum,
+        Options = TriggerSourceOptions, Default = 2, // Audio
       },
-      new DomeLayerParam {
-        Key = "level", Label = "Loudness Threshold",
-        Type = DomeLayerParamType.Double,
-        Min = 0, Max = 1, Step = 0.01, Default = 0.3,
-      },
+      TriggerButtonParam,
+      TriggerLevelParam,
+      TriggerIntervalParam,
     };
 
     // Metaball's own tuning, independent of the copy still fused inside
