@@ -30,6 +30,9 @@ namespace Spectrum.Base {
     // corrupted config file. Far above any sane number of layers.
     public const int MaxLayers = 16;
 
+    // Guard rail on the per-layer notes field, matching SceneService.MaxNameLength.
+    public const int MaxNotesLength = 256;
+
     // Validate and deep-copy `layers` into a publishable stack. Returns
     // (stack, null) on success or (null, error) on the first rule violation.
     public static (List<DomeLayerSettings> stack, string error) Validate(
@@ -60,11 +63,16 @@ namespace Spectrum.Base {
         if (double.IsNaN(opacity) || opacity < 0 || opacity > 1) {
           return (null, "opacity must be between 0 and 1");
         }
+        string notes = layer.Notes;
+        if (notes != null && notes.Length > MaxNotesLength) {
+          notes = notes.Substring(0, MaxNotesLength);
+        }
         newStack.Add(new DomeLayerSettings {
           VisualizerKey = layer.VisualizerKey,
           BlendMode = layer.BlendMode,
           Opacity = opacity,
           Enabled = layer.Enabled,
+          Notes = notes,
           Params = SanitizeParams(layer.VisualizerKey, layer.BlendMode, layer.Params),
         });
       }
@@ -122,6 +130,15 @@ namespace Spectrum.Base {
             idx = count - 1;
           }
           return idx;
+        case DomeLayerParamType.Color:
+          int packed = (int)Math.Round(v);
+          if (packed < 0) {
+            packed = 0;
+          }
+          if (packed > 0xFFFFFF) {
+            packed = 0xFFFFFF;
+          }
+          return packed;
         default: // Double
           if (double.IsNaN(v)) {
             return p.Default;

@@ -185,6 +185,10 @@ namespace Spectrum {
         this.config,
         dome
       ));
+      this.visualizers.Add(new LEDDomeBackgroundVisualizer(
+        this.config,
+        dome
+      ));
       this.visualizers.Add(new LEDDomeWaveVisualizer(
         this.config,
         dome

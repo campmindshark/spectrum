@@ -27,6 +27,7 @@ namespace Spectrum.Web {
       public string blendMode { get; set; }
       public double opacity { get; set; }
       public bool enabled { get; set; }
+      public string notes { get; set; }
       public Dictionary<string, double> @params { get; set; }
     }
 
@@ -98,6 +99,7 @@ namespace Spectrum.Web {
             blendMode = layer.BlendMode.ToString(),
             opacity = layer.Opacity,
             enabled = layer.Enabled,
+            notes = layer.Notes,
             // Copy so the wire DTO never aliases the config's live bag.
             @params = layer.Params == null
               ? null
@@ -178,6 +180,7 @@ namespace Spectrum.Web {
           BlendMode = mode,
           Opacity = dto.opacity,
           Enabled = dto.enabled,
+          Notes = dto.notes,
           Params = dto.@params,
         });
       }

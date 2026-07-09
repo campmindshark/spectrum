@@ -211,6 +211,7 @@ namespace Spectrum.Base {
           BlendMode = layer.BlendMode,
           Opacity = layer.Opacity,
           Enabled = layer.Enabled,
+          Notes = layer.Notes,
           Params = layer.Params == null
             ? null
             : new Dictionary<string, double>(layer.Params),

@@ -19,6 +19,14 @@ namespace Spectrum.LEDs {
     public double x;
     public double y;
 
+    // 0..1 hue defined independently of the visible color/alpha, so a
+    // visualizer can publish "what hue is at this point in the field" every
+    // frame even where it draws nothing (e.g. Metaball outside its potential
+    // threshold). Not touched by Fade/Clear/color — a future hue-inherit
+    // blend mode reads it directly from the source layer's buffer rather
+    // than deriving hue from src's (possibly black/transparent) RGB.
+    public double hue;
+
     private int _color;
     private double _r;
     private double _g;
@@ -201,6 +209,7 @@ namespace Spectrum.LEDs {
       _g = src._g * o;
       _b = src._b * o;
       _a = src._a;
+      hue = src.hue;
       updateColor();
     }
 
@@ -228,25 +237,57 @@ namespace Spectrum.LEDs {
           _b = luma * mask + _b * (1 - mask);
           break;
         }
+        case DomeBlendMode.Hue: {
+          // The other adjustment blend: src acts as a pure brightness mask
+          // (its own value, from its own rendered color — e.g. Background's
+          // flat fill, or Wave's painted brightness pattern), masked by its
+          // own alpha like Over, fully recolored at max saturation using
+          // `hue` — the hue carried up from whatever hue-publishing layer
+          // sits further below (e.g. Metaball's dedicated `hue` field,
+          // forwarded here as long as an intervening paint mode hasn't
+          // overwritten it with its own src.hue below).
+          //
+          // Deliberately ignores src's own saturation rather than doing a
+          // "true" HSV Hue blend (S and V both from src): a Photoshop-style
+          // Hue blend has no visible effect against an achromatic src (e.g.
+          // Background's default white fill, s == 0 — there's no chroma to
+          // redirect), which defeats the point here. Forcing full saturation
+          // means any brightness-only src becomes a pure canvas for the
+          // carried hue.
+          double mask = o * src._a;
+          if (mask == 0) {
+            break;
+          }
+          RGBToHSV(sr, sg, sb, out _, out _, out double v);
+          HSVToRGB(hue, 1, v, out double nr, out double ng, out double nb);
+          _r = nr * mask + _r * (1 - mask);
+          _g = ng * mask + _g * (1 - mask);
+          _b = nb * mask + _b * (1 - mask);
+          break;
+        }
         case DomeBlendMode.Add:
           _r += sr * o;
           _g += sg * o;
           _b += sb * o;
+          hue = src.hue;
           break;
         case DomeBlendMode.Screen:
           _r = 255 - (255 - _r) * (255 - sr * o) / 255;
           _g = 255 - (255 - _g) * (255 - sg * o) / 255;
           _b = 255 - (255 - _b) * (255 - sb * o) / 255;
+          hue = src.hue;
           break;
         case DomeBlendMode.Lighten:
           _r = Math.Max(_r, sr * o);
           _g = Math.Max(_g, sg * o);
           _b = Math.Max(_b, sb * o);
+          hue = src.hue;
           break;
         case DomeBlendMode.Multiply:
           _r = _r * (255 - o * (255 - sr)) / 255;
           _g = _g * (255 - o * (255 - sg)) / 255;
           _b = _b * (255 - o * (255 - sb)) / 255;
+          hue = src.hue;
           break;
         case DomeBlendMode.Over:
         default:
@@ -255,9 +296,66 @@ namespace Spectrum.LEDs {
           _g = sg * w + _g * (1 - w);
           _b = sb * w + _b * (1 - w);
           _a = w + _a * (1 - w);
+          hue = src.hue;
           break;
       }
       updateColor();
+    }
+
+    // Shared RGB<->HSV conversion for the Hue blend (kept separate from
+    // HueRotate's inline version above, which early-outs on black and
+    // operates on this pixel's own _r/_g/_b in place rather than arbitrary
+    // in/out values).
+    private static void RGBToHSV(
+      double r255, double g255, double b255,
+      out double h, out double s, out double v
+    ) {
+      double r = r255 / 255d, g = g255 / 255d, b = b255 / 255d;
+      double max = Math.Max(Math.Max(r, g), b);
+      double min = Math.Min(Math.Min(r, g), b);
+      double d = max - min;
+      s = max == 0 ? 0 : d / max;
+      v = max;
+      h = 0;
+      if (max != min) {
+        if (r > g) {
+          if (r > b) {
+            h = (g - b) / d + (g < b ? 6 : 0);
+          } else {
+            h = (r - g) / d + 4;
+          }
+        } else {
+          if (g > b) {
+            h = (b - r) / d + 2;
+          } else {
+            h = (r - g) / d + 4;
+          }
+        }
+        h /= 6;
+      }
+    }
+
+    private static void HSVToRGB(
+      double h, double s, double v,
+      out double r255, out double g255, out double b255
+    ) {
+      int i = (int)Math.Floor(h * 6);
+      double f = h * 6 - i;
+      double p = v * (1 - s);
+      double q = v * (1 - f * s);
+      double t = v * (1 - (1 - f) * s);
+      double r = 0, g = 0, b = 0;
+      switch (((i % 6) + 6) % 6) {
+        case 0: r = v; g = t; b = p; break;
+        case 1: r = q; g = v; b = p; break;
+        case 2: r = p; g = v; b = t; break;
+        case 3: r = p; g = q; b = v; break;
+        case 4: r = t; g = p; b = v; break;
+        case 5: r = v; g = p; b = q; break;
+      }
+      r255 = r * 255;
+      g255 = g * 255;
+      b255 = b * 255;
     }
   }
 

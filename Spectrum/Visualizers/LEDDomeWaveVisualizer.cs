@@ -14,10 +14,10 @@ namespace Spectrum.Visualizers {
   // two-consumer split in docs/layer_params_implementation.md).
   //
   // Per-layer params (visualizer-consumed, read each frame from this layer's own
-  // stack entry): bandWidth, sweep speed, and the sweep center (angle/distance,
-  // same knobs as Radial Effects). The band always sweeps by height (distance
-  // from the center point, flipped so 1 is at the center/top). Edges are hard
-  // by design — no partial alpha.
+  // stack entry): bandWidth, sweep speed, the sweep center (angle/distance,
+  // same knobs as Radial Effects), and the band's color. The band always
+  // sweeps by height (distance from the center point, flipped so 1 is at the
+  // center/top). Edges are hard by design — no partial alpha.
   class LEDDomeWaveVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
@@ -69,6 +69,7 @@ namespace Spectrum.Visualizers {
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "centerAngle");
       double centerDistance =
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "centerDistance");
+      int color = (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "color");
 
       // Advance the band center by speed (cycles/second) * elapsed wall time,
       // wrapped into 0..1. Speed may be negative (sweep the other way).
@@ -109,10 +110,11 @@ namespace Spectrum.Visualizers {
         // between consecutive rings one period apart.
         double d = Math.Min(val, 1 - val);
         if (d < bandWidth) {
-          // Opaque white mask: the alpha (1) is what an adjustment blend reads;
-          // the color is irrelevant to Desaturate but matters if the layer runs
-          // under a color blend, so make it a plain reveal-all white.
-          pixel.color = 0xFFFFFF;
+          // Opaque mask: the alpha (1) is what an adjustment blend reads; the
+          // color is irrelevant to Desaturate but matters if the layer runs
+          // under a color blend (e.g. Over), so it's tunable via the "color"
+          // param (default white, matching the old hard-coded reveal-all).
+          pixel.color = color;
         } else {
           // Transparent: reveal the layers below unchanged (alpha 0).
           pixel.Clear();

@@ -139,6 +139,17 @@
     top.appendChild(remove);
     row.appendChild(top);
 
+    const notes = document.createElement("input");
+    notes.type = "text";
+    notes.className = "layer-notes";
+    notes.placeholder = "Notes to yourself…";
+    notes.value = layer.notes || "";
+    notes.addEventListener("change", () => {
+      state.layers[idx].notes = notes.value;
+      putLayers();
+    });
+    row.appendChild(notes);
+
     const bottom = document.createElement("div");
     bottom.className = "bottom";
 
@@ -232,7 +243,14 @@
     const cur = has ? layer.params[p.key] : p.default;
 
     let input;
-    if (p.type === "Bool") {
+    if (p.type === "Color") {
+      input = document.createElement("input");
+      input.type = "color";
+      input.value = "#" + Math.round(cur).toString(16).padStart(6, "0");
+      input.addEventListener("input", () => {
+        setParam(idx, p.key, parseInt(input.value.slice(1), 16));
+      });
+    } else if (p.type === "Bool") {
       input = document.createElement("input");
       input.type = "checkbox";
       input.checked = cur !== 0;

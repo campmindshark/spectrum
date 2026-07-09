@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Input;
 using Spectrum.Base;
+using MediaColor = System.Windows.Media.Color;
 
 namespace Spectrum {
 
@@ -29,9 +30,10 @@ namespace Spectrum {
 
   // View-model wrapping one DomeLayerParam descriptor plus its current value for
   // the generic per-layer param editors. The row DataTemplate binds the control
-  // matching Type (Slider / CheckBox / ComboBox) via the IsDouble/IsBool/IsEnum
-  // flags; editing any of the value facets raises Changed so the owning row
-  // republishes. Values are always stored as double (Bool 0/1, Enum index).
+  // matching Type (Slider / CheckBox / ComboBox / ColorPicker) via the
+  // IsDouble/IsBool/IsEnum/IsColor flags; editing any of the value facets raises
+  // Changed so the owning row republishes. Values are always stored as double
+  // (Bool 0/1, Enum index, Color a packed 0xRRGGBB int).
   public class LayerParamViewModel : INotifyPropertyChanged {
     public event PropertyChangedEventHandler PropertyChanged;
     public event Action Changed;
@@ -53,6 +55,7 @@ namespace Spectrum {
     public bool IsDouble => this.descriptor.Type == DomeLayerParamType.Double;
     public bool IsBool => this.descriptor.Type == DomeLayerParamType.Bool;
     public bool IsEnum => this.descriptor.Type == DomeLayerParamType.Enum;
+    public bool IsColor => this.descriptor.Type == DomeLayerParamType.Color;
 
     // The canonical stored value. The typed facets below are views onto it.
     private double value;
@@ -66,6 +69,7 @@ namespace Spectrum {
         this.Raise(nameof(Value));
         this.Raise(nameof(BoolValue));
         this.Raise(nameof(IntValue));
+        this.Raise(nameof(ColorValue));
         this.Changed?.Invoke();
       }
     }
@@ -80,6 +84,22 @@ namespace Spectrum {
     public int IntValue {
       get => (int)this.value;
       set => this.Value = value;
+    }
+
+    // ColorPicker.SelectedColor facet for Color params: the packed 0xRRGGBB
+    // value viewed as an opaque WPF Color. Alpha is always full since the bag
+    // only stores RGB.
+    public MediaColor? ColorValue {
+      get {
+        int packed = (int)this.value;
+        return MediaColor.FromRgb(
+          (byte)(packed >> 16), (byte)(packed >> 8), (byte)packed
+        );
+      }
+      set {
+        MediaColor c = value ?? default;
+        this.Value = (c.R << 16) | (c.G << 8) | c.B;
+      }
     }
 
     private void Raise(string name) {
@@ -127,6 +147,7 @@ namespace Spectrum {
     private static readonly DomeBlendMode[] blendModes = new DomeBlendMode[] {
       DomeBlendMode.Over, DomeBlendMode.Add, DomeBlendMode.Screen,
       DomeBlendMode.Lighten, DomeBlendMode.Multiply, DomeBlendMode.Desaturate,
+      DomeBlendMode.Hue,
     };
 
     // Generic per-layer param editors, rebuilt from the schema whenever the
@@ -247,6 +268,13 @@ namespace Spectrum {
     public bool LayerEnabled {
       get => this.layerEnabled;
       set => this.Set(ref this.layerEnabled, value, nameof(LayerEnabled));
+    }
+
+    // Free-text note the user leaves for themselves about this layer.
+    private string notes;
+    public string Notes {
+      get => this.notes;
+      set => this.Set(ref this.notes, value, nameof(Notes));
     }
   }
 

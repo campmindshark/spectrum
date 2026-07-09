@@ -7,15 +7,18 @@ namespace Spectrum.Base {
   // it. See the blend math in LEDDomeOutputBuffer / the layers design doc.
   //
   // Persisted by name (XSerializer writes the enum member name), so members may
-  // be appended freely; do not reorder or rename existing ones. Desaturate is an
-  // adjustment blend: it ignores the source color and instead reprocesses the
-  // composite below it (masked by the source's alpha) into grayscale — see
-  // CompositeBlend.
-  public enum DomeBlendMode { Over, Add, Screen, Lighten, Multiply, Desaturate }
+  // be appended freely; do not reorder or rename existing ones. Desaturate and
+  // Hue are both adjustment blends: they ignore the source layer's own color
+  // and instead reprocess the composite below it (masked by the source's
+  // alpha) — into grayscale luma for Desaturate, or into the hue carried up
+  // from a hue-publishing layer further below (e.g. Metaball's dedicated
+  // `hue` field) for Hue — see CompositeBlend.
+  public enum DomeBlendMode { Over, Add, Screen, Lighten, Multiply, Desaturate, Hue }
 
   // The value type of a per-layer parameter. Values live in the bag as double
-  // regardless: Bool is 0/1, Enum is the index into DomeLayerParam.Options.
-  public enum DomeLayerParamType { Double, Bool, Enum }
+  // regardless: Bool is 0/1, Enum is the index into DomeLayerParam.Options,
+  // Color is a packed 0xRRGGBB int reinterpreted as a double.
+  public enum DomeLayerParamType { Double, Bool, Enum, Color }
 
   // Static schema for one tunable on a layer (or on a blend mode). The bag on a
   // DomeLayerSettings stores only values keyed by DomeLayerParam.Key; everything
@@ -58,6 +61,12 @@ namespace Spectrum.Base {
     public double Opacity { get; set; } = 1.0;
     // Mute without removing from the stack.
     public bool Enabled { get; set; } = true;
+
+    // Free-text note the user leaves for themselves (e.g. "use this to make
+    // things monochrome"). Null by default; never populated by defaults or
+    // schema logic, purely user-authored. Carried through scenes like every
+    // other field on this POCO (DomeScene.Layers reuses DomeLayerSettings).
+    public string Notes { get; set; }
 
     // Per-layer parameter overrides: key (a DomeLayerParam.Key from the layer's
     // schema, or its blend's) -> value. A missing key means "use the descriptor
@@ -118,10 +127,10 @@ namespace Spectrum.Base {
     // indices that config migration depends on never shift. ExtraLayerLabels
     // is parallel (same order).
     private static readonly string[] ExtraLayerKeys = new string[] {
-      "twinkle", "wave", "ripple", "stamp", "metaball",
+      "twinkle", "wave", "ripple", "stamp", "metaball", "background",
     };
     private static readonly string[] ExtraLayerLabels = new string[] {
-      "Twinkle", "Wave", "Ripple", "Stamp", "Metaball",
+      "Twinkle", "Wave", "Ripple", "Stamp", "Metaball", "Background",
     };
 
     // The full set of layerable keys/labels offered in the UI pickers: the nine
@@ -353,6 +362,16 @@ namespace Spectrum.Base {
       },
     };
 
+    // Background's only tunable: the flat color it paints every pixel.
+    private static readonly DomeLayerParam[] BackgroundParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "color", Label = "Color",
+          Type = DomeLayerParamType.Color,
+          Min = 0, Max = 0xFFFFFF, Default = 0xFFFFFF,
+        },
+      };
+
     // Visualizer-consumed params for the wave layer: read in Visualize().
     private static readonly DomeLayerParam[] WaveParams = new DomeLayerParam[] {
       new DomeLayerParam {
@@ -374,6 +393,11 @@ namespace Spectrum.Base {
         Key = "centerDistance", Label = "Center Distance",
         Type = DomeLayerParamType.Double,
         Min = 0, Max = 1, Step = 0.01, Default = 0,
+      },
+      new DomeLayerParam {
+        Key = "color", Label = "Color",
+        Type = DomeLayerParamType.Color,
+        Min = 0, Max = 0xFFFFFF, Default = 0xFFFFFF,
       },
     };
 
@@ -399,6 +423,8 @@ namespace Spectrum.Base {
           return StampParams;
         case "metaball":
           return MetaballParams;
+        case "background":
+          return BackgroundParams;
         default:
           return NoParams;
       }

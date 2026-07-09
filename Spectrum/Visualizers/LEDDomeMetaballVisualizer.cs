@@ -118,6 +118,12 @@ namespace Spectrum.Visualizers {
         double potential = this.center.PotentialAt(pixelPoint, out Quaternion colorCenter);
         double metaballHue = OrientationCenter.HueFromColorCenter(colorCenter);
 
+        // Published every pixel, every frame, regardless of whether this
+        // pixel is drawn below — the field has a hue everywhere, and a
+        // future hue-inherit blend mode should be able to read it without
+        // depending on this layer's own visible coverage.
+        this.buffer.pixels[i].hue = metaballHue;
+
         bool drawn = false;
         int best = 0;
         double bestValue = 0;

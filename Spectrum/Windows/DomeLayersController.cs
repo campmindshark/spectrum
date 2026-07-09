@@ -75,6 +75,7 @@ namespace Spectrum {
         BlendMode = settings.BlendMode,
         Opacity = settings.Opacity,
         LayerEnabled = settings.Enabled,
+        Notes = settings.Notes,
       };
       // Seed param values from the saved bag (the setters above installed schema
       // defaults); do this before wiring Changed so it doesn't republish.
@@ -147,6 +148,7 @@ namespace Spectrum {
           BlendMode = vm.BlendMode,
           Opacity = vm.Opacity,
           Enabled = vm.LayerEnabled,
+          Notes = vm.Notes,
           Params = paramBag,
         });
       }
