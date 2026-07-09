@@ -191,6 +191,7 @@ namespace Spectrum {
       ));
       this.visualizers.Add(new LEDDomeWaveVisualizer(
         this.config,
+        orientation,
         dome
       ));
       this.visualizers.Add(new LEDDomeRippleVisualizer(

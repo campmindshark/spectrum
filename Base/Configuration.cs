@@ -62,6 +62,13 @@ namespace Spectrum.Base {
     double domeGlobalFadeSpeed { get; set; }
     double domeGlobalHueSpeed { get; set; }
 
+    // Per-layer manual-fire counters (docs/triggers.md): keyed by
+    // DomeLayerSettings.VisualizerKey / LayerKey, bumped by native/web Fire
+    // buttons. A monotonic counter rather than a bool so two clients firing
+    // concurrently never race over who clears a flag — LayerTrigger just
+    // edge-detects "the count changed since I last looked."
+    Dictionary<string, int> domeLayerFireCounters { get; set; }
+
     // Named snapshots of the dome look (layer stack + the two globals above),
     // saved/recalled by the VJ. See DomeScene and SceneService. Null by default,
     // following the same null-by-default XSerializer rule as domeLayerStack /

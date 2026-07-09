@@ -84,6 +84,7 @@ namespace Spectrum {
       vm.RemoveRequested += this.RemoveRow;
       vm.MoveUpRequested += this.MoveRowUp;
       vm.MoveDownRequested += this.MoveRowDown;
+      vm.FireRequested += this.FireRow;
       return vm;
     }
 
@@ -98,6 +99,7 @@ namespace Spectrum {
       vm.RemoveRequested += this.RemoveRow;
       vm.MoveUpRequested += this.MoveRowUp;
       vm.MoveDownRequested += this.MoveRowDown;
+      vm.FireRequested += this.FireRow;
       // New layer goes on top (front).
       this.Rows.Insert(0, vm);
       this.Publish();
@@ -123,6 +125,21 @@ namespace Spectrum {
         this.Rows.Move(i, i + 1);
         this.Publish();
       }
+    }
+
+    // Bump this row's manual-fire counter. A whole-dictionary copy-and-swap
+    // (like Publish's whole-stack swap), keyed by the row's own layer key
+    // rather than routed through Params/Publish — firing is not a stack edit.
+    private void FireRow(DomeLayerRowViewModel row) {
+      string layerKey = row.VisualizerKey;
+      if (layerKey == null) {
+        return;
+      }
+      var counters = new Dictionary<string, int>(
+        this.config.domeLayerFireCounters ?? new Dictionary<string, int>());
+      counters.TryGetValue(layerKey, out int count);
+      counters[layerKey] = count + 1;
+      this.config.domeLayerFireCounters = counters;
     }
 
     // Rebuild config.domeLayerStack from the current rows (bottom row = index 0)

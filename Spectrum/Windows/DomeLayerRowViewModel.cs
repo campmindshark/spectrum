@@ -118,6 +118,10 @@ namespace Spectrum {
     public event Action<DomeLayerRowViewModel> RemoveRequested;
     public event Action<DomeLayerRowViewModel> MoveUpRequested;
     public event Action<DomeLayerRowViewModel> MoveDownRequested;
+    // Manual trigger (docs/triggers.md): the controller bumps this layer's
+    // domeLayerFireCounters entry rather than mutating Params, so firing
+    // never interleaves with the whole-stack Publish() snapshot swap.
+    public event Action<DomeLayerRowViewModel> FireRequested;
 
     public DomeLayerRowViewModel() {
       this.RemoveCommand = new RelayCommand(
@@ -126,6 +130,8 @@ namespace Spectrum {
         () => this.MoveUpRequested?.Invoke(this));
       this.MoveDownCommand = new RelayCommand(
         () => this.MoveDownRequested?.Invoke(this));
+      this.FireCommand = new RelayCommand(
+        () => this.FireRequested?.Invoke(this));
     }
 
     // Shared, static option lists so every row's ComboBox binds the same source.
@@ -160,6 +166,7 @@ namespace Spectrum {
     public ICommand RemoveCommand { get; }
     public ICommand MoveUpCommand { get; }
     public ICommand MoveDownCommand { get; }
+    public ICommand FireCommand { get; }
 
     private void Set<T>(ref T field, T value, string name) {
       if (EqualityComparer<T>.Default.Equals(field, value)) {

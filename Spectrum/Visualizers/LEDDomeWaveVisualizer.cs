@@ -21,8 +21,10 @@ namespace Spectrum.Visualizers {
   class LEDDomeWaveVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
+    private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
+    private readonly LayerTrigger trigger;
 
     // Sweep phase (the band center, 0..1) accumulated from wall-clock time so the
     // sweep speed is frame-rate independent.
@@ -30,14 +32,21 @@ namespace Spectrum.Visualizers {
       new System.Diagnostics.Stopwatch();
     private double phase;
 
+    // OneShot playback state (docs/triggers.md): whether the band is
+    // currently mid-sweep. Loop mode never touches this.
+    private bool playing;
+
     public LEDDomeWaveVisualizer(
       Configuration config,
+      OrientationInput orientationInput,
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.orientationInput = orientationInput;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.trigger = new LayerTrigger(config, orientationInput, this.LayerKey);
     }
 
     public int Priority {
@@ -53,10 +62,13 @@ namespace Spectrum.Visualizers {
 
     public bool Enabled { get; set; }
 
-    // Input-free: the band is time-driven, no audio/orientation source.
+    // OrientationInput is declared unconditionally (docs/triggers.md "Note on
+    // Wave's inputs") so LayerTrigger's Button source can read wand state.
+    // It's AlwaysActive and always Enabled, so this never gates eligibility
+    // even when trigger != Button.
     private Input[] inputs;
     public Input[] GetInputs() {
-      return this.inputs ?? (this.inputs = new Input[] { });
+      return this.inputs ?? (this.inputs = new Input[] { this.orientationInput });
     }
 
     public void Visualize() {
@@ -70,14 +82,51 @@ namespace Spectrum.Visualizers {
       double centerDistance =
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "centerDistance");
       int color = (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "color");
+      // Enum indices line up 1:1 with LayerTriggerSource (Timer/Button/Manual)
+      // and with wand actionFlag values (button index i -> flag i+1).
+      bool oneShot =
+        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "mode") == 1;
+      var triggerSource = (LayerTriggerSource)
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "trigger");
+      int button =
+        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "button") + 1;
 
-      // Advance the band center by speed (cycles/second) * elapsed wall time,
-      // wrapped into 0..1. Speed may be negative (sweep the other way).
+      double elapsed = 0;
       if (!this.frameTimer.IsRunning) {
         this.frameTimer.Restart();
       } else {
-        double elapsed = this.frameTimer.Elapsed.TotalSeconds;
+        elapsed = this.frameTimer.Elapsed.TotalSeconds;
         this.frameTimer.Restart();
+      }
+
+      // Fired() must run every frame regardless of playback state, so an
+      // edge occurring mid-playthrough (or while OneShot sits idle) is never
+      // missed (docs/triggers.md "button edge-detection subtlety").
+      bool fired = this.trigger.Fired(triggerSource, button);
+
+      if (oneShot) {
+        if (fired) {
+          this.playing = true;
+          this.phase = 0;
+        }
+        if (this.playing) {
+          this.phase += Math.Abs(speed) * elapsed;
+          if (this.phase >= 1) {
+            this.phase = 1;
+            this.playing = false;
+          }
+        }
+        if (!this.playing) {
+          // Idle: reveal the layers below unchanged until re-fired.
+          for (int i = 0; i < this.buffer.pixels.Length; i++) {
+            this.buffer.pixels[i].Clear();
+          }
+          return;
+        }
+      } else {
+        // Advance the band center by speed (cycles/second) * elapsed wall
+        // time, wrapped into 0..1. Speed may be negative (sweep the other
+        // way).
         this.phase = Frac(this.phase + speed * elapsed);
       }
       double center = this.phase;

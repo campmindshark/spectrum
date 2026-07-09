@@ -123,6 +123,15 @@ namespace Spectrum {
       get => _domeScenes;
       set => SetField(ref _domeScenes, value);
     }
+    // Non-null default, matching midiDevices/channelToMidiLevelDriverPreset
+    // (Dictionary properties round-trip fine through XSerializer, unlike
+    // List/array properties).
+    private Dictionary<string, int> _domeLayerFireCounters =
+      new Dictionary<string, int>();
+    public Dictionary<string, int> domeLayerFireCounters {
+      get => _domeLayerFireCounters;
+      set => SetField(ref _domeLayerFireCounters, value);
+    }
 
     // maps from device ID to preset ID
     private bool _vjHUDEnabled = false;

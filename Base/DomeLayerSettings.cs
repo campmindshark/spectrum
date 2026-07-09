@@ -399,6 +399,32 @@ namespace Spectrum.Base {
         Type = DomeLayerParamType.Color,
         Min = 0, Max = 0xFFFFFF, Default = 0xFFFFFF,
       },
+      // Triggerable layers (docs/triggers.md): Loop is today's forever-cycle
+      // behavior (default, so existing saved layers are unaffected); OneShot
+      // plays the band 0->1 once per trigger fire, then clears until re-fired.
+      new DomeLayerParam {
+        Key = "mode", Label = "Playback Mode",
+        Type = DomeLayerParamType.Enum,
+        Options = new string[] { "Loop", "OneShot" },
+        Default = 0,
+      },
+      // Only meaningful when mode = OneShot. Timer is an inert placeholder
+      // (LayerTrigger never fires it) reserved for a future interval-based
+      // source; Button/Manual are the two sources the first slice wires up.
+      new DomeLayerParam {
+        Key = "trigger", Label = "Trigger Source",
+        Type = DomeLayerParamType.Enum,
+        Options = new string[] { "Timer", "Button", "Manual" },
+        Default = 0,
+      },
+      // Only meaningful when trigger = Button. Index i means wand actionFlag
+      // value i+1 (firmware encodes buttons 1/2/3, never 0).
+      new DomeLayerParam {
+        Key = "button", Label = "Button",
+        Type = DomeLayerParamType.Enum,
+        Options = new string[] { "1", "2", "3" },
+        Default = 0,
+      },
     };
 
     // The visualizer-consumed schema for a layer key. Empty for every key that
