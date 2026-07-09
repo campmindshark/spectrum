@@ -256,11 +256,16 @@ namespace Spectrum.Visualizers {
         if (dev.isPoi) {
           scale = scale * dev.poiK + POI_MIN_SCALE;
         }
-        if (distance < negadistance) {
-          cc += Quaternion.Multiply(dev.rotation, (float)scale);
-        } else {
-          cc -= Quaternion.Multiply(dev.rotation, (float)scale);
-        }
+        // Which pole (Spot vs NegSpot) a pixel is nearer to for this device
+        // flips the sign of its contribution to cc (so the two poles of a
+        // wand's dipole aren't averaged into a canceling color). A hard
+        // boolean flip at distance == negadistance would jump cc by
+        // 2*scale*rotation right at that plane, tearing the hue field in
+        // two along a great circle per device. Using a continuous sign that
+        // passes through zero at the boundary keeps cc - and therefore the
+        // hue sampled from it - continuous everywhere.
+        double sign = (negadistance - distance) / (negadistance + distance);
+        cc += Quaternion.Multiply(dev.rotation, (float)(scale * sign));
         potential += scale;
       }
       colorCenter = Quaternion.Normalize(cc);
