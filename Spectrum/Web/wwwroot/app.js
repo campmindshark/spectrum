@@ -464,6 +464,8 @@
           applyOperator(frame.value);
         } else if (frame.kind === "layers") {
           if (window.spectrumApplyLayers) window.spectrumApplyLayers(frame.value);
+        } else if (frame.kind === "scenes") {
+          if (window.spectrumApplyScenes) window.spectrumApplyScenes(frame.value);
         } else {
           applyPush(frame.key, frame.value);
         }
@@ -496,6 +498,7 @@
       if (window.spectrumCalibrationInit) window.spectrumCalibrationInit();
       if (window.spectrumWandsInit) window.spectrumWandsInit();
       if (window.spectrumLayersInit) window.spectrumLayersInit();
+      if (window.spectrumScenesInit) window.spectrumScenesInit();
     } catch (e) {
       setStatus(`load failed: ${e}`, true);
     }

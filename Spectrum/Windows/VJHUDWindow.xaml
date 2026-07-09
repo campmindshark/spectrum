@@ -416,6 +416,16 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                             <Button x:Name="domeAddLayerButton" Content="Add layer" HorizontalAlignment="Left" Width="90" Margin="0,3,0,3" />
+                            <Label Content="Scenes" Margin="0,3,0,0" Padding="0" />
+                            <DockPanel LastChildFill="True" Margin="0,1,0,0">
+                                <Button x:Name="domeSceneDeleteButton" DockPanel.Dock="Right" Content="✕" Width="24" ToolTip="Delete selected scene" />
+                                <Button x:Name="domeSceneLoadButton" DockPanel.Dock="Right" Content="Load" Width="44" Margin="0,0,3,0" ToolTip="Apply selected scene" />
+                                <ComboBox x:Name="domeScenesCombo" ToolTip="Saved scenes" />
+                            </DockPanel>
+                            <DockPanel LastChildFill="True" Margin="0,3,0,3">
+                                <Button x:Name="domeSceneSaveButton" DockPanel.Dock="Right" Content="Save" Width="44" ToolTip="Save current look under this name" />
+                                <TextBox x:Name="domeSceneNameBox" Margin="0,0,3,0" VerticalContentAlignment="Center" ToolTip="Scene name" />
+                            </DockPanel>
                         </StackPanel>
                         <Grid Height="24">
                             <Label Content="Global Fade Speed" Margin="-2,3,2.4,0" Padding="0" />

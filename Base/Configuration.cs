@@ -62,6 +62,14 @@ namespace Spectrum.Base {
     double domeGlobalFadeSpeed { get; set; }
     double domeGlobalHueSpeed { get; set; }
 
+    // Named snapshots of the dome look (layer stack + the two globals above),
+    // saved/recalled by the VJ. See DomeScene and SceneService. Null by default,
+    // following the same null-by-default XSerializer rule as domeLayerStack /
+    // domeCableMapping: a non-null initializer double-adds entries on deserialize.
+    // Old config files load with domeScenes == null, treated as empty — no
+    // migration needed.
+    List<DomeScene> domeScenes { get; set; }
+
     // maps from device ID to preset ID
     bool vjHUDEnabled { get; set; }
     Dictionary<int, int> midiDevices { get; set; }

@@ -63,10 +63,6 @@ namespace Spectrum.Web {
       }
     }
 
-    // Guard against an unbounded stack from a buggy/malicious client. Far above
-    // any sane number of layers.
-    private const int MaxLayers = 16;
-
     private readonly ControlGateway gateway;
     private readonly Configuration config;
     private static readonly string[] blendModeNames =
@@ -152,107 +148,46 @@ namespace Spectrum.Web {
       }).ToList();
     }
 
-    // Validate the whole incoming stack, then replace config.domeLayerStack via
-    // the gateway (snapshot swap on the UI thread). Rejects unknown keys,
-    // duplicate visualizers (v1 disallows duplicates — each visualizer is a
-    // singleton owning one buffer), out-of-range opacity, unknown blend modes, or
-    // an over-long stack, without touching config.
+    // Parse the wire DTOs into DomeLayerSettings (the blend-mode string -> enum
+    // step is web-specific), hand the stack to the shared StackValidator, then
+    // replace config.domeLayerStack via the gateway (snapshot swap on the UI
+    // thread). The validator rejects unknown keys, duplicate visualizers (v1
+    // disallows duplicates — each visualizer is a singleton owning one buffer),
+    // out-of-range opacity, undefined blend modes, or an over-long stack, without
+    // touching config; scene apply routes through the same validator so the two
+    // paths can't diverge.
     public async Task<(bool ok, string error)> ReplaceAsync(
       IReadOnlyList<LayerDto> layers
     ) {
       if (layers == null) {
         return (false, "body must be {\"layers\": [...]}");
       }
-      if (layers.Count > MaxLayers) {
-        return (false, "too many layers (max " + MaxLayers + ")");
-      }
-      var seen = new HashSet<string>();
-      var newStack = new List<DomeLayerSettings>();
+      var parsed = new List<DomeLayerSettings>(layers.Count);
       foreach (LayerDto dto in layers) {
         if (dto == null || dto.visualizerKey == null) {
           return (false, "each layer needs a visualizerKey");
         }
-        if (!DomeLayerSettings.IsLayerKey(dto.visualizerKey)) {
-          return (false, "unknown visualizer key: " + dto.visualizerKey);
-        }
-        if (!seen.Add(dto.visualizerKey)) {
-          return (false, "duplicate visualizer: " + dto.visualizerKey);
-        }
-        if (!Enum.TryParse(
-          dto.blendMode ?? "", out DomeBlendMode mode
-        ) || !Enum.IsDefined(typeof(DomeBlendMode), mode)) {
+        // The wire carries the blend mode as its enum name; parse it here (the
+        // one DTO-specific step) so the validator sees a real enum value.
+        if (!Enum.TryParse(dto.blendMode ?? "", out DomeBlendMode mode) ||
+            !Enum.IsDefined(typeof(DomeBlendMode), mode)) {
           return (false, "unknown blend mode: " + dto.blendMode);
         }
-        double opacity = dto.opacity;
-        if (double.IsNaN(opacity) || opacity < 0 || opacity > 1) {
-          return (false, "opacity must be between 0 and 1");
-        }
-        newStack.Add(new DomeLayerSettings {
+        parsed.Add(new DomeLayerSettings {
           VisualizerKey = dto.visualizerKey,
           BlendMode = mode,
-          Opacity = opacity,
+          Opacity = dto.opacity,
           Enabled = dto.enabled,
-          Params = ValidateParams(dto.visualizerKey, mode, dto.@params),
+          Params = dto.@params,
         });
+      }
+      (List<DomeLayerSettings> newStack, string error) =
+        StackValidator.Validate(parsed);
+      if (error != null) {
+        return (false, error);
       }
       await this.gateway.InvokeAsync(() => this.config.domeLayerStack = newStack);
       return (true, null);
-    }
-
-    // Sanitize an incoming param bag against the layer's schema (visualizer +
-    // blend): drop keys with no descriptor, clamp Double to [Min,Max], coerce
-    // Bool to 0/1 and Enum to a valid index. Returns null for an empty result so
-    // an absent bag persists as "all defaults". Never rejects — unknown keys are
-    // silently dropped rather than 400ing, so a client on a newer/older schema
-    // still applies the params it does understand.
-    private static Dictionary<string, double> ValidateParams(
-      string visualizerKey, DomeBlendMode mode, Dictionary<string, double> raw
-    ) {
-      if (raw == null || raw.Count == 0) {
-        return null;
-      }
-      Dictionary<string, double> clean = null;
-      foreach (DomeLayerParam descriptor in
-        DomeLayerSettings.ParamsFor(visualizerKey)
-          .Concat(DomeLayerSettings.ParamsForBlend(mode))
-      ) {
-        if (!raw.TryGetValue(descriptor.Key, out double value)) {
-          continue;
-        }
-        if (clean == null) {
-          clean = new Dictionary<string, double>();
-        }
-        clean[descriptor.Key] = ClampParam(descriptor, value);
-      }
-      return clean;
-    }
-
-    private static double ClampParam(DomeLayerParam p, double v) {
-      switch (p.Type) {
-        case DomeLayerParamType.Bool:
-          return v != 0 ? 1 : 0;
-        case DomeLayerParamType.Enum:
-          int count = p.Options != null ? p.Options.Length : 0;
-          int idx = (int)Math.Round(v);
-          if (idx < 0) {
-            idx = 0;
-          }
-          if (count > 0 && idx >= count) {
-            idx = count - 1;
-          }
-          return idx;
-        default: // Double
-          if (double.IsNaN(v)) {
-            return p.Default;
-          }
-          if (v < p.Min) {
-            return p.Min;
-          }
-          if (v > p.Max) {
-            return p.Max;
-          }
-          return v;
-      }
     }
   }
 }

@@ -32,6 +32,7 @@ namespace Spectrum.Web {
     private readonly OperatorController operatorControl;
     private readonly TempoController tempo;
     private readonly LayersController layers;
+    private readonly SceneController scenes;
     private readonly int port;
     private WebApplication app;
 
@@ -63,6 +64,7 @@ namespace Spectrum.Web {
       OperatorController operatorControl,
       TempoController tempo,
       LayersController layers,
+      SceneController scenes,
       int port
     ) {
       this.controls = controls;
@@ -73,6 +75,7 @@ namespace Spectrum.Web {
       this.operatorControl = operatorControl;
       this.tempo = tempo;
       this.layers = layers;
+      this.scenes = scenes;
       this.port = port;
     }
 
@@ -176,6 +179,34 @@ namespace Spectrum.Web {
         (bool ok, string error) = await this.layers.ReplaceAsync(body?.layers);
         return ok
           ? Results.Json(this.layers.State())
+          : Results.BadRequest(new { error });
+      });
+
+      // ---- Dome scenes (user scope). Named snapshots of the whole layer stack
+      // plus the two cross-layer globals. Save/delete change the scene *list*,
+      // broadcast on the SSE "scenes" frame; apply replaces the stack + globals,
+      // which converge over the existing "layers" and parameter frames. Like the
+      // layer stack, whole-list last-write-wins — no advisory lease. ----
+      app.MapGet("/api/scenes", () => Results.Json(this.scenes.State()));
+
+      app.MapPost("/api/scenes", async (SceneBody body) => {
+        (bool ok, string error) = await this.scenes.SaveAsync(body?.name);
+        return ok
+          ? Results.Json(this.scenes.State())
+          : Results.BadRequest(new { error });
+      });
+
+      app.MapPost("/api/scenes/{name}/apply", async (string name) => {
+        (bool ok, string error) = await this.scenes.ApplyAsync(name);
+        return ok
+          ? Results.Json(this.scenes.State())
+          : Results.BadRequest(new { error });
+      });
+
+      app.MapDelete("/api/scenes/{name}", async (string name) => {
+        (bool ok, string error) = await this.scenes.DeleteAsync(name);
+        return ok
+          ? Results.Json(this.scenes.State())
           : Results.BadRequest(new { error });
       });
 
@@ -499,6 +530,10 @@ namespace Spectrum.Web {
       public System.Collections.Generic.List<LayersController.LayerDto> layers {
         get; set;
       }
+    }
+
+    private sealed class SceneBody {
+      public string name { get; set; }
     }
   }
 }

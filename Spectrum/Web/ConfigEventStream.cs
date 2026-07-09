@@ -125,6 +125,9 @@ namespace Spectrum.Web {
       // initial GET (or without one) still renders the panel from server truth.
       frames.Add(
         Frame("layers", "layers", LayersController.SerializeStack(this.config)));
+      // Likewise seed the saved-scene list so the scenes dropdown is correct
+      // immediately.
+      frames.Add(Frame("scenes", "scenes", SceneNames(this.config)));
       return frames;
     }
 
@@ -149,7 +152,29 @@ namespace Spectrum.Web {
           Frame("layers", "layers", LayersController.SerializeStack(this.config)),
           null
         );
+        return;
       }
+      // The saved-scene list is likewise compound state outside the registry;
+      // its own frame carries just the names so every client's dropdown stays in
+      // sync. Not role-gated — the names leak nothing.
+      if (e.PropertyName == nameof(this.config.domeScenes)) {
+        this.Fan(Frame("scenes", "scenes", SceneNames(this.config)), null);
+      }
+    }
+
+    // The saved-scene names, in stored order — the payload of every "scenes"
+    // frame (shared by InitialStateFrames and the change notification).
+    private static List<string> SceneNames(Configuration config) {
+      var names = new List<string>();
+      List<DomeScene> scenes = config.domeScenes;
+      if (scenes != null) {
+        foreach (DomeScene scene in scenes) {
+          if (scene != null && scene.Name != null) {
+            names.Add(scene.Name);
+          }
+        }
+      }
+      return names;
     }
 
     // Fires on the Operator/OPC threads (the FPS counters' writers); fanning

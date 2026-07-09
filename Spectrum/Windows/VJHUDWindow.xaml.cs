@@ -38,6 +38,7 @@ namespace Spectrum {
     private string currentlyEditingLevelDriverPreset;
     private readonly Dictionary<LevelDriverSource, ComboBox[]> channelComboBoxes;
     private DomeLayersController domeLayersController;
+    private DomeScenesController domeScenesController;
 
     public VJHUDWindow(
       Configuration config, BeatBroadcaster beat, ObservableMidiLog midiLog
@@ -119,6 +120,10 @@ namespace Spectrum {
 
       this.domeLayersController = new DomeLayersController(
         this.config, this.domeLayersItemsControl, this.domeAddLayerButton);
+      this.domeScenesController = new DomeScenesController(
+        this.config, this.domeScenesCombo, this.domeSceneNameBox,
+        this.domeSceneSaveButton, this.domeSceneLoadButton,
+        this.domeSceneDeleteButton);
       // Per-visualizer tuning (radial size, ripple steps, ...) is edited in the
       // generic per-layer param rows above; only cross-layer state keeps a
       // dedicated control here.

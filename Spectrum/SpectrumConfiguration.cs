@@ -114,6 +114,15 @@ namespace Spectrum {
       get => _domeGlobalHueSpeed;
       set => SetField(ref _domeGlobalHueSpeed, value);
     }
+    // Left null by default (not a pre-filled list) for the same reason as
+    // domeLayerStack: XSerializer deserializes a collection property by calling
+    // IList.Add on the *existing* instance, so a non-null default would double up
+    // the persisted scenes on load. Null reads as "no saved scenes."
+    private List<DomeScene> _domeScenes = null;
+    public List<DomeScene> domeScenes {
+      get => _domeScenes;
+      set => SetField(ref _domeScenes, value);
+    }
 
     // maps from device ID to preset ID
     private bool _vjHUDEnabled = false;

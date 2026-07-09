@@ -62,12 +62,22 @@
     .layers .add { background: #185018; color: #fff; border: none;
       border-radius: 6px; padding: 0.5rem 0.8rem; cursor: pointer;
       font-size: 0.9rem; }
+    .scenes { border-top: 1px solid #333; margin-top: 1.5rem; padding-top: 0.5rem;
+      margin-bottom: 1rem; }
+    .scenes h2 { font-size: 1rem; margin: 0 0 0.5rem; }
+    .scenes .scene-row { display: flex; gap: 0.4rem; align-items: center;
+      margin-bottom: 0.4rem; }
+    .scenes .scene-row select, .scenes .scene-row input[type=text] {
+      flex: 1; min-width: 0; font-size: 1rem; }
+    .scenes .scene-row button { background: #333; color: #eee; border: none;
+      border-radius: 4px; padding: 0.4rem 0.7rem; cursor: pointer; }
   </style>
 </head>
 <body>
   <h1>Spectrum &mdash; Controls</h1>
   <div class="operator" id="operator"></div>
   <div class="telemetry" id="telemetry"></div>
+  <div class="scenes" id="scenes"></div>
   <div class="layers" id="layers"></div>
   <div id="params"></div>
   <div class="wands" id="wands"></div>
@@ -75,6 +85,7 @@
   <p style="font-size:0.75rem"><a href="/maintenance.html">Maintenance &rarr;</a></p>
   <script src="app.js"></script>
   <script src="layers.js"></script>
+  <script src="scenes.js"></script>
   <script src="wands-mini.js"></script>
 </body>
 </html>

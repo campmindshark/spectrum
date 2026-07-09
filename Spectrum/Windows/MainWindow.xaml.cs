@@ -94,7 +94,6 @@ namespace Spectrum {
     private Web.WebServer webServer = null;
     private Web.ConfigEventStream webEventStream = null;
     private const int WebServerPort = 8080;
-    private DomeLayersController domeLayersController;
 
     public MainWindow() {
       this.InitializeComponent();
@@ -143,9 +142,12 @@ namespace Spectrum {
       // The dome layer stack: whole-stack last-write-wins through the same
       // gateway (replaces the old domeActiveVis dropdown, broadcast over SSE).
       var layers = new Web.LayersController(gateway, this.config);
+      // Saved dome scenes: named snapshots of the stack + globals, saved/recalled
+      // through the same gateway and broadcast over the SSE "scenes" frame.
+      var scenes = new Web.SceneController(gateway, this.config);
       this.webServer = new Web.WebServer(
         controls, this.webEventStream, locks, calibration, wands,
-        operatorControl, tempo, layers, WebServerPort);
+        operatorControl, tempo, layers, scenes, WebServerPort);
       this.webServer.Start();
     }
 
@@ -257,9 +259,6 @@ namespace Spectrum {
       this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.domeBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter(), this.op.Telemetry);
       this.Bind(nameof(this.config.domeOutputInSeparateThread), this.domeBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
       this.Bind(nameof(this.config.domeOutputInSeparateThread), this.domeBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
-      this.Bind(nameof(this.config.domeTestPattern), this.domeTestPattern, ComboBox.SelectedItemProperty, BindingMode.TwoWay, new SpecificValuesConverter<int, ComboBoxItem>(new Dictionary<int, ComboBoxItem> { [0] = this.domeTestPatternNone, [1] = this.domeTestPatternFlashColorsByStrut, [2] = this.domeTestPatternIterateThroughStruts, [3] = this.domeTestPatternStripTest, [4] = this.domeTestPatternFullColorFlash }, true));
-      this.domeLayersController = new DomeLayersController(
-        this.config, this.domeLayersItemsControl, this.domeAddLayerButton);
       this.Bind(nameof(this.config.domeEnabled), this.domeEnabled, CheckBox.IsCheckedProperty);
       this.Bind(nameof(this.config.domeSimulationEnabled), this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
       this.Bind(nameof(this.config.domeMaxBrightness), this.domeMaxBrightnessSlider, Slider.ValueProperty);

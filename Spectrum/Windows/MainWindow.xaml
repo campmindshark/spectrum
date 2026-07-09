@@ -227,62 +227,6 @@
                                 <Label x:Name="domeBeagleboneOPCFPSLabel" Content="0" VerticalAlignment="Top" Margin="197,0,-0.6,-0.6" Padding="5,2,5,0" FontSize="10" FontFamily="Segoe UI Semilight" />
                             </Grid>
                         </Border>
-                        <Label Content="Animations" HorizontalAlignment="Left" Margin="4,1,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                        <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
-                            <WrapPanel>
-                                <Grid>
-                                    <Label Content="Test pattern" Margin="0,3,0,0" Padding="0" />
-                                    <ComboBox x:Name="domeTestPattern" HorizontalAlignment="Left" VerticalAlignment="Top" Width="140" Margin="80,0,0,0">
-                                        <ComboBoxItem x:Name="domeTestPatternNone" Content="None" IsSelected="True" />
-                                        <ComboBoxItem x:Name="domeTestPatternFlashColorsByStrut" Content="Flash colors by strut" />
-                                        <ComboBoxItem x:Name="domeTestPatternIterateThroughStruts" Content="Iterate through struts" />
-                                        <ComboBoxItem x:Name="domeTestPatternStripTest" Content="Test strips" />
-                                        <ComboBoxItem x:Name="domeTestPatternFullColorFlash" Content="Full color flash" />
-                                    </ComboBox>
-                                </Grid>
-                                <StackPanel Margin="0,4,0,0" Width="228">
-                                    <Label Content="Layers (top = front)" Margin="0,0,0,0" Padding="0" />
-                                    <ItemsControl x:Name="domeLayersItemsControl">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="2" Margin="0,1,0,1" Padding="2">
-                                                    <StackPanel>
-                                                        <DockPanel LastChildFill="True">
-                                                            <Button DockPanel.Dock="Right" Content="✕" Command="{Binding RemoveCommand}" Width="20" ToolTip="Remove layer" />
-                                                            <CheckBox DockPanel.Dock="Right" IsChecked="{Binding LayerEnabled}" VerticalAlignment="Center" Margin="0,0,4,0" ToolTip="Enabled" />
-                                                            <ComboBox ItemsSource="{Binding VisualizerOptions}" SelectedValuePath="Key" DisplayMemberPath="Label" SelectedValue="{Binding VisualizerKey}" />
-                                                        </DockPanel>
-                                                        <DockPanel LastChildFill="True" Margin="0,2,0,0">
-                                                            <Button DockPanel.Dock="Right" Content="▼" Command="{Binding MoveDownCommand}" Width="20" ToolTip="Move back" />
-                                                            <Button DockPanel.Dock="Right" Content="▲" Command="{Binding MoveUpCommand}" Width="20" ToolTip="Move front" />
-                                                            <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding BlendModes}" SelectedItem="{Binding BlendMode}" Width="80" ToolTip="Blend mode" />
-                                                            <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}" VerticalAlignment="Center" Margin="4,0,4,0" ToolTip="Opacity" />
-                                                        </DockPanel>
-                                                        <ItemsControl ItemsSource="{Binding Params}" Margin="0,2,0,0">
-                                                            <ItemsControl.ItemTemplate>
-                                                                <DataTemplate>
-                                                                    <Grid Margin="0,1,0,0">
-                                                                        <Grid.ColumnDefinitions>
-                                                                            <ColumnDefinition Width="70" />
-                                                                            <ColumnDefinition Width="*" />
-                                                                        </Grid.ColumnDefinitions>
-                                                                        <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                                                        <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}" VerticalAlignment="Center" Visibility="{Binding IsDouble, Converter={StaticResource boolToVis}}" />
-                                                                        <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}" VerticalAlignment="Center" HorizontalAlignment="Left" Visibility="{Binding IsBool, Converter={StaticResource boolToVis}}" />
-                                                                        <ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedIndex="{Binding IntValue}" Visibility="{Binding IsEnum, Converter={StaticResource boolToVis}}" />
-                                                                    </Grid>
-                                                                </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
-                                                    </StackPanel>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <Button x:Name="domeAddLayerButton" Content="Add layer" HorizontalAlignment="Left" Width="90" Margin="0,3,0,0" />
-                                </StackPanel>
-                            </WrapPanel>
-                        </Border>
                         <Label Content="Wiring" HorizontalAlignment="Left" Margin="4,1,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
                         <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
                             <Button x:Name="domeSetMappingButton" Content="Set Dome Mapping…" Width="210" Height="26" Click="OpenDomeMapping" />
