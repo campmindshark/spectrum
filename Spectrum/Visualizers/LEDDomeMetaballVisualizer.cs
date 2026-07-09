@@ -28,6 +28,7 @@ namespace Spectrum.Visualizers {
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
     private readonly OrientationCenter center;
+    private readonly LayerTrigger trigger;
 
     // Static per-pixel geometry, baked once (mirrors Paintbrush's mapping).
     private readonly Vector3[] pixelPositions;
@@ -37,6 +38,16 @@ namespace Spectrum.Visualizers {
     // Contour state, unchanged from the fused version: a slow phase that
     // pulses the level-curve bands over time, scaled by loudness.
     private double contourCounter = 0;
+
+    // Burst envelope (docs/triggers.md): 1 right on a trigger fire, decaying
+    // to 0 over BURST_DURATION_FRAMES nominal frames. Replaces the old
+    // hard-coded per-device "bonus" that used to live in OrientationCenter —
+    // that boosted one wand's contribution to the potential field for as
+    // long as its button stayed held; this instead flashes the whole field's
+    // threshold on an edge-triggered fire, independent of any one device.
+    private const double BURST_DURATION_FRAMES = 10;
+    private const double BURST_SIZE_BOOST = 4;
+    private double burstEnvelope = 0;
 
     public LEDDomeMetaballVisualizer(
       Configuration config,
@@ -52,6 +63,7 @@ namespace Spectrum.Visualizers {
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
       this.center = center;
+      this.trigger = new LayerTrigger(config, orientationInput, this.LayerKey);
 
       // Bake the static unit-sphere position of every pixel once.
       this.pixelPositions = this.buffer.BakePixelPositions();
@@ -84,13 +96,27 @@ namespace Spectrum.Visualizers {
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "size");
       bool showContours =
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "contours") != 0;
+      int button =
+        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "button");
 
       double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
+      // Fired() must run every frame regardless of burst state, so an edge
+      // occurring mid-decay is never missed (docs/triggers.md "button
+      // edge-detection subtlety").
+      bool fired = this.trigger.Fired(button);
+      if (fired) {
+        this.burstEnvelope = 1;
+      } else {
+        this.burstEnvelope =
+          Math.Max(0, this.burstEnvelope - frameScale / BURST_DURATION_FRAMES);
+      }
+      double burstSize = size + BURST_SIZE_BOOST * this.burstEnvelope;
+
       this.center.Update(level);
       UpdateContour(level, showContours, frameScale);
-      RenderPixels(level, size, showContours);
+      RenderPixels(level, burstSize, showContours);
     }
 
     // Pulses the contour lines over time, scaled by loudness (unchanged from

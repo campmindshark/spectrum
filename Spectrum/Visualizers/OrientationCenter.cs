@@ -53,7 +53,6 @@ namespace Spectrum.Visualizers {
     // bookkeeping.
     private struct DeviceFrame {
       public Quaternion rotation;
-      public double bonus;
       public bool isPoi;
       public double poiK;
     }
@@ -207,10 +206,6 @@ namespace Spectrum.Visualizers {
         DeviceFrame frame = new DeviceFrame();
         frame.rotation = device.currentRotation();
 
-        // 'Bonus' from a button press; dial this in later.
-        int flag = device.actionFlag;
-        frame.bonus = (flag == 1 || flag == 2 || flag == 3) ? 4 : 1;
-
         // If only poi are moving, their visualization takes over the dome;
         // otherwise they are wands on strings. Numbers track the poi
         // firmware (tested against commit 'a194981' of the dome-poi control
@@ -253,7 +248,7 @@ namespace Spectrum.Visualizers {
         Vector3 t = Vector3.Transform(pixelPoint, dev.rotation);
         double distance = Vector3.Distance(t, Spot);
         double negadistance = Vector3.Distance(t, NegSpot);
-        double scale = dev.bonus / Math.Max(distance * negadistance, MIN_POLE_PRODUCT);
+        double scale = 1 / Math.Max(distance * negadistance, MIN_POLE_PRODUCT);
         if (dev.isPoi) {
           scale = scale * dev.poiK + POI_MIN_SCALE;
         }

@@ -360,6 +360,16 @@ namespace Spectrum.Base {
         Type = DomeLayerParamType.Bool,
         Default = 0,
       },
+      // Triggerable (docs/triggers.md): a wand button press flashes the
+      // blob briefly bigger via LayerTrigger, replacing the old hard-coded
+      // per-device bonus that used to live in OrientationCenter. Unbound
+      // (default) means the burst is Manual-fire-only.
+      new DomeLayerParam {
+        Key = "button", Label = "Button",
+        Type = DomeLayerParamType.Enum,
+        Options = new string[] { "Unbound", "1", "2", "3" },
+        Default = 0,
+      },
     };
 
     // Background's only tunable: the flat color it paints every pixel.
@@ -408,21 +418,15 @@ namespace Spectrum.Base {
         Options = new string[] { "Loop", "OneShot" },
         Default = 0,
       },
-      // Only meaningful when mode = OneShot. Timer is an inert placeholder
-      // (LayerTrigger never fires it) reserved for a future interval-based
-      // source; Button/Manual are the two sources the first slice wires up.
-      new DomeLayerParam {
-        Key = "trigger", Label = "Trigger Source",
-        Type = DomeLayerParamType.Enum,
-        Options = new string[] { "Timer", "Button", "Manual" },
-        Default = 0,
-      },
-      // Only meaningful when trigger = Button. Index i means wand actionFlag
-      // value i+1 (firmware encodes buttons 1/2/3, never 0).
+      // Only meaningful when mode = OneShot. A OneShot layer is always fireable
+      // by the Manual (native/web Fire button) source; this selects whether a
+      // wand button *also* fires it. Index == the wand actionFlag value, so
+      // Unbound (0) means "no wand trigger, Manual only" and 1/2/3 are the
+      // firmware button codes (LayerTrigger).
       new DomeLayerParam {
         Key = "button", Label = "Button",
         Type = DomeLayerParamType.Enum,
-        Options = new string[] { "1", "2", "3" },
+        Options = new string[] { "Unbound", "1", "2", "3" },
         Default = 0,
       },
     };

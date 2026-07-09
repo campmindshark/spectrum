@@ -82,14 +82,13 @@ namespace Spectrum.Visualizers {
       double centerDistance =
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "centerDistance");
       int color = (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "color");
-      // Enum indices line up 1:1 with LayerTriggerSource (Timer/Button/Manual)
-      // and with wand actionFlag values (button index i -> flag i+1).
       bool oneShot =
         (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "mode") == 1;
-      var triggerSource = (LayerTriggerSource)
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "trigger");
+      // The "button" enum index is the wand actionFlag value directly: 0 =
+      // Unbound (Manual-only), 1/2/3 = wand buttons. Manual firing is always
+      // live regardless (LayerTrigger).
       int button =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "button") + 1;
+        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "button");
 
       double elapsed = 0;
       if (!this.frameTimer.IsRunning) {
@@ -102,11 +101,16 @@ namespace Spectrum.Visualizers {
       // Fired() must run every frame regardless of playback state, so an
       // edge occurring mid-playthrough (or while OneShot sits idle) is never
       // missed (docs/triggers.md "button edge-detection subtlety").
-      bool fired = this.trigger.Fired(triggerSource, button);
+      bool fired = this.trigger.Fired(button);
 
       if (oneShot) {
         if (fired) {
           this.playing = true;
+          // Restart at phase 0, where the band sits entirely just past the rim
+          // (see the targetDist construction below), so the sweep reads as a
+          // wave arriving from outside the dome rather than a band flashing
+          // into existence at the rim. It sweeps to phase 1, where the band has
+          // passed entirely through the center.
           this.phase = 0;
         }
         if (this.playing) {
@@ -139,6 +143,49 @@ namespace Spectrum.Visualizers {
         centerAngle, centerDistance
       );
 
+      // The distance to the dome's outer edge is only ~1 (the rim) when the
+      // center sits at the dome's origin. Once it's offset toward the rim, the
+      // far side of the dome sits progressively farther out (up to ~2 with the
+      // center on the rim), so we can't assume the band starts its travel at
+      // dist 1. Measure the actual maximum distance from the (possibly offset)
+      // center across the current pixels, and base the sweep's travel on that.
+      // Without this, an offset OneShot would start already inside the dome —
+      // leaving the outer pixels never swept — and an offset looping sweep would
+      // space its wrapped ring copies too tightly, lighting a phantom band on
+      // the far side while the main band is on-screen.
+      double maxDist = 0;
+      for (int i = 0; i < this.buffer.pixels.Length; i++) {
+        ref var pixel = ref this.buffer.pixels[i];
+        double px = (pixel.x + centerOffset.Item1) * 2 - 1;
+        double py = (pixel.y + centerOffset.Item2) * 2 - 1;
+        double dist = Math.Sqrt(px * px + py * py);
+        if (dist > maxDist) {
+          maxDist = dist;
+        }
+      }
+
+      // maxDist is the measured farthest pixel, so nothing sits beyond it; the
+      // extra edgeFudge margin keeps the off-screen ends (and the wrapped ring
+      // copy that arrives as the sweep completes) strictly clear of that
+      // farthest pixel rather than grazing it right at the end of the period.
+      const double edgeFudge = 0.05;
+
+      // The band's full travel is slightly wider than the dome: its center ring
+      // (targetDist, in the same per-pixel distance units where 0 is the center
+      // point) runs from maxDist + bandWidth + edgeFudge (the whole band just
+      // past the outer edge, off-screen) at center 0 to -bandWidth (just past
+      // the center point, off-screen) at center 1. Because bandWidth sits
+      // *inside* this total width, the band is fully hidden at both ends — so a
+      // OneShot enters cleanly from outside the dome and exits cleanly through
+      // the center, and a looping sweep wraps seamlessly. This period also sets
+      // the spacing of the wrapped ring copies (below): one
+      // outer-edge-plus-band-plus-fudge apart, so every copy is off-screen (its
+      // inner edge at dist maxDist + edgeFudge) whenever the main band is —
+      // which stops a phantom ring from lighting near the center at trigger time
+      // and stops edge pixels lighting as it ends.
+      double period = maxDist + 2 * bandWidth + edgeFudge;
+      double targetDist = (maxDist + bandWidth + edgeFudge) - center * period;
+
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         ref var pixel = ref this.buffer.pixels[i];
         double px = (pixel.x + centerOffset.Item1) * 2 - 1;
@@ -150,15 +197,15 @@ namespace Spectrum.Visualizers {
         // a whole swath of the dome light up together at high centerDistance.
         double dist = Math.Sqrt(px * px + py * py);
 
-        // Target ring radius sweeps from the rim (1) to the center (0) as
-        // center goes 0..1. MapWrap (as in Pulse) folds dist - target into a
-        // single period via modular arithmetic, so it stays correct no matter
-        // how far dist extends past 1 — no special-casing needed.
-        double val = MapWrap(dist, 1 - center, 2 - center, 0, 1);
-        // Distance from the nearest ring: 0 right at the ring, 0.5 halfway
-        // between consecutive rings one period apart.
+        // Fold dist into one period around targetDist (as Pulse does), so the
+        // math stays correct however far dist extends past 1 once the center is
+        // offset. val is normalized to 0..1 across a full period, so the band
+        // half-width bandWidth is compared in those same normalized units below.
+        double val = MapWrap(dist, targetDist, targetDist + period, 0, 1);
+        // Distance from the nearest ring, normalized: 0 right at the ring, 0.5
+        // halfway between consecutive rings one period apart.
         double d = Math.Min(val, 1 - val);
-        if (d < bandWidth) {
+        if (d < bandWidth / period) {
           // Opaque mask: the alpha (1) is what an adjustment blend reads; the
           // color is irrelevant to Desaturate but matters if the layer runs
           // under a color blend (e.g. Over), so it's tunable via the "color"

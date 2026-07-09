@@ -3,17 +3,13 @@ using Spectrum.Base;
 
 namespace Spectrum.Visualizers {
 
-  // What causes a one-shot layer to (re)fire. Timer is an inert placeholder
-  // for a future interval-based source (docs/triggers.md's "Deferred" list);
-  // Fired() never returns true for it. Persisted by index via the layer's
-  // "trigger" enum param (DomeLayerSettings.WaveParams et al), so members may
-  // be appended but not reordered.
-  enum LayerTriggerSource { Timer, Button, Manual }
-
-  // Edge-detects a triggerable layer's fire condition: a wand button's
-  // 0->nonzero transition (Button), or a monotonic per-layer fire counter
-  // bump (Manual, driven by a native/web Fire button). One instance per
-  // triggerable layer, constructed alongside it — unlike OrientationCenter/
+  // Edge-detects a triggerable layer's fire condition. A OneShot layer is
+  // always fireable by two live sources at once: the Manual source (a monotonic
+  // per-layer fire counter bumped by the native/web Fire button), and — when
+  // the layer's "button" param names a wand button (1/2/3; 0 = Unbound) — a
+  // wand button's 0->nonzero transition. Fired() OR's them together. One
+  // instance per triggerable layer, constructed alongside it — unlike
+  // OrientationCenter/
   // BeatBroadcaster this is *not* shared across layers, since each instance
   // tracks its own prior-frame baseline (per-device actionFlag, last-seen
   // manual counter) and reads its own layer's counter.
@@ -46,16 +42,15 @@ namespace Spectrum.Visualizers {
       this.layerKey = layerKey;
     }
 
-    // True exactly on the frame `source` newly fires.
-    public bool Fired(LayerTriggerSource source, int button) {
-      switch (source) {
-        case LayerTriggerSource.Button:
-          return this.ButtonFired(button);
-        case LayerTriggerSource.Manual:
-          return this.ManualFired();
-        default:
-          return false;
-      }
+    // True exactly on the frame the layer newly fires from any live source.
+    // `button` is the wand actionFlag value to watch (1/2/3), or 0 (Unbound)
+    // for Manual-only. Both sources are polled every frame — evaluate each
+    // before OR-ing so neither is skipped by short-circuiting (the button poll
+    // must run to keep advancing its per-device baseline).
+    public bool Fired(int button) {
+      bool manual = this.ManualFired();
+      bool buttonFired = button > 0 && this.ButtonFired(button);
+      return manual || buttonFired;
     }
 
     // A device's actionFlag transitions 0 -> `button` (1/2/3). Respects
