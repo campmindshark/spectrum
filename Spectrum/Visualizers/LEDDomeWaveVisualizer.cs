@@ -1,6 +1,7 @@
 using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
+using static Spectrum.MathUtil;
 
 namespace Spectrum.Visualizers {
 
@@ -92,15 +93,21 @@ namespace Spectrum.Visualizers {
         ref var pixel = ref this.buffer.pixels[i];
         double px = (pixel.x + centerOffset.Item1) * 2 - 1;
         double py = (pixel.y + centerOffset.Item2) * 2 - 1;
-        // 1 at the center point, 0 at the rim; clamp for pixels that fall
-        // outside the unit disc once the center is offset.
-        double height = Math.Clamp(1.0 - Math.Sqrt(px * px + py * py), 0, 1);
+        // Raw, unbounded distance from the (possibly offset) center — same
+        // quantity Radial's Pulse mapping uses. It is never clamped: once the
+        // center is offset, dome pixels can legitimately sit past dist 1, and
+        // collapsing them all to one boundary value is what previously made
+        // a whole swath of the dome light up together at high centerDistance.
+        double dist = Math.Sqrt(px * px + py * py);
 
-        // Distance to the band center on a 0..1 ring (periodic).
-        double d = Math.Abs(height - center);
-        if (d > 0.5) {
-          d = 1 - d;
-        }
+        // Target ring radius sweeps from the rim (1) to the center (0) as
+        // center goes 0..1. MapWrap (as in Pulse) folds dist - target into a
+        // single period via modular arithmetic, so it stays correct no matter
+        // how far dist extends past 1 — no special-casing needed.
+        double val = MapWrap(dist, 1 - center, 2 - center, 0, 1);
+        // Distance from the nearest ring: 0 right at the ring, 0.5 halfway
+        // between consecutive rings one period apart.
+        double d = Math.Min(val, 1 - val);
         if (d < bandWidth) {
           // Opaque white mask: the alpha (1) is what an adjustment blend reads;
           // the color is irrelevant to Desaturate but matters if the layer runs
