@@ -18,7 +18,8 @@ namespace Spectrum.Visualizers {
   //
   // A visualizer that wants a *position* to draw around reads CurrentCenter;
   // one that wants a *color* calls ColorCenterAt(pixelPoint) (metaball hue is
-  // (1 + colorCenter.W) / 2, unchanged from the original inline math).
+  // HueFromColorCenter(colorCenter) -- see that method for the sign-invariance
+  // that keeps it continuous through the double-cover flip).
   //
   // One instance is shared across every orientation-driven layer (wired up
   // once in Operator's constructor) so there is a single idle-drift dummy
@@ -235,7 +236,7 @@ namespace Spectrum.Visualizers {
     // (opposite ends of the hemisphere are identified, so both 'ends' count
     // at once), or falls back to the idle dummy pointer's single-device field
     // when nothing is moving. colorCenter is the proximity-weighted
-    // collective rotation; its hue is (1 + colorCenter.W) / 2.
+    // collective rotation; its hue is HueFromColorCenter(colorCenter).
     public double PotentialAt(Vector3 pixelPoint, out Quaternion colorCenter) {
       if (this.idle) {
         Vector3 t = Vector3.Transform(pixelPoint, this.currentOrientation);
@@ -280,8 +281,17 @@ namespace Spectrum.Visualizers {
       return colorCenter;
     }
 
+    // colorCenter is only defined up to a sign: a quaternion q and -q are the
+    // same physical rotation (the SU(2) -> SO(3) double cover), so any hue read
+    // from a raw component flips when the sign does. For a single/dominant wand,
+    // Normalize collapses PotentialAt's continuous-sign magnitude to a bare
+    // +-rotation, so an isolated wand dipping through the equator snaps its hue.
+    // W*W is even in the quaternion (W and -W give the same value), so it stays
+    // continuous across that flip. Geometrically it's (1 + cos theta) / 2, where
+    // theta is the summed rotation's angle; it folds +theta and -theta together
+    // and so spans hue [0,1] over a smaller swing than the old (1 + W)/2 did.
     public static double HueFromColorCenter(Quaternion colorCenter) {
-      return (1 + colorCenter.W) / 2;
+      return colorCenter.W * colorCenter.W;
     }
 
     private float Nudge(double scale) {
