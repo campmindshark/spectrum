@@ -176,8 +176,10 @@ namespace Spectrum {
         this.blendMode = value;
         this.PropertyChanged?.Invoke(
           this, new PropertyChangedEventArgs(nameof(BlendMode)));
-        // The blend's compositor-consumed param schema changed: rebuild.
-        this.RebuildParams(null);
+        // The blend's compositor-consumed param schema changed: rebuild, but
+        // seed from the current values so unrelated (visualizer) params
+        // survive and only newly-introduced blend keys fall back to default.
+        this.RebuildParams(this.CurrentParamValues());
         this.Changed?.Invoke();
       }
     }
@@ -214,6 +216,17 @@ namespace Spectrum {
 
     private void OnParamChanged() {
       this.Changed?.Invoke();
+    }
+
+    // Snapshot of the current Params collection, used to seed a rebuild so
+    // values already set by the user survive a schema change that keeps the
+    // same keys.
+    private IDictionary<string, double> CurrentParamValues() {
+      var values = new Dictionary<string, double>();
+      foreach (LayerParamViewModel vm in this.Params) {
+        values[vm.Key] = vm.Value;
+      }
+      return values;
     }
 
     // Seed the param values from a saved config bag, keeping the current schema.

@@ -51,6 +51,21 @@
     return d;
   }
 
+  // A value bag for the schema, keeping each key's value from `existing` when
+  // present and falling back to the descriptor's default otherwise. Used when
+  // the schema partially changes (e.g. blend mode) so unrelated params
+  // (visualizer params) survive instead of resetting.
+  function seededParamsFor(schema, existing) {
+    const d = {};
+    schema.forEach((p) => {
+      d[p.key] =
+        existing && Object.prototype.hasOwnProperty.call(existing, p.key)
+          ? existing[p.key]
+          : p.default;
+    });
+    return d;
+  }
+
   function setParam(idx, key, value) {
     if (!state.layers[idx].params) state.layers[idx].params = {};
     state.layers[idx].params[key] = value;
@@ -138,9 +153,11 @@
     blendSel.title = "Blend mode";
     blendSel.addEventListener("change", () => {
       state.layers[idx].blendMode = blendSel.value;
-      // The blend's compositor-consumed schema changed: reset params and
-      // rerender so its editors (e.g. Desaturate's) appear/disappear.
-      state.layers[idx].params = defaultsFor(schemaFor(state.layers[idx]));
+      // The blend's compositor-consumed schema changed: rebuild params, but
+      // seed from the current values so unrelated (visualizer) params
+      // survive and only newly-introduced blend keys fall back to default.
+      state.layers[idx].params = seededParamsFor(
+        schemaFor(state.layers[idx]), state.layers[idx].params);
       render();
       putLayers();
     });
