@@ -103,11 +103,6 @@ namespace Spectrum {
       this.DomeOutput = dome;
 
       this.visualizers = new List<Visualizer>();
-      this.visualizers.Add(new LEDDomeMidiTestVisualizer(
-        this.config,
-        midi,
-        dome
-      ));
       this.visualizers.Add(new LEDDomeStrutIterationDiagnosticVisualizer(
         this.config,
         dome
@@ -189,9 +184,22 @@ namespace Spectrum {
         this.config,
         dome
       ));
+      this.visualizers.Add(new LEDDomeFlashVisualizer(
+        this.config,
+        audio,
+        orientation,
+        this.BeatBroadcaster,
+        dome
+      ));
       this.visualizers.Add(new LEDDomeWaveVisualizer(
         this.config,
         orientation,
+        dome
+      ));
+      this.visualizers.Add(new LEDDomeGyroscopeVisualizer(
+        this.config,
+        orientation,
+        orientationCenter,
         dome
       ));
       this.visualizers.Add(new LEDDomeRippleVisualizer(
@@ -215,6 +223,19 @@ namespace Spectrum {
         audio,
         orientation,
         orientationCenter,
+        dome
+      ));
+      this.visualizers.Add(new LEDDomePointCloudVisualizer(
+        this.config,
+        orientation,
+        dome
+      ));
+      this.visualizers.Add(new LEDDomeShootingStarVisualizer(
+        this.config,
+        audio,
+        orientation,
+        orientationCenter,
+        this.BeatBroadcaster,
         dome
       ));
     }

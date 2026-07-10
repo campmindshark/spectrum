@@ -69,6 +69,13 @@ namespace Spectrum.Base {
     // edge-detects "the count changed since I last looked."
     Dictionary<string, int> domeLayerFireCounters { get; set; }
 
+    // Per-layer manual-clear counters, exactly parallel to domeLayerFireCounters:
+    // keyed by LayerKey, bumped by the native Clear button. A layer that carries
+    // accumulated live state (e.g. Shooting Star's in-flight dots) edge-detects a
+    // bump and drops that state — an escape hatch when a layer is dragging the
+    // frame rate. Same monotonic-counter rationale as the fire counters.
+    Dictionary<string, int> domeLayerClearCounters { get; set; }
+
     // Named snapshots of the dome look (layer stack + the two globals above),
     // saved/recalled by the VJ. See DomeScene and SceneService. Null by default,
     // following the same null-by-default XSerializer rule as domeLayerStack /

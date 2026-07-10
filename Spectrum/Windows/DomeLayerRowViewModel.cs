@@ -122,6 +122,9 @@ namespace Spectrum {
     // domeLayerFireCounters entry rather than mutating Params, so firing
     // never interleaves with the whole-stack Publish() snapshot swap.
     public event Action<DomeLayerRowViewModel> FireRequested;
+    // Manual clear, parallel to FireRequested: the controller bumps this layer's
+    // domeLayerClearCounters entry so a layer can drop its live state.
+    public event Action<DomeLayerRowViewModel> ClearRequested;
 
     public DomeLayerRowViewModel() {
       this.RemoveCommand = new RelayCommand(
@@ -132,6 +135,8 @@ namespace Spectrum {
         () => this.MoveDownRequested?.Invoke(this));
       this.FireCommand = new RelayCommand(
         () => this.FireRequested?.Invoke(this));
+      this.ClearCommand = new RelayCommand(
+        () => this.ClearRequested?.Invoke(this));
     }
 
     // Shared, static option lists so every row's ComboBox binds the same source.
@@ -167,6 +172,7 @@ namespace Spectrum {
     public ICommand MoveUpCommand { get; }
     public ICommand MoveDownCommand { get; }
     public ICommand FireCommand { get; }
+    public ICommand ClearCommand { get; }
 
     private void Set<T>(ref T field, T value, string name) {
       if (EqualityComparer<T>.Default.Equals(field, value)) {

@@ -133,6 +133,16 @@ namespace Spectrum {
       set => SetField(ref _domeLayerFireCounters, value);
     }
 
+    // Parallel to _domeLayerFireCounters (see the Configuration interface): the
+    // Clear button bumps these, a layer edge-detects the bump and drops its live
+    // state. Non-null default for the same XSerializer round-trip reason.
+    private Dictionary<string, int> _domeLayerClearCounters =
+      new Dictionary<string, int>();
+    public Dictionary<string, int> domeLayerClearCounters {
+      get => _domeLayerClearCounters;
+      set => SetField(ref _domeLayerClearCounters, value);
+    }
+
     // maps from device ID to preset ID
     private bool _vjHUDEnabled = false;
     public bool vjHUDEnabled {

@@ -26,6 +26,7 @@ namespace Spectrum.Visualizers {
 
     private const int STAMP_COOLDOWN = 10;     // render frames a stamp lasts
     private const int GRID_STAMP_CUTOFF = 7;   // grid stamp clears once below this
+    private const int RHYTHM_COOLDOWN = 8;     // measures the rhythm band plays over (its cooldown starts here)
 
     private readonly Configuration config;
     private readonly AudioInput audio;
@@ -130,7 +131,7 @@ namespace Spectrum.Visualizers {
           this.stampFired = false;
         }
       }
-      // The rhythm effect is a slow band that contracts over the full cooldown
+      // The rhythm effect is a slow band that expands outward over its cooldown
       // (many measures), so while one is still animating it owns the layer:
       // ignore new fires until it completes, or a rapid re-fire (Beat, held
       // audio) would reset it every measure and it would never play out. The
@@ -138,8 +139,11 @@ namespace Spectrum.Visualizers {
       bool rhythmPlaying = this.stampFired && this.stampEffect == 2;
       if (fired && !rhythmPlaying) {
         this.stampFired = true;
-        this.cooldown = STAMP_COOLDOWN;
         this.stampEffect = this.stampEffect == 1 ? 2 : 1; // alternate grid / rhythm
+        // The rhythm band's playhead starts at RHYTHM_COOLDOWN so it opens at
+        // the facing on its very first frame; the grid flash uses the full
+        // STAMP_COOLDOWN.
+        this.cooldown = this.stampEffect == 2 ? RHYTHM_COOLDOWN : STAMP_COOLDOWN;
         this.stampCenter = this.center.CurrentCenter;
       }
     }
@@ -152,7 +156,14 @@ namespace Spectrum.Visualizers {
       // Both the geometry center and the color are frozen at fire time
       // (stampCenter), unlike Ripple's live color sampling.
       double stampHue = (1 + this.stampCenter.W) / 2;
-      double ringDistance = 2.4 - Math.Clamp(1.8d / (4 - (this.cooldown / 2d)), 0, 2.4);
+      // The band flies outward from the facing (distance 0) toward the rim as
+      // the cooldown winds down, easing out — quick at first, settling as it
+      // nears the edge. Quadratic in the cooldown normalized to RHYTHM_COOLDOWN,
+      // so it opens at the facing on its first frame (cooldown == RHYTHM_COOLDOWN)
+      // and never divides by zero; the [1, RHYTHM_COOLDOWN] cooldown keeps it
+      // inside the [0, 2] distance range without a clamp.
+      double ringDistance =
+        2.0 * (1 - Math.Pow(this.cooldown / (double)RHYTHM_COOLDOWN, 2));
       double ringHalfWidth = .003 * this.cooldown * this.cooldown;
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
@@ -166,7 +177,7 @@ namespace Spectrum.Visualizers {
             this.buffer.pixels[i].color = new Color(stampHue, .2, 1).ToInt();
           }
         } else if (this.stampEffect == 2) {
-          // Time-delayed band that contracts to the beat.
+          // Band that expands from the facing to the rim, sharpening as it goes.
           if (Between(stampDistance, ringDistance - ringHalfWidth, ringDistance + ringHalfWidth)) {
             this.buffer.pixels[i].color = new Color(stampHue, .2, 1).ToInt();
           }

@@ -36,8 +36,18 @@ namespace Spectrum.Visualizers {
     public static readonly Vector3 Spot = new Vector3(-1, 0, 0);
     public static readonly Vector3 NegSpot = new Vector3(1, 0, 0);
 
-    private const double IDLE_NOISE = 0.0001;
-    private const double IDLE_MOMENTUM_LIMIT = .001;
+    private const double IDLE_NOISE = 0.00015;
+    private const double IDLE_MOMENTUM_LIMIT = .005;
+
+    // Multiplicative friction applied to the idle drift momentum each nominal
+    // frame (raised to frameScale for frame-rate invariance, mirroring the
+    // layer buffer fades). Without it the momentum is a pure clamped random
+    // walk with a featureless, roughly-uniform speed distribution; this light
+    // decay mean-reverts the momentum toward rest so the drift gathers speed,
+    // coasts, and settles instead of wandering at an undifferentiated pace.
+    // Relaxation time ~= 1/(1 - value) nominal frames (~1.7s at NOMINAL_FPS for
+    // 0.995); IDLE_MOMENTUM_LIMIT stays as a hard safety rail on top speed.
+    private const double IDLE_MOMENTUM_FRICTION = 0.997;
     private const double POI_MIN_SCALE = 0.5;
     private const double POI_MAX_SCALE = 5;
 
@@ -141,19 +151,20 @@ namespace Spectrum.Visualizers {
 
     // No wand is moving: randomly nudge the dummy pointer around the dome.
     private void DriftIdleOrientation(double frameScale, double level) {
+      double friction = Math.Pow(IDLE_MOMENTUM_FRICTION, frameScale);
       this.yawMomentum = Math.Clamp(
-        this.yawMomentum + Nudge(IDLE_NOISE) * frameScale,
+        this.yawMomentum * friction + Nudge(IDLE_NOISE) * frameScale,
         -IDLE_MOMENTUM_LIMIT, IDLE_MOMENTUM_LIMIT);
       this.rollMomentum = Math.Clamp(
-        this.rollMomentum + Nudge(IDLE_NOISE) * frameScale,
+        this.rollMomentum * friction + Nudge(IDLE_NOISE) * frameScale,
         -IDLE_MOMENTUM_LIMIT, IDLE_MOMENTUM_LIMIT);
       this.pitchMomentum = Math.Clamp(
-        this.pitchMomentum + Nudge(IDLE_NOISE) * frameScale,
+        this.pitchMomentum * friction + Nudge(IDLE_NOISE) * frameScale,
         -IDLE_MOMENTUM_LIMIT, IDLE_MOMENTUM_LIMIT);
 
-      this.yaw += 4 * (level + .25) * this.yawMomentum * frameScale;
-      this.pitch += 4 * (level + .25) * this.pitchMomentum * frameScale;
-      this.roll += 4 * (level + .25) * this.rollMomentum * frameScale;
+      this.yaw += 6 * (level + .2) * this.yawMomentum * frameScale;
+      this.pitch += 6 * (level + .2) * this.pitchMomentum * frameScale;
+      this.roll += 6 * (level + .2) * this.rollMomentum * frameScale;
 
       Quaternion dummy = Quaternion.CreateFromYawPitchRoll(
         (float)(2 * Math.PI * this.yaw),

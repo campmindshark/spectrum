@@ -390,6 +390,7 @@
                                                 </DockPanel>
                                                 <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,0,0" FontSize="10" ToolTip="Notes to yourself about this layer" />
                                                 <DockPanel LastChildFill="True" Margin="0,2,0,0">
+                                                    <Button DockPanel.Dock="Right" Content="🧹" Command="{Binding ClearCommand}" Width="20" ToolTip="Clear (drop this layer's live particles)" />
                                                     <Button DockPanel.Dock="Right" Content="🔥" Command="{Binding FireCommand}" Width="20" ToolTip="Fire (manual trigger)" />
                                                     <Button DockPanel.Dock="Right" Content="▼" Command="{Binding MoveDownCommand}" Width="20" ToolTip="Move back" />
                                                     <Button DockPanel.Dock="Right" Content="▲" Command="{Binding MoveUpCommand}" Width="20" ToolTip="Move front" />

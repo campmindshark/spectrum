@@ -127,10 +127,12 @@ namespace Spectrum.Base {
     // indices that config migration depends on never shift. ExtraLayerLabels
     // is parallel (same order).
     private static readonly string[] ExtraLayerKeys = new string[] {
-      "twinkle", "wave", "ripple", "stamp", "metaball", "background",
+      "twinkle", "wave", "ripple", "stamp", "metaball", "background", "flash",
+      "point-cloud", "gyroscope", "shooting-star",
     };
     private static readonly string[] ExtraLayerLabels = new string[] {
-      "Twinkle", "Wave", "Ripple", "Stamp", "Metaball", "Background",
+      "Twinkle", "Wave", "Ripple", "Stamp", "Metaball", "Background", "Flash",
+      "Point Cloud", "Gyroscope", "Shooting Star",
     };
 
     // The full set of layerable keys/labels offered in the UI pickers: the nine
@@ -417,6 +419,29 @@ namespace Spectrum.Base {
         },
       };
 
+    // Flash is Background's flat color fill made momentary: instead of painting
+    // every frame it paints the whole dome only when LayerTrigger fires, then
+    // fades out (docs/triggers.md — same fill-then-Fade playhead as Stamp, using
+    // domeGlobalFadeSpeed). So it shares Background's `color` and the full
+    // trigger param set (Ripple/Stamp's), defaulting to the Beat source for a
+    // strobe-on-the-beat. `level`/`interval` tune the Audio source; Manual (the
+    // native Fire button) and a bound wand `button` fire it regardless.
+    private static readonly DomeLayerParam[] FlashParams = new DomeLayerParam[] {
+      new DomeLayerParam {
+        Key = "color", Label = "Color",
+        Type = DomeLayerParamType.Color,
+        Min = 0, Max = 0xFFFFFF, Default = 0xFFFFFF,
+      },
+      new DomeLayerParam {
+        Key = "trigger", Label = "Trigger",
+        Type = DomeLayerParamType.Enum,
+        Options = TriggerSourceOptions, Default = 1, // Beat
+      },
+      TriggerButtonParam,
+      TriggerLevelParam,
+      TriggerIntervalParam,
+    };
+
     // Visualizer-consumed params for the wave layer: read in Visualize().
     private static readonly DomeLayerParam[] WaveParams = new DomeLayerParam[] {
       new DomeLayerParam {
@@ -466,6 +491,134 @@ namespace Spectrum.Base {
       },
     };
 
+    // Point Cloud's tuning, all visualizer-consumed (read in Visualize()). A
+    // new standalone orientation layer with no pre-layers global, so no
+    // LegacySetting on any of these. `count` reseeds the spot lattice when it
+    // changes; the rest tune the per-frame physics and the drawn spot size.
+    private static readonly DomeLayerParam[] PointCloudParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "count", Label = "Spot Count",
+          Type = DomeLayerParamType.Double,
+          Min = 4, Max = 160, Step = 1, Default = 48,
+        },
+        new DomeLayerParam {
+          Key = "spotSize", Label = "Spot Size",
+          Type = DomeLayerParamType.Double,
+          Min = 0.02, Max = 0.5, Step = 0.01, Default = 0.14,
+        },
+        new DomeLayerParam {
+          Key = "pushRadius", Label = "Push Radius",
+          Type = DomeLayerParamType.Double,
+          Min = 0.05, Max = 1.5, Step = 0.05, Default = 0.5,
+        },
+        new DomeLayerParam {
+          Key = "pushStrength", Label = "Push Strength",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 0.1, Step = 0.005, Default = 0.02,
+        },
+        new DomeLayerParam {
+          Key = "springStrength", Label = "Spring Strength",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 0.1, Step = 0.005, Default = 0.01,
+        },
+        new DomeLayerParam {
+          Key = "damping", Label = "Damping",
+          Type = DomeLayerParamType.Double,
+          Min = 0.5, Max = 0.99, Step = 0.01, Default = 0.9,
+        },
+      };
+
+    // Shooting Star's tuning, all visualizer-consumed (read in Visualize()). A
+    // new standalone orientation layer with no pre-layers global, so no
+    // LegacySetting on any of these. Dots are born just off the rim and
+    // accelerate toward the wand aim point; `spawnRate` is stars/sec, the
+    // physics knobs are in centered (u,v) units per second, `trail` is the
+    // per-second brightness retention of the streak, and `homing` re-reads the
+    // live wand each frame (curving toward a moving wand) vs. staying ballistic
+    // toward the aim captured at spawn.
+    private static readonly DomeLayerParam[] ShootingStarParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "spawnRate", Label = "Spawn Rate",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 10, Step = 0.25, Default = 2,
+        },
+        new DomeLayerParam {
+          Key = "accel", Label = "Acceleration",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 32, Step = 0.1, Default = 2.0,
+        },
+        new DomeLayerParam {
+          Key = "maxSpeed", Label = "Max Speed",
+          Type = DomeLayerParamType.Double,
+          Min = 0.1, Max = 16, Step = 0.1, Default = 1.5,
+        },
+        new DomeLayerParam {
+          Key = "size", Label = "Dot Size",
+          Type = DomeLayerParamType.Double,
+          Min = 0.01, Max = 0.3, Step = 0.01, Default = 0.05,
+        },
+        new DomeLayerParam {
+          Key = "homing", Label = "Homing",
+          Type = DomeLayerParamType.Bool,
+          Default = 1,
+        },
+        // Trigger cluster (docs/triggers.md): each fire launches one extra star
+        // on top of the steady spawnRate. Defaults to Beat so stars streak in on
+        // the beat; level/interval tune the Audio source, button binds a wand
+        // button, and Manual (the Fire button) is always live.
+        new DomeLayerParam {
+          Key = "trigger", Label = "Trigger",
+          Type = DomeLayerParamType.Enum,
+          Options = TriggerSourceOptions, Default = 1, // Beat
+        },
+        TriggerButtonParam,
+        TriggerLevelParam,
+        TriggerIntervalParam,
+      };
+
+    // Gyroscope's tuning, all visualizer-consumed (read in Visualize()). A new
+    // standalone effect layer with no pre-layers global, so no LegacySetting on
+    // any of these. The gimbal motion is driven by device/idle orientation
+    // (OrientationCenter), not a clock, so there are no spin/precession/tilt
+    // knobs: `ringWidth` is the great-circle band thickness (dot-product units);
+    // `rotorRate` is the orbit speed of the bright highlight chasing the rotor
+    // rim (the flywheel's own DOF). The idle-drift wander speed (used when no
+    // wand is moving) is not exposed as a knob — the visualizer feeds a fixed
+    // level into the shared OrientationCenter. `outerColor`/`middleColor`/
+    // `innerColor` are the three nested gimbal rings' colors (defaults are the
+    // effect's original blue/teal/amber); the visualizer scales each by the
+    // ring's cross-section falloff so they still fade to black at the edges.
+    private static readonly DomeLayerParam[] GyroscopeParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "ringWidth", Label = "Ring Width",
+          Type = DomeLayerParamType.Double,
+          Min = 0.01, Max = 0.05, Step = 0.005, Default = 0.03,
+        },
+        new DomeLayerParam {
+          Key = "rotorRate", Label = "Rotor Speed",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 6, Step = 0.1, Default = 2.2,
+        },
+        new DomeLayerParam {
+          Key = "outerColor", Label = "Outer Ring Color",
+          Type = DomeLayerParamType.Color,
+          Min = 0, Max = 0xFFFFFF, Default = 0x267CFF, // blue
+        },
+        new DomeLayerParam {
+          Key = "middleColor", Label = "Middle Ring Color",
+          Type = DomeLayerParamType.Color,
+          Min = 0, Max = 0xFFFFFF, Default = 0x26FFE4, // teal
+        },
+        new DomeLayerParam {
+          Key = "innerColor", Label = "Inner Ring Color",
+          Type = DomeLayerParamType.Color,
+          Min = 0, Max = 0xFFFFFF, Default = 0xFFB526, // amber
+        },
+      };
+
     // The visualizer-consumed schema for a layer key. Empty for every key that
     // has no tunables.
     public static IReadOnlyList<DomeLayerParam> ParamsFor(string key) {
@@ -490,6 +643,14 @@ namespace Spectrum.Base {
           return MetaballParams;
         case "background":
           return BackgroundParams;
+        case "flash":
+          return FlashParams;
+        case "point-cloud":
+          return PointCloudParams;
+        case "shooting-star":
+          return ShootingStarParams;
+        case "gyroscope":
+          return GyroscopeParams;
         default:
           return NoParams;
       }

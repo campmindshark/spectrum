@@ -85,6 +85,7 @@ namespace Spectrum {
       vm.MoveUpRequested += this.MoveRowUp;
       vm.MoveDownRequested += this.MoveRowDown;
       vm.FireRequested += this.FireRow;
+      vm.ClearRequested += this.ClearRow;
       return vm;
     }
 
@@ -100,6 +101,7 @@ namespace Spectrum {
       vm.MoveUpRequested += this.MoveRowUp;
       vm.MoveDownRequested += this.MoveRowDown;
       vm.FireRequested += this.FireRow;
+      vm.ClearRequested += this.ClearRow;
       // New layer goes on top (front).
       this.Rows.Insert(0, vm);
       this.Publish();
@@ -140,6 +142,21 @@ namespace Spectrum {
       counters.TryGetValue(layerKey, out int count);
       counters[layerKey] = count + 1;
       this.config.domeLayerFireCounters = counters;
+    }
+
+    // Bump this row's manual-clear counter, exactly like FireRow. A layer that
+    // holds accumulated live state (Shooting Star) edge-detects the bump and
+    // drops it; layers with no such state ignore it (harmless no-op).
+    private void ClearRow(DomeLayerRowViewModel row) {
+      string layerKey = row.VisualizerKey;
+      if (layerKey == null) {
+        return;
+      }
+      var counters = new Dictionary<string, int>(
+        this.config.domeLayerClearCounters ?? new Dictionary<string, int>());
+      counters.TryGetValue(layerKey, out int count);
+      counters[layerKey] = count + 1;
+      this.config.domeLayerClearCounters = counters;
     }
 
     // Rebuild config.domeLayerStack from the current rows (bottom row = index 0)
