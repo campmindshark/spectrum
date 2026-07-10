@@ -76,7 +76,9 @@ namespace Spectrum {
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "gradientSpeed");
 
       buffer.Fade(1 - Math.Pow(10, -this.config.domeGlobalFadeSpeed), 0);
-      buffer.HueRotate(Math.Pow(10, -this.config.domeGlobalHueSpeed));
+      // Hue rotation is now applied globally by LEDDomeOutput, which rotates
+      // every contributing layer's persisted buffer once per composited
+      // frame — not per layer here.
       double level = this.audio.Volume;
       // Sqrt makes values larger and gives more resolution for lower values
       double adjustedLevel = Math.Clamp(Math.Sqrt(level), 0.1, 1);
@@ -174,7 +176,7 @@ namespace Spectrum {
         var sizeLimit = size * adjustedLevel;
         if(val <= sizeLimit) {
           // use level to determine which colors to use
-          int whichGradient = (int)(level * 8);
+          int whichGradient = Math.Min(7, (int)(level * 8));
           pixel.color = this.dome.GetGradientColor(
               whichGradient,
               gradientVal,

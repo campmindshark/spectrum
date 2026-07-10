@@ -63,21 +63,19 @@ namespace Spectrum {
     private double racer_spacing = 0;
 
     private class Racer {
-      public double Y { get; protected set; }  // Location in height 1 is top, 0 is bottom.
       public double Angle { get; protected set; } // Location of the Racer in Radians, -pi to pi
       public double Radians { get; protected set; } // Length of the Racer in Radians, 0 to 2*pi
       private int idx; // Length of the Racer in Radians, 0 to 2*pi
       private double AccumulatedSeconds;
       private RacerConfig conf;
 
-      public Racer(int idx, int num_racers, RacerConfig racer_config) {
+      public Racer(int idx, RacerConfig racer_config) {
         conf = racer_config;
         double width = conf.size == Size.Small ? 1.0 / 8 :
           conf.size == Size.Medium ? 1.0 / 4 :
           conf.size == Size.Large ? 3.0 / 4 :
           1;
         this.idx = idx;
-        Y = 1.0 * idx / num_racers + .5;
         Angle = 0;
         Radians = 2 * Math.PI * width;
         AccumulatedSeconds = 0;
@@ -156,7 +154,11 @@ namespace Spectrum {
     private Racer[] Racers { get; set; }
     private long lastTicks { get; set; }
 
-    private Tuple<Racer, double, double, Racer> GetRacer(double Y, double ang) {
+    // Out-params instead of a Tuple return: this runs once per lit pixel per
+    // frame (~4,500 times), and the old Tuple<Racer,double,double,Racer>
+    // allocated a heap object every call (with the racer redundantly stored
+    // twice) just to smuggle three values out.
+    private bool TryGetRacer(double Y, double ang, out Racer racer, out double locY, out double locAng) {
       // e.g., say 2 racers, racer0 centered on .25; racer1 centered on .75.
       // Y = .4. We should return the first racer if in spacing.
       if (Y > .9999) {
@@ -164,11 +166,17 @@ namespace Spectrum {
       }
       double racer_loc_y = Y * racerConfig.Length; // Scale from 0 to num_racers
       int racer_idx = (int)(racer_loc_y);
-      racer_loc_y -= racer_idx; // Scale from 0 to 1, same as  
+      racer_loc_y -= racer_idx; // Scale from 0 to 1, same as
       racer_loc_y -= .5; // Scale from -.5 to .5
       racer_loc_y = Math.Abs(racer_loc_y);
-      if (racer_loc_y > racer_spacing) {
-        return null;
+      racer = null;
+      locY = 0;
+      locAng = 0;
+      // racer_spacing is padding between racers: 0 means bands touch (half
+      // width .5, full coverage), 1 means a racer has size 0.
+      double half_width = (1 - racer_spacing) / 2;
+      if (racer_loc_y > half_width) {
+        return false;
       }
       Racer r = this.Racers[racer_idx];
       // Offset is how many radians ahead of the start angle.
@@ -184,14 +192,16 @@ namespace Spectrum {
         offset += Math.PI * 2;
       }
       if (offset < 2 * Math.PI - r.Radians) {
-        return null;
+        return false;
       }
       // Some more manipulation to get the percentage in the range
       //   offset > 2*Math.PI - r.Radians
       //   r.Radians > 2*Math.PI - offset
       //   1 > (2*Math.PI - offset) / r.Radians
-      double racer_loc_ang = 1 - (2 * Math.PI - offset) / r.Radians;
-      return new Tuple<Racer, double, double, Racer>(r, racer_loc_y, racer_loc_ang, r);
+      racer = r;
+      locY = racer_loc_y;
+      locAng = 1 - (2 * Math.PI - offset) / r.Radians;
+      return true;
     }
 
     public LEDDomeRaceVisualizer(
@@ -210,7 +220,7 @@ namespace Spectrum {
       this.Racers = new Racer[racerConfig.Length];
       for (int i = 0; i < racerConfig.Length; i++) {
         var rconf = racerConfig[i];
-        this.Racers[i] = new Racer(i, racerConfig.Length, rconf);
+        this.Racers[i] = new Racer(i, rconf);
       }
       this.lastTicks = -1;
       // This call is necessary to make sure the Operator considers this
@@ -268,6 +278,13 @@ namespace Spectrum {
         }
         // Any code that you want to run when the Visualizer is enabled or when
         // it's disabled should go here
+        if (value) {
+          // Re-enabling after any gap (layer removed from the stack, operator
+          // off, etc.) must not let Visualize() integrate the elapsed gap as
+          // motion -- MoveRads only unwinds 2*pi per frame, so a large enough
+          // gap would leave racers spinning invisibly for many frames.
+          this.lastTicks = -1;
+        }
         this.enabled = value;
       }
     }
@@ -310,16 +327,13 @@ namespace Spectrum {
       //-----------------------------------------------------------------------
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
-        Tuple<Racer, double, double, Racer> loc =
-          this.GetRacer(this.pixelHeight[i], this.pixelAngle[i]);
-        if (loc == null) {
+        if (!this.TryGetRacer(this.pixelHeight[i], this.pixelAngle[i], out Racer racer, out double locY, out double locAng)) {
           // color = 0 is off. Intentionally opaque black (not Clear): a
           // foreground Race layer under Over occludes with black between racers.
           this.buffer.pixels[i].color = 0;
         } else {
           // Let the racer choose its color
-          this.buffer.pixels[i].color =
-            loc.Item4.Color(dome, config, loc.Item2, loc.Item3);
+          this.buffer.pixels[i].color = racer.Color(dome, config, locY, locAng);
         }
       }
     }

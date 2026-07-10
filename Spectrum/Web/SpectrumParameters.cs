@@ -51,18 +51,12 @@ namespace Spectrum.Web {
         // layer's Params bag, served by LayersController rather than here.
         new DoubleParameter("domeGlobalFadeSpeed", user, 0.0, 3.0,
           c => c.domeGlobalFadeSpeed, (c, v) => c.domeGlobalFadeSpeed = v),
-        new DoubleParameter("domeGlobalHueSpeed", user, 1.0, 3.0,
+        new DoubleParameter("domeGlobalHueSpeed", user, 0.0, 3.0,
           c => c.domeGlobalHueSpeed, (c, v) => c.domeGlobalHueSpeed = v),
 
         // The dome layer stack replaces the old single-visualizer selector; it
         // is compound state served by LayersController (GET/PUT /api/layers) and
         // broadcast on the SSE "layers" frame, not a field-level parameter here.
-
-        // Orientation controls — mirrors the "Display contours" checkbox in the
-        // VJ HUD (VJHUDWindow orientationContours), toggling contour lines in the
-        // Quaternion Paintbrush visualizer.
-        new BoolParameter("orientationShowContours", user,
-          c => c.orientationShowContours, (c, v) => c.orientationShowContours = v),
 
         // Global flash
         new DoubleParameter("flashSpeed", user, 0.0, 32.0,

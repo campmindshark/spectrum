@@ -238,12 +238,19 @@ namespace Spectrum.LEDs {
       domeStrutsPerBox = total;
     }
 
+    // Live wand angle for the prism blends' "Follow Orientation" option
+    // (docs/prism.md). Nullable — a dome wired up without an orientation source
+    // simply never follows and the blends use their static angle.
+    private readonly OrientationAngleProvider orientationAngle;
+
     public LEDDomeOutput(
-      Configuration config, RuntimeTelemetry telemetry, BeatBroadcaster beat
+      Configuration config, RuntimeTelemetry telemetry, BeatBroadcaster beat,
+      OrientationAngleProvider orientationAngle = null
     ) {
       this.config = config;
       this.telemetry = telemetry;
       this.beat = beat;
+      this.orientationAngle = orientationAngle;
       this.visualizers = new List<Visualizer>();
       this.RebuildCableMapping();
       this.config.PropertyChanged += ConfigUpdated;
@@ -396,6 +403,23 @@ namespace Spectrum.LEDs {
     // rebakes and is index-aligned pixel-for-pixel with every layer buffer.
     private LEDDomeOutputBuffer compositeBuffer;
 
+    // Wall clock for the global hue rotation's per-frame increment. The
+    // rotation is applied to the layers' own persistent buffers (which are
+    // faded, not cleared, so in-place rotations accumulate across frames) —
+    // never to the composite, whose pixels include this frame's fresh draws.
+    private readonly FrameClock hueClock = new FrameClock();
+
+    // Pre-pass snapshot the spatial prism blends (ChromaticFringe, EdgeSpectrum)
+    // read while they mutate compositeBuffer — one reusable copy, lazily created
+    // like compositeBuffer. Never touched unless such a blend is active.
+    private LEDDomeOutputBuffer scratchBuffer;
+    // Wall-clock seconds accumulated while compositing, driving the time-varying
+    // prism params (ChromaticFringe angle spin, Iridescence light spin). Ticked
+    // every frame off its own FrameClock so the motion is smooth and frame-rate
+    // independent; unbounded but double-precision holds seconds fine.
+    private double prismSeconds = 0;
+    private readonly FrameClock prismClock = new FrameClock();
+
     // One layer of config.domeLayerStack resolved to a live visualizer plus its
     // blend settings, cached so the per-frame path allocates nothing. Whether the
     // visualizer actually ran (Enabled) is still checked per frame, not cached.
@@ -403,6 +427,12 @@ namespace Spectrum.LEDs {
       public DomeLayerVisualizer visualizer;
       public DomeBlendMode blendMode;
       public double opacity;
+      // The immutable stack snapshot entry, held so the compositor can read a
+      // blend's CompositorConsumed params (the prism family) without re-scanning
+      // config.domeLayerStack. Safe to alias: published settings are never
+      // mutated in place (whole-stack snapshot swap), and resolvedStack is
+      // invalidated whenever domeLayerStack changes.
+      public DomeLayerSettings settings;
     }
     // Rebuilt lazily on the operator thread whenever the stack changes. volatile
     // so a set-false from ConfigUpdated (UI/web thread) is seen promptly by the
@@ -433,6 +463,7 @@ namespace Spectrum.LEDs {
             visualizer = visualizer,
             blendMode = layer.BlendMode,
             opacity = layer.Opacity,
+            settings = layer,
           });
         }
       }
@@ -448,6 +479,12 @@ namespace Spectrum.LEDs {
     private void Composite() {
       this.EnsureResolvedStack();
       ResolvedLayer[] stack = this.resolvedStack;
+
+      // Advance the prism spin clock every frame (even when no prism blend is
+      // active) so the time-varying params move in real wall-clock time and
+      // re-enabling a spin doesn't jump. Tick() returns nominal frames; convert
+      // to seconds.
+      this.prismSeconds += this.prismClock.Tick() / FrameClock.NominalFps;
 
       // A layer contributes only if the Operator scheduled its visualizer this
       // frame (Enabled true: inputs enabled, not quarantined). The bottom-most
@@ -466,7 +503,7 @@ namespace Spectrum.LEDs {
           this.compositeBuffer.CompositeBottom(src, layer.opacity);
           destInitialized = true;
         } else {
-          this.compositeBuffer.CompositeBlend(src, layer.blendMode, layer.opacity);
+          this.BlendLayer(layer, src);
         }
       }
       if (!destInitialized) {
@@ -474,6 +511,142 @@ namespace Spectrum.LEDs {
       }
       this.WriteBuffer(this.compositeBuffer);
       this.Flush();
+      // Post-frame: advance the global hue rotation on the layers' persisted
+      // pixels, so it lands "before" (underneath) whatever the layers draw
+      // next frame — fresh pixels always reach the wire unrotated.
+      this.ApplyGlobalHueRotation();
+    }
+
+    // Blend one upper layer into compositeBuffer. Plain and adjustment blends go
+    // straight through CompositeBlend; the prism family (docs/prism.md) needs
+    // extra state the per-pixel path can't carry — a pre-pass snapshot for the
+    // spatial blends, baked normals for Iridescence, and the compositor-consumed
+    // blend params — so they dispatch here.
+    private void BlendLayer(ResolvedLayer layer, LEDDomeOutputBuffer src) {
+      DomeLayerSettings settings = layer.settings;
+      switch (layer.blendMode) {
+        case DomeBlendMode.ChromaticFringe: {
+          this.SnapshotComposite();
+          double offset = DomeLayerSettings.BlendParamValue(
+            settings, DomeBlendMode.ChromaticFringe, "offset");
+          double spin = DomeLayerSettings.BlendParamValue(
+            settings, DomeBlendMode.ChromaticFringe, "spin");
+          bool follow = DomeLayerSettings.BlendParamValue(
+            settings, DomeBlendMode.ChromaticFringe, "follow") != 0;
+          double effAngle = this.PrismAngle(spin, follow);
+          this.compositeBuffer.CompositeChromaticFringe(
+            src, this.scratchBuffer, layer.opacity, effAngle,
+            LEDDomeOutputBuffer.RadiusBin(offset));
+          break;
+        }
+        case DomeBlendMode.EdgeSpectrum: {
+          this.SnapshotComposite();
+          double strength = DomeLayerSettings.BlendParamValue(
+            settings, DomeBlendMode.EdgeSpectrum, "strength");
+          double offset = DomeLayerSettings.BlendParamValue(
+            settings, DomeBlendMode.EdgeSpectrum, "offset");
+          this.compositeBuffer.CompositeEdgeSpectrum(
+            src, this.scratchBuffer, layer.opacity, strength,
+            LEDDomeOutputBuffer.RadiusBin(offset));
+          break;
+        }
+        case DomeBlendMode.Iridescence: {
+          double strength = DomeLayerSettings.BlendParamValue(
+            settings, DomeBlendMode.Iridescence, "strength");
+          double bands = DomeLayerSettings.BlendParamValue(
+            settings, DomeBlendMode.Iridescence, "bands");
+          double spin = DomeLayerSettings.BlendParamValue(
+            settings, DomeBlendMode.Iridescence, "spin");
+          bool follow = DomeLayerSettings.BlendParamValue(
+            settings, DomeBlendMode.Iridescence, "follow") != 0;
+          double azim = this.PrismAngle(spin, follow);
+          // Virtual light swept in azimuth, held at a fixed elevation so the
+          // sheen bands read as horizontal-ish arcs across the dome.
+          var light = new System.Numerics.Vector3(
+            (float)Math.Cos(azim), (float)Math.Sin(azim), 0.6f);
+          this.compositeBuffer.CompositeIridescence(
+            src, layer.opacity, light, bands, strength);
+          break;
+        }
+        default:
+          this.compositeBuffer.CompositeBlend(src, layer.blendMode, layer.opacity);
+          break;
+      }
+    }
+
+    // Resolve a prism blend's effective angle. When `follow` is set and a wand
+    // is actually the orientation center, the wand supplies the angle entirely.
+    // Otherwise (follow off, or no wand available) the angle is driven purely by
+    // the time-varying `spin` (turns/sec) — so spin 0 holds a fixed axis and any
+    // nonzero spin sweeps through every angle.
+    private double PrismAngle(double spin, bool follow) {
+      if (follow && this.orientationAngle != null &&
+          this.orientationAngle.TryGetAngle(out double wandAngle)) {
+        return wandAngle;
+      }
+      return 2 * Math.PI * spin * this.prismSeconds;
+    }
+
+    // Copy the current composite into the reusable scratch buffer so a spatial
+    // prism blend can read the pre-pass state while it mutates compositeBuffer.
+    // Taken immediately before each spatial blend because the composite changes
+    // between layers. The scratch buffer is lazily created via
+    // MakeDomeOutputBuffer so it stays index-aligned with the composite.
+    private void SnapshotComposite() {
+      if (this.scratchBuffer == null) {
+        this.scratchBuffer = this.MakeDomeOutputBuffer();
+      }
+      this.scratchBuffer.CopyFrom(this.compositeBuffer);
+    }
+
+    // The output-wide "Hue Rotation" (the knob that used to be applied
+    // per-layer, redundantly and inconsistently, by Paintbrush and Radial).
+    // Driven by domeGlobalHueSpeed: 0 = off; otherwise higher = slower. The
+    // beat pulse (3p^2 - 3p + 1, always positive so the rotation only moves
+    // forward) reproduces the modulation the Paintbrush layer applied on its
+    // own buffer.
+    //
+    // Sequencing: global postprocessing must only ever touch *already
+    // existing* pixels — a pixel a layer painted this frame reaches the wire
+    // at exactly its drawn hue, and starts rotating from the next frame on
+    // (same contract as the per-layer Fade each visualizer applies before it
+    // draws). So rather than rotating the composite (which includes this
+    // frame's fresh draws), rotate each contributing layer's persistent
+    // buffer by one frame's increment *after* the frame has been composited
+    // and written. The layer buffers are faded, not cleared, so the per-frame
+    // increments accumulate naturally — older trail pixels have rotated
+    // further than fresh ones, restoring the along-trail hue gradient.
+    private void ApplyGlobalHueRotation() {
+      // Tick every frame (even when off) so re-enabling doesn't jump.
+      double frameScale = this.hueClock.Tick();
+      if (this.config.domeGlobalHueSpeed <= 0) {
+        return;
+      }
+      double rate = Math.Pow(10, -this.config.domeGlobalHueSpeed);
+      double p = this.beat.ProgressThroughMeasure;
+      double mod = 3 * p * p - 3 * p + 1;
+      double delta = rate * mod * frameScale;
+      ResolvedLayer[] stack = this.resolvedStack;
+      for (int s = 0; s < stack.Length; s++) {
+        DomeLayerVisualizer visualizer = stack[s].visualizer;
+        // Rotate exactly the buffers that contributed to this frame, once
+        // each — two stack entries with the same VisualizerKey share one
+        // visualizer instance (and buffer), so skip repeats.
+        if (!visualizer.Enabled) {
+          continue;
+        }
+        bool alreadyRotated = false;
+        for (int t = 0; t < s; t++) {
+          if (ReferenceEquals(stack[t].visualizer, visualizer)) {
+            alreadyRotated = true;
+            break;
+          }
+        }
+        if (alreadyRotated) {
+          continue;
+        }
+        visualizer.LayerBuffer.HueRotate(delta);
+      }
     }
 
     // Per-frame snapshot of the beat/brightness state that every GetSingleColor /
@@ -517,12 +690,38 @@ namespace Spectrum.LEDs {
     private bool ShouldEnqueueDomeCommand =>
       this.config.domeSimulationEnabled && this.SimulatorHasConsumer;
 
+    // Hard ceiling on SimulatorCommandQueue depth. The consumer
+    // (DomeSimulatorWindow) drains on a ~100Hz UI tick, but the operator thread
+    // produces at up to 400Hz, and if the UI thread stalls (window dragged,
+    // minimized, slow machine) the queue would otherwise grow without bound. A
+    // display only needs the most recent state, so past this cap we drop the
+    // oldest commands. Sized well above a single full-dome frame: the per-pixel
+    // diagnostic/calibration visualizers enqueue one command per lit pixel
+    // (~4,500) plus a Flush every frame, and several such frames can sit in the
+    // queue between UI ticks even when the consumer is keeping up — so trimming
+    // engages only under a genuine stall, never during healthy rendering.
+    private const int SimulatorCommandQueueCap = 20000;
+
+    // Enqueue a simulator command, dropping the oldest queued commands if the
+    // backlog has grown past SimulatorCommandQueueCap. TryDequeue here races the
+    // consumer's own dequeues, which ConcurrentQueue handles; the consumer
+    // tolerates a command being pulled out from under it (see
+    // DomeSimulatorWindow.Update).
+    private void EnqueueSimulatorCommand(DomeLEDCommand command) {
+      this.SimulatorCommandQueue.Enqueue(command);
+      while (
+        this.SimulatorCommandQueue.Count > SimulatorCommandQueueCap &&
+        this.SimulatorCommandQueue.TryDequeue(out _)
+      ) {
+      }
+    }
+
     public void Flush() {
       if (this.opcAPI != null) {
          this.opcAPI.Flush();
       }
       if (this.ShouldEnqueueDomeCommand) {
-        this.SimulatorCommandQueue.Enqueue(
+        this.EnqueueSimulatorCommand(
           new DomeLEDCommand() { isFlush = true }
         );
       }
@@ -587,7 +786,7 @@ namespace Spectrum.LEDs {
       this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
 
       if (this.ShouldEnqueueDomeCommand) {
-        this.SimulatorCommandQueue.Enqueue(new DomeLEDCommand() {
+        this.EnqueueSimulatorCommand(new DomeLEDCommand() {
           strutIndex = strutIndex,
           ledIndex = ledIndex,
           color = color,
@@ -604,7 +803,7 @@ namespace Spectrum.LEDs {
       this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
 
       if (this.ShouldEnqueueDomeCommand) {
-        this.SimulatorCommandQueue.Enqueue(new DomeLEDCommand() {
+        this.EnqueueSimulatorCommand(new DomeLEDCommand() {
           strutIndex = strutIndex,
           ledIndex = ledIndex,
           color = color,
@@ -692,7 +891,7 @@ namespace Spectrum.LEDs {
         }
       }
       if (simulationEnabled) {
-        this.SimulatorCommandQueue.Enqueue(new DomeLEDCommand() {
+        this.EnqueueSimulatorCommand(new DomeLEDCommand() {
           frame = frame,
         });
       }

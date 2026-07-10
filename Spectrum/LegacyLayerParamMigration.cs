@@ -41,7 +41,7 @@ namespace Spectrum {
       bool valid = stack != null && stack.Count > 0;
       if (valid) {
         foreach (DomeLayerSettings layer in stack) {
-          // Any picker-offerable key is valid — not just the legacy nine, or a
+          // Any picker-offerable key is valid — not just the legacy eight, or a
           // saved stack containing e.g. a wave/twinkle layer would be wiped
           // here on every load.
           if (

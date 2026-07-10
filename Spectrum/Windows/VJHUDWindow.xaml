@@ -336,9 +336,6 @@
                 <Button x:Name="orientationCalibrate" Content="Set calibration" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Click="OrientationCalibrationClicked" Padding="0,0" />
                 <TextBox x:Name="orientationDeviceSpotlightInput" Text="ID"  Margin ="90,4,4,4" Width="21" TextChanged="OrientationDeviceSpotlightChanged"/>
               </Grid>
-              <Grid Height="24">
-                <CheckBox x:Name="orientationContours" Content="Display contours" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Padding="0,0" />
-              </Grid>
               <Grid Height="28"/>
                             <Grid Height="28"/>
                             <Grid Height="28"/>
@@ -438,7 +435,7 @@
                         </Grid>
                         <Grid Height="24">
                             <Label Content="Global Hue Speed" Margin="-2,3,2.4,0" Padding="0" />
-                            <Slider x:Name="domeGlobalHueSpeedSlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="1.0" Maximum="3.0" LargeChange="1" SmallChange="0.2" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                            <Slider x:Name="domeGlobalHueSpeedSlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="0.0" Maximum="3.0" LargeChange="1" SmallChange="0.2" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                             <Label x:Name="domeGlobalHueSpeedLabel" Content="0" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
                         </Grid>
                         <Grid Height="24">

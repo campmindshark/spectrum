@@ -98,7 +98,11 @@ namespace Spectrum {
       var orientationCenter = new OrientationCenter(config, orientation);
 
       this.outputs = new List<Output>();
-      var dome = new LEDDomeOutput(config, this.Telemetry, this.BeatBroadcaster);
+      // orientationCenter doubles as the prism blends' live wand-angle source
+      // (Follow Orientation), so ChromaticFringe/Iridescence can track the
+      // spotlighted wand — see docs/prism.md.
+      var dome = new LEDDomeOutput(
+        config, this.Telemetry, this.BeatBroadcaster, orientationCenter);
       this.outputs.Add(dome);
       this.DomeOutput = dome;
 
@@ -147,11 +151,6 @@ namespace Spectrum {
         orientation,
         dome
         ));
-      this.visualizers.Add(new LEDDomeQuaternionMultiTestVisualizer(
-        this.config,
-        orientation,
-        dome
-        ));
       this.visualizers.Add(new LEDDomeQuaternionPaintbrushVisualizer(
         this.config,
         audio,
@@ -169,7 +168,6 @@ namespace Spectrum {
       ));
       this.visualizers.Add(new LEDDomeSnakesVisualizer(
         this.config,
-        audio,
         dome
       ));
       this.visualizers.Add(new LEDDomeTVStaticVisualizer(
@@ -393,9 +391,8 @@ namespace Spectrum {
           try {
             visualizer.Visualize();
           } catch (Exception e) {
-            // Keep the engine running even if one visualizer throws mid-frame
-            // (see findings 1-2 in docs/viz_issues.md for reachable render-path
-            // throws). Repeat offenders are quarantined so they stop taking the
+            // Keep the engine running even if one visualizer throws mid-frame.
+            // Repeat offenders are quarantined so they stop taking the
             // output down and stop spamming the log.
             this.RecordVisualizerFailure(visualizer, e);
           }

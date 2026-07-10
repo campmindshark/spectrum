@@ -158,7 +158,8 @@ namespace Spectrum {
     private static readonly DomeBlendMode[] blendModes = new DomeBlendMode[] {
       DomeBlendMode.Over, DomeBlendMode.Add, DomeBlendMode.Screen,
       DomeBlendMode.Lighten, DomeBlendMode.Multiply, DomeBlendMode.Desaturate,
-      DomeBlendMode.Hue,
+      DomeBlendMode.Hue, DomeBlendMode.ChromaticFringe, DomeBlendMode.EdgeSpectrum,
+      DomeBlendMode.Iridescence,
     };
 
     // Generic per-layer param editors, rebuilt from the schema whenever the

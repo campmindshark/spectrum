@@ -139,9 +139,8 @@ namespace Spectrum {
     protected override void OnClosed(EventArgs e) {
       // Stop our update timer. A DispatcherTimer is rooted by the dispatcher, so
       // if we leave it running it keeps this closed window alive and keeps
-      // draining SimulatorCommandQueue — a documented single-consumer queue —
-      // racing any simulator opened later into the "Someone else is
-      // dequeueing!" throw.
+      // draining SimulatorCommandQueue — a single-consumer queue — stealing
+      // commands from any simulator opened later.
       if (this.timer != null) {
         this.timer.Stop();
         this.timer.Tick -= Update;
@@ -216,7 +215,11 @@ namespace Spectrum {
         bool result =
           this.dome.SimulatorCommandQueue.TryDequeue(out command);
         if (!result) {
-          throw new Exception("Someone else is dequeueing!");
+          // The producer trims the queue from the front when it overflows its
+          // cap (LEDDomeOutput.EnqueueSimulatorCommand), so a failed dequeue
+          // here just means an old command we were about to read got dropped —
+          // stop draining for this tick rather than treating it as an error.
+          break;
         }
         if (command.isFlush) {
           shouldRedraw = true;

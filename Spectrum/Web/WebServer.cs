@@ -182,6 +182,22 @@ namespace Spectrum.Web {
           : Results.BadRequest(new { error });
       });
 
+      // Manual fire for one layer (docs/triggers.md): bumps that visualizer's
+      // fire counter so a triggerable layer fires once. Not a stack edit, so it
+      // returns no body and doesn't broadcast a "layers" frame.
+      app.MapPost("/api/layers/{visualizerKey}/fire", async (string visualizerKey) => {
+        (bool ok, string error) = await this.layers.FireAsync(visualizerKey);
+        return ok ? Results.Ok() : Results.BadRequest(new { error });
+      });
+
+      // Manual clear for one layer (docs/triggers.md): bumps that visualizer's
+      // clear counter so a layer holding live state (Shooting Star) drops it.
+      // Parallel to fire — no body, no "layers" frame.
+      app.MapPost("/api/layers/{visualizerKey}/clear", async (string visualizerKey) => {
+        (bool ok, string error) = await this.layers.ClearAsync(visualizerKey);
+        return ok ? Results.Ok() : Results.BadRequest(new { error });
+      });
+
       // ---- Dome scenes (user scope). Named snapshots of the whole layer stack
       // plus the two cross-layer globals. Save/delete change the scene *list*,
       // broadcast on the SSE "scenes" frame; apply replaces the stack + globals,

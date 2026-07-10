@@ -14,9 +14,7 @@ namespace Spectrum.LEDs {
    * never implement it, keep the raw SetPixel + self-Flush path, and therefore
    * can never appear in a layer stack.
    *
-   * LayerKey is a stable string id used in config files; the fixed set is:
-   * volume, radial, race, snakes, quaternion-test, quaternion-multi-test,
-   * quaternion-paintbrush, splat, tv-static.
+   * LayerKey is a stable string id used in config files.
    */
   public interface DomeLayerVisualizer : Visualizer {
     string LayerKey { get; }

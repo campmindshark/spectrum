@@ -214,11 +214,6 @@ namespace Spectrum {
       get => _orientationCalibrate;
       set => SetField(ref _orientationCalibrate, value);
     }
-    private bool _orientationShowContours = false;
-    public bool orientationShowContours {
-      get => _orientationShowContours;
-      set => SetField(ref _orientationShowContours, value);
-    }
     // Initialized to "" (not left null) so both the receiver's IsNullOrEmpty
     // check and StringParameter.Coerce/Get have a real string, and a
     // spectrum_config.xml predating this property (which leaves the field

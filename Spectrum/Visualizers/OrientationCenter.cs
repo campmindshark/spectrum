@@ -31,13 +31,13 @@ namespace Spectrum.Visualizers {
   // (once per active layer) is harmless: the second and later calls see
   // near-zero elapsed wall time and contribute negligible extra drift,
   // instead of compounding idle-drift speed by the number of active layers.
-  class OrientationCenter {
+  class OrientationCenter : OrientationAngleProvider {
 
     public static readonly Vector3 Spot = new Vector3(-1, 0, 0);
     public static readonly Vector3 NegSpot = new Vector3(1, 0, 0);
 
     private const double IDLE_NOISE = 0.00015;
-    private const double IDLE_MOMENTUM_LIMIT = .005;
+    private const double IDLE_MOMENTUM_LIMIT = .003;
 
     // Multiplicative friction applied to the idle drift momentum each nominal
     // frame (raised to frameScale for frame-rate invariance, mirroring the
@@ -108,6 +108,24 @@ namespace Spectrum.Visualizers {
     // The position effects should draw around this frame: the spotlighted (or
     // first moving) wand's rotation, or the idle dummy pointer's orientation.
     public Quaternion CurrentCenter => this.currentCenter;
+
+    // OrientationAngleProvider: the spotlight center's azimuth in the projected
+    // plane, for the prism blends that follow the wand. Only reports a wand
+    // (returns true) when one is actually the center — idle drift and "no wand
+    // moving" report false so a following blend falls back to its static angle
+    // rather than chasing the screen-saver. The dome point the spotlight centers
+    // on is where Transform(pixel, rotation) hits Spot, i.e.
+    // Transform(Spot, conjugate(rotation)); its atan2 is the axis to follow.
+    public bool TryGetAngle(out double angle) {
+      if (this.idle || this.spotlightId == -1) {
+        angle = 0;
+        return false;
+      }
+      Vector3 center =
+        Vector3.Transform(Spot, Quaternion.Conjugate(this.currentCenter));
+      angle = Math.Atan2(center.Y, center.X);
+      return true;
+    }
 
     // Snapshots devices, filters to the moving ones, resolves the spotlight,
     // and advances the idle drift. Every active layer calls this once per
@@ -292,12 +310,17 @@ namespace Spectrum.Visualizers {
     // from a raw component flips when the sign does. For a single/dominant wand,
     // Normalize collapses PotentialAt's continuous-sign magnitude to a bare
     // +-rotation, so an isolated wand dipping through the equator snaps its hue.
-    // W*W is even in the quaternion (W and -W give the same value), so it stays
-    // continuous across that flip. Geometrically it's (1 + cos theta) / 2, where
-    // theta is the summed rotation's angle; it folds +theta and -theta together
-    // and so spans hue [0,1] over a smaller swing than the old (1 + W)/2 did.
+    // acos(|W|) is even in the quaternion (W and -W give the same value via the
+    // abs), so it stays continuous across that flip, same as the old W*W. But
+    // W*W = cos^2(theta/2) has zero slope right at W = 0 and W = +-1, so hue
+    // lingers near red (both endpoints of the hue wheel) whenever a wand sits
+    // near identity or a 180-degree flip -- exactly the orientations that come
+    // up most in practice. acos(|W|) advances at a constant rate in the
+    // rotation angle instead, so hue sweeps the wheel evenly rather than
+    // clumping at red.
     public static double HueFromColorCenter(Quaternion colorCenter) {
-      return colorCenter.W * colorCenter.W;
+      double halfAngle = Math.Acos(Math.Clamp(Math.Abs(colorCenter.W), -1, 1));
+      return 2 * halfAngle / Math.PI;
     }
 
     private float Nudge(double scale) {

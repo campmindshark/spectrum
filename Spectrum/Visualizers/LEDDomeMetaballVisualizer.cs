@@ -135,8 +135,11 @@ namespace Spectrum.Visualizers {
     private void RenderPixels(double level, double size, bool showContours) {
       double thresholdFactor = (size / 4) + level + .01;
       double threshold = 2 / thresholdFactor;
-      // High volumes desaturate the metaball.
-      double metaballSaturation = Math.Clamp(1.3 / level - 1, .2, 1);
+      // Only the very top end of the volume range desaturates the metaball;
+      // below DESAT_START it stays fully saturated.
+      const double DESAT_START = .85;
+      double desatAmount = Math.Clamp((level - DESAT_START) / (1 - DESAT_START), 0, 1);
+      double metaballSaturation = 1 - .8 * desatAmount;
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         Vector3 pixelPoint = this.pixelPositions[i];

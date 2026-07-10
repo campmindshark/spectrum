@@ -143,7 +143,6 @@ namespace Spectrum {
       this.Bind(nameof(this.config.beatInput), this.tempoSelectorHuman, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(0));
       this.Bind(nameof(this.config.beatInput), this.tempoSelectorMadmom, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(1));
       this.Bind(nameof(this.config.beatInput), this.tempoSelectorLink, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(2));
-      this.Bind(nameof(this.config.orientationShowContours), this.orientationContours, CheckBox.IsCheckedProperty);
     }
 
     private void Bind(

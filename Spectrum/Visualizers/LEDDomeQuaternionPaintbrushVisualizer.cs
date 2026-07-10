@@ -84,9 +84,6 @@ namespace Spectrum.Visualizers {
     private bool rippleFiring = false;
     private double rippleCooldown = RIPPLE_COOLDOWN_RESET;
 
-    // Contour state.
-    private double contourCounter = 0;
-
     public LEDDomeQuaternionPaintbrushVisualizer(
       Configuration config,
       AudioInput audio,
@@ -148,18 +145,19 @@ namespace Spectrum.Visualizers {
       double rippleStep =
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "rippleStep");
 
-      ApplyGlobalEffects(progress, frameScale);
+      ApplyGlobalEffects(frameScale);
       this.center.Update(level);
       UpdateStamp(progress, level);
       UpdateRipple(rippleCDStep, rippleStep, frameScale);
-      UpdateContour(level, frameScale);
       RenderPixels(level, size, twinkle, frameScale);
 
       lastProgress = progress;
     }
 
-    // Whole-buffer fade and beat-synced hue rotation.
-    private void ApplyGlobalEffects(double progress, double frameScale) {
+    // Whole-buffer fade. (Hue rotation is now applied globally by
+    // LEDDomeOutput, which rotates every contributing layer's persisted
+    // buffer once per composited frame — not per layer here.)
+    private void ApplyGlobalEffects(double frameScale) {
       // Fade is multiplicative per frame: each frame keeps the fraction
       // retention = 1 - 5^-fadeSpeed of the previous brightness. To hold the
       // same fade per unit of wall-clock time at any frame rate, that whole
@@ -169,7 +167,6 @@ namespace Spectrum.Visualizers {
       // 5^-fadeSpeed rather than the retention factor, a different quantity.)
       double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
       buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
-      buffer.HueRotate((3 * progress * progress - 3 * progress + 1) * Math.Pow(10, -this.config.domeGlobalHueSpeed) * frameScale);
       counter += frameScale;
     }
 
@@ -220,24 +217,15 @@ namespace Spectrum.Visualizers {
       }
     }
 
-    // Pulses the contour lines over time, scaled by loudness.
-    private void UpdateContour(double level, double frameScale) {
-      contourCounter += 4 * level * frameScale;
-      if (contourCounter >= 100) {
-        contourCounter = 0;
-      }
-    }
-
     // The single per-pixel loop. Composites twinkle, the metaball field, its
-    // contour lines, the ripple wave, and stamps. Everything but twinkle and
-    // stamps is a "keep the brighter color" blend, so we accumulate the winning
+    // the ripple wave, and stamps. Everything but twinkle and stamps is a
+    // "keep the brighter color" blend, so we accumulate the winning
     // (hue,sat,val) and pack to an int once per pixel.
     private void RenderPixels(double level, double size, double twinkle, double frameScale) {
       double thresholdFactor = (size / 4) + level + .01;
       double threshold = 2 / thresholdFactor;
       // High volumes desaturate the metaball.
       double metaballSaturation = Math.Clamp(1.3 / level - 1, .2, 1);
-      bool showContours = config.orientationShowContours;
       // Twinkle is a per-pixel chance each frame, so scale the probability by
       // frameScale to hold the twinkle rate (dots per second) steady.
       double twinkleDensity = twinkle * frameScale;
@@ -279,21 +267,6 @@ namespace Spectrum.Visualizers {
           if (1 > bestValue) {
             best = new Color(metaballHue, metaballSaturation, 1).ToInt();
             bestValue = 1;
-          }
-        }
-
-        // Contour - highlight level curves of the potential field.
-        if (showContours) {
-          double potentialContours = Math.Log(1000 * (potential - .5)) + contourCounter / 100;
-          double contourBracket = Math.Truncate(potentialContours);
-          double contourValue = potentialContours - contourBracket;
-          if (contourValue < .2) {
-            drawn = true;
-            double value = .8 - Math.Clamp(1 - contourBracket / 10, 0, .8);
-            if (value > bestValue) {
-              best = new Color(metaballHue, .4, value).ToInt();
-              bestValue = value;
-            }
           }
         }
 

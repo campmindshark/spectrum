@@ -92,6 +92,42 @@
     }
   }
 
+  // Fire one layer's manual trigger. POSTs to the per-layer fire endpoint (keyed
+  // by visualizerKey, which names a single layer since duplicates are disallowed)
+  // rather than PUTing the stack — firing bumps a counter, not the stack.
+  async function fireLayer(key) {
+    try {
+      const res = await fetch(
+        `/api/layers/${encodeURIComponent(key)}/fire`, { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setStatus(`fire: ${body.error || res.status}`, true);
+        return;
+      }
+      setStatus(`fired ${key}`);
+    } catch (e) {
+      setStatus(`fire: ${e}`, true);
+    }
+  }
+
+  // Clear one layer's live state. Same shape as fireLayer, bumping the clear
+  // counter instead — a layer holding accumulated particles (Shooting Star)
+  // drops them; layers with no such state ignore it.
+  async function clearLayer(key) {
+    try {
+      const res = await fetch(
+        `/api/layers/${encodeURIComponent(key)}/clear`, { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setStatus(`clear: ${body.error || res.status}`, true);
+        return;
+      }
+      setStatus(`cleared ${key}`);
+    } catch (e) {
+      setStatus(`clear: ${e}`, true);
+    }
+  }
+
   // Build one editor row for stack entry `idx`.
   function renderRow(layer, idx) {
     const row = document.createElement("div");
@@ -208,6 +244,26 @@
       swap(idx, idx - 1);
     });
     bottom.appendChild(down);
+
+    // Manual fire: bumps this layer's fire counter so a triggerable layer
+    // (OneShot Wave/Metaball, Ripple/Stamp) fires once. Not a stack edit, so it
+    // POSTs to a dedicated endpoint rather than PUTing the whole stack.
+    const fire = document.createElement("button");
+    fire.textContent = "🔥";
+    fire.title = "Fire (manual trigger)";
+    fire.addEventListener("click", () => {
+      fireLayer(layer.visualizerKey);
+    });
+    bottom.appendChild(fire);
+
+    // Manual clear: drops the layer's live particles (see clearLayer).
+    const clear = document.createElement("button");
+    clear.textContent = "🧹";
+    clear.title = "Clear (drop this layer's live particles)";
+    clear.addEventListener("click", () => {
+      clearLayer(layer.visualizerKey);
+    });
+    bottom.appendChild(clear);
 
     row.appendChild(bottom);
 

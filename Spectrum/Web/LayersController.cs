@@ -192,5 +192,51 @@ namespace Spectrum.Web {
       await this.gateway.InvokeAsync(() => this.config.domeLayerStack = newStack);
       return (true, null);
     }
+
+    // Manual fire (docs/triggers.md): bump the layer's monotonic fire counter so
+    // a triggerable layer (Wave/Metaball OneShot, Ripple/Stamp) fires once. Keyed
+    // by visualizerKey — the stack disallows duplicate visualizers, so the key
+    // names exactly one layer. A whole-dictionary copy-and-swap through the
+    // gateway, mirroring the native DomeLayersController.FireRow; firing is not a
+    // stack edit, so it doesn't route through ReplaceAsync/the "layers" frame.
+    // The counter (not a bool) is race-free across clients: each Fire just
+    // increments, none resets a shared flag.
+    public async Task<(bool ok, string error)> FireAsync(string visualizerKey) {
+      if (string.IsNullOrEmpty(visualizerKey)) {
+        return (false, "visualizerKey required");
+      }
+      if (Array.IndexOf(DomeLayerSettings.LayerKeys, visualizerKey) < 0) {
+        return (false, "unknown visualizer: " + visualizerKey);
+      }
+      await this.gateway.InvokeAsync(() => {
+        var counters = new Dictionary<string, int>(
+          this.config.domeLayerFireCounters ?? new Dictionary<string, int>());
+        counters.TryGetValue(visualizerKey, out int count);
+        counters[visualizerKey] = count + 1;
+        this.config.domeLayerFireCounters = counters;
+      });
+      return (true, null);
+    }
+
+    // Manual clear, exactly parallel to FireAsync but bumping the layer's
+    // domeLayerClearCounters entry (mirrors DomeLayersController.ClearRow). A
+    // layer that holds accumulated live state (Shooting Star) edge-detects the
+    // bump and drops it; layers with no such state ignore it (harmless no-op).
+    public async Task<(bool ok, string error)> ClearAsync(string visualizerKey) {
+      if (string.IsNullOrEmpty(visualizerKey)) {
+        return (false, "visualizerKey required");
+      }
+      if (Array.IndexOf(DomeLayerSettings.LayerKeys, visualizerKey) < 0) {
+        return (false, "unknown visualizer: " + visualizerKey);
+      }
+      await this.gateway.InvokeAsync(() => {
+        var counters = new Dictionary<string, int>(
+          this.config.domeLayerClearCounters ?? new Dictionary<string, int>());
+        counters.TryGetValue(visualizerKey, out int count);
+        counters[visualizerKey] = count + 1;
+        this.config.domeLayerClearCounters = counters;
+      });
+      return (true, null);
+    }
   }
 }

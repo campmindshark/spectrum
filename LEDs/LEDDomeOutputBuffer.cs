@@ -302,6 +302,46 @@ namespace Spectrum.LEDs {
       updateColor();
     }
 
+    // ---- Prism-family per-pixel steps (docs/prism.md) --------------------
+    // Live on the struct like Fade/CompositeBlend so they mutate _r/_g/_b
+    // directly and repack once. The buffer-level methods below do the spatial
+    // sampling / geometry (they own the neighbor table and normals) and hand the
+    // already-resolved neighbor values in here.
+
+    // ChromaticFringe: replace this composite pixel's R with the R sampled from
+    // one spatial offset and its B with the B from the opposite offset (G stays
+    // in place), faded in by `mask` (o * src alpha). srcR/srcB come from the
+    // pre-pass snapshot so the split never smears order-dependently along the
+    // pixel array.
+    public void ApplyChromaticFringe(double srcR, double srcB, double mask) {
+      _r = srcR * mask + _r * (1 - mask);
+      _b = srcB * mask + _b * (1 - mask);
+      updateColor();
+    }
+
+    // EdgeSpectrum: additively lay spectral colour onto a luminance edge. The
+    // caller has already scaled the add by mask * strength * gradient magnitude,
+    // so flat fills (magnitude 0) get nothing and contours light up.
+    public void ApplyEdgeSpectrum(double addR, double addG, double addB) {
+      _r += addR;
+      _g += addG;
+      _b += addB;
+      updateColor();
+    }
+
+    // Iridescence: recolour toward a spectral tint (already scaled to this
+    // pixel's own brightness by the caller, so black stays black), faded in by
+    // `w` (o * src alpha * strength). Like the Hue blend but keyed to geometry
+    // rather than a carried hue.
+    public void ApplyIridescence(
+      double tintR, double tintG, double tintB, double w
+    ) {
+      _r = tintR * w + _r * (1 - w);
+      _g = tintG * w + _g * (1 - w);
+      _b = tintB * w + _b * (1 - w);
+      updateColor();
+    }
+
     // Shared RGB<->HSV conversion for the Hue blend (kept separate from
     // HueRotate's inline version above, which early-outs on black and
     // operates on this pixel's own _r/_g/_b in place rather than arbitrary
@@ -370,6 +410,28 @@ namespace Spectrum.LEDs {
     // path. The mapping depends only on strut/LED identity (not the cable
     // permutation), so it survives RebakeBuffer unchanged.
     private readonly int[] strutStartIndex;
+
+    // Baked spatial neighbor table (docs/prism.md), used by the spatial prism
+    // blends to resample the composite at an offset. For each pixel we store the
+    // nearest pixel to (x + r·cosθ, y + r·sinθ) over NeighborDirections evenly
+    // spaced angles and NeighborRadii radius steps, flattened as
+    // (pixel * NeighborRadii + radiusBin) * NeighborDirections + dirBin. Built
+    // lazily (EnsureNeighborTable) only on the buffer a spatial blend actually
+    // runs on — the composite buffer — so layer buffers never pay for it. Like
+    // strutStartIndex it depends only on the baked x/y geometry, so it survives
+    // RebakeBuffer (which only re-derives device indexes) unchanged. A tap that
+    // finds no pixel near its target stores the pixel's own index, degrading to
+    // an in-place read rather than smearing across a gap in the layout.
+    public const int NeighborDirections = 16;
+    public const int NeighborRadii = 4;
+    // Projected-plane units between radius steps; a dome LED pitch is ~0.013, so
+    // the four steps span ~1.5–6 LED pitches.
+    public const double NeighborRadiusStep = 0.02;
+    private int[] neighborTable;
+
+    // Baked unit-sphere normals (BakePixelPositions), cached lazily for the
+    // Iridescence blend the same way the orientation layers cache them.
+    private Vector3[] normals;
 
     public LEDDomeOutputBuffer(LEDDomeOutputPixel[] pixels) {
       this.pixels = pixels;
@@ -445,6 +507,235 @@ namespace Spectrum.LEDs {
       for (int i = 0; i < pixels.Length; i++) {
         pixels[i].CompositeBlend(src.pixels[i], mode, opacity);
       }
+    }
+
+    // ---- Prism family: spatial + geometry blends (docs/prism.md) ----------
+
+    // Copy every pixel from `other` into this buffer. Used to snapshot the
+    // composite before a spatial blend, since those read neighbors of the buffer
+    // they mutate and must read the pre-pass state. LEDDomeOutputPixel is a
+    // struct, so this copies values, not references.
+    public void CopyFrom(LEDDomeOutputBuffer other) {
+      Array.Copy(other.pixels, this.pixels, this.pixels.Length);
+    }
+
+    // Nearest dir-bin for an arbitrary angle (radians).
+    public static int DirBin(double angle) {
+      double turns = angle / (2 * Math.PI);
+      turns -= Math.Floor(turns);
+      int bin = (int)Math.Round(turns * NeighborDirections) % NeighborDirections;
+      return bin;
+    }
+
+    // Nearest radius-bin for a distance in projected-plane units.
+    public static int RadiusBin(double distance) {
+      int bin = (int)Math.Round(distance / NeighborRadiusStep) - 1;
+      if (bin < 0) {
+        return 0;
+      }
+      if (bin >= NeighborRadii) {
+        return NeighborRadii - 1;
+      }
+      return bin;
+    }
+
+    // The baked neighbor of `pixel` in direction bin `dirBin` at radius bin
+    // `radiusBin` (its own index if the tap found nothing near its target).
+    public int NeighborAt(int pixel, int dirBin, int radiusBin) {
+      return this.neighborTable[
+        (pixel * NeighborRadii + radiusBin) * NeighborDirections + dirBin];
+    }
+
+    // Build neighborTable once from the baked x/y positions. Uses a uniform
+    // spatial grid (cell = the max tap radius) so each nearest lookup only scans
+    // the 3×3 block of cells around its target — the block is guaranteed to
+    // contain any pixel within the max radius. Cheap enough to run on the
+    // operator thread the first frame a spatial blend appears; a no-op after.
+    private void EnsureNeighborTable() {
+      if (this.neighborTable != null) {
+        return;
+      }
+      int n = this.pixels.Length;
+      double cell = NeighborRadii * NeighborRadiusStep;
+      // The nearest real pixel must fall within maxMatch of a tap's target for
+      // the tap to count; otherwise the tap reads the pixel in place. Keeps
+      // fringes from jumping across gaps or grabbing rim pixels for off-dome
+      // targets.
+      double maxMatch = 1.5 * NeighborRadiusStep;
+      double maxMatchSq = maxMatch * maxMatch;
+
+      double minX = double.MaxValue, minY = double.MaxValue;
+      double maxX = double.MinValue, maxY = double.MinValue;
+      for (int i = 0; i < n; i++) {
+        double x = this.pixels[i].x, y = this.pixels[i].y;
+        if (x < minX) { minX = x; }
+        if (y < minY) { minY = y; }
+        if (x > maxX) { maxX = x; }
+        if (y > maxY) { maxY = y; }
+      }
+      int cols = Math.Max(1, (int)((maxX - minX) / cell) + 1);
+      int rows = Math.Max(1, (int)((maxY - minY) / cell) + 1);
+      // Bucket every pixel into its grid cell (counting-sort layout: one flat
+      // index array + per-cell start offsets, so no per-cell List allocations).
+      int cellCount = cols * rows;
+      int[] cellOf = new int[n];
+      int[] counts = new int[cellCount + 1];
+      for (int i = 0; i < n; i++) {
+        int cx = (int)((this.pixels[i].x - minX) / cell);
+        int cy = (int)((this.pixels[i].y - minY) / cell);
+        if (cx >= cols) { cx = cols - 1; }
+        if (cy >= rows) { cy = rows - 1; }
+        int c = cy * cols + cx;
+        cellOf[i] = c;
+        counts[c + 1]++;
+      }
+      for (int c = 0; c < cellCount; c++) {
+        counts[c + 1] += counts[c];
+      }
+      int[] cellStart = (int[])counts.Clone();
+      int[] byCell = new int[n];
+      int[] fill = (int[])cellStart.Clone();
+      for (int i = 0; i < n; i++) {
+        byCell[fill[cellOf[i]]++] = i;
+      }
+
+      var table = new int[n * NeighborRadii * NeighborDirections];
+      for (int i = 0; i < n; i++) {
+        double px = this.pixels[i].x, py = this.pixels[i].y;
+        for (int r = 0; r < NeighborRadii; r++) {
+          double radius = (r + 1) * NeighborRadiusStep;
+          for (int d = 0; d < NeighborDirections; d++) {
+            double theta = 2 * Math.PI * d / NeighborDirections;
+            double tx = px + radius * Math.Cos(theta);
+            double ty = py + radius * Math.Sin(theta);
+            int best = i;
+            double bestSq = maxMatchSq;
+            int tcx = (int)((tx - minX) / cell);
+            int tcy = (int)((ty - minY) / cell);
+            for (int gy = tcy - 1; gy <= tcy + 1; gy++) {
+              if (gy < 0 || gy >= rows) { continue; }
+              for (int gx = tcx - 1; gx <= tcx + 1; gx++) {
+                if (gx < 0 || gx >= cols) { continue; }
+                int c = gy * cols + gx;
+                for (int k = cellStart[c]; k < cellStart[c + 1]; k++) {
+                  int j = byCell[k];
+                  double dx = this.pixels[j].x - tx;
+                  double dy = this.pixels[j].y - ty;
+                  double dsq = dx * dx + dy * dy;
+                  if (dsq < bestSq) {
+                    bestSq = dsq;
+                    best = j;
+                  }
+                }
+              }
+            }
+            table[(i * NeighborRadii + r) * NeighborDirections + d] = best;
+          }
+        }
+      }
+      this.neighborTable = table;
+    }
+
+    private void EnsureNormals() {
+      if (this.normals == null) {
+        this.normals = this.BakePixelPositions();
+      }
+    }
+
+    // ChromaticFringe blend: RGB channel-split aberration. Reads the pre-pass
+    // `snapshot` (never `this`, which it mutates) through the neighbor table — R
+    // pulled from +offset along `angle`, B from the opposite offset, G in place.
+    // src's alpha × opacity is the mask, so the effect only bites where the
+    // layer selecting this blend actually drew.
+    public void CompositeChromaticFringe(
+      LEDDomeOutputBuffer src, LEDDomeOutputBuffer snapshot,
+      double opacity, double angle, int radiusBin
+    ) {
+      this.EnsureNeighborTable();
+      int fwd = DirBin(angle);
+      int back = (fwd + NeighborDirections / 2) % NeighborDirections;
+      for (int i = 0; i < this.pixels.Length; i++) {
+        double mask = opacity * src.pixels[i].a;
+        if (mask == 0) {
+          continue;
+        }
+        int ri = this.NeighborAt(i, fwd, radiusBin);
+        int bi = this.NeighborAt(i, back, radiusBin);
+        this.pixels[i].ApplyChromaticFringe(
+          snapshot.pixels[ri].r, snapshot.pixels[bi].b, mask);
+      }
+    }
+
+    // EdgeSpectrum blend: estimate the composite's luminance gradient from the
+    // pre-pass `snapshot` (central differences along ±x/±y at radiusBin) and add
+    // spectral colour where it is steep — hue keyed to gradient direction through
+    // the dispersion ramp, intensity to magnitude. Flat fills get nothing.
+    public void CompositeEdgeSpectrum(
+      LEDDomeOutputBuffer src, LEDDomeOutputBuffer snapshot,
+      double opacity, double strength, int radiusBin
+    ) {
+      this.EnsureNeighborTable();
+      int right = DirBin(0);
+      int left = DirBin(Math.PI);
+      int up = DirBin(Math.PI / 2);
+      int down = DirBin(3 * Math.PI / 2);
+      for (int i = 0; i < this.pixels.Length; i++) {
+        double mask = opacity * src.pixels[i].a;
+        if (mask == 0) {
+          continue;
+        }
+        double gx =
+          Luma(snapshot.pixels[this.NeighborAt(i, right, radiusBin)]) -
+          Luma(snapshot.pixels[this.NeighborAt(i, left, radiusBin)]);
+        double gy =
+          Luma(snapshot.pixels[this.NeighborAt(i, up, radiusBin)]) -
+          Luma(snapshot.pixels[this.NeighborAt(i, down, radiusBin)]);
+        // Magnitude normalized to 0..1 over a 0..255 channel span.
+        double mag = Math.Sqrt(gx * gx + gy * gy) / 255;
+        if (mag <= 0) {
+          continue;
+        }
+        double intensity = mag * strength;
+        if (intensity > 1) {
+          intensity = 1;
+        }
+        double t = (Math.Atan2(gy, gx) + Math.PI) / (2 * Math.PI);
+        Spectrum.Base.LEDColor.SpectralColor(
+          t, out double sr, out double sg, out double sb);
+        double w = intensity * mask;
+        this.pixels[i].ApplyEdgeSpectrum(sr * w, sg * w, sb * w);
+      }
+    }
+
+    // Iridescence blend: thin-film sheen. For each masked pixel, the angle
+    // between its baked normal and `light` picks a spectral tint (repeated
+    // `bands` times across the curvature); the tint is scaled to the pixel's own
+    // brightness so unlit pixels stay dark, then faded in by opacity × src alpha
+    // × strength. No neighbor sampling, so no snapshot needed.
+    public void CompositeIridescence(
+      LEDDomeOutputBuffer src, double opacity,
+      Vector3 light, double bands, double strength
+    ) {
+      this.EnsureNormals();
+      light = Vector3.Normalize(light);
+      for (int i = 0; i < this.pixels.Length; i++) {
+        double w = opacity * src.pixels[i].a * strength;
+        if (w == 0) {
+          continue;
+        }
+        double d = Vector3.Dot(this.normals[i], light); // -1..1
+        double t = (d + 1) * 0.5 * bands;
+        t -= Math.Floor(t); // wrap into 0..1 so bands repeat
+        Spectrum.Base.LEDColor.SpectralColor(
+          t, out double sr, out double sg, out double sb);
+        double v = Math.Max(
+          this.pixels[i].r, Math.Max(this.pixels[i].g, this.pixels[i].b)) / 255;
+        this.pixels[i].ApplyIridescence(sr * v, sg * v, sb * v, w);
+      }
+    }
+
+    private static double Luma(LEDDomeOutputPixel p) {
+      return 0.299 * p.r + 0.587 * p.g + 0.114 * p.b;
     }
   }
 }

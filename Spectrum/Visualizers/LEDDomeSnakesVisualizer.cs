@@ -1,5 +1,4 @@
 ﻿using Spectrum.Base;
-using Spectrum.Audio;
 using Spectrum.LEDs;
 using System.Collections.Generic;
 using System;
@@ -14,7 +13,6 @@ namespace Spectrum {
     private const int colorPaletteCount = 8;
     private const int snakeLength = 7;
 
-    private readonly AudioInput audio;
     private readonly Configuration config;
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
@@ -28,11 +26,9 @@ namespace Spectrum {
 
     public LEDDomeSnakesVisualizer(
       Configuration config,
-      AudioInput audio,
       LEDDomeOutput dome
     ) {
       this.config = config;
-      this.audio = audio;
       this.dome = dome;
 
       this.dome.RegisterVisualizer(this);
@@ -68,9 +64,7 @@ namespace Spectrum {
 
     private Input[] inputs;
     public Input[] GetInputs() {
-      return this.inputs ?? (this.inputs = new Input[] {
-        this.audio,
-      });
+      return this.inputs ?? (this.inputs = new Input[0]);
     }
 
     public void Visualize() {
@@ -85,7 +79,7 @@ namespace Spectrum {
       foreach (var snake in snakes) {
         ProgressSnake(snake, 0, this.dome.GetSingleColor(colorPaletteIndex));
       }
-      colorPaletteIndex = (colorPaletteIndex + 1) % (colorPaletteCount - 1);
+      colorPaletteIndex = (colorPaletteIndex + 1) % colorPaletteCount;
       lastUpdate = DateTime.Now;
     }
 
