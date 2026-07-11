@@ -4,9 +4,8 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
-using Spectrum.Base;
 
-namespace Spectrum.LEDs {
+namespace Spectrum.Base {
 
   public struct LEDDomeOutputPixel {
     // index by strut and led within that strut
@@ -213,189 +212,47 @@ namespace Spectrum.LEDs {
       updateColor();
     }
 
-    // Blend src (the layer above) into this composite pixel per blend mode. All
-    // math is on the 0..255 double channels; see the blend table in the layers
-    // design doc. Add/Screen/Lighten/Multiply ignore coverage (black is
-    // identity); Over uses src's alpha so a foreground layer only paints where it
-    // actually drew (w = o * S.a), and accumulates coverage into the composite.
-    public void CompositeBlend(
-      LEDDomeOutputPixel src, DomeBlendMode mode, double o
-    ) {
-      double sr = src._r, sg = src._g, sb = src._b;
-      switch (mode) {
-        case DomeBlendMode.Desaturate: {
-          // An adjustment blend: ignore src's color, use its alpha as a mask,
-          // and reprocess the composite below it into grayscale luma. The mask
-          // w restricts the effect to where the layer above (the wave) drew.
-          double mask = o * src._a;
-          if (mask == 0) {
-            break;
-          }
-          double luma = 0.299 * _r + 0.587 * _g + 0.114 * _b;
-          _r = luma * mask + _r * (1 - mask);
-          _g = luma * mask + _g * (1 - mask);
-          _b = luma * mask + _b * (1 - mask);
-          break;
-        }
-        case DomeBlendMode.Hue: {
-          // The other adjustment blend: src acts as a pure brightness mask
-          // (its own value, from its own rendered color — e.g. Background's
-          // flat fill, or Wave's painted brightness pattern), masked by its
-          // own alpha like Over, fully recolored at max saturation using
-          // `hue` — the hue carried up from whatever hue-publishing layer
-          // sits further below (e.g. Metaball's dedicated `hue` field,
-          // forwarded here as long as an intervening paint mode hasn't
-          // overwritten it with its own src.hue below).
-          //
-          // Deliberately ignores src's own saturation rather than doing a
-          // "true" HSV Hue blend (S and V both from src): a Photoshop-style
-          // Hue blend has no visible effect against an achromatic src (e.g.
-          // Background's default white fill, s == 0 — there's no chroma to
-          // redirect), which defeats the point here. Forcing full saturation
-          // means any brightness-only src becomes a pure canvas for the
-          // carried hue.
-          double mask = o * src._a;
-          if (mask == 0) {
-            break;
-          }
-          RGBToHSV(sr, sg, sb, out _, out _, out double v);
-          HSVToRGB(hue, 1, v, out double nr, out double ng, out double nb);
-          _r = nr * mask + _r * (1 - mask);
-          _g = ng * mask + _g * (1 - mask);
-          _b = nb * mask + _b * (1 - mask);
-          break;
-        }
-        case DomeBlendMode.Add:
-          _r += sr * o;
-          _g += sg * o;
-          _b += sb * o;
-          hue = src.hue;
-          break;
-        case DomeBlendMode.Screen:
-          _r = 255 - (255 - _r) * (255 - sr * o) / 255;
-          _g = 255 - (255 - _g) * (255 - sg * o) / 255;
-          _b = 255 - (255 - _b) * (255 - sb * o) / 255;
-          hue = src.hue;
-          break;
-        case DomeBlendMode.Lighten:
-          _r = Math.Max(_r, sr * o);
-          _g = Math.Max(_g, sg * o);
-          _b = Math.Max(_b, sb * o);
-          hue = src.hue;
-          break;
-        case DomeBlendMode.Multiply:
-          _r = _r * (255 - o * (255 - sr)) / 255;
-          _g = _g * (255 - o * (255 - sg)) / 255;
-          _b = _b * (255 - o * (255 - sb)) / 255;
-          hue = src.hue;
-          break;
-        case DomeBlendMode.Over:
-        default:
-          double w = o * src._a;
-          _r = sr * w + _r * (1 - w);
-          _g = sg * w + _g * (1 - w);
-          _b = sb * w + _b * (1 - w);
-          _a = w + _a * (1 - w);
-          hue = src.hue;
-          break;
-      }
+    // ---- Generic single-repack channel ops for the blend classes ----------
+    // The per-blend math itself lives in the DomeBlend implementations
+    // (DomeBlendModes.cs / DomePrismBlends.cs); these are the only ways a blend
+    // mutates a composite pixel. Each op touches the double-precision channels
+    // directly and repacks via a single updateColor(), like Fade — using the
+    // public r/g/b setters instead would repack three times per pixel.
+
+    // Overwrite the color channels (coverage and hue untouched).
+    public void SetRGB(double r, double g, double b) {
+      _r = r;
+      _g = g;
+      _b = b;
       updateColor();
     }
 
-    // ---- Prism-family per-pixel steps (docs/prism.md) --------------------
-    // Live on the struct like Fade/CompositeBlend so they mutate _r/_g/_b
-    // directly and repack once. The buffer-level methods below do the spatial
-    // sampling / geometry (they own the neighbor table and normals) and hand the
-    // already-resolved neighbor values in here.
-
-    // ChromaticFringe: replace this composite pixel's R with the R sampled from
-    // one spatial offset and its B with the B from the opposite offset (G stays
-    // in place), faded in by `mask` (o * src alpha). srcR/srcB come from the
-    // pre-pass snapshot so the split never smears order-dependently along the
-    // pixel array.
-    public void ApplyChromaticFringe(double srcR, double srcB, double mask) {
-      _r = srcR * mask + _r * (1 - mask);
-      _b = srcB * mask + _b * (1 - mask);
+    // Accumulate onto the color channels (Add / EdgeSpectrum style).
+    public void AddRGB(double dr, double dg, double db) {
+      _r += dr;
+      _g += dg;
+      _b += db;
       updateColor();
     }
 
-    // EdgeSpectrum: additively lay spectral colour onto a luminance edge. The
-    // caller has already scaled the add by mask * strength * gradient magnitude,
-    // so flat fills (magnitude 0) get nothing and contours light up.
-    public void ApplyEdgeSpectrum(double addR, double addG, double addB) {
-      _r += addR;
-      _g += addG;
-      _b += addB;
+    // Lerp the color channels toward (tr, tg, tb) by weight w (coverage and hue
+    // untouched) — the masked-adjustment shape shared by Desaturate, Hue and the
+    // prism blends.
+    public void LerpRGB(double tr, double tg, double tb, double w) {
+      _r = tr * w + _r * (1 - w);
+      _g = tg * w + _g * (1 - w);
+      _b = tb * w + _b * (1 - w);
       updateColor();
     }
 
-    // Iridescence: recolour toward a spectral tint (already scaled to this
-    // pixel's own brightness by the caller, so black stays black), faded in by
-    // `w` (o * src alpha * strength). Like the Hue blend but keyed to geometry
-    // rather than a carried hue.
-    public void ApplyIridescence(
-      double tintR, double tintG, double tintB, double w
-    ) {
-      _r = tintR * w + _r * (1 - w);
-      _g = tintG * w + _g * (1 - w);
-      _b = tintB * w + _b * (1 - w);
+    // Lerp color and coverage toward (tr, tg, tb, ta) by weight w — the Over
+    // shape, where coverage also accumulates (ta = 1 lerps _a toward opaque).
+    public void LerpRGBA(double tr, double tg, double tb, double ta, double w) {
+      _r = tr * w + _r * (1 - w);
+      _g = tg * w + _g * (1 - w);
+      _b = tb * w + _b * (1 - w);
+      _a = ta * w + _a * (1 - w);
       updateColor();
-    }
-
-    // Shared RGB<->HSV conversion for the Hue blend (kept separate from
-    // HueRotate's inline version above, which early-outs on black and
-    // operates on this pixel's own _r/_g/_b in place rather than arbitrary
-    // in/out values).
-    private static void RGBToHSV(
-      double r255, double g255, double b255,
-      out double h, out double s, out double v
-    ) {
-      double r = r255 / 255d, g = g255 / 255d, b = b255 / 255d;
-      double max = Math.Max(Math.Max(r, g), b);
-      double min = Math.Min(Math.Min(r, g), b);
-      double d = max - min;
-      s = max == 0 ? 0 : d / max;
-      v = max;
-      h = 0;
-      if (max != min) {
-        if (r > g) {
-          if (r > b) {
-            h = (g - b) / d + (g < b ? 6 : 0);
-          } else {
-            h = (r - g) / d + 4;
-          }
-        } else {
-          if (g > b) {
-            h = (b - r) / d + 2;
-          } else {
-            h = (r - g) / d + 4;
-          }
-        }
-        h /= 6;
-      }
-    }
-
-    private static void HSVToRGB(
-      double h, double s, double v,
-      out double r255, out double g255, out double b255
-    ) {
-      int i = (int)Math.Floor(h * 6);
-      double f = h * 6 - i;
-      double p = v * (1 - s);
-      double q = v * (1 - f * s);
-      double t = v * (1 - (1 - f) * s);
-      double r = 0, g = 0, b = 0;
-      switch (((i % 6) + 6) % 6) {
-        case 0: r = v; g = t; b = p; break;
-        case 1: r = q; g = v; b = p; break;
-        case 2: r = p; g = v; b = t; break;
-        case 3: r = p; g = q; b = v; break;
-        case 4: r = t; g = p; b = v; break;
-        case 5: r = v; g = p; b = q; break;
-      }
-      r255 = r * 255;
-      g255 = g * 255;
-      b255 = b * 255;
     }
   }
 
@@ -500,16 +357,10 @@ namespace Spectrum.LEDs {
       }
     }
 
-    // Blend an upper layer into this composite buffer.
-    public void CompositeBlend(
-      LEDDomeOutputBuffer src, DomeBlendMode mode, double opacity
-    ) {
-      for (int i = 0; i < pixels.Length; i++) {
-        pixels[i].CompositeBlend(src.pixels[i], mode, opacity);
-      }
-    }
-
-    // ---- Prism family: spatial + geometry blends (docs/prism.md) ----------
+    // ---- Spatial-sampling infrastructure for the prism blends -------------
+    // (docs/prism.md) The blends themselves are DomeBlend classes; the baked
+    // neighbor table and normals stay here because they belong to this buffer's
+    // geometry, not to any one blend.
 
     // Copy every pixel from `other` into this buffer. Used to snapshot the
     // composite before a spatial blend, since those read neighbors of the buffer
@@ -551,7 +402,8 @@ namespace Spectrum.LEDs {
     // the 3×3 block of cells around its target — the block is guaranteed to
     // contain any pixel within the max radius. Cheap enough to run on the
     // operator thread the first frame a spatial blend appears; a no-op after.
-    private void EnsureNeighborTable() {
+    // Public so the spatial DomeBlend classes can bake before sampling.
+    public void EnsureNeighborTable() {
       if (this.neighborTable != null) {
         return;
       }
@@ -636,106 +488,15 @@ namespace Spectrum.LEDs {
       this.neighborTable = table;
     }
 
-    private void EnsureNormals() {
-      if (this.normals == null) {
-        this.normals = this.BakePixelPositions();
+    // Baked unit-sphere normals, lazily cached for the Iridescence blend the
+    // same way the orientation layers cache BakePixelPositions().
+    public Vector3[] Normals {
+      get {
+        if (this.normals == null) {
+          this.normals = this.BakePixelPositions();
+        }
+        return this.normals;
       }
-    }
-
-    // ChromaticFringe blend: RGB channel-split aberration. Reads the pre-pass
-    // `snapshot` (never `this`, which it mutates) through the neighbor table — R
-    // pulled from +offset along `angle`, B from the opposite offset, G in place.
-    // src's alpha × opacity is the mask, so the effect only bites where the
-    // layer selecting this blend actually drew.
-    public void CompositeChromaticFringe(
-      LEDDomeOutputBuffer src, LEDDomeOutputBuffer snapshot,
-      double opacity, double angle, int radiusBin
-    ) {
-      this.EnsureNeighborTable();
-      int fwd = DirBin(angle);
-      int back = (fwd + NeighborDirections / 2) % NeighborDirections;
-      for (int i = 0; i < this.pixels.Length; i++) {
-        double mask = opacity * src.pixels[i].a;
-        if (mask == 0) {
-          continue;
-        }
-        int ri = this.NeighborAt(i, fwd, radiusBin);
-        int bi = this.NeighborAt(i, back, radiusBin);
-        this.pixels[i].ApplyChromaticFringe(
-          snapshot.pixels[ri].r, snapshot.pixels[bi].b, mask);
-      }
-    }
-
-    // EdgeSpectrum blend: estimate the composite's luminance gradient from the
-    // pre-pass `snapshot` (central differences along ±x/±y at radiusBin) and add
-    // spectral colour where it is steep — hue keyed to gradient direction through
-    // the dispersion ramp, intensity to magnitude. Flat fills get nothing.
-    public void CompositeEdgeSpectrum(
-      LEDDomeOutputBuffer src, LEDDomeOutputBuffer snapshot,
-      double opacity, double strength, int radiusBin
-    ) {
-      this.EnsureNeighborTable();
-      int right = DirBin(0);
-      int left = DirBin(Math.PI);
-      int up = DirBin(Math.PI / 2);
-      int down = DirBin(3 * Math.PI / 2);
-      for (int i = 0; i < this.pixels.Length; i++) {
-        double mask = opacity * src.pixels[i].a;
-        if (mask == 0) {
-          continue;
-        }
-        double gx =
-          Luma(snapshot.pixels[this.NeighborAt(i, right, radiusBin)]) -
-          Luma(snapshot.pixels[this.NeighborAt(i, left, radiusBin)]);
-        double gy =
-          Luma(snapshot.pixels[this.NeighborAt(i, up, radiusBin)]) -
-          Luma(snapshot.pixels[this.NeighborAt(i, down, radiusBin)]);
-        // Magnitude normalized to 0..1 over a 0..255 channel span.
-        double mag = Math.Sqrt(gx * gx + gy * gy) / 255;
-        if (mag <= 0) {
-          continue;
-        }
-        double intensity = mag * strength;
-        if (intensity > 1) {
-          intensity = 1;
-        }
-        double t = (Math.Atan2(gy, gx) + Math.PI) / (2 * Math.PI);
-        Spectrum.Base.LEDColor.SpectralColor(
-          t, out double sr, out double sg, out double sb);
-        double w = intensity * mask;
-        this.pixels[i].ApplyEdgeSpectrum(sr * w, sg * w, sb * w);
-      }
-    }
-
-    // Iridescence blend: thin-film sheen. For each masked pixel, the angle
-    // between its baked normal and `light` picks a spectral tint (repeated
-    // `bands` times across the curvature); the tint is scaled to the pixel's own
-    // brightness so unlit pixels stay dark, then faded in by opacity × src alpha
-    // × strength. No neighbor sampling, so no snapshot needed.
-    public void CompositeIridescence(
-      LEDDomeOutputBuffer src, double opacity,
-      Vector3 light, double bands, double strength
-    ) {
-      this.EnsureNormals();
-      light = Vector3.Normalize(light);
-      for (int i = 0; i < this.pixels.Length; i++) {
-        double w = opacity * src.pixels[i].a * strength;
-        if (w == 0) {
-          continue;
-        }
-        double d = Vector3.Dot(this.normals[i], light); // -1..1
-        double t = (d + 1) * 0.5 * bands;
-        t -= Math.Floor(t); // wrap into 0..1 so bands repeat
-        Spectrum.Base.LEDColor.SpectralColor(
-          t, out double sr, out double sg, out double sb);
-        double v = Math.Max(
-          this.pixels[i].r, Math.Max(this.pixels[i].g, this.pixels[i].b)) / 255;
-        this.pixels[i].ApplyIridescence(sr * v, sg * v, sb * v, w);
-      }
-    }
-
-    private static double Luma(LEDDomeOutputPixel p) {
-      return 0.299 * p.r + 0.587 * p.g + 0.114 * p.b;
     }
   }
 }

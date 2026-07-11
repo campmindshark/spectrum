@@ -145,9 +145,13 @@ namespace Spectrum {
       // Saved dome scenes: named snapshots of the stack + globals, saved/recalled
       // through the same gateway and broadcast over the SSE "scenes" frame.
       var scenes = new Web.SceneController(gateway, this.config);
+      // The color palette: the live eight-slot palette (whole-palette
+      // last-write-wins, broadcast over the SSE "palette" frame) plus named
+      // presets (parallel to scenes, broadcast over the "palettes" frame).
+      var palettes = new Web.PaletteController(gateway, this.config);
       this.webServer = new Web.WebServer(
         controls, this.webEventStream, locks, calibration, wands,
-        operatorControl, tempo, layers, scenes, WebServerPort);
+        operatorControl, tempo, layers, scenes, palettes, WebServerPort);
       this.webServer.Start();
     }
 
@@ -241,6 +245,9 @@ namespace Spectrum {
       // Synthesizes a missing/invalid layer stack and seeds per-layer params
       // from any retired global properties still present in the file.
       LegacyLayerParamMigration.Apply(this.config, loadFile);
+      // Consolidates the retired 8-bank color palette into bank 0 + named
+      // presets. Self-retiring on the next save.
+      PaletteBankMigration.Apply(this.config);
       this.op = new Operator(this.config);
 
       this.RefreshAudioDevices(null, null);
@@ -1193,7 +1200,7 @@ namespace Spectrum {
 
     private void OpenVJHUD(object sender, RoutedEventArgs e) {
       this.vjHUDWindow = new VJHUDWindow(
-        this.config, this.op.BeatBroadcaster, this.op.MidiLog);
+        this.config, this.op.BeatBroadcaster);
       this.vjHUDWindow.Closed += VJHUDClosed;
       this.vjHUDWindow.Show();
     }

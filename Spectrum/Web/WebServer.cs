@@ -33,6 +33,7 @@ namespace Spectrum.Web {
     private readonly TempoController tempo;
     private readonly LayersController layers;
     private readonly SceneController scenes;
+    private readonly PaletteController palettes;
     private readonly int port;
     private WebApplication app;
 
@@ -65,6 +66,7 @@ namespace Spectrum.Web {
       TempoController tempo,
       LayersController layers,
       SceneController scenes,
+      PaletteController palettes,
       int port
     ) {
       this.controls = controls;
@@ -76,6 +78,7 @@ namespace Spectrum.Web {
       this.tempo = tempo;
       this.layers = layers;
       this.scenes = scenes;
+      this.palettes = palettes;
       this.port = port;
     }
 
@@ -223,6 +226,46 @@ namespace Spectrum.Web {
         (bool ok, string error) = await this.scenes.DeleteAsync(name);
         return ok
           ? Results.Json(this.scenes.State())
+          : Results.BadRequest(new { error });
+      });
+
+      // ---- Live color palette (user scope). The eight-slot gradient palette
+      // (colorPalette slots 0-7) every visualizer reads. Whole-palette
+      // last-write-wins like the layer stack — the client PUTs all eight slots,
+      // broadcast on the SSE "palette" frame. No advisory lease. ----
+      app.MapGet("/api/palette", () => Results.Json(this.palettes.LiveState()));
+
+      app.MapPut("/api/palette", async (PaletteLiveBody body) => {
+        (bool ok, string error) = await this.palettes.SetLiveAsync(body?.colors);
+        return ok
+          ? Results.Json(this.palettes.LiveState())
+          : Results.BadRequest(new { error });
+      });
+
+      // ---- Named palette presets (user scope), parallel to scenes. Save/delete
+      // change the preset *list*, broadcast on the SSE "palettes" frame; apply
+      // rewrites the live slots, which converge over the "palette" frame. Like
+      // scenes, whole-list last-write-wins — no advisory lease. ----
+      app.MapGet("/api/palettes", () => Results.Json(this.palettes.PresetsState()));
+
+      app.MapPost("/api/palettes", async (PaletteBody body) => {
+        (bool ok, string error) = await this.palettes.SaveAsync(body?.name);
+        return ok
+          ? Results.Json(this.palettes.PresetsState())
+          : Results.BadRequest(new { error });
+      });
+
+      app.MapPost("/api/palettes/{name}/apply", async (string name) => {
+        (bool ok, string error) = await this.palettes.ApplyAsync(name);
+        return ok
+          ? Results.Json(this.palettes.PresetsState())
+          : Results.BadRequest(new { error });
+      });
+
+      app.MapDelete("/api/palettes/{name}", async (string name) => {
+        (bool ok, string error) = await this.palettes.DeleteAsync(name);
+        return ok
+          ? Results.Json(this.palettes.PresetsState())
           : Results.BadRequest(new { error });
       });
 
@@ -550,6 +593,16 @@ namespace Spectrum.Web {
 
     private sealed class SceneBody {
       public string name { get; set; }
+    }
+
+    private sealed class PaletteBody {
+      public string name { get; set; }
+    }
+
+    private sealed class PaletteLiveBody {
+      public System.Collections.Generic.List<PaletteController.SlotDto> colors {
+        get; set;
+      }
     }
   }
 }

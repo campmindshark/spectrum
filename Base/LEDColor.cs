@@ -52,6 +52,31 @@ namespace Spectrum.Base {
       this.CallPropertyChanged();
     }
 
+    // Overwrite slots [start, start + values.Length) with deep copies of the
+    // supplied colors (a null entry clears that slot to the "no color" hole the
+    // render path already tolerates), then fire a single Item[] change so the
+    // indexer bindings and the dome render path both refresh exactly once.
+    // PaletteService uses this to apply a saved palette in one notification
+    // instead of eight. Deep-copies internally so a stored preset can never
+    // alias the live slots.
+    public void ReplaceColors(int start, LEDColor[] values) {
+      if (values == null) {
+        return;
+      }
+      if (this.colors == null) {
+        this.colors = new LEDColor[64];
+      }
+      for (int i = 0; i < values.Length; i++) {
+        int index = start + i;
+        if (index < 0 || index >= this.colors.Length) {
+          continue;
+        }
+        LEDColor value = values[i];
+        this.colors[index] = value == null ? null : new LEDColor(value);
+      }
+      this.CallPropertyChanged();
+    }
+
     private void CallPropertyChanged() {
       this.PropertyChanged?.Invoke(
         this,
@@ -141,6 +166,15 @@ namespace Spectrum.Base {
       this.color1 = color1;
       this.color2 = color2;
       this.color2Enabled = true;
+    }
+
+    // Deep-copy constructor. Palette snapshots (scenes and named presets) must
+    // not alias the live LEDColor instances, or a later edit to one would mutate
+    // the other.
+    public LEDColor(LEDColor other) {
+      this.color1 = other.color1;
+      this.color2 = other.color2;
+      this.color2Enabled = other.color2Enabled;
     }
 
     [XmlIgnore]

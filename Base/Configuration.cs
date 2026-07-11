@@ -84,6 +84,14 @@ namespace Spectrum.Base {
     // migration needed.
     List<DomeScene> domeScenes { get; set; }
 
+    // Named snapshots of just the live palette (the eight gradient pairs in
+    // colorPalette slots 0-7), saved/recalled by the VJ independently of scenes.
+    // See DomePalette and PaletteService. Null by default, following the same
+    // null-by-default XSerializer rule as domeScenes / domeLayerStack: a non-null
+    // initializer double-adds entries on deserialize. The bank-consolidation
+    // upgrade (PaletteBankMigration) seeds this from the retired banks 1-7.
+    List<DomePalette> domePalettes { get; set; }
+
     // maps from device ID to preset ID
     bool vjHUDEnabled { get; set; }
     Dictionary<int, int> midiDevices { get; set; }

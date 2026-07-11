@@ -28,6 +28,14 @@ namespace Spectrum.Base {
     // Configuration.domeGlobalFadeSpeed / domeGlobalHueSpeed).
     public double GlobalFadeSpeed { get; set; }
     public double GlobalHueSpeed { get; set; }
+
+    // Deep copy of the live palette (colorPalette slots 0-7) at save time; the
+    // same eight-slot shape a DomePalette preset stores. Nullable: a scene saved
+    // before scenes captured the palette deserializes to null, and applying such
+    // a scene leaves the live palette untouched. Stored as values, not a preset
+    // name, so recalling a scene works even if the preset it came from was later
+    // edited or deleted.
+    public LEDColor[] Palette { get; set; }
   }
 
 }

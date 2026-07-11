@@ -92,7 +92,7 @@ namespace Spectrum {
     private void AddLayer() {
       var vm = new DomeLayerRowViewModel {
         VisualizerKey = DomeLayerSettings.LegacyVisKeys[0],
-        BlendMode = DomeBlendMode.Add,
+        BlendMode = DomeBlend.Default.Name,
         Opacity = 1.0,
         LayerEnabled = true,
       };
@@ -102,8 +102,9 @@ namespace Spectrum {
       vm.MoveDownRequested += this.MoveRowDown;
       vm.FireRequested += this.FireRow;
       vm.ClearRequested += this.ClearRow;
-      // New layer goes on top (front).
-      this.Rows.Insert(0, vm);
+      // New layer goes on the bottom (background) = the last row, since rows
+      // run front-to-back (Rows[0] is the front, the last row is stack index 0).
+      this.Rows.Add(vm);
       this.Publish();
     }
 

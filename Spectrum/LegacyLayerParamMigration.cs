@@ -62,7 +62,7 @@ namespace Spectrum {
       config.domeLayerStack = new List<DomeLayerSettings>() {
         new DomeLayerSettings() {
           VisualizerKey = key ?? DomeLayerSettings.LegacyVisKeys[0],
-          BlendMode = DomeBlendMode.Over,
+          BlendMode = DomeBlend.Over.Name,
           Opacity = 1.0,
           Enabled = true,
         },

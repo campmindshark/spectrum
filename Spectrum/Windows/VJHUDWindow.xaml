@@ -1,4 +1,4 @@
-﻿<Window
+<Window
   x:Class="Spectrum.VJHUDWindow"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -14,433 +14,58 @@
 >
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="boolToVis" />
+        <local:GradientPreviewConverter x:Key="gradientPreview" />
+        <local:LEDColorToBrushConverter x:Key="ledColorToBrush" />
     </Window.Resources>
-    <DockPanel>
-        <DockPanel DockPanel.Dock="Top">
-            <Grid HorizontalAlignment="Left" VerticalAlignment="Top">
-                <Label Content="Colors" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
-                    <Grid>
-                        <Grid>
-                            <RadioButton Name="colorPalette1" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,56,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color0_0" Margin="20,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color0_1" Margin="48,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color1_0" Margin="76,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color1_1" Margin="104,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color2_0" Margin="20,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color2_1" Margin="48,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color3_0" Margin="76,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color3_1" Margin="104,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color4_0" Margin="20,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color4_1" Margin="48,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color5_0" Margin="76,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color5_1" Margin="104,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color6_0" Margin="20,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color6_1" Margin="48,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color7_0" Margin="76,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color7_1" Margin="104,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <Separator Margin="4,119,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="2" Background="Gainsboro" />
-                            <RadioButton Name="colorPalette2" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,181,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color8_0" Margin="20,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color8_1" Margin="48,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color9_0" Margin="76,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color9_1" Margin="104,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color10_0" Margin="20,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color10_1" Margin="48,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color11_0" Margin="76,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color11_1" Margin="104,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color12_0" Margin="20,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color12_1" Margin="48,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color13_0" Margin="76,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color13_1" Margin="104,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color14_0" Margin="20,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color14_1" Margin="48,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color15_0" Margin="76,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color15_1" Margin="104,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <Separator Margin="4,244,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="1" Background="Gainsboro" />
-                            <RadioButton Name="colorPalette3" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,306,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color16_0" Margin="20,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color16_1" Margin="48,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color17_0" Margin="76,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color17_1" Margin="104,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color18_0" Margin="20,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color18_1" Margin="48,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color19_0" Margin="76,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color19_1" Margin="104,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color20_0" Margin="20,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color20_1" Margin="48,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color21_0" Margin="76,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color21_1" Margin="104,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color22_0" Margin="20,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color22_1" Margin="48,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color23_0" Margin="76,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color23_1" Margin="104,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <Separator Margin="4,369,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="1" Background="Gainsboro" />
-                            <RadioButton Name="colorPalette4" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,431,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color24_0" Margin="20,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color24_1" Margin="48,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color25_0" Margin="76,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color25_1" Margin="104,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color26_0" Margin="20,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color26_1" Margin="48,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color27_0" Margin="76,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color27_1" Margin="104,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color28_0" Margin="20,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color28_1" Margin="48,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color29_0" Margin="76,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color29_1" Margin="104,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color30_0" Margin="20,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color30_1" Margin="48,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color31_0" Margin="76,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color31_1" Margin="104,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                        </Grid>
-                        <Separator Margin="137,5,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Height="105" Background="Gainsboro" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
-                        <Separator Margin="137,130,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Height="105" Background="Gainsboro" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
-                        <Separator Margin="137,255,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Height="105" Background="Gainsboro" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
-                        <Separator Margin="137,380,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Height="105" Background="Gainsboro" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
-                        <Grid Margin="145,0,0,0">
-                            <RadioButton Name="colorPalette5" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,56,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,-6,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color32_0" Margin="20,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color32_1" Margin="48,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color33_0" Margin="76,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color33_1" Margin="104,15,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color34_0" Margin="20,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color34_1" Margin="48,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color35_0" Margin="76,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color35_1" Margin="104,40,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color36_0" Margin="20,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color36_1" Margin="48,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color37_0" Margin="76,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color37_1" Margin="104,65,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color38_0" Margin="20,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color38_1" Margin="48,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color39_0" Margin="76,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color39_1" Margin="104,90,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <Separator Margin="4,119,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="2" Background="Gainsboro" />
-                            <RadioButton Name="colorPalette6" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,181,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,119,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color40_0" Margin="20,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color40_1" Margin="48,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color41_0" Margin="76,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color41_1" Margin="104,140,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color42_0" Margin="20,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color42_1" Margin="48,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color43_0" Margin="76,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color43_1" Margin="104,165,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color44_0" Margin="20,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color44_1" Margin="48,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color45_0" Margin="76,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color45_1" Margin="104,190,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color46_0" Margin="20,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color46_1" Margin="48,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color47_0" Margin="76,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color47_1" Margin="104,215,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <Separator Margin="4,244,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="1" Background="Gainsboro" />
-                            <RadioButton Name="colorPalette7" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,306,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,244,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color48_0" Margin="20,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color48_1" Margin="48,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color49_0" Margin="76,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color49_1" Margin="104,265,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color50_0" Margin="20,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color50_1" Margin="48,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color51_0" Margin="76,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color51_1" Margin="104,290,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color52_0" Margin="20,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color52_1" Margin="48,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color53_0" Margin="76,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color53_1" Margin="104,315,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color54_0" Margin="20,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color54_1" Margin="48,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color55_0" Margin="76,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color55_1" Margin="104,340,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <Separator Margin="4,369,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Width="123" Height="1" Background="Gainsboro" />
-                            <RadioButton Name="colorPalette8" HorizontalAlignment="Left" VerticalAlignment="Top" GroupName="ColorPalette" Margin="0,431,0,0" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="16,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="44,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="Start" HorizontalAlignment="Left" Margin="72,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <Label Content="End" HorizontalAlignment="Left" Margin="100,369,0,0" FontSize="10" FontFamily="Segoe UI Semilight" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color56_0" Margin="20,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color56_1" Margin="48,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color57_0" Margin="76,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color57_1" Margin="104,390,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color58_0" Margin="20,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color58_1" Margin="48,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color59_0" Margin="76,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color59_1" Margin="104,415,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color60_0" Margin="20,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color60_1" Margin="48,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color61_0" Margin="76,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color61_1" Margin="104,440,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color62_0" Margin="20,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color62_1" Margin="48,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color63_0" Margin="76,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <local:ColorPicker x:Name="color63_1" Margin="104,465,0,0" Width="24" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                        </Grid>
-                    </Grid>
-                </Border>
-            </Grid>
-            <DockPanel>
-                <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
-                    <Label Content="Channel config" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                    <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top" Width="312">
-                        <WrapPanel>
-                            <Grid>
-                                <Label Content="Audio" Margin="72,0,0,0" Padding="0" VerticalAlignment="Bottom" />
-                                <Label Content="MIDI" Margin="192,0,0,0" Padding="0" VerticalAlignment="Bottom" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 0" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel0Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="0" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel0Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="0" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 1" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel1Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="1" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel1Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="1" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 2" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel2Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="2" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel2Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="2" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 3" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel3Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="3" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel3Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="3" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 4" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel4Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="4" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel4Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="4" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 5" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel5Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="5" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel5Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="5" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 6" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel6Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="6" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel6Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="6" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Channel 7" Padding="0" Margin="3,3,0,0" HorizontalAlignment="Left" FontFamily="Segoe UI Semilight" />
-                                <ComboBox x:Name="channel7Audio" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="67,0,0,0" Width="110" Tag="7" SelectionChanged="ChannelAudioSelectionChanged" />
-                                <ComboBox x:Name="channel7Midi" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="187,0,0,0" Width="110" Tag="7" SelectionChanged="ChannelMidiSelectionChanged" />
-                            </Grid>
-                        </WrapPanel>
-                    </Border>
-                </WrapPanel>
-                <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
-                    <Label Content="Level driver presets" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                    <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
-                        <Grid Width="300">
-                            <ListView x:Name="levelDriverPresetList" Width="298" Height="66" VerticalAlignment="Top" Margin="1,0,1,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="LevelDriverPresetListSelectionChanged">
-                                <ListView.View>
-                                    <GridView>
-                                        <GridViewColumn Header="Name" Width="139" DisplayMemberBinding="{Binding Name}" />
-                                        <GridViewColumn Header="Source" Width="139" DisplayMemberBinding="{Binding SourceName}" />
-                                    </GridView>
-                                </ListView.View>
-                            </ListView>
-                            <Button x:Name="levelDriverEditPreset" Content="Edit" HorizontalAlignment="Left" Margin="2,71,0,0" VerticalAlignment="Top" Click="LevelDriverEditClicked" Padding="6,2" IsEnabled="False" />
-                            <Button x:Name="levelDriverDeletePreset" Content="Delete" HorizontalAlignment="Right" Margin="0,71,2,0" VerticalAlignment="Top" Click="LevelDriverDeleteClicked" Padding="6,2" IsEnabled="False" />
-                        </Grid>
-                    </Border>
-                </WrapPanel>
-                <WrapPanel Width="317" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
-                    <Label x:Name="levelDriverMutateLabel" Content="Add level driver preset" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                    <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,-4,0,0" Padding="5" VerticalAlignment="Top">
-                        <WrapPanel>
-                            <Grid>
-                                <Label Content="Name" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                <TextBox x:Name="levelDriverName" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" />
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Label Content="Source" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                <ComboBox x:Name="levelDriverSource" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="80,0,0,0" Width="140" SelectionChanged="LevelDriverSourceChanged">
-                                    <ComboBoxItem>Audio</ComboBoxItem>
-                                    <ComboBoxItem>MIDI</ComboBoxItem>
-                                </ComboBox>
-                            </Grid>
-                            <WrapPanel x:Name="levelDriverAudioPresetConfig" Visibility="Collapsed">
-                                <Grid Margin="0,4,0,0">
-                                    <Label Content="Filter range" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                    <TextBox x:Name="levelDriverAudioFilterRangeStart" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="57" Height="20" LostFocus="LevelDriverAudioFilterRangeStartValueLostFocus" />
-                                    <Label Content="to" Margin="144,0,0,2" Padding="0" VerticalAlignment="Center" />
-                                    <TextBox x:Name="levelDriverAudioFilterRangeEnd" Margin="163,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Width="57" Height="20" LostFocus="LevelDriverAudioFilterRangeEndValueLostFocus" />
-                                </Grid>
-                            </WrapPanel>
-                            <WrapPanel x:Name="levelDriverMidiPresetConfig" Visibility="Collapsed">
-                                <Grid Margin="0,4,0,0">
-                                    <Label Content="Attack (ms)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                    <TextBox x:Name="levelDriverMidiAttack" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiAttackLostFocus" />
-                                </Grid>
-                                <Grid Margin="0,4,0,0">
-                                    <Label Content="Peak (level)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                    <TextBox x:Name="levelDriverMidiPeak" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiPeakLostFocus" />
-                                </Grid>
-                                <Grid Margin="0,4,0,0">
-                                    <Label Content="Decay (ms)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                    <TextBox x:Name="levelDriverMidiDecay" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiDecayLostFocus" />
-                                </Grid>
-                                <Grid Margin="0,4,0,0">
-                                    <Label Content="Sustain (level)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                    <TextBox x:Name="levelDriverMidiSustain" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiSustainLostFocus" />
-                                </Grid>
-                                <Grid Margin="0,4,0,0">
-                                    <Label Content="Release (ms)" Margin="0,0,0,3" Padding="0" VerticalAlignment="Bottom" />
-                                    <TextBox x:Name="levelDriverMidiRelease" Margin="80,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="140" Height="20" Padding="2,1,0,0" LostFocus="LevelDriverMidiReleaseLostFocus" />
-                                </Grid>
-                            </WrapPanel>
-                            <Grid Width="220" Margin="0,5,0,0">
-                                <Button x:Name="levelDriverCancelEditButton" Content="Cancel" HorizontalAlignment="Left" VerticalAlignment="Center" Click="LevelDriverCancelEditClicked" Padding="6,2" Visibility="Collapsed" />
-                                <Button x:Name="levelDriverSavePresetButton" Content="Add preset" HorizontalAlignment="Right" VerticalAlignment="Center" Click="LevelDriverSaveClicked" Padding="6,2" />
-                            </Grid>
-                        </WrapPanel>
-                    </Border>
-                </WrapPanel>
+    <Grid Margin="4">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-        <Grid Width="258" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Right">
-          <Label Content="Orientation controls" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-          <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
-            <WrapPanel Margin="0,0,0,0">
-              <Grid Height="28">
-                <Button x:Name="orientationCalibrate" Content="Set calibration" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Click="OrientationCalibrationClicked" Padding="0,0" />
-                <TextBox x:Name="orientationDeviceSpotlightInput" Text="ID"  Margin ="90,4,4,4" Width="21" TextChanged="OrientationDeviceSpotlightChanged"/>
-              </Grid>
-              <Grid Height="28"/>
-                            <Grid Height="28"/>
-                            <Grid Height="28"/>
-                            <Grid Height="28"/>
-                        </WrapPanel>
-          </Border>
-        </Grid>
-      </DockPanel>
-            <Grid Width="258" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Top">
-                <Label Content="Tempo" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
-                    <WrapPanel>
-                        <DockPanel Width="237">
-                            <Label Content="BPM:" FontSize="12" FontFamily="Segoe UI Semilight" DockPanel.Dock="Left" HorizontalAlignment="Left" Margin="0,-4,0,2" Padding="1,5" />
-                            <Label x:Name="bpmLabel" Content="[none]" FontSize="12" FontFamily="Segoe UI Semilight" DockPanel.Dock="Right" HorizontalAlignment="Left" Margin="5,-4,0,2" Padding="1,5" />
+        <!-- Left column: Tempo, Globals, Orientation, live palette, presets -->
+        <ScrollViewer Grid.Column="0" Margin="0,0,4,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <Label Content="Tempo" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+                    <StackPanel>
+                        <DockPanel>
+                            <Label Content="BPM:" FontSize="12" FontFamily="Segoe UI Semilight" DockPanel.Dock="Left" Padding="1,5" />
+                            <Label x:Name="bpmLabel" Content="[none]" FontSize="12" FontFamily="Segoe UI Semilight" Padding="1,5" />
                         </DockPanel>
-                        <DockPanel Width="237">
-                            <RadioButton DockPanel.Dock="Left" Name="tempoSelectorHuman" HorizontalAlignment="Left" VerticalAlignment="Center" GroupName="TempoSelector" />
-                            <Label Content="Human" FontSize="12" FontFamily="Segoe UI Semilight" Margin="0,0,0,2" Padding="1,5" />
+                        <DockPanel Margin="0,2,0,0">
+                            <RadioButton DockPanel.Dock="Left" Name="tempoSelectorHuman" VerticalAlignment="Center" GroupName="TempoSelector" />
+                            <Label Content="Human" FontSize="12" FontFamily="Segoe UI Semilight" Padding="1,5" />
                             <Button x:Name="clearBPMButton" Content="Clear" Padding="5,2" Margin="5,0" Click="ClearTempoButtonClicked" />
                             <Button x:Name="tapTempoButton" Content="Tap" Padding="5,2" Margin="5,0" Click="TapTempoButtonClicked" />
                         </DockPanel>
-                        <DockPanel Width="237">
-                            <RadioButton DockPanel.Dock="Left" Name="tempoSelectorMadmom" HorizontalAlignment="Left" VerticalAlignment="Center" GroupName="TempoSelector" />
-                            <Label Content="Madmom" FontSize="12" FontFamily="Segoe UI Semilight" Margin="0,0,0,2" Padding="1,5" />
+                        <DockPanel Margin="0,2,0,0">
+                            <RadioButton DockPanel.Dock="Left" Name="tempoSelectorMadmom" VerticalAlignment="Center" GroupName="TempoSelector" />
+                            <Label Content="Madmom" FontSize="12" FontFamily="Segoe UI Semilight" Padding="1,5" />
                         </DockPanel>
-                        <DockPanel Width="237">
-                            <RadioButton DockPanel.Dock="Left" Name="tempoSelectorLink" HorizontalAlignment="Left" VerticalAlignment="Center" GroupName="TempoSelector" />
-                            <Label Content="Pro DJ Link" FontSize="12" FontFamily="Segoe UI Semilight" Margin="0,0,0,2" Padding="1,5" />
+                        <DockPanel Margin="0,2,0,0">
+                            <RadioButton DockPanel.Dock="Left" Name="tempoSelectorLink" VerticalAlignment="Center" GroupName="TempoSelector" />
+                            <Label Content="Pro DJ Link" FontSize="12" FontFamily="Segoe UI Semilight" Padding="1,5" />
                         </DockPanel>
-                    </WrapPanel>
+                    </StackPanel>
                 </Border>
-            </Grid>
-            <Grid Width="258" HorizontalAlignment="Left" VerticalAlignment="Top" DockPanel.Dock="Right">
-                <Label Content="Visualizer Settings" HorizontalAlignment="Left" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,20,0,0" Padding="5" VerticalAlignment="Top">
-                    <WrapPanel Margin="0,0,0,0">
-                        <StackPanel Width="240">
-                            <Label Content="Layers (top = front)" Margin="0,0,0,0" Padding="0" />
-                            <ItemsControl x:Name="domeLayersItemsControl">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="2" Margin="0,1,0,1" Padding="2">
-                                            <StackPanel>
-                                                <DockPanel LastChildFill="True">
-                                                    <Button DockPanel.Dock="Right" Content="✕" Command="{Binding RemoveCommand}" Width="20" ToolTip="Remove layer" />
-                                                    <CheckBox DockPanel.Dock="Right" IsChecked="{Binding LayerEnabled}" VerticalAlignment="Center" Margin="0,0,4,0" ToolTip="Enabled" />
-                                                    <ComboBox ItemsSource="{Binding VisualizerOptions}" SelectedValuePath="Key" DisplayMemberPath="Label" SelectedValue="{Binding VisualizerKey}" />
-                                                </DockPanel>
-                                                <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,0,0" FontSize="10" ToolTip="Notes to yourself about this layer" />
-                                                <DockPanel LastChildFill="True" Margin="0,2,0,0">
-                                                    <Button DockPanel.Dock="Right" Content="🧹" Command="{Binding ClearCommand}" Width="20" ToolTip="Clear (drop this layer's live particles)" />
-                                                    <Button DockPanel.Dock="Right" Content="🔥" Command="{Binding FireCommand}" Width="20" ToolTip="Fire (manual trigger)" />
-                                                    <Button DockPanel.Dock="Right" Content="▼" Command="{Binding MoveDownCommand}" Width="20" ToolTip="Move back" />
-                                                    <Button DockPanel.Dock="Right" Content="▲" Command="{Binding MoveUpCommand}" Width="20" ToolTip="Move front" />
-                                                    <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding BlendModes}" SelectedItem="{Binding BlendMode}" Width="80" ToolTip="Blend mode" />
-                                                    <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}" VerticalAlignment="Center" Margin="4,0,4,0" ToolTip="Opacity" />
-                                                </DockPanel>
-                                                <ItemsControl ItemsSource="{Binding Params}" Margin="0,2,0,0">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <Grid Margin="0,1,0,0">
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="70" />
-                                                                    <ColumnDefinition Width="*" />
-                                                                </Grid.ColumnDefinitions>
-                                                                <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                                                <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}" VerticalAlignment="Center" Visibility="{Binding IsDouble, Converter={StaticResource boolToVis}}" />
-                                                                <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}" VerticalAlignment="Center" HorizontalAlignment="Left" Visibility="{Binding IsBool, Converter={StaticResource boolToVis}}" />
-                                                                <ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedIndex="{Binding IntValue}" Visibility="{Binding IsEnum, Converter={StaticResource boolToVis}}" />
-                                                                <local:ColorPicker Grid.Column="1" SelectedColor="{Binding ColorValue}" HorizontalAlignment="Left" Width="24" Height="18" Visibility="{Binding IsColor, Converter={StaticResource boolToVis}}" />
-                                                            </Grid>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <Button x:Name="domeAddLayerButton" Content="Add layer" HorizontalAlignment="Left" Width="90" Margin="0,3,0,3" />
-                            <Label Content="Scenes" Margin="0,3,0,0" Padding="0" />
-                            <DockPanel LastChildFill="True" Margin="0,1,0,0">
-                                <Button x:Name="domeSceneDeleteButton" DockPanel.Dock="Right" Content="✕" Width="24" ToolTip="Delete selected scene" />
-                                <Button x:Name="domeSceneLoadButton" DockPanel.Dock="Right" Content="Load" Width="44" Margin="0,0,3,0" ToolTip="Apply selected scene" />
-                                <ComboBox x:Name="domeScenesCombo" ToolTip="Saved scenes" />
-                            </DockPanel>
-                            <DockPanel LastChildFill="True" Margin="0,3,0,3">
-                                <Button x:Name="domeSceneSaveButton" DockPanel.Dock="Right" Content="Save" Width="44" ToolTip="Save current look under this name" />
-                                <TextBox x:Name="domeSceneNameBox" Margin="0,0,3,0" VerticalContentAlignment="Center" ToolTip="Scene name" />
-                            </DockPanel>
-                        </StackPanel>
-                        <Grid Height="24">
-                            <Label Content="Global Fade Speed" Margin="-2,3,2.4,0" Padding="0" />
-                            <Slider x:Name="domeGlobalFadeSpeedSlider" Value="0" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Maximum="3.0" LargeChange="1" SmallChange="0.2" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                            <Label x:Name="domeGlobalFadeSpeedLabel" Content="0" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
-                        </Grid>
-                        <Grid Height="24">
-                            <Label Content="Global Hue Speed" Margin="-2,3,2.4,0" Padding="0" />
-                            <Slider x:Name="domeGlobalHueSpeedSlider" Value="1" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Height="20" Width="115" Minimum="0.0" Maximum="3.0" LargeChange="1" SmallChange="0.2" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
-                            <Label x:Name="domeGlobalHueSpeedLabel" Content="0" HorizontalAlignment="Left" Margin="215,0,0,0" Padding="0" ContentStringFormat="F3" />
-                        </Grid>
-                        <Grid Height="24">
-              <Label Content="Flash" Margin="-2,3,2.4,0" Padding="0" />
-                            <ComboBox x:Name="flashRotationSpeed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="100,0,0,0" Width="140">
+
+                <Label Content="Globals" Margin="4,8,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+                    <StackPanel>
+                        <DockPanel Margin="0,2,0,0">
+                            <Label Content="Fade" Width="60" Padding="0" VerticalAlignment="Center" />
+                            <Label x:Name="domeGlobalFadeSpeedLabel" DockPanel.Dock="Right" Content="0" Width="34" Padding="0" ContentStringFormat="F3" VerticalAlignment="Center" />
+                            <Slider x:Name="domeGlobalFadeSpeedSlider" Value="0" VerticalAlignment="Center" Maximum="3.0" LargeChange="1" SmallChange="0.2" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                        </DockPanel>
+                        <DockPanel Margin="0,4,0,0">
+                            <Label Content="Hue" Width="60" Padding="0" VerticalAlignment="Center" />
+                            <Label x:Name="domeGlobalHueSpeedLabel" DockPanel.Dock="Right" Content="0" Width="34" Padding="0" ContentStringFormat="F3" VerticalAlignment="Center" />
+                            <Slider x:Name="domeGlobalHueSpeedSlider" Value="1" VerticalAlignment="Center" Minimum="0.0" Maximum="3.0" LargeChange="1" SmallChange="0.2" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                        </DockPanel>
+                        <DockPanel Margin="0,4,0,0">
+                            <Label Content="Flash" Width="60" Padding="0" VerticalAlignment="Center" />
+                            <ComboBox x:Name="flashRotationSpeed">
                                 <ComboBoxItem x:Name="frs0" Content="0" IsSelected="True" />
                                 <ComboBoxItem x:Name="frs1" Content="1/2" />
                                 <ComboBoxItem x:Name="frs2" Content="1" />
@@ -450,11 +75,284 @@
                                 <ComboBoxItem x:Name="frs6" Content="16" />
                                 <ComboBoxItem x:Name="frs7" Content="32" />
                             </ComboBox>
-                        </Grid>
-                    </WrapPanel>
+                        </DockPanel>
+                    </StackPanel>
                 </Border>
-            </Grid>
+
+                <Label Content="Orientation controls" Margin="4,8,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+                    <DockPanel>
+                        <Button x:Name="orientationCalibrate" Content="Set calibration" DockPanel.Dock="Left" Padding="6,2" VerticalAlignment="Center" Click="OrientationCalibrationClicked" />
+                        <Label Content="Spotlight ID" Padding="6,2,2,2" VerticalAlignment="Center" />
+                        <TextBox x:Name="orientationDeviceSpotlightInput" Text="ID" Width="30" VerticalAlignment="Center" TextChanged="OrientationDeviceSpotlightChanged" />
+                    </DockPanel>
+                </Border>
+
+                <Label Content="Live palette" Margin="4,8,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="1" Content="Start" Padding="0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                            <Label Grid.Column="2" Content="End" Padding="0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                            <Label Grid.Column="3" Content="Preview" Padding="2,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                        </Grid>
+                        <!-- Eight live-palette rows (colorPalette slots 0-7). -->
+                        <Grid Margin="0,2,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="0" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
+                            <local:ColorPicker x:Name="livecolor0_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <local:ColorPicker x:Name="livecolor0_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                                <Rectangle.Fill>
+                                    <MultiBinding Converter="{StaticResource gradientPreview}">
+                                        <Binding ElementName="livecolor0_0" Path="SelectedColor" />
+                                        <Binding ElementName="livecolor0_1" Path="SelectedColor" />
+                                    </MultiBinding>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                        </Grid>
+                        <Grid Margin="0,2,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="1" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
+                            <local:ColorPicker x:Name="livecolor1_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <local:ColorPicker x:Name="livecolor1_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                                <Rectangle.Fill>
+                                    <MultiBinding Converter="{StaticResource gradientPreview}">
+                                        <Binding ElementName="livecolor1_0" Path="SelectedColor" />
+                                        <Binding ElementName="livecolor1_1" Path="SelectedColor" />
+                                    </MultiBinding>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                        </Grid>
+                        <Grid Margin="0,2,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="2" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
+                            <local:ColorPicker x:Name="livecolor2_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <local:ColorPicker x:Name="livecolor2_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                                <Rectangle.Fill>
+                                    <MultiBinding Converter="{StaticResource gradientPreview}">
+                                        <Binding ElementName="livecolor2_0" Path="SelectedColor" />
+                                        <Binding ElementName="livecolor2_1" Path="SelectedColor" />
+                                    </MultiBinding>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                        </Grid>
+                        <Grid Margin="0,2,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="3" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
+                            <local:ColorPicker x:Name="livecolor3_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <local:ColorPicker x:Name="livecolor3_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                                <Rectangle.Fill>
+                                    <MultiBinding Converter="{StaticResource gradientPreview}">
+                                        <Binding ElementName="livecolor3_0" Path="SelectedColor" />
+                                        <Binding ElementName="livecolor3_1" Path="SelectedColor" />
+                                    </MultiBinding>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                        </Grid>
+                        <Grid Margin="0,2,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="4" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
+                            <local:ColorPicker x:Name="livecolor4_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <local:ColorPicker x:Name="livecolor4_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                                <Rectangle.Fill>
+                                    <MultiBinding Converter="{StaticResource gradientPreview}">
+                                        <Binding ElementName="livecolor4_0" Path="SelectedColor" />
+                                        <Binding ElementName="livecolor4_1" Path="SelectedColor" />
+                                    </MultiBinding>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                        </Grid>
+                        <Grid Margin="0,2,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="5" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
+                            <local:ColorPicker x:Name="livecolor5_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <local:ColorPicker x:Name="livecolor5_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                                <Rectangle.Fill>
+                                    <MultiBinding Converter="{StaticResource gradientPreview}">
+                                        <Binding ElementName="livecolor5_0" Path="SelectedColor" />
+                                        <Binding ElementName="livecolor5_1" Path="SelectedColor" />
+                                    </MultiBinding>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                        </Grid>
+                        <Grid Margin="0,2,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="6" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
+                            <local:ColorPicker x:Name="livecolor6_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <local:ColorPicker x:Name="livecolor6_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                                <Rectangle.Fill>
+                                    <MultiBinding Converter="{StaticResource gradientPreview}">
+                                        <Binding ElementName="livecolor6_0" Path="SelectedColor" />
+                                        <Binding ElementName="livecolor6_1" Path="SelectedColor" />
+                                    </MultiBinding>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                        </Grid>
+                        <Grid Margin="0,2,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="7" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
+                            <local:ColorPicker x:Name="livecolor7_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <local:ColorPicker x:Name="livecolor7_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                                <Rectangle.Fill>
+                                    <MultiBinding Converter="{StaticResource gradientPreview}">
+                                        <Binding ElementName="livecolor7_0" Path="SelectedColor" />
+                                        <Binding ElementName="livecolor7_1" Path="SelectedColor" />
+                                    </MultiBinding>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Label Content="Palette presets" Margin="4,8,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+                    <StackPanel>
+                        <ListBox x:Name="palettePresetList" Height="150" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ToolTip="Saved palettes">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ItemsControl ItemsSource="{Binding Colors}" VerticalAlignment="Center">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Rectangle Width="10" Height="14" Stroke="Gainsboro" StrokeThickness="0.5" Fill="{Binding Converter={StaticResource ledColorToBrush}}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Text="{Binding Name}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <DockPanel Margin="0,4,0,0">
+                            <Button x:Name="palettePresetDeleteButton" DockPanel.Dock="Right" Content="Delete" Width="52" ToolTip="Delete selected palette" />
+                            <Button x:Name="palettePresetSaveButton" DockPanel.Dock="Right" Content="Save" Width="44" Margin="4,0,4,0" ToolTip="Save the live palette under this name" />
+                            <Button x:Name="palettePresetApplyButton" DockPanel.Dock="Right" Content="Apply" Width="44" Margin="4,0,4,0" ToolTip="Load selected palette into the live palette" />
+                            <TextBox x:Name="palettePresetNameBox" VerticalContentAlignment="Center" ToolTip="Palette name" />
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Right column: Scenes bar + layer stack -->
+        <DockPanel Grid.Column="1" Margin="4,0,0,0">
+            <Label DockPanel.Dock="Top" Content="Scenes" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Border DockPanel.Dock="Top" BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+                <DockPanel LastChildFill="True">
+                    <Button x:Name="domeSceneDeleteButton" DockPanel.Dock="Right" Content="Delete" Width="52" ToolTip="Delete selected scene" />
+                    <Button x:Name="domeSceneSaveButton" DockPanel.Dock="Right" Content="Save" Width="44" Margin="4,0,4,0" ToolTip="Save current look under this name" />
+                    <Button x:Name="domeSceneLoadButton" DockPanel.Dock="Right" Content="Load" Width="44" Margin="4,0,4,0" ToolTip="Apply selected scene" />
+                    <ComboBox x:Name="domeScenesCombo" DockPanel.Dock="Left" Width="150" ToolTip="Saved scenes" />
+                    <TextBox x:Name="domeSceneNameBox" Margin="4,0,4,0" VerticalContentAlignment="Center" ToolTip="Scene name" />
+                </DockPanel>
+            </Border>
+
+            <Label DockPanel.Dock="Top" Content="Layers (top = front)" Margin="4,8,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Button DockPanel.Dock="Bottom" x:Name="domeAddLayerButton" Content="Add layer" HorizontalAlignment="Left" Width="90" Margin="5,4,0,0" />
+            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="domeLayersItemsControl">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="2" Margin="0,1,0,1" Padding="4">
+                                    <StackPanel>
+                                        <DockPanel LastChildFill="True">
+                                            <Button DockPanel.Dock="Right" Content="✕" Command="{Binding RemoveCommand}" Width="20" ToolTip="Remove layer" />
+                                            <CheckBox DockPanel.Dock="Right" IsChecked="{Binding LayerEnabled}" VerticalAlignment="Center" Margin="0,0,4,0" ToolTip="Enabled" />
+                                            <ComboBox ItemsSource="{Binding VisualizerOptions}" SelectedValuePath="Key" DisplayMemberPath="Label" SelectedValue="{Binding VisualizerKey}" />
+                                        </DockPanel>
+                                        <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,0,0" FontSize="10" ToolTip="Notes to yourself about this layer" />
+                                        <DockPanel LastChildFill="True" Margin="0,2,0,0">
+                                            <Button DockPanel.Dock="Right" Content="🧹" Command="{Binding ClearCommand}" Width="20" ToolTip="Clear (drop this layer's live particles)" />
+                                            <Button DockPanel.Dock="Right" Content="🔥" Command="{Binding FireCommand}" Width="20" ToolTip="Fire (manual trigger)" />
+                                            <Button DockPanel.Dock="Right" Content="▼" Command="{Binding MoveDownCommand}" Width="20" ToolTip="Move back" />
+                                            <Button DockPanel.Dock="Right" Content="▲" Command="{Binding MoveUpCommand}" Width="20" ToolTip="Move front" />
+                                            <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding BlendModes}" SelectedItem="{Binding BlendMode}" Width="80" ToolTip="Blend mode" />
+                                            <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}" VerticalAlignment="Center" Margin="4,0,4,0" ToolTip="Opacity" />
+                                        </DockPanel>
+                                        <ItemsControl ItemsSource="{Binding Params}" Margin="0,2,0,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,1,0,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="140" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                        <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}" VerticalAlignment="Center" Visibility="{Binding IsDouble, Converter={StaticResource boolToVis}}" />
+                                                        <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}" VerticalAlignment="Center" HorizontalAlignment="Left" Visibility="{Binding IsBool, Converter={StaticResource boolToVis}}" />
+                                                        <ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedIndex="{Binding IntValue}" Visibility="{Binding IsEnum, Converter={StaticResource boolToVis}}" />
+                                                        <local:ColorPicker Grid.Column="1" SelectedColor="{Binding ColorValue}" HorizontalAlignment="Left" Width="24" Height="18" Visibility="{Binding IsColor, Converter={StaticResource boolToVis}}" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
         </DockPanel>
-        <RichTextBox x:Name="logBox" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Black" Foreground="White" FontFamily="Consolas" VerticalScrollBarVisibility="Visible" IsReadOnly="True" DockPanel.Dock="Bottom" />
-    </DockPanel>
+    </Grid>
 </Window>

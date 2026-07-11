@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows.Input;
 using Spectrum.Base;
 using MediaColor = System.Windows.Media.Color;
@@ -154,13 +155,11 @@ namespace Spectrum {
     }
     public IReadOnlyList<DomeLayerVisualizerOption> VisualizerOptions =>
       visualizerOptions;
-    public IReadOnlyList<DomeBlendMode> BlendModes => blendModes;
-    private static readonly DomeBlendMode[] blendModes = new DomeBlendMode[] {
-      DomeBlendMode.Over, DomeBlendMode.Add, DomeBlendMode.Screen,
-      DomeBlendMode.Lighten, DomeBlendMode.Multiply, DomeBlendMode.Desaturate,
-      DomeBlendMode.Hue, DomeBlendMode.ChromaticFringe, DomeBlendMode.EdgeSpectrum,
-      DomeBlendMode.Iridescence,
-    };
+    // The blend ComboBox binds the registry's names (registry order); the
+    // selected item is the same string the settings persist.
+    public IReadOnlyList<string> BlendModes => blendModes;
+    private static readonly List<string> blendModes =
+      DomeBlend.All.Select(b => b.Name).ToList();
 
     // Generic per-layer param editors, rebuilt from the schema whenever the
     // visualizer key or blend mode changes: the visualizer-consumed set
@@ -201,8 +200,8 @@ namespace Spectrum {
       }
     }
 
-    private DomeBlendMode blendMode = DomeBlendMode.Add;
-    public DomeBlendMode BlendMode {
+    private string blendMode = DomeBlend.Default.Name;
+    public string BlendMode {
       get => this.blendMode;
       set {
         if (this.blendMode == value) {
@@ -232,7 +231,10 @@ namespace Spectrum {
       }
       this.Params.Clear();
       AddParams(DomeLayerSettings.ParamsFor(this.visualizerKey), seed);
-      AddParams(DomeLayerSettings.ParamsForBlend(this.blendMode), seed);
+      DomeBlend blend = DomeBlend.FromName(this.blendMode);
+      if (blend != null) {
+        AddParams(blend.Params, seed);
+      }
     }
 
     private void AddParams(

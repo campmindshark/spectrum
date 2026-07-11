@@ -74,21 +74,75 @@
       flex: 1; min-width: 0; font-size: 1rem; }
     .scenes .scene-row button { background: #333; color: #eee; border: none;
       border-radius: 4px; padding: 0.4rem 0.7rem; cursor: pointer; }
+    .palette { border-top: 1px solid #333; margin-top: 1.5rem; padding-top: 0.5rem;
+      margin-bottom: 1rem; }
+    .palette h2 { font-size: 1rem; margin: 0 0 0.5rem; }
+    .palette .palette-subtitle { font-size: 0.75rem; color: #888;
+      margin: 0.5rem 0 0.3rem; }
+    .palette-row { display: flex; gap: 0.4rem; align-items: center;
+      margin-bottom: 0.3rem; }
+    .palette-row .palette-idx { flex: 0 0 1rem; font-size: 0.8rem; color: #888;
+      font-variant-numeric: tabular-nums; }
+    .palette-row input[type=color] { width: 2rem; height: 1.6rem; padding: 0;
+      border: none; background: none; }
+    .palette-row .palette-grad { display: flex; align-items: center; }
+    .palette-row .palette-preview { flex: 1; height: 1.4rem; border-radius: 4px;
+      border: 1px solid #333; }
+    .palette-presets { display: flex; flex-direction: column; gap: 0.3rem;
+      margin-bottom: 0.4rem; }
+    .palette-empty { font-size: 0.8rem; color: #888; }
+    .palette-preset { display: flex; gap: 0.4rem; align-items: center;
+      background: #1c1c22; border-radius: 6px; padding: 0.35rem 0.5rem;
+      cursor: pointer; }
+    .palette-preset .palette-strip { display: flex; flex: 0 0 auto;
+      border: 1px solid #333; border-radius: 3px; overflow: hidden; }
+    .palette-preset .palette-cell { width: 0.7rem; height: 1rem; }
+    .palette-preset .palette-name { flex: 1; min-width: 0; font-size: 0.85rem;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .palette-preset button { background: #333; color: #eee; border: none;
+      border-radius: 4px; padding: 0.3rem 0.5rem; cursor: pointer; }
+    .palette-saverow { display: flex; gap: 0.4rem; align-items: center; }
+    .palette-saverow input[type=text] { flex: 1; min-width: 0; font-size: 1rem; }
+    .palette-saverow button { background: #333; color: #eee; border: none;
+      border-radius: 4px; padding: 0.4rem 0.7rem; cursor: pointer; }
+    /* Two-column layout mirroring the native VJ HUD: controls (palette, params,
+       wands) on the left, the performance surface (scenes + layers) on the
+       right. Collapses to a single stacked column on phones. */
+    .columns { display: flex; gap: 1.5rem; align-items: flex-start; }
+    .column-left { flex: 0 0 340px; }
+    .column-right { flex: 1; min-width: 0; }
+    .column > :first-child { margin-top: 0; border-top: none; padding-top: 0; }
+    @media (max-width: 760px) {
+      .columns { flex-direction: column; gap: 0; }
+      .column-left, .column-right { flex: 1 1 auto; width: 100%; }
+      .column > :first-child { border-top: 1px solid #333;
+        margin-top: 1.5rem; padding-top: 0.5rem; }
+      .column-left > :first-child { border-top: none;
+        margin-top: 0; padding-top: 0; }
+    }
   </style>
 </head>
 <body>
   <h1>Spectrum &mdash; Controls</h1>
   <div class="operator" id="operator"></div>
   <div class="telemetry" id="telemetry"></div>
-  <div class="scenes" id="scenes"></div>
-  <div class="layers" id="layers"></div>
-  <div id="params"></div>
-  <div class="wands" id="wands"></div>
+  <div class="columns">
+    <div class="column column-left">
+      <div class="palette" id="palette"></div>
+      <div id="params"></div>
+      <div class="wands" id="wands"></div>
+    </div>
+    <div class="column column-right">
+      <div class="scenes" id="scenes"></div>
+      <div class="layers" id="layers"></div>
+    </div>
+  </div>
   <div class="status" id="status">loading&hellip;</div>
   <p style="font-size:0.75rem"><a href="/maintenance.html">Maintenance &rarr;</a></p>
   <script src="app.js"></script>
   <script src="layers.js"></script>
   <script src="scenes.js"></script>
+  <script src="palettes.js"></script>
   <script src="wands-mini.js"></script>
 </body>
 </html>

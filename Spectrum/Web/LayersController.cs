@@ -15,7 +15,7 @@ namespace Spectrum.Web {
    * every client and the native UI converge.
    *
    * The layers array is in stack order: index 0 is the background (bottom),
-   * the last entry is the front. blendMode is carried as its enum name.
+   * the last entry is the front. blendMode is carried as its DomeBlend.Name.
    */
   public sealed class LayersController {
 
@@ -67,7 +67,7 @@ namespace Spectrum.Web {
     private readonly ControlGateway gateway;
     private readonly Configuration config;
     private static readonly string[] blendModeNames =
-      Enum.GetNames(typeof(DomeBlendMode));
+      DomeBlend.All.Select(b => b.Name).ToArray();
 
     public LayersController(ControlGateway gateway, Configuration config) {
       this.gateway = gateway;
@@ -96,7 +96,7 @@ namespace Spectrum.Web {
           }
           list.Add(new LayerDto {
             visualizerKey = layer.VisualizerKey,
-            blendMode = layer.BlendMode.ToString(),
+            blendMode = layer.BlendMode,
             opacity = layer.Opacity,
             enabled = layer.Enabled,
             notes = layer.Notes,
@@ -124,14 +124,11 @@ namespace Spectrum.Web {
     }
 
     // Compositor-consumed param schema keyed by blend-mode name, so the client
-    // can look up the extra editors a blend contributes (e.g. Desaturate).
+    // can look up the extra editors a blend contributes (the prism family).
     private static Dictionary<string, IReadOnlyList<ParamDto>> BlendParamSchema() {
       var map = new Dictionary<string, IReadOnlyList<ParamDto>>();
-      foreach (DomeBlendMode mode in
-        (DomeBlendMode[])Enum.GetValues(typeof(DomeBlendMode))
-      ) {
-        map[mode.ToString()] =
-          ToDtos(DomeLayerSettings.ParamsForBlend(mode));
+      foreach (DomeBlend blend in DomeBlend.All) {
+        map[blend.Name] = ToDtos(blend.Params);
       }
       return map;
     }
@@ -150,14 +147,13 @@ namespace Spectrum.Web {
       }).ToList();
     }
 
-    // Parse the wire DTOs into DomeLayerSettings (the blend-mode string -> enum
-    // step is web-specific), hand the stack to the shared StackValidator, then
-    // replace config.domeLayerStack via the gateway (snapshot swap on the UI
-    // thread). The validator rejects unknown keys, duplicate visualizers (v1
-    // disallows duplicates — each visualizer is a singleton owning one buffer),
-    // out-of-range opacity, undefined blend modes, or an over-long stack, without
-    // touching config; scene apply routes through the same validator so the two
-    // paths can't diverge.
+    // Parse the wire DTOs into DomeLayerSettings, hand the stack to the shared
+    // StackValidator, then replace config.domeLayerStack via the gateway
+    // (snapshot swap on the UI thread). The validator rejects unknown keys,
+    // duplicate visualizers (v1 disallows duplicates — each visualizer is a
+    // singleton owning one buffer), out-of-range opacity, unknown blend names,
+    // or an over-long stack, without touching config; scene apply routes
+    // through the same validator so the two paths can't diverge.
     public async Task<(bool ok, string error)> ReplaceAsync(
       IReadOnlyList<LayerDto> layers
     ) {
@@ -169,15 +165,12 @@ namespace Spectrum.Web {
         if (dto == null || dto.visualizerKey == null) {
           return (false, "each layer needs a visualizerKey");
         }
-        // The wire carries the blend mode as its enum name; parse it here (the
-        // one DTO-specific step) so the validator sees a real enum value.
-        if (!Enum.TryParse(dto.blendMode ?? "", out DomeBlendMode mode) ||
-            !Enum.IsDefined(typeof(DomeBlendMode), mode)) {
-          return (false, "unknown blend mode: " + dto.blendMode);
-        }
         parsed.Add(new DomeLayerSettings {
           VisualizerKey = dto.visualizerKey,
-          BlendMode = mode,
+          // The wire carries the blend by DomeBlend.Name, the same string the
+          // settings persist; the validator rejects names the registry
+          // doesn't know.
+          BlendMode = dto.blendMode,
           Opacity = dto.opacity,
           Enabled = dto.enabled,
           Notes = dto.notes,

@@ -3,29 +3,6 @@ using System.Collections.Generic;
 
 namespace Spectrum.Base {
 
-  // How a layer's pixels combine with the composite built from the layers below
-  // it. See the blend math in LEDDomeOutputBuffer / the layers design doc.
-  //
-  // Persisted by name (XSerializer writes the enum member name), so members may
-  // be appended freely; do not reorder or rename existing ones. Desaturate and
-  // Hue are both adjustment blends: they ignore the source layer's own color
-  // and instead reprocess the composite below it (masked by the source's
-  // alpha) — into grayscale luma for Desaturate, or into the hue carried up
-  // from a hue-publishing layer further below (e.g. Metaball's dedicated
-  // `hue` field) for Hue — see CompositeBlend.
-  //
-  // ChromaticFringe, EdgeSpectrum and Iridescence are the prism family
-  // (docs/prism.md): also adjustment blends (source alpha is the mask), but the
-  // first two are *spatial* — they resample the composite below through the
-  // baked neighbor table on LEDDomeOutputBuffer, so the compositor snapshots the
-  // composite before running them. Iridescence is per-pixel but keyed to the
-  // baked unit-sphere normals. All three carry compositor-consumed tunables via
-  // ParamsForBlend.
-  public enum DomeBlendMode {
-    Over, Add, Screen, Lighten, Multiply, Desaturate, Hue,
-    ChromaticFringe, EdgeSpectrum, Iridescence,
-  }
-
   // The value type of a per-layer parameter. Values live in the bag as double
   // regardless: Bool is 0/1, Enum is the index into DomeLayerParam.Options,
   // Color is a packed 0xRRGGBB int reinterpreted as a double.
@@ -35,7 +12,8 @@ namespace Spectrum.Base {
   // DomeLayerSettings stores only values keyed by DomeLayerParam.Key; everything
   // else here (range, label, default, which consumer reads it) is compile-time
   // metadata read identically by both UIs, the resolver, and GetParam fallbacks.
-  // See ParamsFor / ParamsForBlend for the registry.
+  // See ParamsFor for the visualizer registry and DomeBlend.Params for the
+  // per-blend schemas.
   public sealed class DomeLayerParam {
     public string Key { get; set; }              // unique within the visualizer
     public string Label { get; set; }            // shown in both UIs
@@ -67,7 +45,12 @@ namespace Spectrum.Base {
     // Stable string id of the layerable visualizer, e.g. "radial". See
     // DomeLayerVisualizer.LayerKey and LegacyVisKeys below.
     public string VisualizerKey { get; set; }
-    public DomeBlendMode BlendMode { get; set; } = DomeBlendMode.Add;
+    // The DomeBlend.Name of how this layer combines with the composite below
+    // it. A string (not the blend object) because it's the persisted form —
+    // XSerializer writes it verbatim, exactly the names the retired
+    // DomeBlendMode enum used to serialize, so old config/scene files load
+    // unchanged. Resolve with DomeBlend.FromName; consumers cache the result.
+    public string BlendMode { get; set; } = DomeBlend.Default.Name;
     // 0..1, applied before the blend.
     public double Opacity { get; set; } = 1.0;
     // Mute without removing from the stack.
@@ -686,126 +669,8 @@ namespace Spectrum.Base {
       return layer != null ? layer.GetParam(paramKey, fallback) : fallback;
     }
 
-    // ---- Compositor-consumed blend params (the prism family) --------------
-    // These ride ParamsForBlend, not ParamsFor: the value lives on whichever
-    // layer selects the blend, and only the compositor (LEDDomeOutput.Composite)
-    // reads it — never a visualizer. All are CompositorConsumed. See
-    // docs/prism.md. Offsets are in projected-plane units (the same normalized
-    // x/y the buffer bakes), which is why the defaults look small: a dome LED
-    // pitch is ~0.013, and fringes want a few pitches to read at dome scale.
-
-    // ChromaticFringe: RGB channel-split aberration. offset = how far apart the
-    // R and B images land; spin = rotate the split axis over time (turns/sec,
-    // signed; 0 holds a fixed axis, nonzero sweeps every angle); follow = drive
-    // the axis from the spotlighted wand's orientation instead, in which case
-    // spin is disregarded. See docs/prism.md.
-    private static readonly DomeLayerParam[] ChromaticFringeParams =
-      new DomeLayerParam[] {
-        new DomeLayerParam {
-          Key = "offset", Label = "Fringe Offset",
-          Type = DomeLayerParamType.Double,
-          Min = 0.005, Max = 0.12, Step = 0.005, Default = 0.045,
-          CompositorConsumed = true,
-        },
-        new DomeLayerParam {
-          Key = "spin", Label = "Angle Spin",
-          Type = DomeLayerParamType.Double,
-          Min = -2, Max = 2, Step = 0.05, Default = 0,
-          CompositorConsumed = true,
-        },
-        new DomeLayerParam {
-          Key = "follow", Label = "Follow Orientation",
-          Type = DomeLayerParamType.Bool,
-          Default = 0,
-          CompositorConsumed = true,
-        },
-      };
-
-    // EdgeSpectrum: add spectral colour where the composite's luminance gradient
-    // is steep. strength scales intensity; offset is the gradient sample radius.
-    private static readonly DomeLayerParam[] EdgeSpectrumParams =
-      new DomeLayerParam[] {
-        new DomeLayerParam {
-          Key = "strength", Label = "Edge Strength",
-          Type = DomeLayerParamType.Double,
-          Min = 0, Max = 4, Step = 0.05, Default = 1.5,
-          CompositorConsumed = true,
-        },
-        new DomeLayerParam {
-          Key = "offset", Label = "Sample Radius",
-          Type = DomeLayerParamType.Double,
-          Min = 0.005, Max = 0.12, Step = 0.005, Default = 0.03,
-          CompositorConsumed = true,
-        },
-      };
-
-    // Iridescence: thin-film sheen keyed to the baked unit-sphere normals.
-    // strength = how far it recolours (0 = off, 1 = full); bands = how many
-    // spectral cycles across the dome's curvature; spin = sweep the virtual
-    // light's azimuth over time (turns/sec, signed; 0 holds it fixed); follow =
-    // drive the light azimuth from the spotlighted wand's orientation instead,
-    // in which case spin is disregarded. See docs/prism.md.
-    private static readonly DomeLayerParam[] IridescenceParams =
-      new DomeLayerParam[] {
-        new DomeLayerParam {
-          Key = "strength", Label = "Sheen Strength",
-          Type = DomeLayerParamType.Double,
-          Min = 0, Max = 1, Step = 0.02, Default = 0.5,
-          CompositorConsumed = true,
-        },
-        new DomeLayerParam {
-          Key = "bands", Label = "Spectral Bands",
-          Type = DomeLayerParamType.Double,
-          Min = 0.5, Max = 8, Step = 0.5, Default = 2,
-          CompositorConsumed = true,
-        },
-        new DomeLayerParam {
-          Key = "spin", Label = "Light Spin",
-          Type = DomeLayerParamType.Double,
-          Min = -2, Max = 2, Step = 0.05, Default = 0.2,
-          CompositorConsumed = true,
-        },
-        new DomeLayerParam {
-          Key = "follow", Label = "Follow Orientation",
-          Type = DomeLayerParamType.Bool,
-          Default = 0,
-          CompositorConsumed = true,
-        },
-      };
-
-    // The compositor-consumed schema for a blend mode (params live on the layer
-    // that selects the blend, not on any one visualizer). Empty for the plain
-    // blends and Desaturate/Hue; the prism family carries tunables.
-    public static IReadOnlyList<DomeLayerParam> ParamsForBlend(DomeBlendMode mode) {
-      switch (mode) {
-        case DomeBlendMode.ChromaticFringe:
-          return ChromaticFringeParams;
-        case DomeBlendMode.EdgeSpectrum:
-          return EdgeSpectrumParams;
-        case DomeBlendMode.Iridescence:
-          return IridescenceParams;
-        default:
-          return NoParams;
-      }
-    }
-
-    // The value of one of blend `mode`'s compositor-consumed params, resolved
-    // the same way ParamValue resolves a visualizer param: the layer's bag value
-    // when present, else the blend descriptor's default. The compositor calls
-    // this once per blend param per frame (never per pixel).
-    public static double BlendParamValue(
-      DomeLayerSettings layer, DomeBlendMode mode, string paramKey
-    ) {
-      double fallback = 0;
-      IReadOnlyList<DomeLayerParam> schema = ParamsForBlend(mode);
-      for (int i = 0; i < schema.Count; i++) {
-        if (schema[i].Key == paramKey) {
-          fallback = schema[i].Default;
-          break;
-        }
-      }
-      return layer != null ? layer.GetParam(paramKey, fallback) : fallback;
-    }
+    // (Blend-mode tunables — the prism family — live on each DomeBlend class's
+    // Params, not here: see DomeBlend.Params / DomeBlend.Param.)
 
     // Allocation-free scan used on the scheduling hot path (visualizer Priority
     // getters): true if the stack has an enabled entry naming `key`. Mirrors the

@@ -123,6 +123,15 @@ namespace Spectrum {
       get => _domeScenes;
       set => SetField(ref _domeScenes, value);
     }
+    // Left null by default for the same reason as domeScenes: XSerializer
+    // deserializes a collection property by calling IList.Add on the *existing*
+    // instance, so a non-null default would double up the persisted palettes on
+    // load. Null reads as "no saved palettes."
+    private List<DomePalette> _domePalettes = null;
+    public List<DomePalette> domePalettes {
+      get => _domePalettes;
+      set => SetField(ref _domePalettes, value);
+    }
     // Non-null default, matching midiDevices/channelToMidiLevelDriverPreset
     // (Dictionary properties round-trip fine through XSerializer, unlike
     // List/array properties).

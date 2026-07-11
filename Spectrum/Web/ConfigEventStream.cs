@@ -159,6 +159,26 @@ namespace Spectrum.Web {
       // sync. Not role-gated — the names leak nothing.
       if (e.PropertyName == nameof(this.config.domeScenes)) {
         this.Fan(Frame("scenes", "scenes", SceneNames(this.config)), null);
+        return;
+      }
+      // The saved palette-preset list, exactly parallel to scenes — its frame
+      // carries each preset's name and colors so every client's list (with
+      // previews) stays in sync.
+      if (e.PropertyName == nameof(this.config.domePalettes)) {
+        this.Fan(
+          Frame("palettes", "palettes", PaletteController.BuildPresets(this.config)),
+          null);
+        return;
+      }
+      // The live palette (colorPalette slots 0-7) is compound state under
+      // colorPalette; SpectrumConfiguration re-raises the palette's own change as
+      // "colorPalette" (full swap) or "colorPalette.Item[]" (a slot edit). Either
+      // way, rebroadcast the whole eight-slot palette. Not role-gated.
+      if (e.PropertyName == nameof(this.config.colorPalette) ||
+          e.PropertyName.StartsWith("colorPalette.")) {
+        this.Fan(
+          Frame("palette", "palette", PaletteController.BuildLive(this.config)),
+          null);
       }
     }
 

@@ -56,7 +56,8 @@ namespace Spectrum.Base {
         if (!seen.Add(layer.VisualizerKey)) {
           return (null, "duplicate visualizer: " + layer.VisualizerKey);
         }
-        if (!Enum.IsDefined(typeof(DomeBlendMode), layer.BlendMode)) {
+        DomeBlend blend = DomeBlend.FromName(layer.BlendMode);
+        if (blend == null) {
           return (null, "unknown blend mode: " + layer.BlendMode);
         }
         double opacity = layer.Opacity;
@@ -73,7 +74,7 @@ namespace Spectrum.Base {
           Opacity = opacity,
           Enabled = layer.Enabled,
           Notes = notes,
-          Params = SanitizeParams(layer.VisualizerKey, layer.BlendMode, layer.Params),
+          Params = SanitizeParams(layer.VisualizerKey, blend, layer.Params),
         });
       }
       return (newStack, null);
@@ -86,7 +87,7 @@ namespace Spectrum.Base {
     // dropped so a client on a newer/older schema still applies what it
     // understands. Always allocates a fresh dictionary, never aliasing `raw`.
     public static Dictionary<string, double> SanitizeParams(
-      string visualizerKey, DomeBlendMode mode, IReadOnlyDictionary<string, double> raw
+      string visualizerKey, DomeBlend blend, IReadOnlyDictionary<string, double> raw
     ) {
       if (raw == null || raw.Count == 0) {
         return null;
@@ -96,8 +97,7 @@ namespace Spectrum.Base {
         DomeLayerSettings.ParamsFor(visualizerKey)) {
         Accumulate(descriptor, raw, ref clean);
       }
-      foreach (DomeLayerParam descriptor in
-        DomeLayerSettings.ParamsForBlend(mode)) {
+      foreach (DomeLayerParam descriptor in blend.Params) {
         Accumulate(descriptor, raw, ref clean);
       }
       return clean;

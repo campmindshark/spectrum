@@ -372,7 +372,8 @@
     add.textContent = "Add layer";
     add.addEventListener("click", () => {
       const key = state.visualizers.length ? state.visualizers[0].key : "";
-      // New layer goes on top (front) = end of the stack array.
+      // New layer goes on the bottom (background) = the start of the stack array
+      // (index 0 is the background, the last entry is the front).
       const layer = {
         visualizerKey: key,
         blendMode: "Add",
@@ -380,7 +381,7 @@
         enabled: true,
       };
       layer.params = defaultsFor(schemaFor(layer));
-      state.layers.push(layer);
+      state.layers.unshift(layer);
       render();
       putLayers();
     });

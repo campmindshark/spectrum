@@ -61,8 +61,11 @@ namespace Spectrum.Web {
         // Global flash
         new DoubleParameter("flashSpeed", user, 0.0, 32.0,
           c => c.flashSpeed, (c, v) => c.flashSpeed = v),
-        new IntParameter("colorPaletteIndex", user, 0, 7,
-          c => c.colorPaletteIndex, (c, v) => c.colorPaletteIndex = v),
+
+        // The color palette replaces the retired 8-bank colorPaletteIndex
+        // switcher: it is compound state served by PaletteController
+        // (GET/PUT /api/palette + /api/palettes) and broadcast on the SSE
+        // "palette"/"palettes" frames, not a field-level parameter here.
 
         // ---- Maintenance surface: device wiring & diagnostics ----
 

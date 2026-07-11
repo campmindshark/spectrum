@@ -425,7 +425,7 @@ namespace Spectrum.LEDs {
     // visualizer actually ran (Enabled) is still checked per frame, not cached.
     private struct ResolvedLayer {
       public DomeLayerVisualizer visualizer;
-      public DomeBlendMode blendMode;
+      public DomeBlend blend;
       public double opacity;
       // The immutable stack snapshot entry, held so the compositor can read a
       // blend's CompositorConsumed params (the prism family) without re-scanning
@@ -461,7 +461,10 @@ namespace Spectrum.LEDs {
           }
           resolved.Add(new ResolvedLayer {
             visualizer = visualizer,
-            blendMode = layer.BlendMode,
+            // A name the registry doesn't know (a hand-edited config file —
+            // the validator rejects unknowns on every publish path) falls
+            // back to Over, like the retired enum switch's default arm.
+            blend = DomeBlend.FromName(layer.BlendMode) ?? DomeBlend.Over,
             opacity = layer.Opacity,
             settings = layer,
           });
@@ -517,74 +520,20 @@ namespace Spectrum.LEDs {
       this.ApplyGlobalHueRotation();
     }
 
-    // Blend one upper layer into compositeBuffer. Plain and adjustment blends go
-    // straight through CompositeBlend; the prism family (docs/prism.md) needs
-    // extra state the per-pixel path can't carry — a pre-pass snapshot for the
-    // spatial blends, baked normals for Iridescence, and the compositor-consumed
-    // blend params — so they dispatch here.
+    // Blend one upper layer into compositeBuffer: take the pre-pass snapshot if
+    // the blend samples neighbors of the buffer it mutates, then hand the blend
+    // everything it needs (buffers, the layer's settings for its Params, and
+    // the prism clock / wand angle source for the time-varying params).
     private void BlendLayer(ResolvedLayer layer, LEDDomeOutputBuffer src) {
-      DomeLayerSettings settings = layer.settings;
-      switch (layer.blendMode) {
-        case DomeBlendMode.ChromaticFringe: {
-          this.SnapshotComposite();
-          double offset = DomeLayerSettings.BlendParamValue(
-            settings, DomeBlendMode.ChromaticFringe, "offset");
-          double spin = DomeLayerSettings.BlendParamValue(
-            settings, DomeBlendMode.ChromaticFringe, "spin");
-          bool follow = DomeLayerSettings.BlendParamValue(
-            settings, DomeBlendMode.ChromaticFringe, "follow") != 0;
-          double effAngle = this.PrismAngle(spin, follow);
-          this.compositeBuffer.CompositeChromaticFringe(
-            src, this.scratchBuffer, layer.opacity, effAngle,
-            LEDDomeOutputBuffer.RadiusBin(offset));
-          break;
-        }
-        case DomeBlendMode.EdgeSpectrum: {
-          this.SnapshotComposite();
-          double strength = DomeLayerSettings.BlendParamValue(
-            settings, DomeBlendMode.EdgeSpectrum, "strength");
-          double offset = DomeLayerSettings.BlendParamValue(
-            settings, DomeBlendMode.EdgeSpectrum, "offset");
-          this.compositeBuffer.CompositeEdgeSpectrum(
-            src, this.scratchBuffer, layer.opacity, strength,
-            LEDDomeOutputBuffer.RadiusBin(offset));
-          break;
-        }
-        case DomeBlendMode.Iridescence: {
-          double strength = DomeLayerSettings.BlendParamValue(
-            settings, DomeBlendMode.Iridescence, "strength");
-          double bands = DomeLayerSettings.BlendParamValue(
-            settings, DomeBlendMode.Iridescence, "bands");
-          double spin = DomeLayerSettings.BlendParamValue(
-            settings, DomeBlendMode.Iridescence, "spin");
-          bool follow = DomeLayerSettings.BlendParamValue(
-            settings, DomeBlendMode.Iridescence, "follow") != 0;
-          double azim = this.PrismAngle(spin, follow);
-          // Virtual light swept in azimuth, held at a fixed elevation so the
-          // sheen bands read as horizontal-ish arcs across the dome.
-          var light = new System.Numerics.Vector3(
-            (float)Math.Cos(azim), (float)Math.Sin(azim), 0.6f);
-          this.compositeBuffer.CompositeIridescence(
-            src, layer.opacity, light, bands, strength);
-          break;
-        }
-        default:
-          this.compositeBuffer.CompositeBlend(src, layer.blendMode, layer.opacity);
-          break;
+      DomeBlend blend = layer.blend;
+      if (blend.NeedsSnapshot) {
+        this.SnapshotComposite();
       }
-    }
-
-    // Resolve a prism blend's effective angle. When `follow` is set and a wand
-    // is actually the orientation center, the wand supplies the angle entirely.
-    // Otherwise (follow off, or no wand available) the angle is driven purely by
-    // the time-varying `spin` (turns/sec) — so spin 0 holds a fixed axis and any
-    // nonzero spin sweeps through every angle.
-    private double PrismAngle(double spin, bool follow) {
-      if (follow && this.orientationAngle != null &&
-          this.orientationAngle.TryGetAngle(out double wandAngle)) {
-        return wandAngle;
-      }
-      return 2 * Math.PI * spin * this.prismSeconds;
+      blend.Blend(new DomeBlendContext(
+        this.compositeBuffer, src,
+        blend.NeedsSnapshot ? this.scratchBuffer : null,
+        layer.settings, layer.opacity, this.prismSeconds,
+        this.orientationAngle));
     }
 
     // Copy the current composite into the reusable scratch buffer so a spatial
@@ -943,10 +892,10 @@ namespace Spectrum.LEDs {
       if (this.frameFlashedOff) {
         return 0x000000;
       }
-      int absoluteIndex = LEDColor.GetAbsoluteColorIndex(
-        index,
-        this.config.colorPaletteIndex
-      );
+      // Bank 0 is hard-wired: the 8-bank palette switcher (colorPaletteIndex)
+      // was retired (docs/HUD_overhaul.md). Visualizers pass palette-relative
+      // indices 0-7, which now read slots 0-7 directly.
+      int absoluteIndex = index;
       return LEDColor.ScaleColor(
         this.config.colorPalette.GetSingleColor(absoluteIndex),
         this.frameBrightness
@@ -963,10 +912,8 @@ namespace Spectrum.LEDs {
       if (this.frameFlashedOff) {
         return 0x000000;
       }
-      int absoluteIndex = LEDColor.GetAbsoluteColorIndex(
-        index,
-        this.config.colorPaletteIndex
-      );
+      // Bank 0 is hard-wired; see GetSingleColor (colorPaletteIndex retired).
+      int absoluteIndex = index;
       if (
         this.config.colorPalette.colors == null ||
         this.config.colorPalette.colors.Length <= absoluteIndex ||
@@ -1028,12 +975,9 @@ namespace Spectrum.LEDs {
       } else if (scaledPixelPos > 1) {
         scaledPixelPos = 1;
       }
-      int absoluteIndexMin = LEDColor.GetAbsoluteColorIndex(
-        minColorIdx, this.config.colorPaletteIndex
-      );
-      int absoluteIndexMax = LEDColor.GetAbsoluteColorIndex(
-        maxColorIdx, this.config.colorPaletteIndex
-      );
+      // Bank 0 is hard-wired; see GetSingleColor (colorPaletteIndex retired).
+      int absoluteIndexMin = minColorIdx;
+      int absoluteIndexMax = maxColorIdx;
       if (
         this.config.colorPalette.colors == null ||
         this.config.colorPalette.colors.Length <= absoluteIndexMin ||

@@ -60,6 +60,7 @@ namespace Spectrum.Base {
         Layers = DeepCopyStack(this.config.domeLayerStack),
         GlobalFadeSpeed = this.config.domeGlobalFadeSpeed,
         GlobalHueSpeed = this.config.domeGlobalHueSpeed,
+        Palette = PaletteService.Snapshot(this.config),
       };
       // Copy-on-write: build a fresh list so the snapshot swap fires
       // PropertyChanged and the operator/serialization threads never observe a
@@ -111,6 +112,10 @@ namespace Spectrum.Base {
       this.config.domeLayerStack = stack;
       this.config.domeGlobalFadeSpeed = scene.GlobalFadeSpeed;
       this.config.domeGlobalHueSpeed = scene.GlobalHueSpeed;
+      // Restore the captured palette (one more Item[] notification). A null
+      // palette — any scene saved before this field existed — leaves the live
+      // palette alone.
+      PaletteService.Restore(this.config, scene.Palette);
       return (true, null);
     }
 
@@ -158,6 +163,7 @@ namespace Spectrum.Base {
             Layers = existing.Layers,
             GlobalFadeSpeed = existing.GlobalFadeSpeed,
             GlobalHueSpeed = existing.GlobalHueSpeed,
+            Palette = existing.Palette,
           });
         } else {
           next.Add(existing);
