@@ -170,14 +170,15 @@ namespace Spectrum.Web {
           null);
         return;
       }
-      // The live palette (colorPalette slots 0-7) is compound state under
-      // colorPalette; SpectrumConfiguration re-raises the palette's own change as
-      // "colorPalette" (full swap) or "colorPalette.Item[]" (a slot edit). Either
-      // way, rebroadcast the whole eight-slot palette. Not role-gated.
+      // The palette (all eight banks, colorPalette's 64 slots) is compound state
+      // under colorPalette; SpectrumConfiguration re-raises the palette's own
+      // change as "colorPalette" (full swap) or "colorPalette.Item[]" (a slot
+      // edit). Either way, rebroadcast every bank so clients viewing different
+      // banks all converge. Not role-gated.
       if (e.PropertyName == nameof(this.config.colorPalette) ||
           e.PropertyName.StartsWith("colorPalette.")) {
         this.Fan(
-          Frame("palette", "palette", PaletteController.BuildLive(this.config)),
+          Frame("palette", "palette", PaletteController.BuildAllBanks(this.config)),
           null);
       }
     }

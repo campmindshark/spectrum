@@ -137,6 +137,10 @@ namespace Spectrum {
     public string LayerKey => "volume";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
 
+    // Which palette bank this layer draws from, resolved once per frame in
+    // Visualize() and read by the ColorFrom* helpers.
+    private int paletteBank = 0;
+
     private bool enabled = false;
     public bool Enabled {
       get {
@@ -179,6 +183,8 @@ namespace Spectrum {
         stack, this.LayerKey, "rotationSpeed");
       double gradientSpeed = DomeLayerSettings.ParamValue(
         stack, this.LayerKey, "gradientSpeed");
+      this.paletteBank = (int)DomeLayerSettings.ParamValue(
+        stack, this.LayerKey, "palette");
 
       this.UpdateCenter(rotationSpeed);
       this.UpdateAnimationSize(newAnimationSize);
@@ -323,7 +329,8 @@ namespace Spectrum {
         colorIndex,
         pixelPos,
         gradientFocus,
-        true
+        true,
+        this.paletteBank
       );
     }
 
@@ -344,7 +351,8 @@ namespace Spectrum {
         colorIndex,
         pixelPos,
         gradientFocus,
-        true
+        true,
+        this.paletteBank
       );
     }
 
@@ -390,7 +398,8 @@ namespace Spectrum {
         colorIndex,
         pixelPos,
         gradientFocus,
-        true
+        true,
+        this.paletteBank
       );
     }
 

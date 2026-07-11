@@ -20,8 +20,11 @@ namespace Spectrum.Base {
    */
   public sealed class PaletteService {
 
-    // The live palette the presets snapshot: colorPalette slots 0-7.
+    // Slots in one palette bank; a preset snapshots exactly one bank.
     public const int LiveSlots = 8;
+    // Palette banks in colorPalette (64 slots = BankCount * LiveSlots). Each
+    // dome layer picks its bank via its "palette" param.
+    public const int BankCount = 8;
     // Guard rails, matching the MaxScenes / MaxNameLength style in SceneService.
     public const int MaxPalettes = 64;
     public const int MaxNameLength = 64;
@@ -50,7 +53,7 @@ namespace Spectrum.Base {
     // existing preset with the same name (case-insensitive). Returns
     // (false, error) on a bad name or when the cap is hit and the name is new;
     // the caller (each UI) confirms an overwrite before calling.
-    public (bool ok, string error) Save(string name) {
+    public (bool ok, string error) Save(string name, int bank = 0) {
       name = name == null ? null : name.Trim();
       (bool ok, string error) = ValidateName(name);
       if (!ok) {
@@ -58,7 +61,7 @@ namespace Spectrum.Base {
       }
       var palette = new DomePalette {
         Name = name,
-        Colors = Snapshot(this.config),
+        Colors = Snapshot(this.config, bank),
       };
       // Copy-on-write: build a fresh list so the swap fires PropertyChanged and
       // the operator/serialization threads never observe a mid-mutation list.
@@ -88,14 +91,14 @@ namespace Spectrum.Base {
       return (true, null);
     }
 
-    // Recall the named preset: deep-copy its eight slots into live slots 0-7 in
-    // a single Item[] notification (see Restore).
-    public (bool ok, string error) Apply(string name) {
+    // Recall the named preset: deep-copy its eight slots into the chosen bank's
+    // slots (bank*8 .. bank*8+7) in a single Item[] notification (see Restore).
+    public (bool ok, string error) Apply(string name, int bank = 0) {
       DomePalette palette = Find(this.config.domePalettes, name);
       if (palette == null) {
         return (false, "no palette named " + name);
       }
-      Restore(this.config, palette.Colors);
+      Restore(this.config, palette.Colors, bank);
       return (true, null);
     }
 
@@ -150,31 +153,34 @@ namespace Spectrum.Base {
       return (true, null);
     }
 
-    // Deep-copy live palette slots 0-7 into a fresh eight-element array, so a
-    // caller storing the result (a scene or a named preset) never aliases the
-    // live LEDColor instances. A missing/short palette yields null slots. Shared
-    // with SceneService, whose scenes snapshot the palette the same way.
-    public static LEDColor[] Snapshot(Configuration config) {
+    // Deep-copy one bank's eight slots (bank*8 .. bank*8+7) into a fresh
+    // eight-element array, so a caller storing the result (a scene or a named
+    // preset) never aliases the live LEDColor instances. A missing/short palette
+    // yields null slots. Shared with SceneService, whose scenes snapshot bank 0
+    // the same way (default bank).
+    public static LEDColor[] Snapshot(Configuration config, int bank = 0) {
       var slots = new LEDColor[LiveSlots];
       LEDColor[] live = config.colorPalette == null
         ? null
         : config.colorPalette.colors;
+      int start = bank * LiveSlots;
       for (int i = 0; i < LiveSlots; i++) {
-        LEDColor color = live != null && i < live.Length ? live[i] : null;
+        int src = start + i;
+        LEDColor color = live != null && src < live.Length ? live[src] : null;
         slots[i] = color == null ? null : new LEDColor(color);
       }
       return slots;
     }
 
-    // Write the supplied slots back into live palette slots 0-7 in a single
-    // Item[] notification. ReplaceColors deep-copies, so the stored snapshot is
-    // never aliased by the live slots. A null `slots` (e.g. a scene saved before
-    // scenes captured the palette) leaves the live palette untouched.
-    public static void Restore(Configuration config, LEDColor[] slots) {
+    // Write the supplied slots back into one bank's slots (bank*8 .. bank*8+7) in
+    // a single Item[] notification. ReplaceColors deep-copies, so the stored
+    // snapshot is never aliased by the live slots. A null `slots` (e.g. a scene
+    // saved before scenes captured the palette) leaves the palette untouched.
+    public static void Restore(Configuration config, LEDColor[] slots, int bank = 0) {
       if (slots == null || config.colorPalette == null) {
         return;
       }
-      config.colorPalette.ReplaceColors(0, slots);
+      config.colorPalette.ReplaceColors(bank * LiveSlots, slots);
     }
 
     private static (bool ok, string error) ValidateName(string name) {

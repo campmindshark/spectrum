@@ -236,7 +236,8 @@ namespace Spectrum.Web {
       app.MapGet("/api/palette", () => Results.Json(this.palettes.LiveState()));
 
       app.MapPut("/api/palette", async (PaletteLiveBody body) => {
-        (bool ok, string error) = await this.palettes.SetLiveAsync(body?.colors);
+        (bool ok, string error) = await this.palettes.SetLiveAsync(
+          body?.colors, body?.bank ?? 0);
         return ok
           ? Results.Json(this.palettes.LiveState())
           : Results.BadRequest(new { error });
@@ -249,14 +250,16 @@ namespace Spectrum.Web {
       app.MapGet("/api/palettes", () => Results.Json(this.palettes.PresetsState()));
 
       app.MapPost("/api/palettes", async (PaletteBody body) => {
-        (bool ok, string error) = await this.palettes.SaveAsync(body?.name);
+        (bool ok, string error) = await this.palettes.SaveAsync(
+          body?.name, body?.bank ?? 0);
         return ok
           ? Results.Json(this.palettes.PresetsState())
           : Results.BadRequest(new { error });
       });
 
-      app.MapPost("/api/palettes/{name}/apply", async (string name) => {
-        (bool ok, string error) = await this.palettes.ApplyAsync(name);
+      app.MapPost("/api/palettes/{name}/apply", async (string name, int? bank) => {
+        (bool ok, string error) =
+          await this.palettes.ApplyAsync(name, bank ?? 0);
         return ok
           ? Results.Json(this.palettes.PresetsState())
           : Results.BadRequest(new { error });
@@ -597,9 +600,13 @@ namespace Spectrum.Web {
 
     private sealed class PaletteBody {
       public string name { get; set; }
+      // Which bank Save snapshots (0-7); defaults to bank 0.
+      public int bank { get; set; }
     }
 
     private sealed class PaletteLiveBody {
+      // Which bank these slots replace (0-7); defaults to bank 0.
+      public int bank { get; set; }
       public System.Collections.Generic.List<PaletteController.SlotDto> colors {
         get; set;
       }

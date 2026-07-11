@@ -26,6 +26,10 @@ namespace Spectrum {
     private readonly Dispatcher dispatcher;
     private readonly ListBox presetList;
     private readonly TextBox nameBox;
+    // Which palette bank Save snapshots and Apply loads into — the bank the
+    // editor is currently showing. Supplied by the window so this controller and
+    // the live-palette pickers always agree on the target bank.
+    private readonly Func<int> currentBank;
 
     // The stored DomePalette snapshots themselves (not just names), so the list's
     // item template can render each preset's gradient strip.
@@ -38,13 +42,15 @@ namespace Spectrum {
 
     public DomePalettesController(
       Configuration config, ListBox presetList, TextBox nameBox,
-      ButtonBase saveButton, ButtonBase applyButton, ButtonBase deleteButton
+      ButtonBase saveButton, ButtonBase applyButton, ButtonBase deleteButton,
+      Func<int> currentBank
     ) {
       this.config = config;
       this.service = new PaletteService(config);
       this.dispatcher = presetList.Dispatcher;
       this.presetList = presetList;
       this.nameBox = nameBox;
+      this.currentBank = currentBank;
       presetList.ItemsSource = this.Presets;
       presetList.SelectionChanged += this.OnSelectionChanged;
       saveButton.Click += (s, e) => this.Save();
@@ -111,7 +117,7 @@ namespace Spectrum {
           != MessageBoxResult.OK) {
         return;
       }
-      this.Report(this.service.Save(name));
+      this.Report(this.service.Save(name, this.currentBank()));
     }
 
     private void Apply() {
@@ -119,7 +125,7 @@ namespace Spectrum {
       if (name == null) {
         return;
       }
-      this.Report(this.service.Apply(name));
+      this.Report(this.service.Apply(name, this.currentBank()));
     }
 
     private void Delete() {

@@ -53,6 +53,9 @@ namespace Spectrum {
 
     void Render() {
 
+      int paletteBank = (int)DomeLayerSettings.ParamValue(
+        this.config.domeLayerStack, this.LayerKey, "palette");
+
       double level = this.audio.Volume;
       // Sqrt makes values larger and gives more resolution for lower values
       double adjustedLevel = Math.Clamp(Math.Sqrt(level), 0.1, 1);
@@ -79,7 +82,8 @@ namespace Spectrum {
               color,
               dist/radius,
               0,
-              true
+              true,
+              paletteBank
             );
           }
         }

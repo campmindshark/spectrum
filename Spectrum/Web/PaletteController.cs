@@ -49,18 +49,25 @@ namespace Spectrum.Web {
       this.service = new PaletteService(config);
     }
 
-    // GET /api/palette — the live eight-slot palette.
+    // GET /api/palette — all eight palette banks (each eight slots). Clients pick
+    // which bank they're viewing/editing; every client sees every bank so a bank
+    // edit on one converges everywhere.
     public object LiveState() {
-      return new { colors = BuildLive(this.config) };
+      return new { banks = BuildAllBanks(this.config) };
     }
 
-    // PUT /api/palette — replace the live palette (slots 0-7) wholesale. Runs the
+    // PUT /api/palette — replace one bank's eight slots wholesale. Runs the
     // conversion + write on the serialization thread inside the gateway action,
     // so the single Item[] notification (PaletteService.Restore) fans out to
-    // every client. Rejects malformed hex before touching config.
-    public async Task<(bool ok, string error)> SetLiveAsync(List<SlotDto> colors) {
+    // every client. Rejects a bad bank or malformed hex before touching config.
+    public async Task<(bool ok, string error)> SetLiveAsync(
+      List<SlotDto> colors, int bank
+    ) {
       if (colors == null) {
-        return (false, "body must be {\"colors\": [ ... ]}");
+        return (false, "body must be {\"bank\": n, \"colors\": [ ... ]}");
+      }
+      if (bank < 0 || bank >= PaletteService.BankCount) {
+        return (false, "bank out of range: " + bank);
       }
       LEDColor[] slots;
       try {
@@ -69,7 +76,7 @@ namespace Spectrum.Web {
         return (false, e.Message);
       }
       await this.gateway.InvokeAsync(
-        () => PaletteService.Restore(this.config, slots));
+        () => PaletteService.Restore(this.config, slots, bank));
       return (true, null);
     }
 
@@ -81,15 +88,21 @@ namespace Spectrum.Web {
     // Save the live palette under `name` (overwriting an existing preset with
     // that name). The read of the live slots and the domePalettes swap both run
     // on the serialization thread inside the gateway action.
-    public async Task<(bool ok, string error)> SaveAsync(string name) {
+    public async Task<(bool ok, string error)> SaveAsync(string name, int bank) {
+      if (bank < 0 || bank >= PaletteService.BankCount) {
+        return (false, "bank out of range: " + bank);
+      }
       (bool ok, string error) result = (false, "not run");
-      await this.gateway.InvokeAsync(() => result = this.service.Save(name));
+      await this.gateway.InvokeAsync(() => result = this.service.Save(name, bank));
       return result;
     }
 
-    public async Task<(bool ok, string error)> ApplyAsync(string name) {
+    public async Task<(bool ok, string error)> ApplyAsync(string name, int bank) {
+      if (bank < 0 || bank >= PaletteService.BankCount) {
+        return (false, "bank out of range: " + bank);
+      }
       (bool ok, string error) result = (false, "not run");
-      await this.gateway.InvokeAsync(() => result = this.service.Apply(name));
+      await this.gateway.InvokeAsync(() => result = this.service.Apply(name, bank));
       return result;
     }
 
@@ -99,10 +112,15 @@ namespace Spectrum.Web {
       return result;
     }
 
-    // The live palette as slot DTOs. Shared by the REST GET and the SSE "palette"
-    // frame (ConfigEventStream), so both render from the same server truth.
-    public static List<SlotDto> BuildLive(Configuration config) {
-      return ToSlots(PaletteService.Snapshot(config));
+    // All banks' slots as DTOs (8 lists of 8). Shared by the REST GET and the SSE
+    // "palette" frame (ConfigEventStream), so both render from the same server
+    // truth.
+    public static List<List<SlotDto>> BuildAllBanks(Configuration config) {
+      var banks = new List<List<SlotDto>>(PaletteService.BankCount);
+      for (int bank = 0; bank < PaletteService.BankCount; bank++) {
+        banks.Add(ToSlots(PaletteService.Snapshot(config, bank)));
+      }
+      return banks;
     }
 
     // The saved presets as DTOs. Shared by the REST GET and the SSE "palettes"

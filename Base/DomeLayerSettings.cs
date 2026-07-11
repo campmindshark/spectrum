@@ -195,6 +195,24 @@ namespace Spectrum.Base {
         LegacySetting = "domeTwinkleDensity",
       };
 
+    // Which of the eight palette banks (colorPalette slots bank*8 .. bank*8+7)
+    // this layer draws its colors from. Shared by every palette-consuming layer
+    // (the ones that call dome.Get*Color); the visualizer reads it once per frame
+    // and passes it into the color lookups. Default 0 = bank 0 = the historical
+    // single live palette, so a layer with no "palette" key renders unchanged.
+    // No LegacySetting: the old global colorPaletteIndex was retired, not a
+    // per-layer value to migrate from.
+    private static readonly DomeLayerParam PaletteBankParam =
+      new DomeLayerParam {
+        Key = "palette", Label = "Palette",
+        Type = DomeLayerParamType.Enum,
+        Options = new string[] {
+          "Palette 1", "Palette 2", "Palette 3", "Palette 4",
+          "Palette 5", "Palette 6", "Palette 7", "Palette 8",
+        },
+        Default = 0,
+      };
+
     // Radial's tuning, formerly the domeRadial* cluster of global properties.
     private static readonly DomeLayerParam[] RadialParams = new DomeLayerParam[] {
       new DomeLayerParam {
@@ -236,6 +254,7 @@ namespace Spectrum.Base {
       },
       RotationSpeedParam,
       GradientSpeedParam,
+      PaletteBankParam,
     };
 
     // Volume's tuning (animation size was a MainWindow combo, the speeds were
@@ -249,6 +268,7 @@ namespace Spectrum.Base {
       },
       RotationSpeedParam,
       GradientSpeedParam,
+      PaletteBankParam,
     };
 
     // Race repurposed two knobs that nominally belonged to other visualizers;
@@ -266,6 +286,16 @@ namespace Spectrum.Base {
         Min = 0, Max = 1, Step = 0.01, Default = 0.1,
         LegacySetting = "domeRadialSize",
       },
+      PaletteBankParam,
+    };
+
+    // Splat and Snakes have no other tunables today; the palette bank picker is
+    // their only per-layer param.
+    private static readonly DomeLayerParam[] SplatParams = new DomeLayerParam[] {
+      PaletteBankParam,
+    };
+    private static readonly DomeLayerParam[] SnakesParams = new DomeLayerParam[] {
+      PaletteBankParam,
     };
 
     private static readonly DomeLayerParam[] TwinkleParams =
@@ -569,6 +599,7 @@ namespace Spectrum.Base {
         TriggerButtonParam,
         TriggerLevelParam,
         TriggerIntervalParam,
+        PaletteBankParam,
       };
 
     // Gyroscope's tuning, all visualizer-consumed (read in Visualize()). A new
@@ -622,6 +653,10 @@ namespace Spectrum.Base {
           return RadialParams;
         case "race":
           return RaceParams;
+        case "splat":
+          return SplatParams;
+        case "snakes":
+          return SnakesParams;
         case "quaternion-paintbrush":
           return PaintbrushParams;
         case "twinkle":

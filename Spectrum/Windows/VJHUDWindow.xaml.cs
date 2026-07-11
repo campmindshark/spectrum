@@ -25,25 +25,12 @@ namespace Spectrum {
     }
 
     private void InitializeBindings() {
-      var colorConverter = new ColorConverter();
-      // The live palette is colorPalette slots 0-7 — the eight gradient pairs
-      // every visualizer consumes as relative indices 0-7. Eight rows, two
-      // pickers each; the 8-bank switcher (256 pickers) was retired.
-      for (int paletteIndex = 0; paletteIndex < PaletteService.LiveSlots; paletteIndex++) {
-        for (int whichColor = 0; whichColor < 2; whichColor++) {
-          var picker = (ColorPicker)this.FindName(
-            $"livecolor{paletteIndex}_{whichColor}"
-          );
-          this.Bind(
-            $"[{paletteIndex},{whichColor}]",
-            picker,
-            ColorPicker.SelectedColorProperty,
-            BindingMode.TwoWay,
-            colorConverter,
-            this.config.colorPalette
-          );
-        }
-      }
+      // The eight live-palette rows edit one of the eight palette banks
+      // (colorPalette slots bank*8 .. bank*8+7); the bank selector picks which.
+      // Bind the initial bank now, and rebind when the selector changes.
+      this.BindLivePalette(this.paletteBankSelector.SelectedIndex);
+      this.paletteBankSelector.SelectionChanged += (s, e) =>
+        this.BindLivePalette(this.paletteBankSelector.SelectedIndex);
       this.Bind(nameof(this.beat.TapTempoActive), this.tapTempoButton, Button.ForegroundProperty, BindingMode.OneWay, new TapCounterBrushConverter(), this.beat);
       this.Bind(nameof(this.beat.TapCounterText), this.tapTempoButton, Button.ContentProperty, BindingMode.OneWay, null, this.beat);
       this.Bind(nameof(this.beat.BPMString), this.bpmLabel, Label.ContentProperty, BindingMode.OneWay, null, this.beat);
@@ -57,7 +44,8 @@ namespace Spectrum {
       this.domePalettesController = new DomePalettesController(
         this.config, this.palettePresetList, this.palettePresetNameBox,
         this.palettePresetSaveButton, this.palettePresetApplyButton,
-        this.palettePresetDeleteButton);
+        this.palettePresetDeleteButton,
+        () => this.paletteBankSelector.SelectedIndex);
       // Per-visualizer tuning (radial size, ripple steps, ...) is edited in the
       // generic per-layer param rows above; only cross-layer state keeps a
       // dedicated control here.
@@ -69,6 +57,30 @@ namespace Spectrum {
       this.Bind(nameof(this.config.beatInput), this.tempoSelectorHuman, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(0));
       this.Bind(nameof(this.config.beatInput), this.tempoSelectorMadmom, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(1));
       this.Bind(nameof(this.config.beatInput), this.tempoSelectorLink, RadioButton.IsCheckedProperty, BindingMode.TwoWay, new TrueIfValueConverter<int>(2));
+    }
+
+    // (Re)bind the eight live-palette rows (16 pickers) to the given bank's
+    // slots. SetBinding replaces any previous binding on each picker, so calling
+    // this on a bank switch repoints the pickers and pulls the new bank's colors.
+    private void BindLivePalette(int bank) {
+      if (bank < 0) {
+        bank = 0;
+      }
+      var colorConverter = new ColorConverter();
+      int baseSlot = bank * PaletteService.LiveSlots;
+      for (int row = 0; row < PaletteService.LiveSlots; row++) {
+        for (int whichColor = 0; whichColor < 2; whichColor++) {
+          var picker = (ColorPicker)this.FindName($"livecolor{row}_{whichColor}");
+          this.Bind(
+            $"[{baseSlot + row},{whichColor}]",
+            picker,
+            ColorPicker.SelectedColorProperty,
+            BindingMode.TwoWay,
+            colorConverter,
+            this.config.colorPalette
+          );
+        }
+      }
     }
 
     private void Bind(

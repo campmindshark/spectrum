@@ -20,9 +20,13 @@
 
   const setStatus = window.spectrumStatus || function () {};
   const SLOTS = 8;
+  const BANKS = 8;
 
-  // The live palette, always exactly 8 slots: { start: "#rrggbb", end: hex|null }.
-  let liveColors = normalizeLive([]);
+  // All eight palette banks, each exactly 8 slots: { start: "#rrggbb", end:
+  // hex|null }. Each dome layer picks its bank via its own Palette param; here we
+  // edit one bank at a time (selectedBank).
+  let banks = normalizeBanks([]);
+  let selectedBank = 0;
   // Saved presets: [{ name, colors: [{start, end}] }].
   let presets = [];
   let nameInput = null;
@@ -30,14 +34,28 @@
   let liveEl = null;
   let presetsEl = null;
 
+  // The bank currently being edited.
+  function currentBank() {
+    return banks[selectedBank];
+  }
+
   // Coerce whatever the server sent into 8 editable slots. A null/absent slot or
   // a null start becomes solid black (the web editor always writes concrete
   // slots; an empty slot renders black on the dome anyway).
-  function normalizeLive(colors) {
+  function normalizeBank(colors) {
     const out = [];
     for (let i = 0; i < SLOTS; i++) {
       const c = colors && colors[i] ? colors[i] : {};
       out.push({ start: c.start || "#000000", end: c.end || null });
+    }
+    return out;
+  }
+
+  // Coerce the server's all-banks payload into 8 normalized banks.
+  function normalizeBanks(allBanks) {
+    const out = [];
+    for (let b = 0; b < BANKS; b++) {
+      out.push(normalizeBank(allBanks && allBanks[b] ? allBanks[b] : []));
     }
     return out;
   }
@@ -55,7 +73,7 @@
       const res = await fetch("/api/palette", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ colors: liveColors }),
+        body: JSON.stringify({ bank: selectedBank, colors: currentBank() }),
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
@@ -70,8 +88,9 @@
 
   function renderLive() {
     liveEl.innerHTML = "";
+    const slots = currentBank();
     for (let i = 0; i < SLOTS; i++) {
-      const slot = liveColors[i];
+      const slot = slots[i];
       const row = document.createElement("div");
       row.className = "palette-row";
 
@@ -143,7 +162,8 @@
     if (presets.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
       if (!confirm(`Overwrite palette "${name}"?`)) return;
     }
-    await postPreset("/api/palettes", { name }, `saved "${name}"`);
+    await postPreset(
+      "/api/palettes", { name, bank: selectedBank }, `saved "${name}"`);
   }
 
   async function applyPreset(name) {
@@ -153,8 +173,8 @@
       return;
     }
     await postPreset(
-      `/api/palettes/${encodeURIComponent(target)}/apply`, null,
-      `applied "${target}"`);
+      `/api/palettes/${encodeURIComponent(target)}/apply?bank=${selectedBank}`,
+      null, `applied "${target}" to Palette ${selectedBank + 1}`);
   }
 
   async function deletePreset(name) {
@@ -289,6 +309,28 @@
     liveTitle.textContent = "Live palette";
     panel.appendChild(liveTitle);
 
+    // Which of the eight banks these rows edit; each dome layer picks its bank
+    // via its own Palette param.
+    const bankRow = document.createElement("div");
+    bankRow.className = "palette-bankrow";
+    const bankLabel = document.createElement("label");
+    bankLabel.textContent = "Editing ";
+    const bankSelect = document.createElement("select");
+    for (let b = 0; b < BANKS; b++) {
+      const opt = document.createElement("option");
+      opt.value = String(b);
+      opt.textContent = `Palette ${b + 1}`;
+      bankSelect.appendChild(opt);
+    }
+    bankSelect.value = String(selectedBank);
+    bankSelect.addEventListener("change", () => {
+      selectedBank = parseInt(bankSelect.value, 10) || 0;
+      if (liveEl) renderLive();
+    });
+    bankLabel.appendChild(bankSelect);
+    bankRow.appendChild(bankLabel);
+    panel.appendChild(bankRow);
+
     liveEl = document.createElement("div");
     liveEl.className = "palette-live";
     panel.appendChild(liveEl);
@@ -304,12 +346,18 @@
     renderPresets();
   }
 
-  // "palette" SSE frame (or a PUT response): the winning eight-slot palette.
-  // Skip the re-render while the user is editing a color here, so an in-flight
-  // picker isn't yanked shut by another client's echo.
-  function applyPalette(colors) {
-    liveColors = normalizeLive(colors);
+  // "palette" SSE frame (or a PUT/GET response): all eight banks. While the user
+  // is editing a slot here, ignore the frame ENTIRELY — do not even swap `banks`.
+  // The row inputs' change handlers close over the current `banks` slot objects;
+  // reassigning `banks` (even without re-rendering) orphans those handlers, so a
+  // follow-up edit would mutate a detached object while putLive() sends the new
+  // array — the edit silently wouldn't stick. Our optimistic local `banks`
+  // already reflects our own edits (and the frame in flight is usually just their
+  // echo), so keeping it until focus leaves loses nothing; the next frame after
+  // blur resyncs.
+  function applyPalette(allBanks) {
     if (liveEl && liveEl.contains(document.activeElement)) return;
+    banks = normalizeBanks(allBanks);
     if (liveEl) renderLive();
   }
 
@@ -329,7 +377,7 @@
         fetch("/api/palette"),
         fetch("/api/palettes"),
       ]);
-      if (pRes.ok) applyPalette((await pRes.json()).colors || []);
+      if (pRes.ok) applyPalette((await pRes.json()).banks || []);
       if (psRes.ok) applyPalettes((await psRes.json()).palettes || []);
     } catch (e) {
       setStatus(`palette load: ${e}`, true);

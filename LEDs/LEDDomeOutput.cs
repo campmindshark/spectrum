@@ -887,15 +887,19 @@ namespace Spectrum.LEDs {
       return strutLengths[controlBoxStrutOrder[i][strutsLeft]];
     }
 
-    public int GetSingleColor(int index) {
+    // Slots per palette bank. colorPalette holds 8 banks of 8 gradient pairs
+    // (64 slots); a layer selects its bank via the per-layer "palette" param and
+    // passes it here, offsetting its relative index 0-7 into the bank's slots.
+    private const int SlotsPerBank = 8;
+
+    public int GetSingleColor(int index, int bank = 0) {
       this.EnsureFrameColorCache();
       if (this.frameFlashedOff) {
         return 0x000000;
       }
-      // Bank 0 is hard-wired: the 8-bank palette switcher (colorPaletteIndex)
-      // was retired (docs/HUD_overhaul.md). Visualizers pass palette-relative
-      // indices 0-7, which now read slots 0-7 directly.
-      int absoluteIndex = index;
+      // Relative index 0-7 offset into the layer's chosen bank (bank 0 = slots
+      // 0-7, the historical single live palette).
+      int absoluteIndex = index + bank * SlotsPerBank;
       return LEDColor.ScaleColor(
         this.config.colorPalette.GetSingleColor(absoluteIndex),
         this.frameBrightness
@@ -906,14 +910,16 @@ namespace Spectrum.LEDs {
       int index,
       double pixelPos,
       double focusPos,
-      bool wrap
+      bool wrap,
+      int bank = 0
     ) {
       this.EnsureFrameColorCache();
       if (this.frameFlashedOff) {
         return 0x000000;
       }
-      // Bank 0 is hard-wired; see GetSingleColor (colorPaletteIndex retired).
-      int absoluteIndex = index;
+      // Offset the relative index into the layer's chosen bank; see
+      // GetSingleColor.
+      int absoluteIndex = index + bank * SlotsPerBank;
       if (
         this.config.colorPalette.colors == null ||
         this.config.colorPalette.colors.Length <= absoluteIndex ||
@@ -945,7 +951,8 @@ namespace Spectrum.LEDs {
       int maxIndex,
       double pixelPos,
       double focusPos,
-      bool wrap
+      bool wrap,
+      int bank = 0
     ) {
       // Return a color evenly scaled between min index and max index, based on the pixel position.
       if (pixelPos < 0 || pixelPos > 1) {
@@ -975,9 +982,9 @@ namespace Spectrum.LEDs {
       } else if (scaledPixelPos > 1) {
         scaledPixelPos = 1;
       }
-      // Bank 0 is hard-wired; see GetSingleColor (colorPaletteIndex retired).
-      int absoluteIndexMin = minColorIdx;
-      int absoluteIndexMax = maxColorIdx;
+      // Offset both endpoints into the layer's chosen bank; see GetSingleColor.
+      int absoluteIndexMin = minColorIdx + bank * SlotsPerBank;
+      int absoluteIndexMax = maxColorIdx + bank * SlotsPerBank;
       if (
         this.config.colorPalette.colors == null ||
         this.config.colorPalette.colors.Length <= absoluteIndexMin ||
@@ -993,9 +1000,9 @@ namespace Spectrum.LEDs {
         return 0x000000;
       }
       if (!this.config.colorPalette.colors[absoluteIndexMin].IsGradient) {
-        // minColorIdx is palette-relative; GetSingleColor re-applies the palette
+        // minColorIdx is bank-relative; GetSingleColor re-applies the bank
         // offset itself, so pass it the relative index (not absoluteIndexMin).
-        return this.GetSingleColor(minColorIdx);
+        return this.GetSingleColor(minColorIdx, bank);
       }
       // Blend Color1 of the two adjacent slots. Read the palette directly
       // (unscaled) and apply frameBrightness exactly once at the end — routing

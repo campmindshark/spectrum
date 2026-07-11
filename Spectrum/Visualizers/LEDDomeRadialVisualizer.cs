@@ -74,6 +74,8 @@ namespace Spectrum {
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "rotationSpeed");
       double gradientSpeed =
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "gradientSpeed");
+      int paletteBank =
+        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "palette");
 
       buffer.Fade(1 - Math.Pow(10, -this.config.domeGlobalFadeSpeed), 0);
       // Hue rotation is now applied globally by LEDDomeOutput, which rotates
@@ -181,7 +183,8 @@ namespace Spectrum {
               whichGradient,
               gradientVal,
               currentGradient,
-              true
+              true,
+              paletteBank
             );
         }
       }

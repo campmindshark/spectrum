@@ -245,9 +245,6 @@ namespace Spectrum {
       // Synthesizes a missing/invalid layer stack and seeds per-layer params
       // from any retired global properties still present in the file.
       LegacyLayerParamMigration.Apply(this.config, loadFile);
-      // Consolidates the retired 8-bank color palette into bank 0 + named
-      // presets. Self-retiring on the next save.
-      PaletteBankMigration.Apply(this.config);
       this.op = new Operator(this.config);
 
       this.RefreshAudioDevices(null, null);
