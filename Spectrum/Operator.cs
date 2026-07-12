@@ -182,6 +182,14 @@ namespace Spectrum {
         this.config,
         dome
       ));
+      this.visualizers.Add(new LEDDomeNoiseCloudVisualizer(
+        this.config,
+        dome
+      ));
+      this.visualizers.Add(new LEDDomeCausticsVisualizer(
+        this.config,
+        dome
+      ));
       this.visualizers.Add(new LEDDomeFlashVisualizer(
         this.config,
         audio,

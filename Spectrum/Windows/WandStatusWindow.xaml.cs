@@ -213,6 +213,28 @@ namespace Spectrum {
         this.Set(ref this.qualityBrush, value, nameof(this.QualityBrush));
     }
 
+    // Whether this device is the current orientation spotlight (the single wand
+    // whose motion drives the dome). Bound TwoWay to the per-row radio in the VJ
+    // HUD's compact wand panel; a user check sets it true, which asks the host to
+    // make this device the spotlight via SpotlightRequested. WandStatusWindow
+    // never binds this and leaves SpotlightRequested null, so it stays inert
+    // there.
+    private bool isSpotlight;
+    public bool IsSpotlight {
+      get => this.isSpotlight;
+      set {
+        if (this.Set(ref this.isSpotlight, value, nameof(this.IsSpotlight)) &&
+            value) {
+          this.SpotlightRequested?.Invoke(this.DeviceId);
+        }
+      }
+    }
+
+    // Invoked with this row's DeviceId when IsSpotlight transitions to true from
+    // the UI. The host wires this to its spotlight setter; null is a no-op (the
+    // read-only diagnostics window).
+    public Action<int> SpotlightRequested;
+
     public WandRow(
       int deviceId, OrientationDevice device, OrientationDeviceStats stats) {
       this.DeviceId = deviceId;
@@ -280,12 +302,13 @@ namespace Spectrum {
       }
     }
 
-    private void Set<T>(ref T field, T value, string name) {
+    private bool Set<T>(ref T field, T value, string name) {
       if (Equals(field, value)) {
-        return;
+        return false;
       }
       field = value;
       this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+      return true;
     }
 
     private static Brush Frozen(byte r, byte g, byte b) {

@@ -269,6 +269,10 @@
   // long flat list. Reusing renderParam keeps its 🔒 advisory-lock handling and
   // cross-client live push working exactly as on the user page.
   const CURATED_SECTIONS = [
+    { id: "brightness", title: "Brightness", controls: [
+      { key: "domeBrightness", label: "Brightness" },
+      { key: "domeMaxBrightness", label: "Max brightness" },
+    ] },
     { id: "tempo", title: "BPM source", controls: [
       { key: "beatInput", label: "Source" },
     ], extra: appendTapTempo },

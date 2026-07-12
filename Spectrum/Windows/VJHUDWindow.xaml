@@ -23,7 +23,7 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- Left column: Tempo, Globals, Orientation, live palette, presets -->
+        <!-- Left column: Tempo, Globals, live palette, presets, Orientation -->
         <ScrollViewer Grid.Column="0" Margin="0,0,4,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
                 <Label Content="Tempo" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
@@ -77,15 +77,6 @@
                             </ComboBox>
                         </DockPanel>
                     </StackPanel>
-                </Border>
-
-                <Label Content="Orientation controls" Margin="4,8,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
-                    <DockPanel>
-                        <Button x:Name="orientationCalibrate" Content="Set calibration" DockPanel.Dock="Left" Padding="6,2" VerticalAlignment="Center" Click="OrientationCalibrationClicked" />
-                        <Label Content="Spotlight ID" Padding="6,2,2,2" VerticalAlignment="Center" />
-                        <TextBox x:Name="orientationDeviceSpotlightInput" Text="ID" Width="30" VerticalAlignment="Center" TextChanged="OrientationDeviceSpotlightChanged" />
-                    </DockPanel>
                 </Border>
 
                 <Label Content="Live palette" Margin="4,8,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
@@ -303,6 +294,47 @@
                             <Button x:Name="palettePresetApplyButton" DockPanel.Dock="Right" Content="Apply" Width="44" Margin="4,0,4,0" ToolTip="Load selected palette into the live palette" />
                             <TextBox x:Name="palettePresetNameBox" VerticalContentAlignment="Center" ToolTip="Palette name" />
                         </DockPanel>
+                    </StackPanel>
+                </Border>
+
+                <Label Content="Orientation controls" Margin="4,8,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+                    <StackPanel>
+                        <TextBlock x:Name="wandSpotlightSummary" Text="Listening for devices&#8230;" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,4" />
+                        <!-- The two spotlight modes (all wands / idle) plus the
+                             per-row radios below act as one selection over
+                             config.orientationDeviceSpotlight (-1 all, -2 idle,
+                             else a device id). Mutual exclusion is driven in code
+                             (UpdateSpotlightSelection), not GroupName, so the
+                             external state stays the single source of truth. -->
+                        <RadioButton x:Name="spotlightAllWands" Content="Spotlight: all wands" FontSize="12" Margin="0,1" />
+                        <RadioButton x:Name="spotlightIdle" Content="Idle (no wands)" FontSize="12" Margin="0,1,0,4" />
+                        <ListView x:Name="wandSpotlightList" BorderThickness="0" Background="Transparent" FontFamily="Consolas" FontSize="12"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <!-- Whole-row color reflects connection quality. -->
+                                    <Setter Property="Foreground" Value="{Binding QualityBrush}" />
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="ID" Width="28" DisplayMemberBinding="{Binding DeviceId}" />
+                                    <GridViewColumn Header="Type" Width="66" DisplayMemberBinding="{Binding TypeName}" />
+                                    <GridViewColumn Header="Motion" Width="50" DisplayMemberBinding="{Binding Motion}" />
+                                    <GridViewColumn Header="Quality" Width="52" DisplayMemberBinding="{Binding Quality}" />
+                                    <GridViewColumn Header="Spot" Width="40">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <RadioButton HorizontalAlignment="Center" IsChecked="{Binding IsSpotlight, Mode=TwoWay}"
+                                                  ToolTip="Spotlight only this wand" />
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
                     </StackPanel>
                 </Border>
             </StackPanel>

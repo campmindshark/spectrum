@@ -1,8 +1,13 @@
+using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using System.Windows.Threading;
 using Spectrum.Base;
 
 namespace Spectrum {
@@ -13,15 +18,29 @@ namespace Spectrum {
     // The live tempo the tap button drives (owned by the Operator, not part of
     // Configuration).
     private readonly BeatBroadcaster beat;
+    // The orientation-device source behind the compact wand-spotlight panel.
+    private readonly OrientationInput orientation;
     private DomeLayersController domeLayersController;
     private DomeScenesController domeScenesController;
     private DomePalettesController domePalettesController;
 
-    public VJHUDWindow(Configuration config, BeatBroadcaster beat) {
+    // Backing collection for the wand-spotlight ListView, reconciled in place
+    // each poll (keyed by device id, kept sorted) so the list doesn't flicker.
+    private readonly ObservableCollection<WandRow> wandRows =
+      new ObservableCollection<WandRow>();
+    private DispatcherTimer wandTimer;
+    // Set while UpdateSpotlightSelection pushes state into the radios, so the
+    // radios' own checked-handlers don't write config back (which would recurse).
+    private bool suppressSpotlightWrites;
+
+    public VJHUDWindow(
+      Configuration config, BeatBroadcaster beat, OrientationInput orientation) {
       this.InitializeComponent();
       this.config = config;
       this.beat = beat;
+      this.orientation = orientation;
       this.InitializeBindings();
+      this.InitializeWandPanel();
     }
 
     private void InitializeBindings() {
@@ -117,14 +136,113 @@ namespace Spectrum {
       this.beat.Reset();
     }
 
-    private void OrientationCalibrationClicked(object sender, RoutedEventArgs e) {
-      this.config.orientationCalibrate = true;
+    // ---- Compact wand-spotlight panel ---------------------------------------
+
+    // The mini port of the web "Wand status" panel: one row per connected
+    // orientation device (ID / Type / Motion / Quality) with a per-row spotlight
+    // radio, plus the "all wands" / "idle" radios above. Polls OrientationInput's
+    // thread-safe snapshots on a timer (the device set has no change event), and
+    // keeps every radio a reflection of config.orientationDeviceSpotlight.
+    private void InitializeWandPanel() {
+      this.wandSpotlightList.ItemsSource = this.wandRows;
+      this.spotlightAllWands.Checked += (s, e) => this.SetSpotlight(-1);
+      this.spotlightIdle.Checked += (s, e) => this.SetSpotlight(-2);
+      // Reflect changes made elsewhere (web surface, or OrientationInput clearing
+      // a vanished spotlight to -1 on its own thread) back into the radios.
+      this.config.PropertyChanged += this.ConfigPropertyChanged;
+      this.Loaded += this.WandPanelLoaded;
+      this.Closed += this.WandPanelClosed;
     }
 
-    private void OrientationDeviceSpotlightChanged(object sender, TextChangedEventArgs e) {
-      short deviceId;
-      if (System.Int16.TryParse(orientationDeviceSpotlightInput.Text, out deviceId)) {
-        this.config.orientationDeviceSpotlight = deviceId;
+    private void WandPanelLoaded(object sender, RoutedEventArgs e) {
+      // OrientationInput times a silent device out after ~1s, so a few hundred ms
+      // keeps the list responsive without busy-polling — matching WandStatusWindow.
+      this.wandTimer =
+        new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+      this.wandTimer.Tick += this.RefreshWands;
+      this.wandTimer.Start();
+      this.RefreshWands(null, null);
+    }
+
+    private void WandPanelClosed(object sender, EventArgs e) {
+      if (this.wandTimer != null) {
+        this.wandTimer.Stop();
+        this.wandTimer.Tick -= this.RefreshWands;
+        this.wandTimer = null;
+      }
+      this.config.PropertyChanged -= this.ConfigPropertyChanged;
+    }
+
+    private void ConfigPropertyChanged(object sender, PropertyChangedEventArgs e) {
+      if (e.PropertyName == nameof(this.config.orientationDeviceSpotlight)) {
+        // The write can originate off the UI thread (OrientationInput's timeout
+        // path), so marshal before touching the radios.
+        this.Dispatcher.BeginInvoke(
+          (Action)(() => this.UpdateSpotlightSelection()));
+      }
+    }
+
+    private void RefreshWands(object sender, EventArgs e) {
+      var snapshot = this.orientation.DevicesSnapshot();
+      var statsSnapshot = this.orientation.ConnectionStatsSnapshot();
+
+      // Reconcile in place (keyed by id, kept sorted) so radio state and the
+      // ListView's scroll position survive each poll.
+      foreach (var id in this.wandRows.Select(r => r.DeviceId).ToList()) {
+        if (!snapshot.ContainsKey(id)) {
+          this.wandRows.Remove(this.wandRows.First(r => r.DeviceId == id));
+        }
+      }
+      foreach (var kvp in snapshot.OrderBy(kvp => kvp.Key)) {
+        statsSnapshot.TryGetValue(kvp.Key, out var deviceStats);
+        var existing = this.wandRows.FirstOrDefault(r => r.DeviceId == kvp.Key);
+        if (existing == null) {
+          int insertAt = this.wandRows.Count(r => r.DeviceId < kvp.Key);
+          var row = new WandRow(kvp.Key, kvp.Value, deviceStats);
+          row.SpotlightRequested = this.SetSpotlight;
+          this.wandRows.Insert(insertAt, row);
+        } else {
+          existing.Update(kvp.Value, deviceStats);
+        }
+      }
+
+      int moving = snapshot.Values.Count(d => d.isMoving);
+      this.wandSpotlightSummary.Text = this.wandRows.Count == 0
+        ? "No wands connected."
+        : this.wandRows.Count + (this.wandRows.Count == 1 ? " wand" : " wands") +
+          " connected, " + moving + " moving.";
+
+      this.UpdateSpotlightSelection();
+    }
+
+    // Asks to make deviceId the spotlight (-1 all wands, -2 idle, else a device).
+    // The resulting config change flows back through ConfigPropertyChanged /
+    // RefreshWands to refresh every radio, so this only writes.
+    private void SetSpotlight(int deviceId) {
+      if (this.suppressSpotlightWrites) {
+        return;
+      }
+      this.config.orientationDeviceSpotlight = deviceId;
+    }
+
+    // Points every radio at the current spotlight value. "All wands" is the
+    // catch-all for any non-idle state with no matching connected wand (the
+    // default, or a spotlight id whose device isn't listed) — mirroring the web
+    // panel. Guarded so the programmatic checks here don't loop back into writes.
+    private void UpdateSpotlightSelection() {
+      int spotlight = this.config.orientationDeviceSpotlight;
+      this.suppressSpotlightWrites = true;
+      try {
+        bool spotWand = false;
+        foreach (var row in this.wandRows) {
+          bool selected = row.DeviceId == spotlight;
+          row.IsSpotlight = selected;
+          spotWand |= selected;
+        }
+        this.spotlightIdle.IsChecked = !spotWand && spotlight == -2;
+        this.spotlightAllWands.IsChecked = !spotWand && spotlight != -2;
+      } finally {
+        this.suppressSpotlightWrites = false;
       }
     }
   }

@@ -105,21 +105,47 @@
     .palette-saverow input[type=text] { flex: 1; min-width: 0; font-size: 1rem; }
     .palette-saverow button { background: #333; color: #eee; border: none;
       border-radius: 4px; padding: 0.4rem 0.7rem; cursor: pointer; }
-    /* Two-column layout mirroring the native VJ HUD: controls (palette, params,
-       wands) on the left, the performance surface (scenes + layers) on the
-       right. Collapses to a single stacked column on phones. */
+    /* Two-column layout mirroring the native VJ HUD: controls (global speeds,
+       palette, wands) on the left, the performance surface (scenes + layers) on
+       the right. Collapses to a single stacked column on phones. */
     .columns { display: flex; gap: 1.5rem; align-items: flex-start; }
     .column-left { flex: 0 0 340px; }
     .column-right { flex: 1; min-width: 0; }
     .column > :first-child { margin-top: 0; border-top: none; padding-top: 0; }
     @media (max-width: 760px) {
       .columns { flex-direction: column; gap: 0; }
-      .column-left, .column-right { flex: 1 1 auto; width: 100%; }
-      .column > :first-child { border-top: 1px solid #333;
+      /* Flatten the two desktop columns so all sections become flex items of
+         .columns and can be reordered for phones independently of the desktop
+         left/right split. */
+      .column { display: contents; }
+      #params-section { order: 1; }
+      #scenes         { order: 2; }
+      #layers         { order: 3; }
+      #palette        { order: 4; }
+      #wands          { order: 5; }
+      /* Dividers follow the visual order: a top border on every section except
+         the first. ID specificity overrides the desktop .column > :first-child
+         reset, which is keyed on DOM order and no longer matches the stack. */
+      #scenes, #layers, #palette, #wands { border-top: 1px solid #333;
         margin-top: 1.5rem; padding-top: 0.5rem; }
-      .column-left > :first-child { border-top: none;
-        margin-top: 0; padding-top: 0; }
+      #params-section { border-top: none; margin-top: 0; padding-top: 0; }
     }
+    /* The global-speeds list (#params) has no header of its own; wrap it in a
+       labeled section so it collapses like the others. */
+    .params-section { border-top: 1px solid #333; margin-top: 1.5rem;
+      padding-top: 0.5rem; margin-bottom: 1rem; }
+    .params-section h2 { font-size: 1rem; margin: 0 0 0.5rem; }
+    /* Collapsible sections: tap a section's <h2> to fold it away. The toggled
+       class lives on the persistent container (survives each panel's innerHTML
+       rebuild) and the header is caught by delegation, so this holds up across
+       re-renders. See collapsible.js. */
+    .collapsible > h2 { cursor: pointer; user-select: none;
+      -webkit-user-select: none; display: flex; align-items: center;
+      gap: 0.4rem; }
+    .collapsible > h2::before { content: "\25be"; font-size: 0.8em;
+      line-height: 1; opacity: 0.7; transition: transform 0.12s ease; }
+    .collapsible.collapsed > h2::before { transform: rotate(-90deg); }
+    .collapsible.collapsed > :not(h2) { display: none; }
   </style>
 </head>
 <body>
@@ -128,18 +154,22 @@
   <div class="telemetry" id="telemetry"></div>
   <div class="columns">
     <div class="column column-left">
-      <div class="palette" id="palette"></div>
-      <div id="params"></div>
-      <div class="wands" id="wands"></div>
+      <div class="params-section collapsible" id="params-section">
+        <h2>Global speeds</h2>
+        <div id="params"></div>
+      </div>
+      <div class="palette collapsible" id="palette"></div>
+      <div class="wands collapsible" id="wands"></div>
     </div>
     <div class="column column-right">
-      <div class="scenes" id="scenes"></div>
-      <div class="layers" id="layers"></div>
+      <div class="scenes collapsible" id="scenes"></div>
+      <div class="layers collapsible" id="layers"></div>
     </div>
   </div>
   <div class="status" id="status">loading&hellip;</div>
   <p style="font-size:0.75rem"><a href="/maintenance.html">Maintenance &rarr;</a></p>
   <script src="app.js"></script>
+  <script src="collapsible.js"></script>
   <script src="layers.js"></script>
   <script src="scenes.js"></script>
   <script src="palettes.js"></script>

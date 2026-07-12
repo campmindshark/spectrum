@@ -1197,7 +1197,7 @@ namespace Spectrum {
 
     private void OpenVJHUD(object sender, RoutedEventArgs e) {
       this.vjHUDWindow = new VJHUDWindow(
-        this.config, this.op.BeatBroadcaster);
+        this.config, this.op.BeatBroadcaster, this.op.OrientationInput);
       this.vjHUDWindow.Closed += VJHUDClosed;
       this.vjHUDWindow.Show();
     }

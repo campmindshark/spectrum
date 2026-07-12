@@ -40,12 +40,6 @@ namespace Spectrum.Web {
 
         // ---- User surface: the curated VJ HUD knobs ----
 
-        // Brightness
-        new DoubleParameter("domeBrightness", user, 0.0, 1.0,
-          c => c.domeBrightness, (c, v) => c.domeBrightness = v),
-        new DoubleParameter("domeMaxBrightness", user, 0.0, 1.0,
-          c => c.domeMaxBrightness, (c, v) => c.domeMaxBrightness = v),
-
         // Dome global speeds — cross-layer scene state. Per-visualizer tuning
         // (radial size, ripple steps, twinkle density, ...) lives in each
         // layer's Params bag, served by LayersController rather than here.
@@ -68,6 +62,12 @@ namespace Spectrum.Web {
         // "palette"/"palettes" frames, not a field-level parameter here.
 
         // ---- Maintenance surface: device wiring & diagnostics ----
+
+        // Brightness
+        new DoubleParameter("domeBrightness", maint, 0.0, 1.0,
+          c => c.domeBrightness, (c, v) => c.domeBrightness = v),
+        new DoubleParameter("domeMaxBrightness", maint, 0.0, 1.0,
+          c => c.domeMaxBrightness, (c, v) => c.domeMaxBrightness = v),
 
         // BPM source (Human tap-tempo / Madmom beat tracker / Pro DJ Link)
         new EnumIntParameter("beatInput", maint, BeatInputNames,

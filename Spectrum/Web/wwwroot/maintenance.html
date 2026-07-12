@@ -60,20 +60,33 @@
     .wand-table td { padding: 0.15rem 0.4rem; white-space: pre;
       font-variant-numeric: tabular-nums; }
     a { color: #fc8; }
+    /* Collapsible sections: tap a section's <h2> to fold it away. The toggled
+       class lives on the persistent container (survives each panel's innerHTML
+       rebuild) and the header is caught by delegation, so this holds up across
+       re-renders. See collapsible.js. */
+    .collapsible > h2 { cursor: pointer; user-select: none;
+      -webkit-user-select: none; display: flex; align-items: center;
+      gap: 0.4rem; }
+    .collapsible > h2::before { content: "\25be"; font-size: 0.8em;
+      line-height: 1; opacity: 0.7; transition: transform 0.12s ease; }
+    .collapsible.collapsed > h2::before { transform: rotate(-90deg); }
+    .collapsible.collapsed > :not(h2) { display: none; }
   </style>
 </head>
 <body>
   <h1>Spectrum &mdash; Maintenance</h1>
   <div class="telemetry" id="telemetry"></div>
-  <div id="tempo" class="section"></div>
-  <div id="testpatterns" class="section"></div>
+  <div id="brightness" class="section collapsible"></div>
+  <div id="tempo" class="section collapsible"></div>
+  <div id="testpatterns" class="section collapsible"></div>
   <div id="locks" class="section"></div>
-  <div id="wands" class="section"></div>
-  <div id="calibration" class="section"></div>
+  <div id="wands" class="section collapsible"></div>
+  <div id="calibration" class="section collapsible"></div>
   <div class="status" id="status">loading&hellip;</div>
   <p style="font-size:0.75rem"><a href="/">&larr; User controls</a></p>
   <script>window.SPECTRUM_SCOPE = "maintenance";</script>
   <script src="app.js"></script>
+  <script src="collapsible.js"></script>
   <script src="calibration.js"></script>
   <script src="wands.js"></script>
 </body>
