@@ -13,6 +13,7 @@ using System.Windows.Media;
 using Spectrum.Base;
 using System.ComponentModel;
 using System.Reflection;
+using System.Diagnostics;
 
 namespace Spectrum {
 
@@ -187,20 +188,28 @@ namespace Spectrum {
       if (MainWindow.LoadingConfig) {
         return;
       }
-      // We keep around the old config in case the new config causes a crash
-      if (File.Exists("spectrum_config.xml")) {
-        File.Copy("spectrum_config.xml", "spectrum_old_config.xml", true);
-      }
-      using (
-        FileStream stream = new FileStream(
-          "spectrum_config.xml",
-          FileMode.Create
-        )
-      ) {
-        new XmlSerializer<SpectrumConfiguration>().Serialize(
-          stream,
-          this.config
-        );
+      const string configPath = "spectrum_config.xml";
+      const string backupPath = "spectrum_old_config.xml";
+      const string tempPath = "spectrum_config.xml.tmp";
+      try {
+        // Serialize completely before touching the live file. File.Replace then
+        // swaps it atomically and creates the recovery backup in the same step.
+        using (FileStream stream = new FileStream(tempPath, FileMode.Create)) {
+          new XmlSerializer<SpectrumConfiguration>().Serialize(
+            stream,
+            this.config
+          );
+          stream.Flush(true);
+        }
+        if (File.Exists(configPath)) {
+          File.Replace(tempPath, configPath, backupPath);
+        } else {
+          File.Move(tempPath, configPath);
+        }
+      } finally {
+        if (File.Exists(tempPath)) {
+          File.Delete(tempPath);
+        }
       }
     }
 
@@ -228,15 +237,26 @@ namespace Spectrum {
       MainWindow.LoadingConfig = true;
 
       string loadFile = null;
-      if (File.Exists("spectrum_config.xml")) {
-        loadFile = "spectrum_config.xml";
-      } else if (File.Exists("spectrum_default_config.xml")) {
-        loadFile = "spectrum_default_config.xml";
-      }
-      if (loadFile != null) {
-        using (FileStream stream = File.OpenRead(loadFile)) {
-          this.config = new XmlSerializer<SpectrumConfiguration>(
-          ).Deserialize(stream);
+      string[] candidates = new string[] {
+        "spectrum_config.xml",
+        "spectrum_old_config.xml",
+        "spectrum_default_config.xml",
+      };
+      foreach (string candidate in candidates) {
+        if (!File.Exists(candidate)) {
+          continue;
+        }
+        try {
+          using (FileStream stream = File.OpenRead(candidate)) {
+            this.config = new XmlSerializer<SpectrumConfiguration>(
+            ).Deserialize(stream);
+          }
+          loadFile = candidate;
+          break;
+        } catch (Exception e) {
+          Debug.WriteLine(
+            "Failed to load configuration from " + candidate + ": " + e);
+          this.config = null;
         }
       }
       if (this.config == null) {

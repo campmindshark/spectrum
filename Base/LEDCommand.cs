@@ -8,13 +8,9 @@ namespace Spectrum.Base {
 
   public struct DomeLEDCommand {
     public bool isFlush;
-    // When non-null, this command carries a whole frame: a snapshot of every
-    // dome pixel's color in canonical buffer order (strut 0..N, led 0..len,
-    // matching LEDDomeOutput.MakeDomeOutputBuffer). Lets a buffer-based
-    // visualizer hand the simulator one command per frame instead of one per
-    // pixel. Implies a redraw; strutIndex/ledIndex/color are unused when set.
-    public int[] frame;
-    // rest doesn't matter if isFlush or frame != null
+    // The rest doesn't matter if isFlush. Whole normal frames travel through
+    // LEDDomeOutput's latest-frame mailbox; this command remains for ordered
+    // diagnostic/calibration pixel writes.
     public int strutIndex;
     public int ledIndex;
     public int color;

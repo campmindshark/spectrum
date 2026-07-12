@@ -98,8 +98,8 @@ namespace Spectrum.Visualizers {
     // press) let every connected wand fire it.
     private bool ButtonFired(int button) {
       int spotlight = this.config.orientationDeviceSpotlight;
-      Dictionary<int, OrientationDevice> devices =
-        this.orientationInput.DevicesSnapshot();
+      IReadOnlyDictionary<int, OrientationDevice> devices =
+        this.orientationInput.OperatorFrameDevices;
       bool fired = false;
       foreach (var kvp in devices) {
         int deviceId = kvp.Key;

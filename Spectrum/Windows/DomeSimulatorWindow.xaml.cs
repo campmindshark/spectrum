@@ -57,10 +57,9 @@ namespace Spectrum {
       this.config = config;
       this.dome = dome;
 
-      // Announce that a consumer is now draining SimulatorCommandQueue, so
-      // LEDDomeOutput starts feeding it (and stops when we close). Without this
-      // the queue would only be gated on domeSimulationEnabled, which the web
-      // surface can set with no window open — growing the queue without bound.
+      // Announce that a consumer is now draining diagnostic commands and the
+      // latest-frame mailbox, so LEDDomeOutput starts feeding them (and stops
+      // when we close).
       this.dome.SimulatorHasConsumer = true;
 
       this.rect = new Int32Rect(0, 0, 750, 750);
@@ -146,8 +145,8 @@ namespace Spectrum {
         this.timer.Tick -= Update;
         this.timer = null;
       }
-      // Stop LEDDomeOutput feeding the queue and drop whatever we didn't drain,
-      // so a stale backlog of int[] frame snapshots isn't held after we're gone.
+      // Stop LEDDomeOutput feeding simulator output. The setter also returns a
+      // pending pooled normal frame; clear any ordered diagnostic commands.
       this.dome.SimulatorHasConsumer = false;
       this.dome.SimulatorCommandQueue.Clear();
       base.OnClosed(e);
@@ -202,14 +201,28 @@ namespace Spectrum {
     }
 
     private void Update(object sender, EventArgs e) {
+      bool hasFrame = this.dome.TryTakeSimulatorFrame(out int[] latestFrame);
       int queueLength = this.dome.SimulatorCommandQueue.Count;
-      if (queueLength == 0) {
+      if (queueLength == 0 && !hasFrame) {
         return;
       }
 
       //Stopwatch stopwatch = Stopwatch.StartNew();
 
       bool shouldRedraw = false;
+      if (hasFrame) {
+        try {
+          // Normal buffer output is a latest-value mailbox: render only the
+          // newest frame available on this UI tick. Ordered diagnostic commands
+          // are applied afterward, so a mode switch cannot let an older normal
+          // frame overwrite newer diagnostic pixels.
+          this.DrawFrame(latestFrame);
+          shouldRedraw = true;
+        } finally {
+          this.dome.ReturnSimulatorFrame(latestFrame);
+        }
+      }
+
       for (int k = 0; k < queueLength; k++) {
         DomeLEDCommand command;
         bool result =
@@ -222,14 +235,6 @@ namespace Spectrum {
           break;
         }
         if (command.isFlush) {
-          shouldRedraw = true;
-          continue;
-        }
-        if (command.frame != null) {
-          // Whole-frame command from a buffer-based visualizer (see
-          // LEDDomeOutput.WriteBuffer). Colors are in canonical buffer order
-          // (strut 0..N, led 0..len), so walk struts/leds in the same order.
-          this.DrawFrame(command.frame);
           shouldRedraw = true;
           continue;
         }

@@ -154,8 +154,8 @@ namespace Spectrum.Visualizers {
     // still (not isMoving) contributes nothing, so a cloud at rest only settles.
     private void CollectAimPoints() {
       this.aimPoints.Clear();
-      Dictionary<int, OrientationDevice> devices =
-        this.orientationInput.DevicesSnapshot();
+      IReadOnlyDictionary<int, OrientationDevice> devices =
+        this.orientationInput.OperatorFrameDevices;
       foreach (var kvp in devices) {
         if (!kvp.Value.isMoving) {
           continue;

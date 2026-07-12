@@ -76,6 +76,7 @@ namespace Spectrum.Visualizers {
     // instance) see near-zero elapsed time rather than each applying a full
     // frame's worth of drift.
     private readonly FrameClock frameClock = new FrameClock();
+    private long lastFrameGeneration = -1;
 
     // Reused each frame to avoid per-frame allocation.
     private readonly List<DeviceFrame> activeDevices = new List<DeviceFrame>();
@@ -127,16 +128,21 @@ namespace Spectrum.Visualizers {
       return true;
     }
 
-    // Snapshots devices, filters to the moving ones, resolves the spotlight,
-    // and advances the idle drift. Every active layer calls this once per
-    // frame before reading CurrentCenter/ColorCenterAt; frameScale is derived
-    // from this instance's own clock (not the caller's), so a second call in
-    // the same engine tick is a cheap near-no-op rather than double drift.
+    // Filters the operator's shared device snapshot, resolves the spotlight,
+    // and advances the idle drift. Every active layer may call this before
+    // reading CurrentCenter/ColorCenterAt, but only the first call in an
+    // operator frame does work.
     // level scales the idle drift's speed, as the original inline code did.
     public void Update(double level) {
+      long generation = this.orientationInput.OperatorFrameGeneration;
+      if (generation == this.lastFrameGeneration) {
+        return;
+      }
+      this.lastFrameGeneration = generation;
+
       double frameScale = this.frameClock.Tick();
-      Dictionary<int, OrientationDevice> devices =
-        this.orientationInput.DevicesSnapshot();
+      IReadOnlyDictionary<int, OrientationDevice> devices =
+        this.orientationInput.OperatorFrameDevices;
       this.activeDevices.Clear();
       this.movingDevices.Clear();
 

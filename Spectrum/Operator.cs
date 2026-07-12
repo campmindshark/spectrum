@@ -72,6 +72,11 @@ namespace Spectrum {
     private const int VisualizerQuarantineThreshold = 10;
     private readonly Dictionary<Visualizer, int> visualizerFailureCounts =
       new Dictionary<Visualizer, int>();
+    // Hardware initialization happens inside Input/Output.Active setters. A
+    // failed transition is quarantined until the operator is restarted so a
+    // missing device cannot throw (and retry) hundreds of times per second.
+    private readonly HashSet<Input> inputActivationFailures = new HashSet<Input>();
+    private readonly HashSet<Output> outputActivationFailures = new HashSet<Output>();
 
     public Operator(Configuration config) {
       this.config = config;
@@ -272,6 +277,8 @@ namespace Spectrum {
             return;
           }
           if (value) {
+            this.inputActivationFailures.Clear();
+            this.outputActivationFailures.Clear();
             this.operatorThreadStop = false;
             this.operatorThread = new Thread(OperatorThread);
             this.operatorThread.Start();
@@ -283,10 +290,10 @@ namespace Spectrum {
             this.operatorThread = null;
 
             foreach (var input in this.inputs) {
-              input.Active = false;
+              this.SetInputActiveSafely(input, false);
             }
             foreach (var output in this.outputs) {
-              output.Active = false;
+              this.SetOutputActiveSafely(output, false);
             }
           }
           this.enabled = value;
@@ -378,13 +385,13 @@ namespace Spectrum {
         }
 
         foreach (var output in this.outputs) {
-          output.Active = activeOutputs.Contains(output);
+          this.SetOutputActiveSafely(output, activeOutputs.Contains(output));
         }
         foreach (var visualizer in this.visualizers) {
           visualizer.Enabled = activeVisualizers.Contains(visualizer);
         }
         foreach (var input in this.inputs) {
-          input.Active = activeInputs.Contains(input);
+          this.SetInputActiveSafely(input, activeInputs.Contains(input));
         }
 
         foreach (var input in activeInputs) {
@@ -398,6 +405,11 @@ namespace Spectrum {
               " threw in OperatorUpdate: " + e);
           }
         }
+
+        // Start one shared orientation-snapshot generation for this frame.
+        // The first OrientationCenter, LayerTrigger, or PointCloud consumer
+        // captures it lazily; every later consumer reuses that deep clone.
+        this.OrientationInput.BeginOperatorFrame();
 
         foreach (var visualizer in activeVisualizers) {
           try {
@@ -437,6 +449,61 @@ namespace Spectrum {
         Debug.WriteLine(
           "Operator: visualizer " + visualizer.GetType().Name +
           " threw in Visualize: " + e);
+      }
+    }
+
+    private void SetInputActiveSafely(Input input, bool active) {
+      if (active && this.inputActivationFailures.Contains(input)) {
+        return;
+      }
+      try {
+        input.Active = active;
+        if (!active) {
+          this.inputActivationFailures.Remove(input);
+        }
+      } catch (Exception e) {
+        if (active) {
+          this.inputActivationFailures.Add(input);
+          // An Active setter may have completed part of its initialization
+          // before throwing. Best-effort rollback leaves the device in a known
+          // inactive state until the operator is restarted.
+          try {
+            input.Active = false;
+          } catch (Exception rollbackError) {
+            Debug.WriteLine(
+              "Operator: input " + input.GetType().Name +
+              " also failed activation rollback: " + rollbackError);
+          }
+        }
+        Debug.WriteLine(
+          "Operator: input " + input.GetType().Name +
+          " failed to become " + (active ? "active" : "inactive") + ": " + e);
+      }
+    }
+
+    private void SetOutputActiveSafely(Output output, bool active) {
+      if (active && this.outputActivationFailures.Contains(output)) {
+        return;
+      }
+      try {
+        output.Active = active;
+        if (!active) {
+          this.outputActivationFailures.Remove(output);
+        }
+      } catch (Exception e) {
+        if (active) {
+          this.outputActivationFailures.Add(output);
+          try {
+            output.Active = false;
+          } catch (Exception rollbackError) {
+            Debug.WriteLine(
+              "Operator: output " + output.GetType().Name +
+              " also failed activation rollback: " + rollbackError);
+          }
+        }
+        Debug.WriteLine(
+          "Operator: output " + output.GetType().Name +
+          " failed to become " + (active ? "active" : "inactive") + ": " + e);
       }
     }
 

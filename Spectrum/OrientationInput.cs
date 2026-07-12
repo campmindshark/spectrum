@@ -16,6 +16,14 @@ namespace Spectrum {
     private long lastCheckedDevices;
     private Dictionary<int, long> lastSeen;
     private long[] lastEvent;
+    // One deep device snapshot published by the operator thread after input
+    // updates each frame. Visualizers share this immutable-by-convention view
+    // instead of each cloning the device map and contending with the receive
+    // thread independently.
+    private IReadOnlyDictionary<int, OrientationDevice> operatorFrameDevices =
+      new Dictionary<int, OrientationDevice>();
+    private long operatorFrameGeneration;
+    private long operatorSnapshotGeneration = -1;
     // Per-device connection-quality stats (arrival rate, jitter, packet count),
     // accumulated by the receive threads (UDP callback + serial worker),
     // serialized by mLock alongside the device map.
@@ -270,6 +278,26 @@ namespace Spectrum {
         lastCheckedDevices = currentTime;
       }
     }
+
+    // Called exactly once by Operator after all input updates and before any
+    // visualizer runs. The snapshot itself is created lazily so a scene with no
+    // orientation consumers pays nothing; all consumers in a generation share
+    // the same cloned devices.
+    public void BeginOperatorFrame() {
+      this.operatorFrameGeneration++;
+    }
+
+    public IReadOnlyDictionary<int, OrientationDevice> OperatorFrameDevices {
+      get {
+        if (this.operatorSnapshotGeneration != this.operatorFrameGeneration) {
+          this.operatorFrameDevices = this.DevicesSnapshot();
+          this.operatorSnapshotGeneration = this.operatorFrameGeneration;
+        }
+        return this.operatorFrameDevices;
+      }
+    }
+
+    public long OperatorFrameGeneration => this.operatorFrameGeneration;
 
     // Returns a thread-safe deep copy of the current device map, taken under
     // mLock. Callers (e.g. visualizers on the operator thread) get fully

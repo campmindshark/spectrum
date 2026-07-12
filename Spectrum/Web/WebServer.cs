@@ -36,6 +36,7 @@ namespace Spectrum.Web {
     private readonly PaletteController palettes;
     private readonly int port;
     private WebApplication app;
+    private Task hostLifetimeTask;
 
     // Advisory-lock lease token, carried on writes to a locked resource and on
     // every calibration action.
@@ -102,10 +103,18 @@ namespace Spectrum.Web {
 
       this.MapApi(this.app);
 
-      // RunAsync blocks until shutdown; fire it on a background task so the WPF
-      // message loop keeps running. StartAsync() would also work, but RunAsync
-      // keeps the host alive until StopAsync is called on close.
-      this.app.RunAsync();
+      // Confirm the listener is bound before returning. Start() is called once
+      // during window construction, where synchronously observing this short
+      // startup operation is preferable to silently discarding a faulted
+      // RunAsync task (for example when the port is already occupied).
+      try {
+        this.app.StartAsync().GetAwaiter().GetResult();
+        this.hostLifetimeTask = this.app.WaitForShutdownAsync();
+      } catch {
+        this.app.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        this.app = null;
+        throw;
+      }
 
       this.calibrationWatchdog = new Timer(
         this.ReconcileCalibrationLease, null,
@@ -119,6 +128,10 @@ namespace Spectrum.Web {
       }
       if (this.app != null) {
         await this.app.StopAsync(TimeSpan.FromSeconds(2));
+        if (this.hostLifetimeTask != null) {
+          await this.hostLifetimeTask;
+          this.hostLifetimeTask = null;
+        }
         await this.app.DisposeAsync();
         this.app = null;
       }

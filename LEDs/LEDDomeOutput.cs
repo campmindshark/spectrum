@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -323,8 +324,11 @@ namespace Spectrum.LEDs {
         return;
       }
       if (e.PropertyName == nameof(this.config.domeLayerStack)) {
-        // Force the operator thread to re-resolve the stack next Composite.
-        this.resolvedStackValid = false;
+        // Advance the generation instead of toggling a bool. A bool
+        // invalidation can be lost if the UI publishes a new stack while the
+        // operator is still resolving the previous one and then marks that old
+        // result valid.
+        System.Threading.Interlocked.Increment(ref this.stackGeneration);
         return;
       }
       if (
@@ -434,44 +438,55 @@ namespace Spectrum.LEDs {
       // invalidated whenever domeLayerStack changes.
       public DomeLayerSettings settings;
     }
-    // Rebuilt lazily on the operator thread whenever the stack changes. volatile
-    // so a set-false from ConfigUpdated (UI/web thread) is seen promptly by the
-    // operator thread; the resolved array is only ever read/written on the
-    // operator thread.
-    private volatile bool resolvedStackValid = false;
+    // Rebuilt lazily on the operator thread whenever the stack changes. The UI
+    // thread increments stackGeneration on every snapshot swap; the operator
+    // only publishes a resolved result if that generation stayed current for
+    // the whole build. This prevents a concurrent update from being overwritten
+    // by a late "valid" write for the previous stack.
+    private int stackGeneration;
+    private int resolvedStackGeneration = -1;
     private ResolvedLayer[] resolvedStack = System.Array.Empty<ResolvedLayer>();
 
     private void EnsureResolvedStack() {
-      if (this.resolvedStackValid) {
+      while (true) {
+        int generation = System.Threading.Volatile.Read(ref this.stackGeneration);
+        if (this.resolvedStackGeneration == generation) {
+          return;
+        }
+        var resolved = new List<ResolvedLayer>();
+        List<DomeLayerSettings> stack = this.config.domeLayerStack;
+        if (stack != null) {
+          foreach (DomeLayerSettings layer in stack) {
+            if (
+              layer == null || !layer.Enabled || layer.VisualizerKey == null
+            ) {
+              continue;
+            }
+            if (!this.layerVisualizersByKey.TryGetValue(
+              layer.VisualizerKey, out DomeLayerVisualizer visualizer
+            )) {
+              continue;
+            }
+            resolved.Add(new ResolvedLayer {
+              visualizer = visualizer,
+              // A name the registry doesn't know (a hand-edited config file —
+              // the validator rejects unknowns on every publish path) falls
+              // back to Over, like the retired enum switch's default arm.
+              blend = DomeBlend.FromName(layer.BlendMode) ?? DomeBlend.Over,
+              opacity = layer.Opacity,
+              settings = layer,
+            });
+          }
+        }
+        // If a newer stack arrived while this one was being resolved, discard
+        // the stale result and immediately retry against the latest snapshot.
+        if (generation != System.Threading.Volatile.Read(ref this.stackGeneration)) {
+          continue;
+        }
+        this.resolvedStack = resolved.ToArray();
+        this.resolvedStackGeneration = generation;
         return;
       }
-      var resolved = new List<ResolvedLayer>();
-      List<DomeLayerSettings> stack = this.config.domeLayerStack;
-      if (stack != null) {
-        foreach (DomeLayerSettings layer in stack) {
-          if (
-            layer == null || !layer.Enabled || layer.VisualizerKey == null
-          ) {
-            continue;
-          }
-          if (!this.layerVisualizersByKey.TryGetValue(
-            layer.VisualizerKey, out DomeLayerVisualizer visualizer
-          )) {
-            continue;
-          }
-          resolved.Add(new ResolvedLayer {
-            visualizer = visualizer,
-            // A name the registry doesn't know (a hand-edited config file —
-            // the validator rejects unknowns on every publish path) falls
-            // back to Over, like the retired enum switch's default arm.
-            blend = DomeBlend.FromName(layer.BlendMode) ?? DomeBlend.Over,
-            opacity = layer.Opacity,
-            settings = layer,
-          });
-        }
-      }
-      this.resolvedStack = resolved.ToArray();
-      this.resolvedStackValid = true;
     }
 
     // Blends the active layer stack into compositeBuffer and pushes exactly one
@@ -620,35 +635,91 @@ namespace Spectrum.LEDs {
       this.frameColorCacheValid = true;
     }
 
-    // Frames for the on-screen dome simulator. The queue lives here, with its
-    // producer (split off Configuration — arch_issues item 5); the single
-    // consumer is DomeSimulatorWindow, which reaches it via Operator.DomeOutput.
+    // Ordered per-pixel/flush commands for diagnostic visualizers. Normal
+    // buffer-rendered frames use the latest-frame mailbox below: the simulator
+    // cannot display intermediate frames, so queueing them only creates GC and
+    // redundant UI work.
     public ConcurrentQueue<DomeLEDCommand> SimulatorCommandQueue { get; } =
       new ConcurrentQueue<DomeLEDCommand>();
 
-    // True while the simulator window is open and actually draining
-    // SimulatorCommandQueue. A plain bool read/write is atomic, which is all
-    // the operator thread needs to gate its enqueues on a live consumer.
-    public bool SimulatorHasConsumer { get; set; }
+    private readonly object simulatorFrameGate = new object();
+    private volatile bool simulatorHasConsumer;
+    private int[] latestSimulatorFrame;
+    // Set on the operator thread when WriteBuffer publishes a mailbox frame;
+    // Flush then knows it needn't also enqueue a redundant redraw command.
+    private bool simulatorFramePublishedSinceFlush;
 
-    // Only feed SimulatorCommandQueue when simulation is on AND something is
-    // actually draining the queue. Without the consumer check, setting
-    // domeSimulationEnabled with no simulator window open (e.g. flipped on over
-    // the web) would grow the queue without bound — a fresh int[] frame
-    // snapshot up to 400x/sec with nobody dequeuing it.
+    // True while the simulator window is open. Disabling the consumer also
+    // atomically detaches and returns any pending pooled frame.
+    public bool SimulatorHasConsumer {
+      get { return this.simulatorHasConsumer; }
+      set {
+        int[] abandoned = null;
+        lock (this.simulatorFrameGate) {
+          this.simulatorHasConsumer = value;
+          if (!value) {
+            abandoned = this.latestSimulatorFrame;
+            this.latestSimulatorFrame = null;
+          }
+        }
+        if (abandoned != null) {
+          ArrayPool<int>.Shared.Return(abandoned);
+        }
+      }
+    }
+
+    // Only produce simulator output when simulation is on AND a window is
+    // consuming it. Without the consumer check, diagnostic commands could grow
+    // the queue and normal rendering would keep cycling pooled frame buffers
+    // with nobody displaying them.
     private bool ShouldEnqueueDomeCommand =>
       this.config.domeSimulationEnabled && this.SimulatorHasConsumer;
+
+    // Replaces the pending normal frame. The producer returns any superseded
+    // pooled array immediately; a frame already taken by the UI is owned by the
+    // UI until ReturnSimulatorFrame is called.
+    private bool PublishSimulatorFrame(int[] frame) {
+      int[] superseded = null;
+      lock (this.simulatorFrameGate) {
+        if (!this.simulatorHasConsumer || !this.config.domeSimulationEnabled) {
+          return false;
+        }
+        superseded = this.latestSimulatorFrame;
+        this.latestSimulatorFrame = frame;
+      }
+      if (superseded != null) {
+        ArrayPool<int>.Shared.Return(superseded);
+      }
+      // A complete frame supersedes any older diagnostic pixels left in the
+      // ordered queue (notably when switching out of a diagnostic mode).
+      if (!this.SimulatorCommandQueue.IsEmpty) {
+        this.SimulatorCommandQueue.Clear();
+      }
+      return true;
+    }
+
+    public bool TryTakeSimulatorFrame(out int[] frame) {
+      lock (this.simulatorFrameGate) {
+        frame = this.latestSimulatorFrame;
+        this.latestSimulatorFrame = null;
+        return frame != null;
+      }
+    }
+
+    public void ReturnSimulatorFrame(int[] frame) {
+      if (frame != null) {
+        ArrayPool<int>.Shared.Return(frame);
+      }
+    }
 
     // Hard ceiling on SimulatorCommandQueue depth. The consumer
     // (DomeSimulatorWindow) drains on a ~100Hz UI tick, but the operator thread
     // produces at up to 400Hz, and if the UI thread stalls (window dragged,
     // minimized, slow machine) the queue would otherwise grow without bound. A
-    // display only needs the most recent state, so past this cap we drop the
-    // oldest commands. Sized well above a single full-dome frame: the per-pixel
-    // diagnostic/calibration visualizers enqueue one command per lit pixel
-    // (~4,500) plus a Flush every frame, and several such frames can sit in the
-    // queue between UI ticks even when the consumer is keeping up — so trimming
-    // engages only under a genuine stall, never during healthy rendering.
+    // display only needs recent diagnostic state, so past this cap we drop the
+    // oldest commands. Sized above several full diagnostic/calibration frames
+    // (~4,500 per-pixel commands plus a Flush each); normal frames never enter
+    // this queue.
     private const int SimulatorCommandQueueCap = 20000;
 
     // Enqueue a simulator command, dropping the oldest queued commands if the
@@ -669,11 +740,15 @@ namespace Spectrum.LEDs {
       if (this.opcAPI != null) {
          this.opcAPI.Flush();
       }
-      if (this.ShouldEnqueueDomeCommand) {
+      if (
+        this.ShouldEnqueueDomeCommand &&
+        !this.simulatorFramePublishedSinceFlush
+      ) {
         this.EnqueueSimulatorCommand(
           new DomeLEDCommand() { isFlush = true }
         );
       }
+      this.simulatorFramePublishedSinceFlush = false;
     }
 
     private void SetDevicePixel(int controlBoxIndex, int pixelIndex, int color) {
@@ -815,34 +890,36 @@ namespace Spectrum.LEDs {
       // The visualizers list is only mutated at registration time, so the
       // per-pixel lock in SetDevicePixel guarded nothing here.
       OPCAPI opcAPI = this.opcAPI;
-      if (opcAPI == null) {
+      bool simulationEnabled = this.ShouldEnqueueDomeCommand;
+      if (opcAPI == null && !simulationEnabled) {
         return;
       }
       // Use the device indexes precomputed once in MakeDomeOutputBuffer rather
       // than re-deriving the control-box/pixel mapping for every pixel every
       // frame (P3).
       int stride = maxStripLength * 8;
-      bool simulationEnabled = this.ShouldEnqueueDomeCommand;
-      // When simulating, snapshot the whole frame's colors and hand the
-      // simulator a single command, instead of enqueueing one command per pixel
-      // (~4000 interlocked ConcurrentQueue ops + an equal number of dequeues and
-      // per-command geometry recomputes every frame). A fresh array per frame is
-      // required because the buffer is mutated in place next frame and the queue
-      // may hold several frames at once, so the snapshot can't be reused.
-      int[] frame = simulationEnabled ? new int[buffer.pixels.Length] : null;
+      // Rent a whole-frame snapshot for the latest-frame mailbox. If the UI has
+      // not consumed the previous frame, PublishSimulatorFrame replaces and
+      // returns it instead of building a backlog.
+      int[] frame = simulationEnabled
+        ? ArrayPool<int>.Shared.Rent(buffer.pixels.Length) : null;
       for (int i = 0; i < buffer.pixels.Length; i++) {
         LEDDomeOutputPixel pixel = buffer.pixels[i];
         int totalPixelIndex =
           pixel.controlBoxIndex * stride + pixel.controlBoxPixelIndex;
-        opcAPI.SetPixel(totalPixelIndex, pixel.color);
+        if (opcAPI != null) {
+          opcAPI.SetPixel(totalPixelIndex, pixel.color);
+        }
         if (simulationEnabled) {
           frame[i] = pixel.color;
         }
       }
       if (simulationEnabled) {
-        this.EnqueueSimulatorCommand(new DomeLEDCommand() {
-          frame = frame,
-        });
+        if (this.PublishSimulatorFrame(frame)) {
+          this.simulatorFramePublishedSinceFlush = true;
+        } else {
+          ArrayPool<int>.Shared.Return(frame);
+        }
       }
     }
 
