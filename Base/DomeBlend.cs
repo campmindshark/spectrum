@@ -70,11 +70,12 @@ namespace Spectrum.Base {
   //
   // Desaturate and Hue are adjustment blends: they ignore the source layer's
   // own color and instead reprocess the composite below it (masked by the
-  // source's alpha). ChromaticFringe, EdgeSpectrum and Iridescence are the
-  // prism family (docs/prism.md): also adjustment blends, but the first two
-  // are *spatial* — they resample the composite through the baked neighbor
-  // table, so they declare NeedsSnapshot and read the pre-pass copy. All
-  // three carry compositor-consumed tunables via Params.
+  // source's alpha). ChromaticFringe, EdgeSpectrum, Iridescence and Refract
+  // are the prism family (docs/prism.md, docs/caustics.md): also adjustment
+  // blends, but ChromaticFringe, EdgeSpectrum and Refract are *spatial* —
+  // they resample the composite through the baked neighbor table, so they
+  // declare NeedsSnapshot and read the pre-pass copy. All four carry
+  // compositor-consumed tunables via Params.
   public abstract class DomeBlend {
 
     // Stable identity: persisted in config/scene files, carried on the web
@@ -134,18 +135,19 @@ namespace Spectrum.Base {
     public static readonly DomeBlend ChromaticFringe = new ChromaticFringeBlend();
     public static readonly DomeBlend EdgeSpectrum = new EdgeSpectrumBlend();
     public static readonly DomeBlend Iridescence = new IridescenceBlend();
+    public static readonly DomeBlend Refract = new RefractBlend();
 
     public static readonly IReadOnlyList<DomeBlend> All = new DomeBlend[] {
       Over, Add, Screen, Lighten, Multiply, Desaturate, Hue,
-      ChromaticFringe, EdgeSpectrum, Iridescence,
+      ChromaticFringe, EdgeSpectrum, Iridescence, Refract,
     };
 
     // The blend a fresh layer gets (the old enum default).
     public static DomeBlend Default => Add;
 
-    // The registered blend named `name`, or null if unknown. A ten-element
-    // scan; callers cache the result (ResolvedLayer, the UIs' row models) so
-    // this never runs per frame.
+    // The registered blend named `name`, or null if unknown. A scan of the
+    // small registry; callers cache the result (ResolvedLayer, the UIs' row
+    // models) so this never runs per frame.
     public static DomeBlend FromName(string name) {
       if (name == null) {
         return null;

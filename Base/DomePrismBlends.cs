@@ -12,10 +12,11 @@ namespace Spectrum.Base {
   // small: a dome LED pitch is ~0.013, and fringes want a few pitches to read
   // at dome scale.
   //
-  // ChromaticFringe and EdgeSpectrum are *spatial* — they resample the
-  // composite below through the baked neighbor table on LEDDomeOutputBuffer,
-  // so they declare NeedsSnapshot and read the compositor's pre-pass copy.
-  // Iridescence is per-pixel but keyed to the baked unit-sphere normals.
+  // ChromaticFringe, EdgeSpectrum and Refract are *spatial* — they resample
+  // the composite below through the baked neighbor table on
+  // LEDDomeOutputBuffer, so they declare NeedsSnapshot and read the
+  // compositor's pre-pass copy. Iridescence is per-pixel but keyed to the
+  // baked unit-sphere normals.
 
   // RGB channel-split aberration: R is pulled from +offset along the split
   // axis, B from the opposite offset, G stays in place. offset = how far apart
@@ -145,6 +146,55 @@ namespace Spectrum.Base {
 
     private static double Luma(LEDDomeOutputPixel p) {
       return 0.299 * p.r + 0.587 * p.g + 0.114 * p.b;
+    }
+  }
+
+  // Water-surface refraction (docs/caustics.md): make the composite below
+  // shimmer as if seen through water. Structurally ChromaticFringe with a
+  // per-pixel direction instead of a global one — the source layer publishes
+  // a displacement *field* through its side channels (direction in `hue`,
+  // 0..1 = 0..2π; magnitude in alpha, which doubles as the mask), and each
+  // masked pixel lerps toward the snapshot sample displaced along that
+  // vector. Caustics is the field publisher today (its analytic-surface
+  // gradient), but the contract is just "hue + alpha", so any layer that
+  // fills both can drive it. strength = max displacement in projected-plane
+  // units; the neighbor table caps the reach at 4 × 0.02 = 0.08 (~6 LED
+  // pitches) — plenty for shimmer.
+  internal sealed class RefractBlend : DomeBlend {
+    public override string Name => "Refract";
+    public override bool NeedsSnapshot => true;
+    public override IReadOnlyList<DomeLayerParam> Params => paramSchema;
+    private static readonly DomeLayerParam[] paramSchema = new DomeLayerParam[] {
+      new DomeLayerParam {
+        Key = "strength", Label = "Refraction Strength",
+        Type = DomeLayerParamType.Double,
+        Min = 0.01, Max = 0.08, Step = 0.005, Default = 0.05,
+        CompositorConsumed = true,
+      },
+    };
+
+    public override void Blend(in DomeBlendContext ctx) {
+      double strength = this.Param(ctx.Settings, "strength");
+      LEDDomeOutputBuffer dest = ctx.Dest;
+      dest.EnsureNeighborTable();
+      LEDDomeOutputPixel[] pixels = dest.pixels;
+      LEDDomeOutputPixel[] src = ctx.Src.pixels;
+      LEDDomeOutputPixel[] snapshot = ctx.Snapshot.pixels;
+      double o = ctx.Opacity;
+      for (int i = 0; i < pixels.Length; i++) {
+        // The field magnitude is both how far the sample is displaced and how
+        // strongly the displaced sample replaces the pixel — flat water
+        // (gradient ~0) leaves the composite untouched.
+        double mag = src[i].a;
+        double mask = o * mag;
+        if (mask == 0) {
+          continue;
+        }
+        int dir = LEDDomeOutputBuffer.DirBin(src[i].hue * 2 * Math.PI);
+        int radius = LEDDomeOutputBuffer.RadiusBin(mag * strength);
+        int j = dest.NeighborAt(i, dir, radius);
+        pixels[i].LerpRGB(snapshot[j].r, snapshot[j].g, snapshot[j].b, mask);
+      }
     }
   }
 

@@ -188,6 +188,10 @@ namespace Spectrum {
       ));
       this.visualizers.Add(new LEDDomeCausticsVisualizer(
         this.config,
+        audio,
+        orientation,
+        orientationCenter,
+        this.BeatBroadcaster,
         dome
       ));
       this.visualizers.Add(new LEDDomeFlashVisualizer(

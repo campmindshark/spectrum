@@ -610,10 +610,12 @@ namespace Spectrum.Base {
     // `rotorRate` is the orbit speed of the bright highlight chasing the rotor
     // rim (the flywheel's own DOF). The idle-drift wander speed (used when no
     // wand is moving) is not exposed as a knob — the visualizer feeds a fixed
-    // level into the shared OrientationCenter. `outerColor`/`middleColor`/
-    // `innerColor` are the three nested gimbal rings' colors (defaults are the
-    // effect's original blue/teal/amber); the visualizer scales each by the
-    // ring's cross-section falloff so they still fade to black at the edges.
+    // level into the shared OrientationCenter. The three nested gimbal rings
+    // (outer/middle/inner) draw their colors from the live palette like every
+    // other palette-consuming layer: `palette` picks the bank, and the visualizer
+    // reads its first three slots (relative 0/1/2) for the outer/middle/inner
+    // rings, scaling each by the ring's cross-section falloff so they still fade
+    // to black at the edges.
     private static readonly DomeLayerParam[] GyroscopeParams =
       new DomeLayerParam[] {
         new DomeLayerParam {
@@ -626,21 +628,7 @@ namespace Spectrum.Base {
           Type = DomeLayerParamType.Double,
           Min = 0, Max = 6, Step = 0.1, Default = 2.2,
         },
-        new DomeLayerParam {
-          Key = "outerColor", Label = "Outer Ring Color",
-          Type = DomeLayerParamType.Color,
-          Min = 0, Max = 0xFFFFFF, Default = 0x267CFF, // blue
-        },
-        new DomeLayerParam {
-          Key = "middleColor", Label = "Middle Ring Color",
-          Type = DomeLayerParamType.Color,
-          Min = 0, Max = 0xFFFFFF, Default = 0x26FFE4, // teal
-        },
-        new DomeLayerParam {
-          Key = "innerColor", Label = "Inner Ring Color",
-          Type = DomeLayerParamType.Color,
-          Min = 0, Max = 0xFFFFFF, Default = 0xFFB526, // amber
-        },
+        PaletteBankParam,
       };
 
     // Noise Cloud's tuning, all visualizer-consumed (read in Visualize()). A new
@@ -683,20 +671,24 @@ namespace Spectrum.Base {
 
     // Caustics' tuning, all visualizer-consumed (read in Visualize()). A new
     // standalone texture layer with no pre-layers global, so no LegacySetting on
-    // any of these (docs/caustics.md). `method` is the fidelity ladder — this
-    // first cut ships the two analytic rungs; higher tiers (Lens, Ripple tank)
-    // append to Options later without shifting these indices. `scale` is the
-    // feature size (wavenumber multiplier), `speed` the churn/advance rate,
-    // `sharpness` the filament thinness (pow exponent — its Max is deliberately
-    // modest because filaments thinner than the LED pitch render as sparkle
-    // rather than lines), `brightness` the output gain, and `color` the tint
-    // (default pale cyan-white: sun through water).
+    // any of these (docs/caustics.md). `method` is the fidelity ladder — three
+    // analytic rungs plus the interactive Ripple Tank simulation; a GPU tier
+    // would append to Options later without shifting these indices. `scale` is
+    // the feature size (wavenumber multiplier; the tank maps it inversely to
+    // droplet size), `speed` the churn/advance rate (the tank maps it to sim
+    // step rate), `sharpness` the filament thinness (pow exponent — its Max is
+    // deliberately modest because filaments thinner than the LED pitch render
+    // as sparkle rather than lines), `brightness` the output gain, and `color`
+    // the tint (default pale cyan-white: sun through water). The trigger
+    // cluster (docs/triggers.md) drives the tank's droplets and only bites in
+    // that tier — the analytic tiers have nothing to fire.
     private static readonly DomeLayerParam[] CausticsParams =
       new DomeLayerParam[] {
         new DomeLayerParam {
           Key = "method", Label = "Method",
           Type = DomeLayerParamType.Enum,
-          Options = new string[] { "Shimmer", "Interference" },
+          Options =
+            new string[] { "Shimmer", "Interference", "Lens", "Ripple Tank" },
           Default = 1, // Interference — the authentic caustic look
         },
         new DomeLayerParam {
@@ -724,6 +716,14 @@ namespace Spectrum.Base {
           Type = DomeLayerParamType.Color,
           Min = 0, Max = 0xFFFFFF, Default = 0xCCF7FF, // pale cyan-white
         },
+        new DomeLayerParam {
+          Key = "trigger", Label = "Trigger",
+          Type = DomeLayerParamType.Enum,
+          Options = TriggerSourceOptions, Default = 1, // Beat
+        },
+        TriggerButtonParam,
+        TriggerLevelParam,
+        TriggerIntervalParam,
       };
 
     // The visualizer-consumed schema for a layer key. Empty for every key that

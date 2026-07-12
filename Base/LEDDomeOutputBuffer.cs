@@ -57,6 +57,15 @@ namespace Spectrum.Base {
       get { return _a; }
     }
 
+    // Publish coverage independently of color, clamped to 0..1. The color
+    // setter forces _a = 1 (drawing means opaque), so a layer that rides a
+    // per-pixel field magnitude in its alpha — Caustics publishing its
+    // refraction gradient for the Refract blend (docs/caustics.md) — calls
+    // this after setting color.
+    public void SetAlpha(double a) {
+      _a = a < 0 ? 0 : (a > 1 ? 1 : a);
+    }
+
     // Erase to fully transparent black — distinct from `color = 0`, which is
     // opaque black. Use where a visualizer means "reveal the layers below here"
     // rather than "paint this black".
