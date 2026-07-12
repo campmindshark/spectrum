@@ -28,9 +28,10 @@ namespace Spectrum.Visualizers {
   // wanders on its own. The flywheel's own fast spin is the one DOF an
   // orientation can't encode, so the rotor rim's chasing highlight is
   // clock-driven. Tuning comes from the per-layer schema
-  // (DomeLayerSettings.GyroscopeParams), including the three rings' colors
-  // (outer/middle/inner); each is scaled by the ring's cross-section falloff so
-  // it still fades to black at the band edges.
+  // (DomeLayerSettings.GyroscopeParams); the three rings (outer/middle/inner)
+  // take their colors from the live palette bank's first three slots, each
+  // scaled by the ring's cross-section falloff so it still fades to black at the
+  // band edges.
   class LEDDomeGyroscopeVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
@@ -90,15 +91,17 @@ namespace Spectrum.Visualizers {
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "ringWidth");
       double rotorRate =           // flywheel highlight orbit, rev/s
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "rotorRate");
+      int paletteBank =            // which live-palette bank the rings draw from
+        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "palette");
 
-      // Per-ring colors (outer/middle/inner), decoded once per frame. Kept as
-      // Color so the render loop reads their H/S and scales V by the ring's
-      // cross-section falloff — indexed to match n[0]=outer, n[1]=middle,
-      // n[2]=inner.
+      // Per-ring colors (outer/middle/inner), pulled from the live palette bank's
+      // first three relative slots and decoded once per frame. Kept as Color so
+      // the render loop reads their H/S and scales V by the ring's cross-section
+      // falloff — indexed to match n[0]=outer, n[1]=middle, n[2]=inner.
       Color[] ringColor = {
-        new Color((int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "outerColor")),
-        new Color((int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "middleColor")),
-        new Color((int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "innerColor")),
+        new Color(this.dome.GetSingleColor(0, paletteBank)),
+        new Color(this.dome.GetSingleColor(1, paletteBank)),
+        new Color(this.dome.GetSingleColor(2, paletteBank)),
       };
 
       // Advance the shared idle-drift/spotlight resolver and take this frame's
