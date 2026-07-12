@@ -121,11 +121,11 @@ namespace Spectrum.Base {
     // is parallel (same order).
     private static readonly string[] ExtraLayerKeys = new string[] {
       "twinkle", "wave", "ripple", "stamp", "metaball", "background", "flash",
-      "point-cloud", "gyroscope", "shooting-star",
+      "point-cloud", "gyroscope", "shooting-star", "noise-cloud", "caustics",
     };
     private static readonly string[] ExtraLayerLabels = new string[] {
       "Twinkle", "Wave", "Ripple", "Stamp", "Metaball", "Background", "Flash",
-      "Point Cloud", "Gyroscope", "Shooting Star",
+      "Point Cloud", "Gyroscope", "Shooting Star", "Noise Cloud", "Caustics",
     };
 
     // The full set of layerable keys/labels offered in the UI pickers: the
@@ -470,7 +470,7 @@ namespace Spectrum.Base {
       new DomeLayerParam {
         Key = "bandWidth", Label = "Band Width",
         Type = DomeLayerParamType.Double,
-        Min = 0.02, Max = 0.5, Step = 0.01, Default = 0.12,
+        Min = 0.02, Max = 1.5, Step = 0.01, Default = 0.12,
       },
       new DomeLayerParam {
         Key = "speed", Label = "Sweep Speed",
@@ -643,6 +643,89 @@ namespace Spectrum.Base {
         },
       };
 
+    // Noise Cloud's tuning, all visualizer-consumed (read in Visualize()). A new
+    // standalone texture layer with no pre-layers global, so no LegacySetting on
+    // any of these. It emits an animated fractal-value-noise field tinting
+    // `color` — meant to sit under Multiply/Add to break up a flat layer below.
+    // `scale` is the spatial frequency (bigger = smaller blobs), `speed` morphs
+    // the field in place through a time axis (0 = frozen, no directional drift),
+    // `octaves` adds finer detail (fractal summation), and `contrast` steepens
+    // the field around its midtone so the texture reads stronger without
+    // clipping to solid.
+    private static readonly DomeLayerParam[] NoiseCloudParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "scale", Label = "Scale",
+          Type = DomeLayerParamType.Double,
+          Min = 0.5, Max = 8, Step = 0.1, Default = 2.5,
+        },
+        new DomeLayerParam {
+          Key = "speed", Label = "Morph Speed",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 2, Step = 0.02, Default = 0.2,
+        },
+        new DomeLayerParam {
+          Key = "octaves", Label = "Detail",
+          Type = DomeLayerParamType.Double,
+          Min = 1, Max = 4, Step = 1, Default = 2,
+        },
+        new DomeLayerParam {
+          Key = "contrast", Label = "Contrast",
+          Type = DomeLayerParamType.Double,
+          Min = 1, Max = 6, Step = 0.25, Default = 2.5,
+        },
+        new DomeLayerParam {
+          Key = "color", Label = "Color",
+          Type = DomeLayerParamType.Color,
+          Min = 0, Max = 0xFFFFFF, Default = 0xFFFFFF,
+        },
+      };
+
+    // Caustics' tuning, all visualizer-consumed (read in Visualize()). A new
+    // standalone texture layer with no pre-layers global, so no LegacySetting on
+    // any of these (docs/caustics.md). `method` is the fidelity ladder — this
+    // first cut ships the two analytic rungs; higher tiers (Lens, Ripple tank)
+    // append to Options later without shifting these indices. `scale` is the
+    // feature size (wavenumber multiplier), `speed` the churn/advance rate,
+    // `sharpness` the filament thinness (pow exponent — its Max is deliberately
+    // modest because filaments thinner than the LED pitch render as sparkle
+    // rather than lines), `brightness` the output gain, and `color` the tint
+    // (default pale cyan-white: sun through water).
+    private static readonly DomeLayerParam[] CausticsParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "method", Label = "Method",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] { "Shimmer", "Interference" },
+          Default = 1, // Interference — the authentic caustic look
+        },
+        new DomeLayerParam {
+          Key = "scale", Label = "Scale",
+          Type = DomeLayerParamType.Double,
+          Min = 1, Max = 40, Step = 0.5, Default = 14,
+        },
+        new DomeLayerParam {
+          Key = "speed", Label = "Speed",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 4, Step = 0.125, Default = 1,
+        },
+        new DomeLayerParam {
+          Key = "sharpness", Label = "Sharpness",
+          Type = DomeLayerParamType.Double,
+          Min = 1, Max = 12, Step = 0.5, Default = 5,
+        },
+        new DomeLayerParam {
+          Key = "brightness", Label = "Brightness",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 2, Step = 0.05, Default = 1,
+        },
+        new DomeLayerParam {
+          Key = "color", Label = "Color",
+          Type = DomeLayerParamType.Color,
+          Min = 0, Max = 0xFFFFFF, Default = 0xCCF7FF, // pale cyan-white
+        },
+      };
+
     // The visualizer-consumed schema for a layer key. Empty for every key that
     // has no tunables.
     public static IReadOnlyList<DomeLayerParam> ParamsFor(string key) {
@@ -679,6 +762,10 @@ namespace Spectrum.Base {
           return ShootingStarParams;
         case "gyroscope":
           return GyroscopeParams;
+        case "noise-cloud":
+          return NoiseCloudParams;
+        case "caustics":
+          return CausticsParams;
         default:
           return NoParams;
       }
