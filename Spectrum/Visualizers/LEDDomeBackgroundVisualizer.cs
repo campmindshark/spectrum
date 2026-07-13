@@ -40,7 +40,7 @@ namespace Spectrum.Visualizers {
     }
 
     public void Visualize() {
-      int color = (int)this.runtime.Parameter("color");
+      int color = this.runtime.GetOptions<BackgroundLayerOptions>().Color;
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         this.buffer.pixels[i].color = color;
       }

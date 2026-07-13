@@ -52,17 +52,47 @@ namespace Spectrum.Base {
   // before scheduling a changed stack; visualizers therefore read validated
   // values directly without walking Configuration.domeLayerStack each frame.
   public sealed class LayerRendererRuntime {
-    private LayerSnapshot snapshot;
+    private sealed record RuntimeState(
+      LayerSnapshot Snapshot, ILayerRendererOptions Options
+    );
 
-    public LayerRendererRuntime(LayerSnapshot snapshot) {
-      this.snapshot = snapshot ??
+    private readonly Func<
+      ImmutableDictionary<string, ParameterValue>,
+      ILayerRendererOptions> compileOptions;
+    private RuntimeState state;
+
+    public LayerRendererRuntime(
+      LayerSnapshot snapshot,
+      Func<ImmutableDictionary<string, ParameterValue>,
+        ILayerRendererOptions> compileOptions = null
+    ) {
+      if (snapshot == null) {
         throw new ArgumentNullException(nameof(snapshot));
+      }
+      this.compileOptions = compileOptions ??
+        (values => new LayerRendererParameterOptions(values));
+      this.state = this.Compile(snapshot);
     }
 
     public LayerInstanceId InstanceId => this.Snapshot.Id;
     public string RendererId => this.Snapshot.RendererId;
-    public LayerSnapshot Snapshot => Volatile.Read(ref this.snapshot);
+    private RuntimeState State => Volatile.Read(ref this.state);
+    public LayerSnapshot Snapshot => this.State.Snapshot;
+    public ILayerRendererOptions Options => this.State.Options;
 
+    public T GetOptions<T>() where T : class, ILayerRendererOptions {
+      ILayerRendererOptions current = this.Options;
+      if (current is T typed) {
+        return typed;
+      }
+      throw new InvalidOperationException(
+        "Renderer " + this.RendererId + " expected options " +
+        typeof(T).Name + " but received " +
+        (current?.GetType().Name ?? "null") + ".");
+    }
+
+    // Compatibility for custom catalogs that have not registered a typed
+    // options compiler. Built-in visualizers use GetOptions<T>() exclusively.
     public double Parameter(string key) {
       if (key == null) {
         throw new ArgumentNullException(nameof(key));
@@ -84,7 +114,18 @@ namespace Spectrum.Base {
         throw new InvalidOperationException(
           "A layer runtime cannot change instance or renderer identity.");
       }
-      Volatile.Write(ref this.snapshot, next);
+      Volatile.Write(ref this.state, this.Compile(next));
+    }
+
+    private RuntimeState Compile(LayerSnapshot snapshot) {
+      ILayerRendererOptions options = this.compileOptions(
+        snapshot.RendererParameters);
+      if (options == null) {
+        throw new InvalidOperationException(
+          "Renderer " + snapshot.RendererId +
+          " compiled null runtime options.");
+      }
+      return new RuntimeState(snapshot, options);
     }
   }
 
@@ -124,7 +165,9 @@ namespace Spectrum.Base {
     string Id,
     string DisplayName,
     Func<LayerRenderContext, ILayerRenderer> CreateRenderer,
-    IReadOnlyList<DomeLayerParam> Parameters
+    IReadOnlyList<DomeLayerParam> Parameters,
+    Func<ImmutableDictionary<string, ParameterValue>,
+      ILayerRendererOptions> CompileOptions = null
   );
 
   public sealed class LayerCatalog {
@@ -194,49 +237,83 @@ namespace Spectrum.Base {
     }));
 
     private static LayerDefinition BuiltIn(
-      string id, string label, IReadOnlyList<DomeLayerParam> parameters
-    ) => new LayerDefinition(id, label, null, parameters);
+      string id, string label, IReadOnlyList<DomeLayerParam> parameters,
+      Func<ImmutableDictionary<string, ParameterValue>,
+        ILayerRendererOptions> compileOptions
+    ) => new LayerDefinition(
+      id, label, null, parameters, compileOptions);
 
     // Stable ordering is part of both picker contracts. The eight legacy IDs
     // stay first so retired domeActiveVis values retain their old meaning.
     public static LayerCatalog Default { get; } = new LayerCatalog(new[] {
       BuiltIn(
-        "volume", "Volume (OG)", LayerParameterSchemas.VolumeParams),
+        "volume", "Volume (OG)", LayerParameterSchemas.VolumeParams,
+        LayerRendererOptionsCompiler.Volume),
       BuiltIn(
-        "radial", "Radial Effects", LayerParameterSchemas.RadialParams),
-      BuiltIn("race", "Race", LayerParameterSchemas.RaceParams),
-      BuiltIn("snakes", "Snakes", LayerParameterSchemas.SnakesParams),
+        "radial", "Radial Effects", LayerParameterSchemas.RadialParams,
+        LayerRendererOptionsCompiler.Radial),
+      BuiltIn(
+        "race", "Race", LayerParameterSchemas.RaceParams,
+        LayerRendererOptionsCompiler.Race),
+      BuiltIn(
+        "snakes", "Snakes", LayerParameterSchemas.SnakesParams,
+        LayerRendererOptionsCompiler.Palette),
       BuiltIn(
         "quaternion-test", "Quaternion Test",
-        LayerParameterSchemas.NoParams),
+        LayerParameterSchemas.NoParams, LayerRendererOptionsCompiler.Empty),
       BuiltIn(
         "quaternion-paintbrush", "Quaternion Paintbrush",
-        LayerParameterSchemas.PaintbrushParams),
-      BuiltIn("splat", "Splat Effect", LayerParameterSchemas.SplatParams),
-      BuiltIn("tv-static", "TV Static", LayerParameterSchemas.NoParams),
-      BuiltIn("twinkle", "Twinkle", LayerParameterSchemas.TwinkleParams),
-      BuiltIn("wave", "Wave", LayerParameterSchemas.WaveParams),
-      BuiltIn("ripple", "Ripple", LayerParameterSchemas.RippleParams),
-      BuiltIn("stamp", "Stamp", LayerParameterSchemas.StampParams),
+        LayerParameterSchemas.PaintbrushParams,
+        LayerRendererOptionsCompiler.Paintbrush),
       BuiltIn(
-        "metaball", "Metaball", LayerParameterSchemas.MetaballParams),
+        "splat", "Splat Effect", LayerParameterSchemas.SplatParams,
+        LayerRendererOptionsCompiler.Palette),
       BuiltIn(
-        "background", "Background", LayerParameterSchemas.BackgroundParams),
-      BuiltIn("flash", "Flash", LayerParameterSchemas.FlashParams),
+        "tv-static", "TV Static", LayerParameterSchemas.NoParams,
+        LayerRendererOptionsCompiler.Empty),
       BuiltIn(
-        "point-cloud", "Point Cloud", LayerParameterSchemas.PointCloudParams),
+        "twinkle", "Twinkle", LayerParameterSchemas.TwinkleParams,
+        LayerRendererOptionsCompiler.Twinkle),
       BuiltIn(
-        "gyroscope", "Gyroscope", LayerParameterSchemas.GyroscopeParams),
+        "wave", "Wave", LayerParameterSchemas.WaveParams,
+        LayerRendererOptionsCompiler.Wave),
+      BuiltIn(
+        "ripple", "Ripple", LayerParameterSchemas.RippleParams,
+        LayerRendererOptionsCompiler.Ripple),
+      BuiltIn(
+        "stamp", "Stamp", LayerParameterSchemas.StampParams,
+        LayerRendererOptionsCompiler.Stamp),
+      BuiltIn(
+        "metaball", "Metaball", LayerParameterSchemas.MetaballParams,
+        LayerRendererOptionsCompiler.Metaball),
+      BuiltIn(
+        "background", "Background", LayerParameterSchemas.BackgroundParams,
+        LayerRendererOptionsCompiler.Background),
+      BuiltIn(
+        "flash", "Flash", LayerParameterSchemas.FlashParams,
+        LayerRendererOptionsCompiler.Flash),
+      BuiltIn(
+        "point-cloud", "Point Cloud", LayerParameterSchemas.PointCloudParams,
+        LayerRendererOptionsCompiler.PointCloud),
+      BuiltIn(
+        "gyroscope", "Gyroscope", LayerParameterSchemas.GyroscopeParams,
+        LayerRendererOptionsCompiler.Gyroscope),
       BuiltIn(
         "shooting-star", "Shooting Star",
-        LayerParameterSchemas.ShootingStarParams),
+        LayerParameterSchemas.ShootingStarParams,
+        LayerRendererOptionsCompiler.ShootingStar),
       BuiltIn(
-        "noise-cloud", "Noise Cloud", LayerParameterSchemas.NoiseCloudParams),
+        "noise-cloud", "Noise Cloud", LayerParameterSchemas.NoiseCloudParams,
+        LayerRendererOptionsCompiler.NoiseCloud),
       BuiltIn(
-        "caustics", "Caustics", LayerParameterSchemas.CausticsParams),
+        "caustics", "Caustics", LayerParameterSchemas.CausticsParams,
+        LayerRendererOptionsCompiler.Caustics),
       BuiltIn(
-        "sparkler", "Sparkler", LayerParameterSchemas.SparklerParams),
-      BuiltIn("vortex", "Vortex", LayerParameterSchemas.VortexParams),
+        "sparkler", "Sparkler", LayerParameterSchemas.SparklerParams,
+        LayerRendererOptionsCompiler.Sparkler),
+      BuiltIn(
+        "vortex", "Vortex", LayerParameterSchemas.VortexParams,
+        LayerRendererOptionsCompiler.Vortex),
     });
   }
 
@@ -420,7 +497,10 @@ namespace Spectrum.Base {
       if (definition?.CreateRenderer == null) {
         return null;
       }
-      var context = new LayerRenderContext(layer.Id, layer, services);
+      var runtime = new LayerRendererRuntime(
+        layer, definition.CompileOptions);
+      var context = new LayerRenderContext(
+        layer.Id, layer, services, runtime);
       ILayerRenderer created = definition.CreateRenderer(context);
       if (created != null) {
         this.instances[layer.Id] = (

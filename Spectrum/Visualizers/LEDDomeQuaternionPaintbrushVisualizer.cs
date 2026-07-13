@@ -134,10 +134,12 @@ namespace Spectrum.Visualizers {
 
       // This layer's own tuning, read from its compiled runtime snapshot
       // (fade/hue speed stay global — shared scene state, not layer params).
-      double size = this.runtime.Parameter("size");
-      double twinkle = this.runtime.Parameter("twinkleDensity");
-      double rippleCDStep = this.runtime.Parameter("rippleCDStep");
-      double rippleStep = this.runtime.Parameter("rippleStep");
+      PaintbrushLayerOptions options =
+        this.runtime.GetOptions<PaintbrushLayerOptions>();
+      double size = options.Size;
+      double twinkle = options.TwinkleDensity;
+      double rippleCDStep = options.RippleCooldown;
+      double rippleStep = options.RippleSpeed;
 
       ApplyGlobalEffects(frameScale);
       this.center.Update(level);

@@ -100,11 +100,13 @@ namespace Spectrum.Visualizers {
     }
 
     public void Visualize() {
-      double scale = this.runtime.Parameter("scale");
-      double speed = this.runtime.Parameter("speed");
-      int octaves = (int)this.runtime.Parameter("octaves");
-      double contrast = this.runtime.Parameter("contrast");
-      int tint = (int)this.runtime.Parameter("color");
+      NoiseCloudLayerOptions options =
+        this.runtime.GetOptions<NoiseCloudLayerOptions>();
+      double scale = options.Scale;
+      double speed = options.Speed;
+      int octaves = options.Octaves;
+      double contrast = options.Contrast;
+      int tint = options.Color;
 
       // Advance the time coordinate by wall-clock elapsed * speed, so `speed`
       // is lattice units per second regardless of the Operator loop rate. The

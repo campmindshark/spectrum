@@ -55,15 +55,17 @@ namespace Spectrum {
       // This layer's own tuning, read from its compiled runtime snapshot
       // (fade/hue speed stay global — they are shared scene state, not layer
       // params).
-      int effect = (int)this.runtime.Parameter("effect");
-      double size = this.runtime.Parameter("size");
-      double frequency = this.runtime.Parameter("frequency");
-      double centerAngle = this.runtime.Parameter("centerAngle");
-      double centerDistance = this.runtime.Parameter("centerDistance");
-      double centerSpeed = this.runtime.Parameter("centerSpeed");
-      double rotationSpeed = this.runtime.Parameter("rotationSpeed");
-      double gradientSpeed = this.runtime.Parameter("gradientSpeed");
-      int paletteBank = (int)this.runtime.Parameter("palette");
+      RadialLayerOptions options =
+        this.runtime.GetOptions<RadialLayerOptions>();
+      int effect = options.Effect;
+      double size = options.Size;
+      double frequency = options.Frequency;
+      double centerAngle = options.CenterAngle;
+      double centerDistance = options.CenterDistance;
+      double centerSpeed = options.CenterSpeed;
+      double rotationSpeed = options.RotationSpeed;
+      double gradientSpeed = options.GradientSpeed;
+      int paletteBank = options.Palette;
 
       buffer.Fade(1 - Math.Pow(10, -this.config.domeGlobalFadeSpeed), 0);
       // Hue rotation is now applied globally by LEDDomeOutput, which rotates

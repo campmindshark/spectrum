@@ -88,11 +88,13 @@ namespace Spectrum.Visualizers {
       double frameScale = this.frameClock.Tick();
       double level = this.audio.Volume;
 
-      double rippleStep = this.runtime.Parameter("rippleStep");
-      int triggerSource = (int)this.runtime.Parameter("trigger");
-      int button = (int)this.runtime.Parameter("button");
-      double levelThreshold = this.runtime.Parameter("level");
-      double interval = this.runtime.Parameter("interval");
+      RippleLayerOptions options =
+        this.runtime.GetOptions<RippleLayerOptions>();
+      double rippleStep = options.RippleSpeed;
+      int triggerSource = options.Trigger;
+      int button = options.Button;
+      double levelThreshold = options.Level;
+      double interval = options.Interval;
 
       double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);

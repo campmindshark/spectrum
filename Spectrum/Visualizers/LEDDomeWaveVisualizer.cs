@@ -70,16 +70,17 @@ namespace Spectrum.Visualizers {
     }
 
     public void Visualize() {
-      double bandWidth = this.runtime.Parameter("bandWidth");
-      double speed = this.runtime.Parameter("speed");
-      double centerAngle = this.runtime.Parameter("centerAngle");
-      double centerDistance = this.runtime.Parameter("centerDistance");
-      int color = (int)this.runtime.Parameter("color");
-      bool oneShot = (int)this.runtime.Parameter("mode") == 1;
+      WaveLayerOptions options = this.runtime.GetOptions<WaveLayerOptions>();
+      double bandWidth = options.BandWidth;
+      double speed = options.Speed;
+      double centerAngle = options.CenterAngle;
+      double centerDistance = options.CenterDistance;
+      int color = options.Color;
+      bool oneShot = options.OneShot;
       // The "button" enum index is the wand actionFlag value directly: 0 =
       // Unbound (Manual-only), 1/2/3 = wand buttons. Manual firing is always
       // live regardless (LayerTrigger).
-      int button = (int)this.runtime.Parameter("button");
+      int button = options.Button;
 
       double elapsed = 0;
       if (!this.frameTimer.IsRunning) {

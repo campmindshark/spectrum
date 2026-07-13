@@ -173,11 +173,12 @@ namespace Spectrum {
       }
 
       // This layer's own tuning, read from its compiled runtime snapshot.
-      int newAnimationSize =
-        (int)this.runtime.Parameter("animationSize");
-      double rotationSpeed = this.runtime.Parameter("rotationSpeed");
-      double gradientSpeed = this.runtime.Parameter("gradientSpeed");
-      this.paletteBank = (int)this.runtime.Parameter("palette");
+      VolumeLayerOptions options =
+        this.runtime.GetOptions<VolumeLayerOptions>();
+      int newAnimationSize = options.AnimationSize;
+      double rotationSpeed = options.RotationSpeed;
+      double gradientSpeed = options.GradientSpeed;
+      this.paletteBank = options.Palette;
 
       this.UpdateCenter(rotationSpeed);
       this.UpdateAnimationSize(newAnimationSize);

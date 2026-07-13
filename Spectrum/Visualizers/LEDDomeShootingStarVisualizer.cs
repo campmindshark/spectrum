@@ -117,16 +117,18 @@ namespace Spectrum {
       double dt = frameScale * 0.0025;
       double level = this.audio.Volume;
 
-      double spawnRate = this.runtime.Parameter("spawnRate");
-      double accel = this.runtime.Parameter("accel");
-      double maxSpeed = this.runtime.Parameter("maxSpeed");
-      double size = this.runtime.Parameter("size");
-      bool homing = this.runtime.Parameter("homing") != 0;
-      int triggerSource = (int)this.runtime.Parameter("trigger");
-      int button = (int)this.runtime.Parameter("button");
-      double levelThreshold = this.runtime.Parameter("level");
-      double interval = this.runtime.Parameter("interval");
-      int paletteBank = (int)this.runtime.Parameter("palette");
+      ShootingStarLayerOptions options =
+        this.runtime.GetOptions<ShootingStarLayerOptions>();
+      double spawnRate = options.SpawnRate;
+      double accel = options.Acceleration;
+      double maxSpeed = options.MaxSpeed;
+      double size = options.Size;
+      bool homing = options.Homing;
+      int triggerSource = options.Trigger;
+      int button = options.Button;
+      double levelThreshold = options.Level;
+      double interval = options.Interval;
+      int paletteBank = options.Palette;
 
       // Trails come from the global dome fade (config.domeGlobalFadeSpeed), the
       // same per-frame retention Metaball/Ripple use — no per-layer trail knob.

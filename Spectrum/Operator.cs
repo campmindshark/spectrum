@@ -260,7 +260,8 @@ namespace Spectrum {
         if (definition?.CreateRenderer == null) {
           continue;
         }
-        var runtime = new LayerRendererRuntime(layer);
+        var runtime = new LayerRendererRuntime(
+          layer, definition.CompileOptions);
         using (LayerInstanceScope.Push(instanceId)) {
           ILayerRenderer renderer = definition.CreateRenderer(
             new LayerRenderContext(layer.Id, layer, runtime: runtime));

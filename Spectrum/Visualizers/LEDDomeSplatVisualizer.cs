@@ -50,7 +50,8 @@ namespace Spectrum {
 
     void Render() {
 
-      int paletteBank = (int)this.runtime.Parameter("palette");
+      int paletteBank =
+        this.runtime.GetOptions<PaletteLayerOptions>().Palette;
 
       double level = this.audio.Volume;
       // Sqrt makes values larger and gives more resolution for lower values

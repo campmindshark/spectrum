@@ -94,10 +94,12 @@ namespace Spectrum.Visualizers {
       double progress = this.beat.ProgressThroughMeasure;
       double level = this.audio.Volume;
 
-      int triggerSource = (int)this.runtime.Parameter("trigger");
-      int button = (int)this.runtime.Parameter("button");
-      double interval = this.runtime.Parameter("interval");
-      double levelThreshold = this.runtime.Parameter("level");
+      StampLayerOptions options =
+        this.runtime.GetOptions<StampLayerOptions>();
+      int triggerSource = options.Trigger;
+      int button = options.Button;
+      double interval = options.Interval;
+      double levelThreshold = options.Level;
 
       double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);

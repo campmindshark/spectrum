@@ -18,6 +18,8 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("parameters compile into separate namespaces", ParameterNamespaces);
       Run("compiled renderer runtime updates in place", RuntimeUpdatesInPlace);
       Run("renderer runtime swaps immutable options", RuntimeOptionsSwap);
+      Run("typed renderer options preserve numeric casts",
+        TypedOptionsPreserveNumericCasts);
       Run("compiled plan freezes renderer inputs", PlanFreezesRendererInputs);
       Run("configuration publishes immutable layer snapshots",
         ConfigurationPublishesSnapshot);
@@ -59,10 +61,22 @@ namespace Spectrum.LayerPipeline.Tests {
       var ids = new HashSet<string>();
       foreach (LayerDefinition definition in LayerCatalog.Default.Definitions) {
         Assert(ids.Add(definition.Id), "duplicate " + definition.Id);
+        Assert(definition.CompileOptions != null,
+          "missing options compiler for " + definition.Id);
         var keys = new HashSet<string>();
         foreach (DomeLayerParam parameter in definition.Parameters) {
           Assert(keys.Add(parameter.Key), "duplicate parameter " + parameter.Key);
         }
+        (LayerStackSnapshot snapshot, string error) =
+          new LayerStackService().CreateSnapshot(new[] {
+            Layer(definition.Id, "options-" + definition.Id),
+          });
+        Assert(error == null, error);
+        ILayerRendererOptions options = definition.CompileOptions(
+          snapshot.Layers[0].RendererParameters);
+        Assert(options != null, "null options for " + definition.Id);
+        Assert(options is not LayerRendererParameterOptions,
+          "untyped built-in options for " + definition.Id);
       }
     }
 
@@ -140,8 +154,11 @@ namespace Spectrum.LayerPipeline.Tests {
       (LayerStackSnapshot initial, string initialError) =
         new LayerStackService().CreateSnapshot(new[] { first });
       Assert(initialError == null, initialError);
-      var runtime = new LayerRendererRuntime(initial.Layers[0]);
-      Assert(runtime.Parameter("speed") == .25, "initial option missing");
+      LayerDefinition definition = LayerCatalog.Default.Get("wave");
+      var runtime = new LayerRendererRuntime(
+        initial.Layers[0], definition.CompileOptions);
+      WaveLayerOptions original = runtime.GetOptions<WaveLayerOptions>();
+      Assert(original.Speed == .25, "initial typed option missing");
 
       DomeLayerSettings second = Layer("wave", "runtime-wave");
       second.Params = new Dictionary<string, double> { ["speed"] = 1.25 };
@@ -149,10 +166,32 @@ namespace Spectrum.LayerPipeline.Tests {
         new LayerStackService().CreateSnapshot(new[] { second });
       Assert(changedError == null, changedError);
       runtime.Publish(changed.Layers[0]);
-      Assert(runtime.Parameter("speed") == 1.25,
-        "replacement option was not published");
+      WaveLayerOptions replacement = runtime.GetOptions<WaveLayerOptions>();
+      Assert(replacement.Speed == 1.25,
+        "replacement typed option was not published");
+      Assert(original.Speed == .25,
+        "the original typed options were mutated");
       Assert(initial.Layers[0].RendererParameters["speed"].Value == .25,
         "the original snapshot was mutated");
+    }
+
+    private static void TypedOptionsPreserveNumericCasts() {
+      DomeLayerSettings volume = Layer("volume", "typed-volume");
+      volume.Params = new Dictionary<string, double> {
+        ["animationSize"] = 3.75,
+      };
+      Assert(BuiltInOptions<VolumeLayerOptions>(volume).AnimationSize == 3,
+        "volume animation size no longer truncates");
+
+      DomeLayerSettings points = Layer("point-cloud", "typed-points");
+      points.Params = new Dictionary<string, double> { ["count"] = 47.75 };
+      Assert(BuiltInOptions<PointCloudLayerOptions>(points).Count == 47,
+        "point count no longer truncates");
+
+      DomeLayerSettings noise = Layer("noise-cloud", "typed-noise");
+      noise.Params = new Dictionary<string, double> { ["octaves"] = 2.75 };
+      Assert(BuiltInOptions<NoiseCloudLayerOptions>(noise).Octaves == 2,
+        "noise octave count no longer truncates");
     }
 
     private static void PlanFreezesRendererInputs() {
@@ -847,6 +886,21 @@ namespace Spectrum.LayerPipeline.Tests {
       return new CompiledLayer(
         snapshot, renderer, ImmutableArray<Input>.Empty, operation,
         operation.CompileOptions(parameters));
+    }
+
+    private static T BuiltInOptions<T>(DomeLayerSettings layer)
+      where T : class, ILayerRendererOptions {
+      (LayerStackSnapshot snapshot, string error) =
+        new LayerStackService().CreateSnapshot(new[] { layer });
+      if (error != null) {
+        throw new InvalidOperationException(error);
+      }
+      LayerDefinition definition = LayerCatalog.Default.Get(
+        layer.VisualizerKey);
+      ILayerRendererOptions options = definition.CompileOptions(
+        snapshot.Layers[0].RendererParameters);
+      return options as T ?? throw new InvalidOperationException(
+        "Unexpected options type " + options.GetType().Name + ".");
     }
 
     private static DomeLayerSettings Layer(string key, string id) => new() {

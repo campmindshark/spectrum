@@ -90,9 +90,11 @@ namespace Spectrum.Visualizers {
       double frameScale = this.frameClock.Tick();
       double level = this.audio.Volume;
 
-      double size = this.runtime.Parameter("size");
-      bool showContours = this.runtime.Parameter("contours") != 0;
-      int button = (int)this.runtime.Parameter("button");
+      MetaballLayerOptions options =
+        this.runtime.GetOptions<MetaballLayerOptions>();
+      double size = options.Size;
+      bool showContours = options.ShowContours;
+      int button = options.Button;
 
       double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);

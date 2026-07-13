@@ -80,7 +80,7 @@ namespace Spectrum.Visualizers {
       // frameScale to hold the twinkle rate (dots per second) steady. Density
       // is this layer's own param (formerly the global domeTwinkleDensity).
       double twinkleDensity =
-        this.runtime.Parameter("density") * frameScale;
+        this.runtime.GetOptions<TwinkleLayerOptions>().Density * frameScale;
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         if (this.twinkleEligible[i] && this.rand.NextDouble() < twinkleDensity) {
           this.buffer.pixels[i].color = 0xFFFFFF;

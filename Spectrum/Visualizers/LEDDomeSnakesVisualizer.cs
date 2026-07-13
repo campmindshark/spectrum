@@ -74,7 +74,8 @@ namespace Spectrum {
 
       // The palette bank this layer draws from (its trailing color still cycles
       // through the eight relative slots of that bank via colorPaletteIndex).
-      int paletteBank = (int)this.runtime.Parameter("palette");
+      int paletteBank =
+        this.runtime.GetOptions<PaletteLayerOptions>().Palette;
 
       // Progress all snakes
       foreach (var snake in snakes) {

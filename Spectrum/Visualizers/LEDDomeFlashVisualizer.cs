@@ -68,11 +68,13 @@ namespace Spectrum.Visualizers {
     public void Visualize() {
       double frameScale = this.frameClock.Tick();
 
-      int color = (int)this.runtime.Parameter("color");
-      int triggerSource = (int)this.runtime.Parameter("trigger");
-      int button = (int)this.runtime.Parameter("button");
-      double interval = this.runtime.Parameter("interval");
-      double levelThreshold = this.runtime.Parameter("level");
+      FlashLayerOptions options =
+        this.runtime.GetOptions<FlashLayerOptions>();
+      int color = options.Color;
+      int triggerSource = options.Trigger;
+      int button = options.Button;
+      double interval = options.Interval;
+      double levelThreshold = options.Level;
 
       // Decay the previous flash toward transparent so it reveals the layers
       // below as it dims (same global fade the other trigger layers use).

@@ -305,9 +305,10 @@ namespace Spectrum {
 
       // This layer's own tuning, read from its compiled runtime snapshot
       // (formerly the shared domeRadialSize / domeVolumeRotationSpeed knobs).
-      this.racer_spacing = this.runtime.Parameter("spacing");
-      double speed = this.runtime.Parameter("speed");
-      int paletteBank = (int)this.runtime.Parameter("palette");
+      RaceLayerOptions options = this.runtime.GetOptions<RaceLayerOptions>();
+      this.racer_spacing = options.Spacing;
+      double speed = options.Speed;
+      int paletteBank = options.Palette;
       var curTicks = DateTime.Now.Ticks;
       if (this.lastTicks == -1) {
         this.lastTicks = curTicks;

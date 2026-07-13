@@ -80,7 +80,8 @@ namespace Spectrum.Visualizers {
 
     // Current `count` param as an int, clamped defensively to at least one spot.
     private int ParamCount() {
-      return Math.Max(1, (int)this.runtime.Parameter("count"));
+      return Math.Max(
+        1, this.runtime.GetOptions<PointCloudLayerOptions>().Count);
     }
 
     // Scatter the cloud roughly evenly over the sphere with a Fibonacci-sphere
@@ -128,11 +129,13 @@ namespace Spectrum.Visualizers {
       if (count != this.spotCount) {
         Reseed(count);
       }
-      double spotSize = this.runtime.Parameter("spotSize");
-      double pushRadius = this.runtime.Parameter("pushRadius");
-      double pushStrength = this.runtime.Parameter("pushStrength");
-      double springStrength = this.runtime.Parameter("springStrength");
-      double damping = this.runtime.Parameter("damping");
+      PointCloudLayerOptions options =
+        this.runtime.GetOptions<PointCloudLayerOptions>();
+      double spotSize = options.SpotSize;
+      double pushRadius = options.PushRadius;
+      double pushStrength = options.PushStrength;
+      double springStrength = options.SpringStrength;
+      double damping = options.Damping;
 
       CollectAimPoints();
       StepPhysics(

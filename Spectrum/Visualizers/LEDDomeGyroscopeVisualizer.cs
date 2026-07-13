@@ -84,12 +84,11 @@ namespace Spectrum.Visualizers {
     }
 
     public void Visualize() {
-      double ringWidth =           // great-circle band thickness (dot units)
-        this.runtime.Parameter("ringWidth");
-      double rotorRate =           // flywheel highlight orbit, rev/s
-        this.runtime.Parameter("rotorRate");
-      int paletteBank =            // which live-palette bank the rings draw from
-        (int)this.runtime.Parameter("palette");
+      GyroscopeLayerOptions options =
+        this.runtime.GetOptions<GyroscopeLayerOptions>();
+      double ringWidth = options.RingWidth; // band thickness (dot units)
+      double rotorRate = options.RotorRate; // highlight orbit, rev/s
+      int paletteBank = options.Palette;
 
       // Per-ring colors (outer/middle/inner), pulled from the live palette bank's
       // first three relative slots and decoded once per frame. Kept as Color so

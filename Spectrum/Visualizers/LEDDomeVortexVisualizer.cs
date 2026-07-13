@@ -63,15 +63,17 @@ namespace Spectrum.Visualizers {
     }
 
     public void Visualize() {
-      int style = (int)this.runtime.Parameter("style");
-      double speed = this.runtime.Parameter("speed");
-      double twist = this.runtime.Parameter("twist");
-      double scale = this.runtime.Parameter("scale");
-      double density = this.runtime.Parameter("density");
-      double coreSize = this.runtime.Parameter("coreSize");
-      double inflow = this.runtime.Parameter("inflow");
-      double turbulence = this.runtime.Parameter("turbulence");
-      int tint = (int)this.runtime.Parameter("color");
+      VortexLayerOptions options =
+        this.runtime.GetOptions<VortexLayerOptions>();
+      int style = options.Style;
+      double speed = options.Speed;
+      double twist = options.Twist;
+      double scale = options.Scale;
+      double density = options.Density;
+      double coreSize = options.CoreSize;
+      double inflow = options.Inflow;
+      double turbulence = options.Turbulence;
+      int tint = options.Color;
 
       double frameScale = this.frameClock.Tick();
       this.time += frameScale / FrameClock.NominalFps;

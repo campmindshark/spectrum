@@ -116,12 +116,14 @@ namespace Spectrum.Visualizers {
     }
 
     public void Visualize() {
-      int method = (int)this.runtime.Parameter("method");
-      double scale = this.runtime.Parameter("scale");
-      double speed = this.runtime.Parameter("speed");
-      double sharpness = this.runtime.Parameter("sharpness");
-      double brightness = this.runtime.Parameter("brightness");
-      int tint = (int)this.runtime.Parameter("color");
+      CausticsLayerOptions options =
+        this.runtime.GetOptions<CausticsLayerOptions>();
+      int method = options.Method;
+      double scale = options.Scale;
+      double speed = options.Speed;
+      double sharpness = options.Sharpness;
+      double brightness = options.Brightness;
+      int tint = options.Color;
 
       // Advance the churn clock by wall-clock elapsed * speed so the pattern
       // evolves at a steady rate regardless of the Operator loop speed.
@@ -145,7 +147,7 @@ namespace Spectrum.Visualizers {
         this.runtime.Snapshot.OperationId == DomeBlend.Refract.Name;
 
       if (method == 3) {
-        this.TankAdvance(scale, speed, elapsed, refracting);
+        this.TankAdvance(scale, speed, elapsed, refracting, options);
       }
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
@@ -450,7 +452,8 @@ namespace Spectrum.Visualizers {
     // elapsed wall time, and refresh the derived fields the pixel loop
     // samples.
     private void TankAdvance(
-      double scale, double speed, double elapsed, bool refracting
+      double scale, double speed, double elapsed, bool refracting,
+      CausticsLayerOptions options
     ) {
       this.TankEnsureAllocated();
 
@@ -462,12 +465,12 @@ namespace Spectrum.Visualizers {
         this.tankGradDirty = true;
       }
 
-      int triggerSource = (int)this.runtime.Parameter("trigger");
-      int button = (int)this.runtime.Parameter("button");
-      double levelThreshold = this.runtime.Parameter("level");
-      double interval = this.runtime.Parameter("interval");
-      double wakeSize = this.runtime.Parameter("wakeSize");
-      double wakeStrength = this.runtime.Parameter("wakeStrength");
+      int triggerSource = options.Trigger;
+      int button = options.Button;
+      double levelThreshold = options.Level;
+      double interval = options.Interval;
+      double wakeSize = options.WakeSize;
+      double wakeStrength = options.WakeStrength;
 
       double level = this.audio.Volume;
       this.center.Update(level);

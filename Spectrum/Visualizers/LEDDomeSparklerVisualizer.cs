@@ -71,13 +71,15 @@ namespace Spectrum {
       double frameScale = this.frameClock.Tick();
       double dt = frameScale * 0.0025;
       double level = this.audio.Volume;
-      double speed = this.runtime.Parameter("speed");
-      double size = this.runtime.Parameter("size");
-      int triggerSource = (int)this.runtime.Parameter("trigger");
-      int button = (int)this.runtime.Parameter("button");
-      double levelThreshold = this.runtime.Parameter("level");
-      double interval = this.runtime.Parameter("interval");
-      int paletteBank = (int)this.runtime.Parameter("palette");
+      SparklerLayerOptions options =
+        this.runtime.GetOptions<SparklerLayerOptions>();
+      double speed = options.Speed;
+      double size = options.Size;
+      int triggerSource = options.Trigger;
+      int button = options.Button;
+      double levelThreshold = options.Level;
+      double interval = options.Interval;
+      int paletteBank = options.Palette;
 
       double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
