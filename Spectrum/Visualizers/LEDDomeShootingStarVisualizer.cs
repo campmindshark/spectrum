@@ -182,14 +182,19 @@ namespace Spectrum {
     // OrientationCenter measures a pixel's proximity to the aim by transforming
     // the pixel's sphere position by CurrentCenter and comparing to Spot=(-1,0,0)
     // (see PotentialAt). So the sphere point that lands exactly on Spot — the aim
-    // — is Spot rotated by the inverse of CurrentCenter. Project that sphere
-    // point back to (u, v): BakePixelPositions builds sphere.X = u and
+    // — is Spot rotated by the inverse of CurrentCenter. The orientation is an
+    // axis, so its antipode is the same aim direction; select the endpoint on
+    // the dome's positive-Z (top) hemisphere before projecting it. Project that
+    // sphere point back to (u, v): BakePixelPositions builds sphere.X = u and
     // sphere.Y = -v, hence v = -sphere.Y.
     private Vector2 AimPoint() {
       Vector3 aimSphere = Vector3.Transform(
         OrientationCenter.Spot,
         Quaternion.Conjugate(this.center.CurrentCenter)
       );
+      if (aimSphere.Z < 0) {
+        aimSphere = -aimSphere;
+      }
       return new Vector2(aimSphere.X, -aimSphere.Y);
     }
 
