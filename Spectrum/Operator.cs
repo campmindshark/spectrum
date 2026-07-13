@@ -191,6 +191,10 @@ namespace Spectrum {
         this.config,
         dome
       ));
+      this.visualizers.Add(new LEDDomeVortexVisualizer(
+        this.config,
+        dome
+      ));
       this.visualizers.Add(new LEDDomeCausticsVisualizer(
         this.config,
         audio,
@@ -246,6 +250,14 @@ namespace Spectrum {
         dome
       ));
       this.visualizers.Add(new LEDDomeShootingStarVisualizer(
+        this.config,
+        audio,
+        orientation,
+        orientationCenter,
+        this.BeatBroadcaster,
+        dome
+      ));
+      this.visualizers.Add(new LEDDomeSparklerVisualizer(
         this.config,
         audio,
         orientation,

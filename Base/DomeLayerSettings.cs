@@ -122,10 +122,12 @@ namespace Spectrum.Base {
     private static readonly string[] ExtraLayerKeys = new string[] {
       "twinkle", "wave", "ripple", "stamp", "metaball", "background", "flash",
       "point-cloud", "gyroscope", "shooting-star", "noise-cloud", "caustics",
+      "sparkler", "vortex",
     };
     private static readonly string[] ExtraLayerLabels = new string[] {
       "Twinkle", "Wave", "Ripple", "Stamp", "Metaball", "Background", "Flash",
       "Point Cloud", "Gyroscope", "Shooting Star", "Noise Cloud", "Caustics",
+      "Sparkler", "Vortex",
     };
 
     // The full set of layerable keys/labels offered in the UI pickers: the
@@ -602,6 +604,32 @@ namespace Spectrum.Base {
         PaletteBankParam,
       };
 
+    // Sparkler is Shooting Star in reverse: every trigger births one particle
+    // at the current wand/idle aim point and sends it in a random direction at
+    // constant speed. The buffer's normal global fade supplies its trail.
+    private static readonly DomeLayerParam[] SparklerParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "speed", Label = "Speed",
+          Type = DomeLayerParamType.Double,
+          Min = 0.1, Max = 16, Step = 0.1, Default = 1.5,
+        },
+        new DomeLayerParam {
+          Key = "size", Label = "Dot Size",
+          Type = DomeLayerParamType.Double,
+          Min = 0.01, Max = 0.3, Step = 0.01, Default = 0.05,
+        },
+        new DomeLayerParam {
+          Key = "trigger", Label = "Trigger",
+          Type = DomeLayerParamType.Enum,
+          Options = TriggerSourceOptions, Default = 1, // Beat
+        },
+        TriggerButtonParam,
+        TriggerLevelParam,
+        TriggerIntervalParam,
+        PaletteBankParam,
+      };
+
     // Gyroscope's tuning, all visualizer-consumed (read in Visualize()). A new
     // standalone effect layer with no pre-layers global, so no LegacySetting on
     // any of these. The gimbal motion is driven by device/idle orientation
@@ -666,6 +694,60 @@ namespace Spectrum.Base {
           Key = "color", Label = "Color",
           Type = DomeLayerParamType.Color,
           Min = 0, Max = 0xFFFFFF, Default = 0xFFFFFF,
+        },
+      };
+
+    // A stateless polar flow field that reads as a dense particle system
+    // without maintaining particles. Whirlpool keeps the advected noise
+    // continuous and shapes it into spiral arms; Sandstorm thresholds a finer
+    // field into grains and lets the persistent layer buffer leave short
+    // trails. All work is O(dome pixels), independent of apparent density.
+    private static readonly DomeLayerParam[] VortexParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "style", Label = "Style",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] { "Whirlpool", "Sandstorm" }, Default = 0,
+        },
+        new DomeLayerParam {
+          Key = "speed", Label = "Spin Speed",
+          Type = DomeLayerParamType.Double,
+          Min = -4, Max = 4, Step = 0.125, Default = 1,
+        },
+        new DomeLayerParam {
+          Key = "twist", Label = "Twist",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 8, Step = 0.25, Default = 3,
+        },
+        new DomeLayerParam {
+          Key = "scale", Label = "Grain Scale",
+          Type = DomeLayerParamType.Double,
+          Min = 2, Max = 32, Step = 0.5, Default = 10,
+        },
+        new DomeLayerParam {
+          Key = "density", Label = "Density",
+          Type = DomeLayerParamType.Double,
+          Min = 0.05, Max = 0.95, Step = 0.05, Default = 0.55,
+        },
+        new DomeLayerParam {
+          Key = "coreSize", Label = "Core Size",
+          Type = DomeLayerParamType.Double,
+          Min = 0.01, Max = 0.5, Step = 0.01, Default = 0.12,
+        },
+        new DomeLayerParam {
+          Key = "inflow", Label = "Inflow",
+          Type = DomeLayerParamType.Double,
+          Min = -2, Max = 2, Step = 0.05, Default = 0.25,
+        },
+        new DomeLayerParam {
+          Key = "turbulence", Label = "Turbulence",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 2, Step = 0.05, Default = 0.65,
+        },
+        new DomeLayerParam {
+          Key = "color", Label = "Color",
+          Type = DomeLayerParamType.Color,
+          Min = 0, Max = 0xFFFFFF, Default = 0xD8B878,
         },
       };
 
@@ -770,10 +852,14 @@ namespace Spectrum.Base {
           return PointCloudParams;
         case "shooting-star":
           return ShootingStarParams;
+        case "sparkler":
+          return SparklerParams;
         case "gyroscope":
           return GyroscopeParams;
         case "noise-cloud":
           return NoiseCloudParams;
+        case "vortex":
+          return VortexParams;
         case "caustics":
           return CausticsParams;
         default:
