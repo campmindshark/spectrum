@@ -9,17 +9,17 @@ namespace Spectrum.LEDs {
   // reusable render frames, pass ordering, and effect time; OPC, mapping,
   // configuration, palettes, and simulator publication remain in the output.
   public sealed class DomeCompositor {
-    private readonly Func<LEDDomeOutputBuffer> createFrame;
+    private readonly Func<DomeFrame> createFrame;
     private readonly OrientationAngleProvider orientation;
     private readonly Func<double> elapsedSeconds;
     private readonly FrameClock clock = new FrameClock();
     private RenderPlan plan = RenderPlan.Empty;
-    private LEDDomeOutputBuffer destination;
-    private LEDDomeOutputBuffer scratch;
+    private DomeFrame destination;
+    private DomeFrame scratch;
     private double seconds;
 
     public DomeCompositor(
-      Func<LEDDomeOutputBuffer> createFrame,
+      Func<DomeFrame> createFrame,
       OrientationAngleProvider orientation = null,
       Func<double> elapsedSeconds = null
     ) {
@@ -37,7 +37,7 @@ namespace Spectrum.LEDs {
 
     // Returns null when no scheduled renderer contributed, preserving the old
     // "hold last frame / leave diagnostic output alone" contract.
-    public LEDDomeOutputBuffer Compose() {
+    public DomeFrame Compose() {
       this.seconds += Math.Max(0, this.elapsedSeconds());
       RenderPlan current = this.Plan;
       bool initialized = false;
@@ -47,7 +47,7 @@ namespace Spectrum.LEDs {
           continue;
         }
         this.destination ??= this.createFrame();
-        LEDDomeOutputBuffer source = layer.Renderer.Frame;
+        DomeFrame source = layer.Renderer.Frame;
         if (!initialized) {
           // Phase 1 deliberately preserves the historical bottom-layer seed.
           this.destination.CompositeBottom(source, layer.Snapshot.Opacity);

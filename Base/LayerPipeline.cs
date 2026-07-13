@@ -93,7 +93,7 @@ namespace Spectrum.Base {
   // consumes only this narrow frame contract.
   public interface ILayerRenderer {
     string RendererId { get; }
-    LEDDomeOutputBuffer Frame { get; }
+    DomeFrame Frame { get; }
     bool IsAvailable { get; }
     IReadOnlyList<Input> RequiredInputs { get; }
   }

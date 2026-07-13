@@ -62,7 +62,7 @@ namespace Spectrum.Visualizers {
     private readonly OrientationInput orientationInput;
     private readonly OrientationCenter center;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
     private readonly LayerTrigger trigger;
     private readonly Random rand = new Random();
 
@@ -97,7 +97,7 @@ namespace Spectrum.Visualizers {
       this.center = center;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
       this.trigger = new LayerTrigger(
         config, orientationInput, runtime.InstanceId.Value, beat, audio);
     }
@@ -105,7 +105,7 @@ namespace Spectrum.Visualizers {
     public int Priority => 2;
 
     public string LayerKey => "caustics";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 
@@ -150,6 +150,7 @@ namespace Spectrum.Visualizers {
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         ref var pixel = ref this.buffer.pixels[i];
+        DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
 
         double v, gx = 0, gy = 0, gradGain = GradGain;
         if (method == 3) {
@@ -171,13 +172,13 @@ namespace Spectrum.Visualizers {
           // Lens evaluates its wave sum once per pixel and gets luminance,
           // ∇h, and ∇²h from the same pass — the gradient is closed form, so
           // Refract costs no extra field evaluations here.
-          double px = pixel.x * scale + OffsetX;
-          double py = pixel.y * scale + OffsetY;
+          double px = point.X * scale + OffsetX;
+          double py = point.Y * scale + OffsetY;
           v = LensField(px, py, t, refracting, out gx, out gy);
           gradGain = LensGradGain;
         } else {
-          double px = pixel.x * scale + OffsetX;
-          double py = pixel.y * scale + OffsetY;
+          double px = point.X * scale + OffsetX;
+          double py = point.Y * scale + OffsetY;
           v = Field(method, px, py, t);
           if (refracting) {
             // Forward-difference gradient of the raw field (pre-sharpness —
@@ -651,8 +652,9 @@ namespace Spectrum.Visualizers {
       this.tankWeightX = new double[n];
       this.tankWeightY = new double[n];
       for (int i = 0; i < n; i++) {
-        double gx = Math.Clamp(this.buffer.pixels[i].x, 0, 1) * (TankSize - 1);
-        double gy = Math.Clamp(this.buffer.pixels[i].y, 0, 1) * (TankSize - 1);
+        DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
+        double gx = Math.Clamp(point.X, 0, 1) * (TankSize - 1);
+        double gy = Math.Clamp(point.Y, 0, 1) * (TankSize - 1);
         int ix = Math.Min((int)gx, TankSize - 2);
         int iy = Math.Min((int)gy, TankSize - 2);
         this.tankCell[i] = iy * TankSize + ix;

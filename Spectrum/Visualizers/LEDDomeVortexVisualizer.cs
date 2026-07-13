@@ -15,7 +15,7 @@ namespace Spectrum.Visualizers {
     private readonly Configuration config;
     private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
 
     // Static projected polar geometry. The vortex is intentionally viewed
     // down the dome's axis, so the flat projection is the useful coordinate
@@ -36,14 +36,15 @@ namespace Spectrum.Visualizers {
       this.runtime = runtime;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
 
       int count = this.buffer.pixels.Length;
       this.radii = new double[count];
       this.angleTurns = new double[count];
       for (int i = 0; i < count; i++) {
-        double x = this.buffer.pixels[i].x * 2 - 1;
-        double y = 1 - this.buffer.pixels[i].y * 2;
+        DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
+        double x = point.X * 2 - 1;
+        double y = 1 - point.Y * 2;
         this.radii[i] = Math.Sqrt(x * x + y * y);
         double turns = Math.Atan2(y, x) / (2 * Math.PI);
         this.angleTurns[i] = turns < 0 ? turns + 1 : turns;
@@ -53,7 +54,7 @@ namespace Spectrum.Visualizers {
     public int Priority => 2;
 
     public string LayerKey => "vortex";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
     public bool Enabled { get; set; }
 
     private Input[] inputs;

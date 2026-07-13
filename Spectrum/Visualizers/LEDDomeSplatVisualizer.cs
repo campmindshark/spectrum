@@ -16,7 +16,7 @@ namespace Spectrum {
     private AudioInput audio;
     private BeatBroadcaster beat;
     private LEDDomeOutput dome;
-    private LEDDomeOutputBuffer buffer;
+    private DomeFrame buffer;
 
     private double lastProgress;
 
@@ -33,13 +33,13 @@ namespace Spectrum {
       this.beat = beat;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
     }
 
     public int Priority => 2;
 
     public string LayerKey => "splat";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 
@@ -69,9 +69,10 @@ namespace Spectrum {
 
         for (int i = 0; i < buffer.pixels.Length; i++) {
           ref var pixel = ref buffer.pixels[i];
+          DomeTopologyPixel point = buffer.Topology.PixelAt(i);
 
-          var dx = pixel.x - cx;
-          var dy = pixel.y - cy;
+          var dx = point.X - cx;
+          var dy = point.Y - cy;
           var dist = Math.Sqrt(dx * dx + dy * dy);
           if (dist < radius) {
             pixel.color = this.dome.GetGradientColor(

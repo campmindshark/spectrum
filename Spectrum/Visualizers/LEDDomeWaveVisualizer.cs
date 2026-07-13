@@ -24,7 +24,7 @@ namespace Spectrum.Visualizers {
     private readonly LayerRendererRuntime runtime;
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
     private readonly LayerTrigger trigger;
 
     // Sweep phase (the band center, 0..1) accumulated from wall-clock time so the
@@ -48,7 +48,7 @@ namespace Spectrum.Visualizers {
       this.orientationInput = orientationInput;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
       this.trigger = new LayerTrigger(
         config, orientationInput, runtime.InstanceId.Value);
     }
@@ -56,7 +56,7 @@ namespace Spectrum.Visualizers {
     public int Priority => 2;
 
     public string LayerKey => "wave";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 
@@ -146,9 +146,9 @@ namespace Spectrum.Visualizers {
       // the far side while the main band is on-screen.
       double maxDist = 0;
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
-        ref var pixel = ref this.buffer.pixels[i];
-        double px = (pixel.x + centerOffset.Item1) * 2 - 1;
-        double py = (pixel.y + centerOffset.Item2) * 2 - 1;
+        DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
+        double px = (point.X + centerOffset.Item1) * 2 - 1;
+        double py = (point.Y + centerOffset.Item2) * 2 - 1;
         double dist = Math.Sqrt(px * px + py * py);
         if (dist > maxDist) {
           maxDist = dist;
@@ -179,8 +179,9 @@ namespace Spectrum.Visualizers {
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         ref var pixel = ref this.buffer.pixels[i];
-        double px = (pixel.x + centerOffset.Item1) * 2 - 1;
-        double py = (pixel.y + centerOffset.Item2) * 2 - 1;
+        DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
+        double px = (point.X + centerOffset.Item1) * 2 - 1;
+        double py = (point.Y + centerOffset.Item2) * 2 - 1;
         // Raw, unbounded distance from the (possibly offset) center — same
         // quantity Radial's Pulse mapping uses. It is never clamped: once the
         // center is offset, dome pixels can legitimately sit past dist 1, and

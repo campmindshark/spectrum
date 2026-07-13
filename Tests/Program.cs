@@ -22,6 +22,7 @@ namespace Spectrum.LayerPipeline.Tests {
         ConfigurationPublishesSnapshot);
       Run("compositor preserves stack order and bottom behavior", StackOrder);
       Run("scratch copies only mutable channels", ScratchCopiesChannelsOnly);
+      Run("frame operations require shared topology", FramesRequireTopology);
       Run("operator creates independent duplicate renderers", DuplicateRenderers);
       Run("compiled plan schedules enabled instances", PlanSchedulesInstances);
       Run("zero opacity is a kernel identity", ZeroOpacityIdentity);
@@ -96,7 +97,7 @@ namespace Spectrum.LayerPipeline.Tests {
           context => {
             captured = context.Runtime;
             return new FakeRenderer(
-              "test", new LEDDomeOutputBuffer(topology));
+              "test", new DomeFrame(topology));
           },
           new[] {
             new DomeLayerParam {
@@ -152,7 +153,7 @@ namespace Spectrum.LayerPipeline.Tests {
         new LayerDefinition(
           "test", "Test",
           context => new FakeRenderer(
-            "test", new LEDDomeOutputBuffer(topology), declared),
+            "test", new DomeFrame(topology), declared),
           new[] {
             new DomeLayerParam {
               Key = "speed", Type = DomeLayerParamType.Double,
@@ -193,9 +194,9 @@ namespace Spectrum.LayerPipeline.Tests {
 
     private static void StackOrder() {
       DomeTopology topology = OnePixelTopology();
-      var bottomFrame = new LEDDomeOutputBuffer(topology);
+      var bottomFrame = new DomeFrame(topology);
       bottomFrame.pixels[0].color = 0x200000;
-      var topFrame = new LEDDomeOutputBuffer(topology);
+      var topFrame = new DomeFrame(topology);
       topFrame.pixels[0].color = 0x002000;
       var bottom = new FakeRenderer("bottom", bottomFrame);
       var top = new FakeRenderer("top", topFrame);
@@ -204,24 +205,46 @@ namespace Spectrum.LayerPipeline.Tests {
         Compiled(bottom, DomeBlend.Multiply, 1, empty),
         Compiled(top, DomeBlend.Add, 0.5, empty)));
       var compositor = new DomeCompositor(
-        () => new LEDDomeOutputBuffer(topology), elapsedSeconds: () => 0);
+        () => new DomeFrame(topology), elapsedSeconds: () => 0);
       compositor.Publish(plan);
-      LEDDomeOutputBuffer result = compositor.Compose();
+      DomeFrame result = compositor.Compose();
       Assert(result.pixels[0].color == 0x201000,
         "unexpected composite 0x" + result.pixels[0].color.ToString("X6"));
     }
 
     private static void ScratchCopiesChannelsOnly() {
-      var a = new LEDDomeOutputPixel { strutIndex = 4, x = .25, y = .75 };
-      a.color = 0x123456;
-      var b = new LEDDomeOutputPixel { strutIndex = 9, x = .9, y = .1 };
-      b.color = 0xFFFFFF;
-      var source = new LEDDomeOutputBuffer(new[] { a });
-      var target = new LEDDomeOutputBuffer(new[] { b });
+      var points = new[] {
+        new DomeTopologyPixel(4, 0, .25, .75),
+      };
+      var topology = new DomeTopology(points);
+      points[0] = new DomeTopologyPixel(9, 0, .9, .1);
+      var source = new DomeFrame(topology);
+      var target = new DomeFrame(topology);
+      source.pixels[0].color = 0x123456;
+      target.pixels[0].color = 0xFFFFFF;
       target.CopyFrom(source);
       Assert(target.pixels[0].color == 0x123456, "channels did not copy");
-      Assert(target.pixels[0].strutIndex == 9 && target.pixels[0].x == .9,
-        "topology metadata was copied");
+      Assert(ReferenceEquals(source.Topology, target.Topology),
+        "frames did not share their topology");
+      Assert(topology.PixelAt(0) == new DomeTopologyPixel(4, 0, .25, .75),
+        "topology retained its mutable constructor array");
+      Assert(typeof(LEDDomeOutputPixel).GetField("x") == null &&
+        typeof(LEDDomeOutputPixel).GetField("strutIndex") == null,
+        "frame pixels still contain topology metadata");
+      Assert(source.BakePixelPositions().Equals(target.BakePixelPositions()),
+        "frames did not share baked topology normals");
+    }
+
+    private static void FramesRequireTopology() {
+      var first = new DomeFrame(OnePixelTopology());
+      var second = new DomeFrame(OnePixelTopology());
+      bool rejected = false;
+      try {
+        first.CopyFrom(second);
+      } catch (ArgumentException) {
+        rejected = true;
+      }
+      Assert(rejected, "mismatched logical frames were copied by index");
     }
 
     private static void DuplicateRenderers() {
@@ -264,10 +287,10 @@ namespace Spectrum.LayerPipeline.Tests {
         DomeBlend.Over, DomeBlend.Add, DomeBlend.Screen, DomeBlend.Lighten,
         DomeBlend.Multiply, DomeBlend.Desaturate, DomeBlend.Hue,
       }) {
-        var dest = new LEDDomeOutputBuffer(topology);
+        var dest = new DomeFrame(topology);
         dest.pixels[0].color = 0x123456;
         dest.pixels[0].hue = .25;
-        var source = new LEDDomeOutputBuffer(topology);
+        var source = new DomeFrame(topology);
         source.pixels[0].color = 0xFEDCBA;
         source.pixels[0].hue = .75;
         operation.Execute(new DomeBlendContext(
@@ -344,7 +367,7 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     private static DomeTopology OnePixelTopology() => new(new[] {
-      new LEDDomeOutputPixel { strutIndex = 0, strutLEDIndex = 0, x = .5, y = .5 },
+      new DomeTopologyPixel(0, 0, .5, .5),
     });
 
     private static void Assert(bool condition, string message) {
@@ -355,11 +378,11 @@ namespace Spectrum.LayerPipeline.Tests {
 
     private sealed class FakeRenderer : ILayerRenderer {
       public string RendererId { get; }
-      public LEDDomeOutputBuffer Frame { get; }
+      public DomeFrame Frame { get; }
       public bool IsAvailable => true;
       public IReadOnlyList<Input> RequiredInputs { get; }
       public FakeRenderer(
-        string id, LEDDomeOutputBuffer frame,
+        string id, DomeFrame frame,
         IReadOnlyList<Input> requiredInputs = null
       ) {
         this.RendererId = id;

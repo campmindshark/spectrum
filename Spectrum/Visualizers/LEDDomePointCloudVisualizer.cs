@@ -2,6 +2,7 @@ using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Numerics;
 
 namespace Spectrum.Visualizers {
@@ -36,11 +37,11 @@ namespace Spectrum.Visualizers {
     private readonly LayerRendererRuntime runtime;
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
 
     // Static per-pixel unit-sphere geometry, baked once (as every orientation
     // layer does).
-    private readonly Vector3[] pixelPositions;
+    private readonly ImmutableArray<Vector3> pixelPositions;
 
     private readonly FrameClock frameClock = new FrameClock();
 
@@ -72,7 +73,7 @@ namespace Spectrum.Visualizers {
       this.orientationInput = orientationInput;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
       this.pixelPositions = this.buffer.BakePixelPositions();
       Reseed(ParamCount());
     }
@@ -111,7 +112,7 @@ namespace Spectrum.Visualizers {
     public int Priority => 2;
 
     public string LayerKey => "point-cloud";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 

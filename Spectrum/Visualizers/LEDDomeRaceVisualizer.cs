@@ -18,7 +18,7 @@ namespace Spectrum {
     private readonly MidiInput midi;
     private readonly BeatBroadcaster beat;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
 
     // Static per-pixel geometry, baked once in the constructor: the racer lookup
     // only needs each pixel's angle around the dome and its vertical height, and
@@ -234,16 +234,16 @@ namespace Spectrum {
       // Visualizer when comparing priorities for LEDDomeOutput. If you skip it
       // your Visualizer will never run
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
 
       // Bake each pixel's angle and height from its strut/LED identity once.
       this.pixelAngle = new double[this.buffer.pixels.Length];
       this.pixelHeight = new double[this.buffer.pixels.Length];
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
-        var pixel = this.buffer.pixels[i];
+        DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
         var parametric = StrutLayoutFactory.GetProjectedLEDPointParametric(
-          pixel.strutIndex,
-          pixel.strutLEDIndex
+          point.StrutIndex,
+          point.LedIndex
         );
         this.pixelAngle[i] = parametric.Item3;
         this.pixelHeight[i] = 1.0 - parametric.Item4;
@@ -253,7 +253,7 @@ namespace Spectrum {
     public int Priority => 2;
 
     public string LayerKey => "race";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     // When the Operator determines that this Visualizer has the highest
     // priority for LEDDomeOutput, it will set the Enabled property below to

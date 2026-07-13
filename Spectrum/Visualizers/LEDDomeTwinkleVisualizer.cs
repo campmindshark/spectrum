@@ -20,7 +20,7 @@ namespace Spectrum.Visualizers {
     private readonly Configuration config;
     private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
     private readonly Random rand;
 
     // Baked once: whether each pixel is high enough on the dome to twinkle
@@ -41,7 +41,7 @@ namespace Spectrum.Visualizers {
       this.runtime = runtime;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
       this.rand = new Random();
 
       // Bake per-pixel twinkle eligibility once from the baked unit-sphere
@@ -57,7 +57,7 @@ namespace Spectrum.Visualizers {
     public int Priority => 2;
 
     public string LayerKey => "twinkle";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 

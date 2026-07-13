@@ -16,7 +16,7 @@ namespace Spectrum {
     private AudioInput audio;
     private BeatBroadcaster beat;
     private LEDDomeOutput dome;
-    private LEDDomeOutputBuffer buffer;
+    private DomeFrame buffer;
 
     private double currentAngle;
     private double currentGradient;
@@ -36,13 +36,13 @@ namespace Spectrum {
       this.beat = beat;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
     }
 
     public int Priority => 2;
 
     public string LayerKey => "radial";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 
@@ -94,15 +94,16 @@ namespace Spectrum {
 
       for (int i = 0; i < buffer.pixels.Length; i++) {
         ref var pixel = ref buffer.pixels[i];
+        DomeTopologyPixel point = buffer.Topology.PixelAt(i);
 
         // The static projected (x, y) is precomputed once in
-        // MakeDomeOutputBuffer (pixel.x/pixel.y come straight from
+        // DomeTopology (point.X/point.Y come straight from
         // GetProjectedLEDPoint), so only the parametric transform relative to
         // the moving centerOffset needs to run per frame (M2). This inlines
         // GetProjectedLEDPointParametric without its per-pixel
         // GetProjectedLEDPoint/GetNumLEDs recomputation.
-        double px = (pixel.x + centerOffset.Item1) * 2 - 1;
-        double py = (pixel.y + centerOffset.Item2) * 2 - 1;
+        double px = (point.X + centerOffset.Item1) * 2 - 1;
+        double py = (point.Y + centerOffset.Item2) * 2 - 1;
 
         // map angle to 0-1
         var angle = MapWrap(Math.Atan2(py, px), -Math.PI, Math.PI, 0.0, 1.0);

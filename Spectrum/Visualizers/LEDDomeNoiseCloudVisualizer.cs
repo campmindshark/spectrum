@@ -1,6 +1,7 @@
 using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
+using System.Collections.Immutable;
 using System.Numerics;
 
 namespace Spectrum.Visualizers {
@@ -48,11 +49,11 @@ namespace Spectrum.Visualizers {
     private readonly Configuration config;
     private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
 
     // Baked once: the unit-sphere position of every pixel, so the noise samples
     // the true 3D dome surface rather than the flat projection.
-    private readonly Vector3[] positions;
+    private readonly ImmutableArray<Vector3> positions;
 
     // Scratch holding this frame's raw per-pixel noise between the two Visualize
     // passes, so the field's spatial mean and spread can be measured and
@@ -81,7 +82,7 @@ namespace Spectrum.Visualizers {
       this.runtime = runtime;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
       this.positions = this.buffer.BakePixelPositions();
       this.noiseField = new double[this.buffer.pixels.Length];
     }
@@ -89,7 +90,7 @@ namespace Spectrum.Visualizers {
     public int Priority => 2;
 
     public string LayerKey => "noise-cloud";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 

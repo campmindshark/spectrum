@@ -2,6 +2,7 @@ using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Numerics;
 
 namespace Spectrum.Visualizers {
@@ -39,10 +40,10 @@ namespace Spectrum.Visualizers {
     private readonly OrientationInput orientation;
     private readonly OrientationCenter orientationCenter;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
 
     // Unit-sphere position of every LED, baked once (guarded z on the rim).
-    private readonly Vector3[] pixelPositions;
+    private readonly ImmutableArray<Vector3> pixelPositions;
 
     // Wall-clock phase for the flywheel spin (the rotor's own DOF), kept
     // frame-rate independent.
@@ -67,14 +68,14 @@ namespace Spectrum.Visualizers {
       this.orientationCenter = orientationCenter;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
       this.pixelPositions = this.buffer.BakePixelPositions();
     }
 
     public int Priority => 2;
 
     public string LayerKey => "gyroscope";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
     public bool Enabled { get; set; }
 
     private Input[] inputs;

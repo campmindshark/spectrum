@@ -52,14 +52,14 @@ namespace Spectrum.Base {
   // the per-frame path allocates nothing.
   public readonly struct DomeBlendContext {
     // The composite built from the layers below; the blend mutates this.
-    public LEDDomeOutputBuffer Dest { get; }
+    public DomeFrame Dest { get; }
     // The blending layer's own buffer (index-aligned with Dest). Never mutated.
-    public LEDDomeOutputBuffer Src { get; }
+    public DomeFrame Src { get; }
     // Pre-pass copy of Dest, taken by the compositor immediately before this
     // blend runs — non-null when requirements include destination neighbors.
     // Spatial blends read neighbors from here so the effect never smears
     // order-dependently along the pixel array they are mutating.
-    public LEDDomeOutputBuffer Snapshot { get; }
+    public DomeFrame Snapshot { get; }
     // Typed, validated operation options compiled when the stack changed.
     public ICompositeOptions Options { get; }
     // The layer's opacity, 0..1, applied before the blend.
@@ -73,12 +73,22 @@ namespace Spectrum.Base {
     public OrientationAngleProvider Orientation { get; }
 
     public DomeBlendContext(
-      LEDDomeOutputBuffer dest, LEDDomeOutputBuffer src,
-      LEDDomeOutputBuffer snapshot, ICompositeOptions options,
+      DomeFrame dest, DomeFrame src, DomeFrame snapshot,
+      ICompositeOptions options,
       double opacity, double seconds, OrientationAngleProvider orientation
     ) {
-      this.Dest = dest;
-      this.Src = src;
+      this.Dest = dest ?? throw new ArgumentNullException(nameof(dest));
+      this.Src = src ?? throw new ArgumentNullException(nameof(src));
+      if (!ReferenceEquals(dest.Topology, src.Topology)) {
+        throw new ArgumentException(
+          "Composite frames must share one topology.", nameof(src));
+      }
+      if (snapshot != null &&
+          !ReferenceEquals(dest.Topology, snapshot.Topology)) {
+        throw new ArgumentException(
+          "Composite snapshots must share the destination topology.",
+          nameof(snapshot));
+      }
       this.Snapshot = snapshot;
       this.Options = options ?? EmptyCompositeOptions.Instance;
       this.Opacity = opacity;

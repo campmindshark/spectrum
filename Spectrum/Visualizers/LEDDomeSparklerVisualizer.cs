@@ -27,7 +27,7 @@ namespace Spectrum {
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
     private readonly OrientationCenter center;
     private readonly LayerTrigger trigger;
     private readonly FrameClock frameClock = new FrameClock();
@@ -51,7 +51,7 @@ namespace Spectrum {
       this.center = center;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
       this.trigger = new LayerTrigger(
         config, orientationInput, runtime.InstanceId.Value, beat, audio);
     }
@@ -59,7 +59,7 @@ namespace Spectrum {
     public int Priority => 2;
 
     public string LayerKey => "sparkler";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
     public bool Enabled { get; set; }
 
     private Input[] inputs;
@@ -159,8 +159,9 @@ namespace Spectrum {
       double sizeSq = size * size;
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         ref var pixel = ref this.buffer.pixels[i];
-        double u = 2 * pixel.x - 1;
-        double v = 2 * pixel.y - 1;
+        DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
+        double u = 2 * point.X - 1;
+        double v = 2 * point.Y - 1;
         double bestValue = 0;
         int bestColor = 0;
         for (int j = 0; j < this.particles.Count; j++) {

@@ -1,6 +1,7 @@
 ﻿using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
+using System.Collections.Immutable;
 using System.Numerics;
 
 namespace Spectrum.Visualizers {
@@ -10,11 +11,11 @@ namespace Spectrum.Visualizers {
     private Configuration config;
     private OrientationInput orientation;
     private LEDDomeOutput dome;
-    private LEDDomeOutputBuffer buffer;
+    private DomeFrame buffer;
 
     // Static per-pixel unit-sphere geometry, baked once (guarded z, shared with
-    // the layer visualizers via LEDDomeOutputBuffer.BakePixelPositions).
-    private readonly Vector3[] pixelPositions;
+    // the layer visualizers via DomeFrame.BakePixelPositions).
+    private readonly ImmutableArray<Vector3> pixelPositions;
 
     public LEDDomeQuaternionTestVisualizer(
       Configuration config,
@@ -25,14 +26,14 @@ namespace Spectrum.Visualizers {
       this.orientation = orientation;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
       this.pixelPositions = this.buffer.BakePixelPositions();
     }
 
     public int Priority => 2;
 
     public string LayerKey => "quaternion-test";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 

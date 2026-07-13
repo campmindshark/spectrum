@@ -3,6 +3,7 @@ using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Numerics;
 using static Spectrum.MathUtil;
 
@@ -51,7 +52,7 @@ namespace Spectrum.Visualizers {
     private readonly OrientationInput orientationInput;
     private readonly BeatBroadcaster beat;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
     private readonly Random rand;
 
     // Device snapshotting, idle drift, spotlight resolution, and the
@@ -61,7 +62,7 @@ namespace Spectrum.Visualizers {
 
     // Static per-pixel geometry, baked once: the unit-sphere position and
     // whether the pixel is high enough on the dome to twinkle (z > .2).
-    private readonly Vector3[] pixelPositions;
+    private readonly ImmutableArray<Vector3> pixelPositions;
     private readonly bool[] twinkleEligible;
 
     // Wall-clock frame timing, shared with the extracted orientation/twinkle
@@ -101,7 +102,7 @@ namespace Spectrum.Visualizers {
       this.beat = beat;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
       this.rand = new Random();
       this.center = center;
 
@@ -117,7 +118,7 @@ namespace Spectrum.Visualizers {
     public int Priority => 2;
 
     public string LayerKey => "quaternion-paintbrush";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 

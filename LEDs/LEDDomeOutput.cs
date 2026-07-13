@@ -248,7 +248,7 @@ namespace Spectrum.LEDs {
       this.beat = beat;
       this.visualizers = new List<Visualizer>();
       this.compositor = new DomeCompositor(
-        this.MakeDomeOutputBuffer, orientationAngle);
+        this.MakeDomeFrame, orientationAngle);
       this.RebuildCableMapping();
       this.config.PropertyChanged += ConfigUpdated;
     }
@@ -374,7 +374,7 @@ namespace Spectrum.LEDs {
       // with the cache still valid; Composite reads only their buffers, so the
       // ordering composite -> opc send -> cache invalidate is required. See the
       // GetGradientColor cache note in EnsureFrameColorCache.
-      LEDDomeOutputBuffer completed = this.compositor.Compose();
+      DomeFrame completed = this.compositor.Compose();
       if (completed != null) {
         this.WriteBuffer(completed);
         this.Flush();
@@ -770,32 +770,23 @@ namespace Spectrum.LEDs {
       }
     }
 
-    public LEDDomeOutputBuffer MakeDomeOutputBuffer() {
+    public DomeFrame MakeDomeFrame() {
       if (this.topology != null) {
-        return new LEDDomeOutputBuffer(this.topology);
+        return new DomeFrame(this.topology);
       }
-      List<LEDDomeOutputPixel> pixels = new List<LEDDomeOutputPixel>();
+      List<DomeTopologyPixel> pixels = new List<DomeTopologyPixel>();
 
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
         var leds = LEDDomeOutput.GetNumLEDs(i);
         for (int j = 0; j < leds; j++) {
           var point = StrutLayoutFactory.GetProjectedLEDPoint(i, j);
-          LEDDomeOutputPixel pixel = new LEDDomeOutputPixel();
-          pixel.strutIndex = i;
-          pixel.strutLEDIndex = j;
-          pixel.x = point.Item1;
-          pixel.y = point.Item2;
-          // Leave color/coverage at their struct defaults (0 => transparent
-          // black). Going through the `color` setter here would mark every pixel
-          // opaque (_a = 1), which would make a foreground Over layer paint solid
-          // black everywhere it hadn't drawn yet.
-
-          pixels.Add(pixel);
+          pixels.Add(new DomeTopologyPixel(
+            i, j, point.Item1, point.Item2));
         }
       }
 
       this.topology = new DomeTopology(pixels.ToArray());
-      return new LEDDomeOutputBuffer(this.topology);
+      return new DomeFrame(this.topology);
     }
 
     // The strut indices physically carried by one controller cable
@@ -815,7 +806,7 @@ namespace Spectrum.LEDs {
       return struts;
     }
 
-    public void WriteBuffer(LEDDomeOutputBuffer buffer) {
+    public void WriteBuffer(DomeFrame buffer) {
       // Snapshot opcAPI once instead of null-checking + locking per pixel (P4).
       // The visualizers list is only mutated at registration time, so the
       // per-pixel lock in SetDevicePixel guarded nothing here.

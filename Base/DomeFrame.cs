@@ -1,19 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Collections.Immutable;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Spectrum.Base {
 
+  // Mutable channels for one logical dome pixel. Identity and geometry live once
+  // in DomeTopology, so renderer, compositor, and scratch frames do not clone
+  // strut addresses or projected positions for every pixel.
   public struct LEDDomeOutputPixel {
-    // index by strut and led within that strut
-    public int strutIndex;
-    public int strutLEDIndex;
-    // position in projection
-    public double x;
-    public double y;
 
     // 0..1 hue defined independently of the visible color/alpha, so a
     // visualizer can publish "what hue is at this point in the field" every
@@ -273,50 +267,159 @@ namespace Spectrum.Base {
     }
   }
 
+  public readonly record struct DomeTopologyPixel(
+    int StrutIndex, int LedIndex, double X, double Y
+  );
+
+  // Immutable logical pixel geometry shared by every frame. The neighbor and
+  // unit-sphere tables are lazy implementation caches; Lazy publishes each
+  // immutable value once even if multiple renderer instances request it.
   public sealed class DomeTopology {
-    private readonly LEDDomeOutputPixel[] templates;
-    internal readonly int[] StrutStartIndex;
-    internal int[] NeighborTable;
-    internal Vector3[] CachedNormals;
+    public const int NeighborDirections = 16;
+    public const int NeighborRadii = 4;
+    public const double NeighborRadiusStep = 0.02;
 
-    public int PixelCount => this.templates.Length;
+    private readonly DomeTopologyPixel[] pixels;
+    private readonly int[] strutStartIndex;
+    private readonly Lazy<int[]> neighborTable;
+    private readonly Lazy<ImmutableArray<Vector3>> normals;
 
-    public DomeTopology(LEDDomeOutputPixel[] pixels) {
-      this.templates = (LEDDomeOutputPixel[])pixels.Clone();
-      int maxStrut = -1;
-      foreach (LEDDomeOutputPixel pixel in pixels) {
-        maxStrut = Math.Max(maxStrut, pixel.strutIndex);
+    public int PixelCount => this.pixels.Length;
+    public ImmutableArray<Vector3> Normals => this.normals.Value;
+
+    public DomeTopology(DomeTopologyPixel[] pixels) {
+      if (pixels == null) {
+        throw new ArgumentNullException(nameof(pixels));
       }
-      this.StrutStartIndex = new int[maxStrut + 1];
-      for (int i = 0; i < pixels.Length; i++) {
-        if (pixels[i].strutLEDIndex == 0) {
-          this.StrutStartIndex[pixels[i].strutIndex] = i;
+      this.pixels = (DomeTopologyPixel[])pixels.Clone();
+      int maxStrut = -1;
+      foreach (DomeTopologyPixel pixel in this.pixels) {
+        maxStrut = Math.Max(maxStrut, pixel.StrutIndex);
+      }
+      this.strutStartIndex = new int[maxStrut + 1];
+      for (int i = 0; i < this.pixels.Length; i++) {
+        if (this.pixels[i].LedIndex == 0) {
+          this.strutStartIndex[this.pixels[i].StrutIndex] = i;
         }
       }
+      this.neighborTable = new Lazy<int[]>(this.BuildNeighborTable);
+      this.normals = new Lazy<ImmutableArray<Vector3>>(
+        this.BuildNormals);
     }
 
-    internal LEDDomeOutputPixel[] CreateFramePixels() =>
-      (LEDDomeOutputPixel[])this.templates.Clone();
+    public DomeTopologyPixel PixelAt(int logicalPixel) =>
+      this.pixels[logicalPixel];
 
-    public (int strutIndex, int ledIndex, double x, double y) PixelAt(int i) {
-      LEDDomeOutputPixel p = this.templates[i];
-      return (p.strutIndex, p.strutLEDIndex, p.x, p.y);
+    internal int FrameIndexAt(int strutIndex, int ledIndex) =>
+      this.strutStartIndex[strutIndex] + ledIndex;
+
+    internal void EnsureNeighborTable() => _ = this.neighborTable.Value;
+
+    internal int NeighborAt(int pixel, int dirBin, int radiusBin) =>
+      this.neighborTable.Value[
+        (pixel * NeighborRadii + radiusBin) * NeighborDirections + dirBin];
+
+    private ImmutableArray<Vector3> BuildNormals() {
+      var positions = ImmutableArray.CreateBuilder<Vector3>(
+        this.pixels.Length);
+      for (int i = 0; i < this.pixels.Length; i++) {
+        DomeTopologyPixel point = this.pixels[i];
+        float x = (float)(2 * point.X - 1);
+        float y = (float)(1 - 2 * point.Y);
+        float z = (x * x + y * y) > 1
+          ? 0 : (float)Math.Sqrt(1 - x * x - y * y);
+        positions.Add(new Vector3(x, y, z));
+      }
+      return positions.MoveToImmutable();
+    }
+
+    // Build the shared nearest-neighbor lookup from projected positions.
+    private int[] BuildNeighborTable() {
+      int n = this.pixels.Length;
+      if (n == 0) {
+        return Array.Empty<int>();
+      }
+      double cell = NeighborRadii * NeighborRadiusStep;
+      double maxMatch = 1.5 * NeighborRadiusStep;
+      double maxMatchSq = maxMatch * maxMatch;
+
+      double minX = double.MaxValue, minY = double.MaxValue;
+      double maxX = double.MinValue, maxY = double.MinValue;
+      for (int i = 0; i < n; i++) {
+        double x = this.pixels[i].X, y = this.pixels[i].Y;
+        if (x < minX) { minX = x; }
+        if (y < minY) { minY = y; }
+        if (x > maxX) { maxX = x; }
+        if (y > maxY) { maxY = y; }
+      }
+      int cols = Math.Max(1, (int)((maxX - minX) / cell) + 1);
+      int rows = Math.Max(1, (int)((maxY - minY) / cell) + 1);
+      int cellCount = cols * rows;
+      int[] cellOf = new int[n];
+      int[] counts = new int[cellCount + 1];
+      for (int i = 0; i < n; i++) {
+        int cx = (int)((this.pixels[i].X - minX) / cell);
+        int cy = (int)((this.pixels[i].Y - minY) / cell);
+        if (cx >= cols) { cx = cols - 1; }
+        if (cy >= rows) { cy = rows - 1; }
+        int c = cy * cols + cx;
+        cellOf[i] = c;
+        counts[c + 1]++;
+      }
+      for (int c = 0; c < cellCount; c++) {
+        counts[c + 1] += counts[c];
+      }
+      int[] cellStart = (int[])counts.Clone();
+      int[] byCell = new int[n];
+      int[] fill = (int[])cellStart.Clone();
+      for (int i = 0; i < n; i++) {
+        byCell[fill[cellOf[i]]++] = i;
+      }
+
+      var table = new int[n * NeighborRadii * NeighborDirections];
+      for (int i = 0; i < n; i++) {
+        double px = this.pixels[i].X, py = this.pixels[i].Y;
+        for (int r = 0; r < NeighborRadii; r++) {
+          double radius = (r + 1) * NeighborRadiusStep;
+          for (int d = 0; d < NeighborDirections; d++) {
+            double theta = 2 * Math.PI * d / NeighborDirections;
+            double tx = px + radius * Math.Cos(theta);
+            double ty = py + radius * Math.Sin(theta);
+            int best = i;
+            double bestSq = maxMatchSq;
+            int tcx = (int)((tx - minX) / cell);
+            int tcy = (int)((ty - minY) / cell);
+            for (int gy = tcy - 1; gy <= tcy + 1; gy++) {
+              if (gy < 0 || gy >= rows) { continue; }
+              for (int gx = tcx - 1; gx <= tcx + 1; gx++) {
+                if (gx < 0 || gx >= cols) { continue; }
+                int c = gy * cols + gx;
+                for (int k = cellStart[c]; k < cellStart[c + 1]; k++) {
+                  int j = byCell[k];
+                  double dx = this.pixels[j].X - tx;
+                  double dy = this.pixels[j].Y - ty;
+                  double dsq = dx * dx + dy * dy;
+                  if (dsq < bestSq) {
+                    bestSq = dsq;
+                    best = j;
+                  }
+                }
+              }
+            }
+            table[(i * NeighborRadii + r) * NeighborDirections + d] = best;
+          }
+        }
+      }
+      return table;
     }
   }
 
   public class DomeFrame {
-    public LEDDomeOutputPixel[] pixels;
+    public readonly LEDDomeOutputPixel[] pixels;
     public DomeTopology Topology { get; }
 
-    // Maps a strut index to the position in `pixels` of that strut's LED 0.
-    // MakeDomeOutputBuffer lays every strut's LEDs down contiguously in
-    // ascending strutLEDIndex order, so pixel (strut, led) lives at
-    // strutStartIndex[strut] + led. This lets strut-addressed visualizers write
-    // through the buffer (and WriteBuffer) instead of the per-pixel dome.SetPixel
-    // path. The mapping depends only on strut/LED identity (not the cable
-    // permutation), so it survives RebakeBuffer unchanged.
-    private readonly int[] strutStartIndex;
-
+    // DomeTopology maps a strut and LED-within-strut to the logical frame
+    // index. It depends only on logical identity, not physical cable mapping.
     // Baked spatial neighbor table (docs/prism.md), used by the spatial prism
     // blends to resample the composite at an offset. For each pixel we store the
     // nearest pixel to (x + r·cosθ, y + r·sinθ) over NeighborDirections evenly
@@ -327,63 +430,35 @@ namespace Spectrum.Base {
     // strutStartIndex it depends only on the shared x/y geometry. A tap that
     // finds no pixel near its target stores the pixel's own index, degrading to
     // an in-place read rather than smearing across a gap in the layout.
-    public const int NeighborDirections = 16;
-    public const int NeighborRadii = 4;
+    public const int NeighborDirections = DomeTopology.NeighborDirections;
+    public const int NeighborRadii = DomeTopology.NeighborRadii;
     // Projected-plane units between radius steps; a dome LED pitch is ~0.013, so
     // the four steps span ~1.5–6 LED pitches.
-    public const double NeighborRadiusStep = 0.02;
-    private int[] neighborTable {
-      get => this.Topology.NeighborTable;
-      set => this.Topology.NeighborTable = value;
-    }
-
-    // Baked unit-sphere normals (BakePixelPositions), cached lazily for the
-    // Iridescence blend the same way the orientation layers cache them.
-    private Vector3[] normals {
-      get => this.Topology.CachedNormals;
-      set => this.Topology.CachedNormals = value;
-    }
-
-    public DomeFrame(LEDDomeOutputPixel[] pixels)
-      : this(new DomeTopology(pixels)) { }
+    public const double NeighborRadiusStep = DomeTopology.NeighborRadiusStep;
 
     public DomeFrame(DomeTopology topology) {
       this.Topology = topology ?? throw new ArgumentNullException(nameof(topology));
-      this.pixels = topology.CreateFramePixels();
-      this.strutStartIndex = topology.StrutStartIndex;
+      this.pixels = new LEDDomeOutputPixel[topology.PixelCount];
     }
 
     // Writes a pixel addressed by strut and LED-within-strut — the same
     // addressing the legacy LEDDomeOutput.SetPixel path used — so strut-based
     // visualizers can render into the buffer and flush it once via WriteBuffer.
     public void SetPixel(int strutIndex, int ledIndex, int color) {
-      this.pixels[this.strutStartIndex[strutIndex] + ledIndex].color = color;
+      this.pixels[this.Topology.FrameIndexAt(strutIndex, ledIndex)].color = color;
     }
 
     // Erase a strut-addressed pixel to fully transparent black (see
     // LEDDomeOutputPixel.Clear) — "reveal below", not "paint black".
     public void ClearPixel(int strutIndex, int ledIndex) {
-      this.pixels[this.strutStartIndex[strutIndex] + ledIndex].Clear();
+      this.pixels[this.Topology.FrameIndexAt(strutIndex, ledIndex)].Clear();
     }
 
-    // Bakes the static unit-sphere position of every pixel: maps each pixel's
-    // normalized projected (x, y) — which come "out of" the top-left corner, so
-    // y is flipped — onto the unit hemisphere. z is guarded against the
-    // x² + y² > 1 case (a pixel projecting outside the disc) by flattening it to
-    // 0 instead of taking the square root of a negative. The orientation-driven
-    // layers cache this array once at construction rather than recomputing it
-    // per frame.
-    public Vector3[] BakePixelPositions() {
-      var positions = new Vector3[this.pixels.Length];
-      for (int i = 0; i < this.pixels.Length; i++) {
-        var p = this.pixels[i];
-        float x = (float)(2 * p.x - 1);
-        float y = (float)(1 - 2 * p.y);
-        float z = (x * x + y * y) > 1 ? 0 : (float)Math.Sqrt(1 - x * x - y * y);
-        positions[i] = new Vector3(x, y, z);
-      }
-      return positions;
-    }
+    // Returns the topology's shared, immutable unit-sphere positions. The
+    // normalized projected y is flipped and out-of-disc pixels flatten to z=0,
+    // preserving the legacy BakePixelPositions coordinate contract.
+    public ImmutableArray<Vector3> BakePixelPositions() =>
+      this.Topology.Normals;
 
     public void Fade(double mul, double sub) {
       for (int i = 0; i < pixels.Length; i++) {
@@ -399,6 +474,7 @@ namespace Spectrum.Base {
 
     // Seed this composite buffer from a bottom layer scaled by opacity.
     public void CompositeBottom(DomeFrame src, double opacity) {
+      this.EnsureCompatible(src, nameof(src));
       for (int i = 0; i < pixels.Length; i++) {
         pixels[i].CompositeCopyScaled(src.pixels[i], opacity);
       }
@@ -414,8 +490,19 @@ namespace Spectrum.Base {
     // they mutate and must read the pre-pass state. LEDDomeOutputPixel is a
     // struct, so this copies values, not references.
     public void CopyFrom(DomeFrame other) {
+      this.EnsureCompatible(other, nameof(other));
       for (int i = 0; i < this.pixels.Length; i++) {
         this.pixels[i].CopyChannelsFrom(other.pixels[i]);
+      }
+    }
+
+    private void EnsureCompatible(DomeFrame other, string parameterName) {
+      if (other == null) {
+        throw new ArgumentNullException(parameterName);
+      }
+      if (!ReferenceEquals(this.Topology, other.Topology)) {
+        throw new ArgumentException(
+          "Frames must share one DomeTopology.", parameterName);
       }
     }
 
@@ -441,10 +528,8 @@ namespace Spectrum.Base {
 
     // The baked neighbor of `pixel` in direction bin `dirBin` at radius bin
     // `radiusBin` (its own index if the tap found nothing near its target).
-    public int NeighborAt(int pixel, int dirBin, int radiusBin) {
-      return this.neighborTable[
-        (pixel * NeighborRadii + radiusBin) * NeighborDirections + dirBin];
-    }
+    public int NeighborAt(int pixel, int dirBin, int radiusBin) =>
+      this.Topology.NeighborAt(pixel, dirBin, radiusBin);
 
     // Build neighborTable once from the baked x/y positions. Uses a uniform
     // spatial grid (cell = the max tap radius) so each nearest lookup only scans
@@ -452,107 +537,12 @@ namespace Spectrum.Base {
     // contain any pixel within the max radius. Cheap enough to run on the
     // operator thread the first frame a spatial blend appears; a no-op after.
     // Public so the spatial DomeBlend classes can bake before sampling.
-    public void EnsureNeighborTable() {
-      if (this.neighborTable != null) {
-        return;
-      }
-      int n = this.pixels.Length;
-      double cell = NeighborRadii * NeighborRadiusStep;
-      // The nearest real pixel must fall within maxMatch of a tap's target for
-      // the tap to count; otherwise the tap reads the pixel in place. Keeps
-      // fringes from jumping across gaps or grabbing rim pixels for off-dome
-      // targets.
-      double maxMatch = 1.5 * NeighborRadiusStep;
-      double maxMatchSq = maxMatch * maxMatch;
-
-      double minX = double.MaxValue, minY = double.MaxValue;
-      double maxX = double.MinValue, maxY = double.MinValue;
-      for (int i = 0; i < n; i++) {
-        double x = this.pixels[i].x, y = this.pixels[i].y;
-        if (x < minX) { minX = x; }
-        if (y < minY) { minY = y; }
-        if (x > maxX) { maxX = x; }
-        if (y > maxY) { maxY = y; }
-      }
-      int cols = Math.Max(1, (int)((maxX - minX) / cell) + 1);
-      int rows = Math.Max(1, (int)((maxY - minY) / cell) + 1);
-      // Bucket every pixel into its grid cell (counting-sort layout: one flat
-      // index array + per-cell start offsets, so no per-cell List allocations).
-      int cellCount = cols * rows;
-      int[] cellOf = new int[n];
-      int[] counts = new int[cellCount + 1];
-      for (int i = 0; i < n; i++) {
-        int cx = (int)((this.pixels[i].x - minX) / cell);
-        int cy = (int)((this.pixels[i].y - minY) / cell);
-        if (cx >= cols) { cx = cols - 1; }
-        if (cy >= rows) { cy = rows - 1; }
-        int c = cy * cols + cx;
-        cellOf[i] = c;
-        counts[c + 1]++;
-      }
-      for (int c = 0; c < cellCount; c++) {
-        counts[c + 1] += counts[c];
-      }
-      int[] cellStart = (int[])counts.Clone();
-      int[] byCell = new int[n];
-      int[] fill = (int[])cellStart.Clone();
-      for (int i = 0; i < n; i++) {
-        byCell[fill[cellOf[i]]++] = i;
-      }
-
-      var table = new int[n * NeighborRadii * NeighborDirections];
-      for (int i = 0; i < n; i++) {
-        double px = this.pixels[i].x, py = this.pixels[i].y;
-        for (int r = 0; r < NeighborRadii; r++) {
-          double radius = (r + 1) * NeighborRadiusStep;
-          for (int d = 0; d < NeighborDirections; d++) {
-            double theta = 2 * Math.PI * d / NeighborDirections;
-            double tx = px + radius * Math.Cos(theta);
-            double ty = py + radius * Math.Sin(theta);
-            int best = i;
-            double bestSq = maxMatchSq;
-            int tcx = (int)((tx - minX) / cell);
-            int tcy = (int)((ty - minY) / cell);
-            for (int gy = tcy - 1; gy <= tcy + 1; gy++) {
-              if (gy < 0 || gy >= rows) { continue; }
-              for (int gx = tcx - 1; gx <= tcx + 1; gx++) {
-                if (gx < 0 || gx >= cols) { continue; }
-                int c = gy * cols + gx;
-                for (int k = cellStart[c]; k < cellStart[c + 1]; k++) {
-                  int j = byCell[k];
-                  double dx = this.pixels[j].x - tx;
-                  double dy = this.pixels[j].y - ty;
-                  double dsq = dx * dx + dy * dy;
-                  if (dsq < bestSq) {
-                    bestSq = dsq;
-                    best = j;
-                  }
-                }
-              }
-            }
-            table[(i * NeighborRadii + r) * NeighborDirections + d] = best;
-          }
-        }
-      }
-      this.neighborTable = table;
-    }
+    public void EnsureNeighborTable() =>
+      this.Topology.EnsureNeighborTable();
 
     // Baked unit-sphere normals, lazily cached for the Iridescence blend the
     // same way the orientation layers cache BakePixelPositions().
-    public Vector3[] Normals {
-      get {
-        if (this.normals == null) {
-          this.normals = this.BakePixelPositions();
-        }
-        return this.normals;
-      }
-    }
+    public ImmutableArray<Vector3> Normals => this.Topology.Normals;
   }
 
-  // Compatibility name retained at visualizer/output boundaries while new
-  // pipeline code can depend on the topology-aware DomeFrame abstraction.
-  public sealed class LEDDomeOutputBuffer : DomeFrame {
-    public LEDDomeOutputBuffer(LEDDomeOutputPixel[] pixels) : base(pixels) { }
-    public LEDDomeOutputBuffer(DomeTopology topology) : base(topology) { }
-  }
 }

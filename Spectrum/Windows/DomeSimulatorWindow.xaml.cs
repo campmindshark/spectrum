@@ -188,7 +188,7 @@ namespace Spectrum {
     }
 
     // Paints a whole-frame color snapshot. frame is in canonical buffer order
-    // (strut 0..N, led 0..len), matching LEDDomeOutput.MakeDomeOutputBuffer, so
+    // (strut 0..N, led 0..len), matching LEDDomeOutput.MakeDomeFrame, so
     // we walk struts/leds in that order and index frame in lockstep.
     private void DrawFrame(int[] frame) {
       int idx = 0;

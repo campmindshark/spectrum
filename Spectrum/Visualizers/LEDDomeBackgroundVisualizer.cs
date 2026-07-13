@@ -13,7 +13,7 @@ namespace Spectrum.Visualizers {
     private readonly Configuration config;
     private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
 
     public LEDDomeBackgroundVisualizer(
       Configuration config,
@@ -24,13 +24,13 @@ namespace Spectrum.Visualizers {
       this.runtime = runtime;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
     }
 
     public int Priority => 2;
 
     public string LayerKey => "background";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 

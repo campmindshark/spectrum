@@ -3,6 +3,7 @@ using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Numerics;
 
 namespace Spectrum.Visualizers {
@@ -27,12 +28,12 @@ namespace Spectrum.Visualizers {
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
     private readonly OrientationCenter center;
     private readonly LayerTrigger trigger;
 
     // Static per-pixel geometry, baked once (mirrors Paintbrush's mapping).
-    private readonly Vector3[] pixelPositions;
+    private readonly ImmutableArray<Vector3> pixelPositions;
 
     private readonly FrameClock frameClock = new FrameClock();
 
@@ -64,7 +65,7 @@ namespace Spectrum.Visualizers {
       this.orientationInput = orientationInput;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
       this.center = center;
       this.trigger = new LayerTrigger(
         config, orientationInput, runtime.InstanceId.Value);
@@ -76,7 +77,7 @@ namespace Spectrum.Visualizers {
     public int Priority => 2;
 
     public string LayerKey => "metaball";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 

@@ -17,7 +17,7 @@ namespace Spectrum {
   // (a burst on arrival is a natural extension — see the arrival block).
   //
   // Everything runs in a *centered screen frame* (u, v):
-  //     u = 2 * pixel.x - 1,  v = 2 * pixel.y - 1
+  //     u = 2 * topology.X - 1,  v = 2 * topology.Y - 1
   // so the dome disc is u² + v² <= ~1 and "off the dome" is simply radius > 1.
   // That's the same projected disc Splat/Wave draw in; it is NOT the unit-sphere
   // frame BakePixelPositions returns. The only place the sphere frame appears is
@@ -56,7 +56,7 @@ namespace Spectrum {
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
     private readonly OrientationCenter center;
     private readonly LayerTrigger trigger;
 
@@ -91,7 +91,7 @@ namespace Spectrum {
       this.center = center;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
       // Beat + Audio passed so all four trigger sources are live, like Ripple.
       this.trigger = new LayerTrigger(
         config, orientationInput, runtime.InstanceId.Value, beat, audio);
@@ -100,7 +100,7 @@ namespace Spectrum {
     public int Priority => 2;
 
     public string LayerKey => "shooting-star";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 
@@ -287,8 +287,9 @@ namespace Spectrum {
       double sizeSq = size * size;
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         ref var pixel = ref this.buffer.pixels[i];
-        double u = 2 * pixel.x - 1;
-        double v = 2 * pixel.y - 1;
+        DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
+        double u = 2 * point.X - 1;
+        double v = 2 * point.Y - 1;
 
         double bestValue = 0;
         int bestColor = 0;

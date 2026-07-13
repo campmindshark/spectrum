@@ -11,7 +11,7 @@ namespace Spectrum {
 
     private readonly Configuration config;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
 
     private Random random = new Random();
 
@@ -22,13 +22,13 @@ namespace Spectrum {
       this.config = config;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
     }
 
     public int Priority => 2;
 
     public string LayerKey => "tv-static";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 

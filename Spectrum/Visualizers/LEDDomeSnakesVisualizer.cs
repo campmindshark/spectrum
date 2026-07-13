@@ -16,7 +16,7 @@ namespace Spectrum {
     private readonly Configuration config;
     private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
     private readonly Random random = new Random();
     private readonly Queue<TriangleSegment>[] snakes = new Queue<TriangleSegment>[] { new Queue<TriangleSegment>(), new Queue<TriangleSegment>() };
     private readonly TriangleSegment[] triangleSegments;
@@ -35,7 +35,7 @@ namespace Spectrum {
       this.dome = dome;
 
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
 
       var triangleFactory = new TriangleSegmentFactory();
       triangleSegments = triangleFactory.GetAll();
@@ -44,7 +44,7 @@ namespace Spectrum {
     public int Priority => 2;
 
     public string LayerKey => "snakes";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled {
       get {

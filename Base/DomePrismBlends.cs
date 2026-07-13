@@ -16,7 +16,7 @@ namespace Spectrum.Base {
   //
   // ChromaticFringe, EdgeSpectrum and Refract are *spatial* — they resample
   // the composite below through the baked neighbor table on
-  // LEDDomeOutputBuffer, so they declare neighbor-read requirements and read the
+  // DomeFrame, so they declare neighbor-read requirements and read the
   // compositor's pre-pass copy. Iridescence is per-pixel but keyed to the
   // baked unit-sphere normals.
 
@@ -64,13 +64,13 @@ namespace Spectrum.Base {
       var options = (ChromaticFringeOptions)ctx.Options;
       double angle = ctx.PrismAngle(
         options.Spin, options.FollowOrientation);
-      int radiusBin = LEDDomeOutputBuffer.RadiusBin(
+      int radiusBin = DomeFrame.RadiusBin(
         options.Offset);
-      LEDDomeOutputBuffer dest = ctx.Dest;
+      DomeFrame dest = ctx.Dest;
       dest.EnsureNeighborTable();
-      int fwd = LEDDomeOutputBuffer.DirBin(angle);
-      int back = (fwd + LEDDomeOutputBuffer.NeighborDirections / 2)
-        % LEDDomeOutputBuffer.NeighborDirections;
+      int fwd = DomeFrame.DirBin(angle);
+      int back = (fwd + DomeFrame.NeighborDirections / 2)
+        % DomeFrame.NeighborDirections;
       LEDDomeOutputPixel[] pixels = dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
       LEDDomeOutputPixel[] snapshot = ctx.Snapshot.pixels;
@@ -125,14 +125,14 @@ namespace Spectrum.Base {
     public override void Blend(in DomeBlendContext ctx) {
       var options = (EdgeSpectrumOptions)ctx.Options;
       double strength = options.Strength;
-      int radiusBin = LEDDomeOutputBuffer.RadiusBin(
+      int radiusBin = DomeFrame.RadiusBin(
         options.Offset);
-      LEDDomeOutputBuffer dest = ctx.Dest;
+      DomeFrame dest = ctx.Dest;
       dest.EnsureNeighborTable();
-      int right = LEDDomeOutputBuffer.DirBin(0);
-      int left = LEDDomeOutputBuffer.DirBin(Math.PI);
-      int up = LEDDomeOutputBuffer.DirBin(Math.PI / 2);
-      int down = LEDDomeOutputBuffer.DirBin(3 * Math.PI / 2);
+      int right = DomeFrame.DirBin(0);
+      int left = DomeFrame.DirBin(Math.PI);
+      int up = DomeFrame.DirBin(Math.PI / 2);
+      int down = DomeFrame.DirBin(3 * Math.PI / 2);
       LEDDomeOutputPixel[] pixels = dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
       LEDDomeOutputPixel[] snapshot = ctx.Snapshot.pixels;
@@ -202,7 +202,7 @@ namespace Spectrum.Base {
 
     public override void Blend(in DomeBlendContext ctx) {
       double strength = ((RefractOptions)ctx.Options).Strength;
-      LEDDomeOutputBuffer dest = ctx.Dest;
+      DomeFrame dest = ctx.Dest;
       dest.EnsureNeighborTable();
       LEDDomeOutputPixel[] pixels = dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
@@ -217,8 +217,8 @@ namespace Spectrum.Base {
         if (mask == 0) {
           continue;
         }
-        int dir = LEDDomeOutputBuffer.DirBin(src[i].hue * 2 * Math.PI);
-        int radius = LEDDomeOutputBuffer.RadiusBin(mag * strength);
+        int dir = DomeFrame.DirBin(src[i].hue * 2 * Math.PI);
+        int radius = DomeFrame.RadiusBin(mag * strength);
         int j = dest.NeighborAt(i, dir, radius);
         pixels[i].LerpRGB(snapshot[j].r, snapshot[j].g, snapshot[j].b, mask);
       }
@@ -282,7 +282,7 @@ namespace Spectrum.Base {
       // sheen bands read as horizontal-ish arcs across the dome.
       Vector3 light = Vector3.Normalize(new Vector3(
         (float)Math.Cos(azim), (float)Math.Sin(azim), 0.6f));
-      Vector3[] normals = ctx.Dest.Normals;
+      ImmutableArray<Vector3> normals = ctx.Dest.Normals;
       LEDDomeOutputPixel[] pixels = ctx.Dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
       double o = ctx.Opacity;

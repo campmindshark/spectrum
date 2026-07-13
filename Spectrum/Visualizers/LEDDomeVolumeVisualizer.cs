@@ -17,7 +17,7 @@ namespace Spectrum {
     private readonly AudioInput audio;
     private readonly BeatBroadcaster beat;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
     private int animationSize;
     private int centerOffset;
 
@@ -54,7 +54,7 @@ namespace Spectrum {
       this.beat = beat;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
       this.animationSize = 0;
       this.centerOffset = 0;
       this.spokeLayout = this.BuildSpokeLayout();
@@ -132,7 +132,7 @@ namespace Spectrum {
     public int Priority => 2;
 
     public string LayerKey => "volume";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     // Which palette bank this layer draws from, resolved once per frame in
     // Visualize() and read by the ColorFrom* helpers.

@@ -5,7 +5,7 @@ namespace Spectrum.LEDs {
 
   /**
    * A "normal" (layerable) dome visualizer. Rather than owning the wire, it
-   * renders only into its own persistent LEDDomeOutputBuffer (fades, trails,
+   * renders only into its own persistent DomeFrame (fades, trails,
    * drawing) and exposes that buffer via LayerBuffer for the compositor in
    * LEDDomeOutput to blend into the composite frame. It never calls
    * WriteBuffer/Flush itself.
@@ -19,9 +19,9 @@ namespace Spectrum.LEDs {
    */
   public interface DomeLayerVisualizer : Visualizer, ILayerRenderer {
     string LayerKey { get; }
-    LEDDomeOutputBuffer LayerBuffer { get; }
+    DomeFrame LayerBuffer { get; }
     string ILayerRenderer.RendererId => this.LayerKey;
-    LEDDomeOutputBuffer ILayerRenderer.Frame => this.LayerBuffer;
+    DomeFrame ILayerRenderer.Frame => this.LayerBuffer;
     bool ILayerRenderer.IsAvailable => this.Enabled;
     IReadOnlyList<Input> ILayerRenderer.RequiredInputs => this.GetInputs();
   }

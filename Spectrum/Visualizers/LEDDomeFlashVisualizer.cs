@@ -28,7 +28,7 @@ namespace Spectrum.Visualizers {
     private readonly OrientationInput orientationInput;
     private readonly BeatBroadcaster beat;
     private readonly LEDDomeOutput dome;
-    private readonly LEDDomeOutputBuffer buffer;
+    private readonly DomeFrame buffer;
     private readonly LayerTrigger trigger;
 
     private readonly FrameClock frameClock = new FrameClock();
@@ -48,7 +48,7 @@ namespace Spectrum.Visualizers {
       this.beat = beat;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
-      this.buffer = this.dome.MakeDomeOutputBuffer();
+      this.buffer = this.dome.MakeDomeFrame();
       this.trigger = new LayerTrigger(
         config, orientationInput, runtime.InstanceId.Value, beat, audio);
     }
@@ -56,7 +56,7 @@ namespace Spectrum.Visualizers {
     public int Priority => 2;
 
     public string LayerKey => "flash";
-    public LEDDomeOutputBuffer LayerBuffer => this.buffer;
+    public DomeFrame LayerBuffer => this.buffer;
 
     public bool Enabled { get; set; }
 
