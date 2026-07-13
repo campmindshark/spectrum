@@ -14,6 +14,7 @@ namespace Spectrum {
     private const int snakeLength = 7;
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
     private readonly Random random = new Random();
@@ -29,6 +30,7 @@ namespace Spectrum {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.dome = dome;
 
       this.dome.RegisterVisualizer(this);
@@ -38,13 +40,7 @@ namespace Spectrum {
       triangleSegments = triangleFactory.GetAll();
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "snakes"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "snakes";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -77,8 +73,7 @@ namespace Spectrum {
 
       // The palette bank this layer draws from (its trailing color still cycles
       // through the eight relative slots of that bank via colorPaletteIndex).
-      int paletteBank = (int)DomeLayerSettings.ParamValue(
-        this.config.domeLayerStack, this.LayerKey, "palette");
+      int paletteBank = (int)this.runtime.Parameter("palette");
 
       // Progress all snakes
       foreach (var snake in snakes) {

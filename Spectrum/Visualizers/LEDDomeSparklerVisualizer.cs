@@ -23,6 +23,7 @@ namespace Spectrum {
     private const double CULL_RADIUS = 1.25;
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
@@ -43,6 +44,7 @@ namespace Spectrum {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.center = center;
@@ -53,13 +55,7 @@ namespace Spectrum {
         config, orientationInput, this.LayerKey, beat, audio);
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, this.LayerKey
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "sparkler";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -74,21 +70,13 @@ namespace Spectrum {
       double frameScale = this.frameClock.Tick();
       double dt = frameScale * 0.0025;
       double level = this.audio.Volume;
-      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
-      double speed =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "speed");
-      double size =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "size");
-      int triggerSource =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "trigger");
-      int button =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "button");
-      double levelThreshold =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "level");
-      double interval =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "interval");
-      int paletteBank =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "palette");
+      double speed = this.runtime.Parameter("speed");
+      double size = this.runtime.Parameter("size");
+      int triggerSource = (int)this.runtime.Parameter("trigger");
+      int button = (int)this.runtime.Parameter("button");
+      double levelThreshold = this.runtime.Parameter("level");
+      double interval = this.runtime.Parameter("interval");
+      int paletteBank = (int)this.runtime.Parameter("palette");
 
       double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);

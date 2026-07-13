@@ -19,7 +19,7 @@ namespace Spectrum.Visualizers {
   // A consequence is that this layer has no idle screen-saver drift — at rest
   // the cloud simply settles and holds; only a moving wand disturbs it.
   //
-  // Tunables come from the per-layer schema (DomeLayerSettings.PointCloudParams)
+  // Tunables come from the point-cloud definition in LayerCatalog
   // and are read fresh every frame. `count` reseeds the lattice when it changes;
   // the rest tune the physics and the drawn spot size. Render is O(pixels *
   // spots) — fine for the schema's max of 160 spots; revisit if that grows.
@@ -33,6 +33,7 @@ namespace Spectrum.Visualizers {
     private static readonly Vector3 AimPole = new Vector3(-1, 0, 0);
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
@@ -66,6 +67,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.orientationInput = orientationInput;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
@@ -76,8 +78,7 @@ namespace Spectrum.Visualizers {
 
     // Current `count` param as an int, clamped defensively to at least one spot.
     private int ParamCount() {
-      return Math.Max(1, (int)DomeLayerSettings.ParamValue(
-        this.config.domeLayerStack, this.LayerKey, "count"));
+      return Math.Max(1, (int)this.runtime.Parameter("count"));
     }
 
     // Scatter the cloud roughly evenly over the sphere with a Fibonacci-sphere
@@ -106,13 +107,7 @@ namespace Spectrum.Visualizers {
       this.spotCount = count;
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "point-cloud"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "point-cloud";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -127,21 +122,15 @@ namespace Spectrum.Visualizers {
     public void Visualize() {
       double frameScale = this.frameClock.Tick();
 
-      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
       int count = ParamCount();
       if (count != this.spotCount) {
         Reseed(count);
       }
-      double spotSize =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "spotSize");
-      double pushRadius =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "pushRadius");
-      double pushStrength =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "pushStrength");
-      double springStrength =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "springStrength");
-      double damping =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "damping");
+      double spotSize = this.runtime.Parameter("spotSize");
+      double pushRadius = this.runtime.Parameter("pushRadius");
+      double pushStrength = this.runtime.Parameter("pushStrength");
+      double springStrength = this.runtime.Parameter("springStrength");
+      double damping = this.runtime.Parameter("damping");
 
       CollectAimPoints();
       StepPhysics(

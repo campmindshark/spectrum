@@ -13,14 +13,15 @@ namespace Spectrum.Visualizers {
   // shape is the wave's job, the desaturation is the blend's (see the
   // two-consumer split in docs/layer_params_implementation.md).
   //
-  // Per-layer params (visualizer-consumed, read each frame from this layer's own
-  // stack entry): bandWidth, sweep speed, the sweep center (angle/distance,
+  // Per-layer params (visualizer-consumed, read from this instance's compiled
+  // runtime): bandWidth, sweep speed, the sweep center (angle/distance,
   // same knobs as Radial Effects), and the band's color. The band always
   // sweeps by height (distance from the center point, flipped so 1 is at the
   // center/top). Edges are hard by design — no partial alpha.
   class LEDDomeWaveVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
@@ -42,6 +43,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.orientationInput = orientationInput;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
@@ -49,13 +51,7 @@ namespace Spectrum.Visualizers {
       this.trigger = new LayerTrigger(config, orientationInput, this.LayerKey);
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "wave"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "wave";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -72,23 +68,16 @@ namespace Spectrum.Visualizers {
     }
 
     public void Visualize() {
-      var stack = this.config.domeLayerStack;
-      double bandWidth =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "bandWidth");
-      double speed =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "speed");
-      double centerAngle =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "centerAngle");
-      double centerDistance =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "centerDistance");
-      int color = (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "color");
-      bool oneShot =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "mode") == 1;
+      double bandWidth = this.runtime.Parameter("bandWidth");
+      double speed = this.runtime.Parameter("speed");
+      double centerAngle = this.runtime.Parameter("centerAngle");
+      double centerDistance = this.runtime.Parameter("centerDistance");
+      int color = (int)this.runtime.Parameter("color");
+      bool oneShot = (int)this.runtime.Parameter("mode") == 1;
       // The "button" enum index is the wand actionFlag value directly: 0 =
       // Unbound (Manual-only), 1/2/3 = wand buttons. Manual firing is always
       // live regardless (LayerTrigger).
-      int button =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "button");
+      int button = (int)this.runtime.Parameter("button");
 
       double elapsed = 0;
       if (!this.frameTimer.IsRunning) {

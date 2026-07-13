@@ -23,6 +23,7 @@ namespace Spectrum.Visualizers {
   class LEDDomeMetaballVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
@@ -57,6 +58,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.dome = dome;
@@ -69,13 +71,7 @@ namespace Spectrum.Visualizers {
       this.pixelPositions = this.buffer.BakePixelPositions();
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "metaball"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "metaball";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -91,13 +87,9 @@ namespace Spectrum.Visualizers {
       double frameScale = this.frameClock.Tick();
       double level = this.audio.Volume;
 
-      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
-      double size =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "size");
-      bool showContours =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "contours") != 0;
-      int button =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "button");
+      double size = this.runtime.Parameter("size");
+      bool showContours = this.runtime.Parameter("contours") != 0;
+      int button = (int)this.runtime.Parameter("button");
 
       double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);

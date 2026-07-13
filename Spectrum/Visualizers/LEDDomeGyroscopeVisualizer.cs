@@ -27,14 +27,15 @@ namespace Spectrum.Visualizers {
   // orientation. So moving a wand tilts the gyroscope; with nothing moving it
   // wanders on its own. The flywheel's own fast spin is the one DOF an
   // orientation can't encode, so the rotor rim's chasing highlight is
-  // clock-driven. Tuning comes from the per-layer schema
-  // (DomeLayerSettings.GyroscopeParams); the three rings (outer/middle/inner)
+  // clock-driven. Tuning comes from the gyroscope definition in LayerCatalog;
+  // the three rings (outer/middle/inner)
   // take their colors from the live palette bank's first three slots, each
   // scaled by the ring's cross-section falloff so it still fades to black at the
   // band edges.
   class LEDDomeGyroscopeVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly OrientationInput orientation;
     private readonly OrientationCenter orientationCenter;
     private readonly LEDDomeOutput dome;
@@ -60,6 +61,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.orientation = orientation;
       this.orientationCenter = orientationCenter;
       this.dome = dome;
@@ -68,13 +70,7 @@ namespace Spectrum.Visualizers {
       this.pixelPositions = this.buffer.BakePixelPositions();
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "gyroscope"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "gyroscope";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -86,13 +82,12 @@ namespace Spectrum.Visualizers {
     }
 
     public void Visualize() {
-      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
       double ringWidth =           // great-circle band thickness (dot units)
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "ringWidth");
+        this.runtime.Parameter("ringWidth");
       double rotorRate =           // flywheel highlight orbit, rev/s
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "rotorRate");
+        this.runtime.Parameter("rotorRate");
       int paletteBank =            // which live-palette bank the rings draw from
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "palette");
+        (int)this.runtime.Parameter("palette");
 
       // Per-ring colors (outer/middle/inner), pulled from the live palette bank's
       // first three relative slots and decoded once per frame. Kept as Color so

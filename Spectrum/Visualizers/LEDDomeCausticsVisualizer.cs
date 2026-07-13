@@ -57,6 +57,7 @@ namespace Spectrum.Visualizers {
   class LEDDomeCausticsVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly OrientationCenter center;
@@ -89,6 +90,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.center = center;
@@ -99,13 +101,7 @@ namespace Spectrum.Visualizers {
         config, orientationInput, this.LayerKey, beat, audio);
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "caustics"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "caustics";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -119,18 +115,12 @@ namespace Spectrum.Visualizers {
     }
 
     public void Visualize() {
-      var stack = this.config.domeLayerStack;
-      int method =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "method");
-      double scale =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "scale");
-      double speed =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "speed");
-      double sharpness =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "sharpness");
-      double brightness =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "brightness");
-      int tint = (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "color");
+      int method = (int)this.runtime.Parameter("method");
+      double scale = this.runtime.Parameter("scale");
+      double speed = this.runtime.Parameter("speed");
+      double sharpness = this.runtime.Parameter("sharpness");
+      double brightness = this.runtime.Parameter("brightness");
+      int tint = (int)this.runtime.Parameter("color");
 
       // Advance the churn clock by wall-clock elapsed * speed so the pattern
       // evolves at a steady rate regardless of the Operator loop speed.
@@ -150,12 +140,11 @@ namespace Spectrum.Visualizers {
 
       // Publish the gradient side channels only when this layer's blend will
       // read them (see the class comment).
-      DomeLayerSettings layer = DomeLayerSettings.ForKey(stack, this.LayerKey);
       bool refracting =
-        layer != null && layer.BlendMode == DomeBlend.Refract.Name;
+        this.runtime.Snapshot.OperationId == DomeBlend.Refract.Name;
 
       if (method == 3) {
-        this.TankAdvance(stack, scale, speed, elapsed, refracting);
+        this.TankAdvance(scale, speed, elapsed, refracting);
       }
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
@@ -459,8 +448,7 @@ namespace Spectrum.Visualizers {
     // elapsed wall time, and refresh the derived fields the pixel loop
     // samples.
     private void TankAdvance(
-      IList<DomeLayerSettings> stack, double scale, double speed,
-      double elapsed, bool refracting
+      double scale, double speed, double elapsed, bool refracting
     ) {
       this.TankEnsureAllocated();
 
@@ -472,18 +460,12 @@ namespace Spectrum.Visualizers {
         this.tankGradDirty = true;
       }
 
-      int triggerSource =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "trigger");
-      int button =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "button");
-      double levelThreshold =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "level");
-      double interval =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "interval");
-      double wakeSize =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "wakeSize");
-      double wakeStrength =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "wakeStrength");
+      int triggerSource = (int)this.runtime.Parameter("trigger");
+      int button = (int)this.runtime.Parameter("button");
+      double levelThreshold = this.runtime.Parameter("level");
+      double interval = this.runtime.Parameter("interval");
+      double wakeSize = this.runtime.Parameter("wakeSize");
+      double wakeStrength = this.runtime.Parameter("wakeStrength");
 
       double level = this.audio.Volume;
       this.center.Update(level);

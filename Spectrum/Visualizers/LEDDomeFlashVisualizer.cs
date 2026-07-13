@@ -23,6 +23,7 @@ namespace Spectrum.Visualizers {
   class LEDDomeFlashVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly BeatBroadcaster beat;
@@ -40,6 +41,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.beat = beat;
@@ -50,13 +52,7 @@ namespace Spectrum.Visualizers {
         config, orientationInput, this.LayerKey, beat, audio);
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "flash"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "flash";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -71,16 +67,11 @@ namespace Spectrum.Visualizers {
     public void Visualize() {
       double frameScale = this.frameClock.Tick();
 
-      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
-      int color = (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "color");
-      int triggerSource =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "trigger");
-      int button =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "button");
-      double interval =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "interval");
-      double levelThreshold =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "level");
+      int color = (int)this.runtime.Parameter("color");
+      int triggerSource = (int)this.runtime.Parameter("trigger");
+      int button = (int)this.runtime.Parameter("button");
+      double interval = this.runtime.Parameter("interval");
+      double levelThreshold = this.runtime.Parameter("level");
 
       // Decay the previous flash toward transparent so it reveals the layers
       // below as it dims (same global fade the other trigger layers use).

@@ -46,6 +46,7 @@ namespace Spectrum.Visualizers {
     private const double RIPPLE_COOLDOWN_RESET = 100;
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly BeatBroadcaster beat;
@@ -93,6 +94,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.beat = beat;
@@ -111,13 +113,7 @@ namespace Spectrum.Visualizers {
       }
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "quaternion-paintbrush"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "quaternion-paintbrush";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -134,16 +130,12 @@ namespace Spectrum.Visualizers {
       double progress = this.beat.ProgressThroughMeasure;
       double level = this.audio.Volume;
 
-      // This layer's own tuning, resolved once per frame from its stack entry
+      // This layer's own tuning, read from its compiled runtime snapshot
       // (fade/hue speed stay global — shared scene state, not layer params).
-      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
-      double size = DomeLayerSettings.ParamValue(stack, this.LayerKey, "size");
-      double twinkle =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "twinkleDensity");
-      double rippleCDStep =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "rippleCDStep");
-      double rippleStep =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "rippleStep");
+      double size = this.runtime.Parameter("size");
+      double twinkle = this.runtime.Parameter("twinkleDensity");
+      double rippleCDStep = this.runtime.Parameter("rippleCDStep");
+      double rippleStep = this.runtime.Parameter("rippleStep");
 
       ApplyGlobalEffects(frameScale);
       this.center.Update(level);

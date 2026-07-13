@@ -27,6 +27,7 @@ namespace Spectrum.Visualizers {
     private const int RIPPLE_PERIOD = 1000;
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
@@ -55,6 +56,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.dome = dome;
@@ -68,13 +70,7 @@ namespace Spectrum.Visualizers {
       this.pixelPositions = this.buffer.BakePixelPositions();
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "ripple"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "ripple";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -90,17 +86,11 @@ namespace Spectrum.Visualizers {
       double frameScale = this.frameClock.Tick();
       double level = this.audio.Volume;
 
-      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
-      double rippleStep =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "rippleStep");
-      int triggerSource =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "trigger");
-      int button =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "button");
-      double levelThreshold =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "level");
-      double interval =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "interval");
+      double rippleStep = this.runtime.Parameter("rippleStep");
+      int triggerSource = (int)this.runtime.Parameter("trigger");
+      int button = (int)this.runtime.Parameter("button");
+      double levelThreshold = this.runtime.Parameter("level");
+      double interval = this.runtime.Parameter("interval");
 
       double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);

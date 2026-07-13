@@ -11,6 +11,7 @@ namespace Spectrum.Visualizers {
   class LEDDomeBackgroundVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
 
@@ -19,18 +20,13 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "background"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "background";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -43,9 +39,7 @@ namespace Spectrum.Visualizers {
     }
 
     public void Visualize() {
-      int color = (int)DomeLayerSettings.ParamValue(
-        this.config.domeLayerStack, this.LayerKey, "color"
-      );
+      int color = (int)this.runtime.Parameter("color");
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         this.buffer.pixels[i].color = color;
       }

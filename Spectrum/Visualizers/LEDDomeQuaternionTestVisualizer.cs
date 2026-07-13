@@ -29,13 +29,7 @@ namespace Spectrum.Visualizers {
       this.pixelPositions = this.buffer.BakePixelPositions();
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "quaternion-test"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "quaternion-test";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;

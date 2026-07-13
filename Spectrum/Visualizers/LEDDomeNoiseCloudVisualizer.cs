@@ -46,6 +46,7 @@ namespace Spectrum.Visualizers {
   class LEDDomeNoiseCloudVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
 
@@ -76,6 +77,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
@@ -83,13 +85,7 @@ namespace Spectrum.Visualizers {
       this.noiseField = new double[this.buffer.pixels.Length];
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "noise-cloud"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "noise-cloud";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -102,17 +98,11 @@ namespace Spectrum.Visualizers {
     }
 
     public void Visualize() {
-      var stack = this.config.domeLayerStack;
-      double scale =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "scale");
-      double speed =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "speed");
-      int octaves = (int)DomeLayerSettings.ParamValue(
-        stack, this.LayerKey, "octaves"
-      );
-      double contrast =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "contrast");
-      int tint = (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "color");
+      double scale = this.runtime.Parameter("scale");
+      double speed = this.runtime.Parameter("speed");
+      int octaves = (int)this.runtime.Parameter("octaves");
+      double contrast = this.runtime.Parameter("contrast");
+      int tint = (int)this.runtime.Parameter("color");
 
       // Advance the time coordinate by wall-clock elapsed * speed, so `speed`
       // is lattice units per second regardless of the Operator loop rate. The

@@ -52,6 +52,7 @@ namespace Spectrum {
     private const double SPAWN_RADIUS_MAX = 1.6;
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
@@ -83,6 +84,7 @@ namespace Spectrum {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.center = center;
@@ -94,13 +96,7 @@ namespace Spectrum {
         config, orientationInput, this.LayerKey, beat, audio);
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "shooting-star"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "shooting-star";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -120,27 +116,16 @@ namespace Spectrum {
       double dt = frameScale * 0.0025;
       double level = this.audio.Volume;
 
-      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
-      double spawnRate =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "spawnRate");
-      double accel =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "accel");
-      double maxSpeed =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "maxSpeed");
-      double size =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "size");
-      bool homing =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "homing") != 0;
-      int triggerSource =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "trigger");
-      int button =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "button");
-      double levelThreshold =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "level");
-      double interval =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "interval");
-      int paletteBank =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "palette");
+      double spawnRate = this.runtime.Parameter("spawnRate");
+      double accel = this.runtime.Parameter("accel");
+      double maxSpeed = this.runtime.Parameter("maxSpeed");
+      double size = this.runtime.Parameter("size");
+      bool homing = this.runtime.Parameter("homing") != 0;
+      int triggerSource = (int)this.runtime.Parameter("trigger");
+      int button = (int)this.runtime.Parameter("button");
+      double levelThreshold = this.runtime.Parameter("level");
+      double interval = this.runtime.Parameter("interval");
+      int paletteBank = (int)this.runtime.Parameter("palette");
 
       // Trails come from the global dome fade (config.domeGlobalFadeSpeed), the
       // same per-frame retention Metaball/Ripple use — no per-layer trail knob.

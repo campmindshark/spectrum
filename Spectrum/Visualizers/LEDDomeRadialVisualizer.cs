@@ -12,6 +12,7 @@ namespace Spectrum {
   class LEDDomeRadialVisualizer : DomeLayerVisualizer {
 
     private Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private AudioInput audio;
     private BeatBroadcaster beat;
     private LEDDomeOutput dome;
@@ -29,6 +30,7 @@ namespace Spectrum {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.audio = audio;
       this.beat = beat;
       this.dome = dome;
@@ -36,13 +38,7 @@ namespace Spectrum {
       this.buffer = this.dome.MakeDomeOutputBuffer();
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "radial"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "radial";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -55,27 +51,18 @@ namespace Spectrum {
     }
 
     void Render() {
-      // This layer's own tuning, resolved once per frame from its stack entry
+      // This layer's own tuning, read from its compiled runtime snapshot
       // (fade/hue speed stay global — they are shared scene state, not layer
       // params).
-      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
-      int effect =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "effect");
-      double size = DomeLayerSettings.ParamValue(stack, this.LayerKey, "size");
-      double frequency =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "frequency");
-      double centerAngle =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "centerAngle");
-      double centerDistance =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "centerDistance");
-      double centerSpeed =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "centerSpeed");
-      double rotationSpeed =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "rotationSpeed");
-      double gradientSpeed =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "gradientSpeed");
-      int paletteBank =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "palette");
+      int effect = (int)this.runtime.Parameter("effect");
+      double size = this.runtime.Parameter("size");
+      double frequency = this.runtime.Parameter("frequency");
+      double centerAngle = this.runtime.Parameter("centerAngle");
+      double centerDistance = this.runtime.Parameter("centerDistance");
+      double centerSpeed = this.runtime.Parameter("centerSpeed");
+      double rotationSpeed = this.runtime.Parameter("rotationSpeed");
+      double gradientSpeed = this.runtime.Parameter("gradientSpeed");
+      int paletteBank = (int)this.runtime.Parameter("palette");
 
       buffer.Fade(1 - Math.Pow(10, -this.config.domeGlobalFadeSpeed), 0);
       // Hue rotation is now applied globally by LEDDomeOutput, which rotates

@@ -18,6 +18,7 @@ namespace Spectrum.Visualizers {
   class LEDDomeTwinkleVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
     private readonly Random rand;
@@ -36,6 +37,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
@@ -51,13 +53,7 @@ namespace Spectrum.Visualizers {
       }
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "twinkle"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "twinkle";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -82,9 +78,8 @@ namespace Spectrum.Visualizers {
       // Twinkle is a per-pixel chance each frame; scale the probability by
       // frameScale to hold the twinkle rate (dots per second) steady. Density
       // is this layer's own param (formerly the global domeTwinkleDensity).
-      double twinkleDensity = DomeLayerSettings.ParamValue(
-        this.config.domeLayerStack, this.LayerKey, "density"
-      ) * frameScale;
+      double twinkleDensity =
+        this.runtime.Parameter("density") * frameScale;
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         if (this.twinkleEligible[i] && this.rand.NextDouble() < twinkleDensity) {
           this.buffer.pixels[i].color = 0xFFFFFF;

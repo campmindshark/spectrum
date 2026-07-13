@@ -176,12 +176,8 @@ namespace Spectrum.LEDs {
     // read for the beat-synced flash-off in the per-frame color cache.
     private readonly BeatBroadcaster beat;
     private readonly List<Visualizer> visualizers;
-    // The subset of `visualizers` that are layerable (implement
-    // DomeLayerVisualizer), plus a key→visualizer index. Populated at
-    // registration (startup) alongside `visualizers`. The compositor blends
-    // these; debug visualizers are not layerable and are absent here.
-    private readonly Dictionary<string, DomeLayerVisualizer>
-      layerVisualizersByKey = new Dictionary<string, DomeLayerVisualizer>();
+    // Layer visualizers are resolved by stable instance ID. Renderer-kind
+    // fallback would select the wrong state when duplicate kinds are present.
     private readonly Dictionary<string, DomeLayerVisualizer>
       layerVisualizersByInstanceId =
         new Dictionary<string, DomeLayerVisualizer>();
@@ -297,7 +293,6 @@ namespace Spectrum.LEDs {
       this.visualizers.Add(visualizer);
       this.visualizersArray = null;
       if (visualizer is DomeLayerVisualizer layerVisualizer) {
-        this.layerVisualizersByKey[layerVisualizer.LayerKey] = layerVisualizer;
         string instanceId = LayerInstanceScope.CurrentId;
         if (instanceId != null) {
           this.layerVisualizersByInstanceId[instanceId] = layerVisualizer;
@@ -316,14 +311,6 @@ namespace Spectrum.LEDs {
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
       if (e.PropertyName == nameof(this.config.domeCableMapping)) {
         this.RebuildCableMapping();
-        return;
-      }
-      if (e.PropertyName == nameof(this.config.domeLayerStack)) {
-        // Advance the generation instead of toggling a bool. A bool
-        // invalidation can be lost if the UI publishes a new stack while the
-        // operator is still resolving the previous one and then marks that old
-        // result valid.
-        System.Threading.Interlocked.Increment(ref this.stackGeneration);
         return;
       }
       if (
@@ -387,7 +374,6 @@ namespace Spectrum.LEDs {
       // with the cache still valid; Composite reads only their buffers, so the
       // ordering composite -> opc send -> cache invalidate is required. See the
       // GetGradientColor cache note in EnsureFrameColorCache.
-      this.EnsureCompiledPlan();
       LEDDomeOutputBuffer completed = this.compositor.Compose();
       if (completed != null) {
         this.WriteBuffer(completed);
@@ -404,38 +390,26 @@ namespace Spectrum.LEDs {
       this.frameColorCacheValid = false;
     }
 
+    // The Operator publishes the exact immutable snapshot it used to refresh
+    // renderer runtimes. The resulting plan then drives both scheduling and
+    // compositing; the output never re-reads serializer-facing configuration.
+    public RenderPlan PublishLayerStack(LayerStackSnapshot snapshot) {
+      RenderPlan plan = this.renderPlanCompiler.Compile(
+        snapshot,
+        layer => this.layerVisualizersByInstanceId.TryGetValue(
+          layer.Id.Value, out DomeLayerVisualizer renderer)
+            ? renderer : null);
+      this.compositor.Publish(plan);
+      return plan;
+    }
+
+    public RenderPlan RenderPlan => this.compositor.Plan;
+
     // Wall clock for the global hue rotation's per-frame increment. The
     // rotation is applied to the layers' own persistent buffers (which are
     // faded, not cleared, so in-place rotations accumulate across frames) —
     // never to the composite, whose pixels include this frame's fresh draws.
     private readonly FrameClock hueClock = new FrameClock();
-    private int stackGeneration;
-    private int compiledStackGeneration = -1;
-
-    private void EnsureCompiledPlan() {
-      while (true) {
-        int generation = System.Threading.Volatile.Read(ref this.stackGeneration);
-        if (this.compiledStackGeneration == generation) {
-          return;
-        }
-        LayerStackSnapshot snapshot =
-          LayerStackService.SnapshotFor(this.config.domeLayerStack);
-        RenderPlan plan = this.renderPlanCompiler.Compile(
-          snapshot,
-          layer => this.layerVisualizersByInstanceId.TryGetValue(
-            layer.Id.Value, out DomeLayerVisualizer renderer)
-              ? renderer
-              : this.layerVisualizersByKey.TryGetValue(
-                layer.RendererId, out renderer) ? renderer : null);
-        if (generation != System.Threading.Volatile.Read(ref this.stackGeneration)) {
-          continue;
-        }
-        this.compositor.Publish(plan);
-        this.compiledStackGeneration = generation;
-        return;
-      }
-    }
-
     // The output-wide "Hue Rotation" (the knob that used to be applied
     // per-layer, redundantly and inconsistently, by Paintbrush and Radial).
     // Driven by domeGlobalHueSpeed: 0 = off; otherwise higher = slower. The

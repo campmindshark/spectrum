@@ -29,6 +29,7 @@ namespace Spectrum.Visualizers {
     private const int RHYTHM_COOLDOWN = 8;     // measures the rhythm band plays over (its cooldown starts here)
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly BeatBroadcaster beat;
@@ -59,6 +60,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.beat = beat;
@@ -73,13 +75,7 @@ namespace Spectrum.Visualizers {
       this.pixelPositions = this.buffer.BakePixelPositions();
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "stamp"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "stamp";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -96,15 +92,10 @@ namespace Spectrum.Visualizers {
       double progress = this.beat.ProgressThroughMeasure;
       double level = this.audio.Volume;
 
-      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
-      int triggerSource =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "trigger");
-      int button =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "button");
-      double interval =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "interval");
-      double levelThreshold =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "level");
+      int triggerSource = (int)this.runtime.Parameter("trigger");
+      int button = (int)this.runtime.Parameter("button");
+      double interval = this.runtime.Parameter("interval");
+      double levelThreshold = this.runtime.Parameter("level");
 
       double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);

@@ -13,6 +13,7 @@ namespace Spectrum {
   class LEDDomeVolumeVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly BeatBroadcaster beat;
     private readonly LEDDomeOutput dome;
@@ -47,6 +48,7 @@ namespace Spectrum {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.audio = audio;
       this.beat = beat;
       this.dome = dome;
@@ -126,13 +128,7 @@ namespace Spectrum {
       this.sectionLayout = layouts[2];
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "volume"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "volume";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -175,16 +171,12 @@ namespace Spectrum {
         this.wipeStrutsNextCycle = false;
       }
 
-      // This layer's own tuning, resolved once per frame from its stack entry.
-      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
-      int newAnimationSize = (int)DomeLayerSettings.ParamValue(
-        stack, this.LayerKey, "animationSize");
-      double rotationSpeed = DomeLayerSettings.ParamValue(
-        stack, this.LayerKey, "rotationSpeed");
-      double gradientSpeed = DomeLayerSettings.ParamValue(
-        stack, this.LayerKey, "gradientSpeed");
-      this.paletteBank = (int)DomeLayerSettings.ParamValue(
-        stack, this.LayerKey, "palette");
+      // This layer's own tuning, read from its compiled runtime snapshot.
+      int newAnimationSize =
+        (int)this.runtime.Parameter("animationSize");
+      double rotationSpeed = this.runtime.Parameter("rotationSpeed");
+      double gradientSpeed = this.runtime.Parameter("gradientSpeed");
+      this.paletteBank = (int)this.runtime.Parameter("palette");
 
       this.UpdateCenter(rotationSpeed);
       this.UpdateAnimationSize(newAnimationSize);

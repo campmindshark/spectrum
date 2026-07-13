@@ -13,6 +13,7 @@ namespace Spectrum.Visualizers {
   class LEDDomeVortexVisualizer : DomeLayerVisualizer {
 
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
     private readonly LEDDomeOutputBuffer buffer;
 
@@ -31,6 +32,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
@@ -47,13 +49,7 @@ namespace Spectrum.Visualizers {
       }
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "vortex"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "vortex";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -65,34 +61,15 @@ namespace Spectrum.Visualizers {
     }
 
     public void Visualize() {
-      var stack = this.config.domeLayerStack;
-      int style = (int)DomeLayerSettings.ParamValue(
-        stack, this.LayerKey, "style"
-      );
-      double speed = DomeLayerSettings.ParamValue(
-        stack, this.LayerKey, "speed"
-      );
-      double twist = DomeLayerSettings.ParamValue(
-        stack, this.LayerKey, "twist"
-      );
-      double scale = DomeLayerSettings.ParamValue(
-        stack, this.LayerKey, "scale"
-      );
-      double density = DomeLayerSettings.ParamValue(
-        stack, this.LayerKey, "density"
-      );
-      double coreSize = DomeLayerSettings.ParamValue(
-        stack, this.LayerKey, "coreSize"
-      );
-      double inflow = DomeLayerSettings.ParamValue(
-        stack, this.LayerKey, "inflow"
-      );
-      double turbulence = DomeLayerSettings.ParamValue(
-        stack, this.LayerKey, "turbulence"
-      );
-      int tint = (int)DomeLayerSettings.ParamValue(
-        stack, this.LayerKey, "color"
-      );
+      int style = (int)this.runtime.Parameter("style");
+      double speed = this.runtime.Parameter("speed");
+      double twist = this.runtime.Parameter("twist");
+      double scale = this.runtime.Parameter("scale");
+      double density = this.runtime.Parameter("density");
+      double coreSize = this.runtime.Parameter("coreSize");
+      double inflow = this.runtime.Parameter("inflow");
+      double turbulence = this.runtime.Parameter("turbulence");
+      int tint = (int)this.runtime.Parameter("color");
 
       double frameScale = this.frameClock.Tick();
       this.time += frameScale / FrameClock.NominalFps;

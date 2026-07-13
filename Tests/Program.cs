@@ -15,9 +15,12 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("catalog metadata is unique", CatalogIsUnique);
       Run("duplicate renderer kinds get stable instance IDs", DuplicateKinds);
       Run("parameters compile into separate namespaces", ParameterNamespaces);
+      Run("compiled renderer runtime updates in place", RuntimeUpdatesInPlace);
+      Run("renderer runtime swaps immutable options", RuntimeOptionsSwap);
       Run("compositor preserves stack order and bottom behavior", StackOrder);
       Run("scratch copies only mutable channels", ScratchCopiesChannelsOnly);
       Run("operator creates independent duplicate renderers", DuplicateRenderers);
+      Run("compiled plan schedules enabled instances", PlanSchedulesInstances);
       Run("zero opacity is a kernel identity", ZeroOpacityIdentity);
       Run("spatial effects declare neighbor reads", SpatialRequirements);
       Run("configuration with layers serializes", ConfigurationSerializes);
@@ -80,6 +83,62 @@ namespace Spectrum.LayerPipeline.Tests {
         "unknown option survived");
     }
 
+    private static void RuntimeUpdatesInPlace() {
+      LayerSnapshot first = SnapshotWithParameter("runtime-1", "speed", 1);
+      LayerRendererRuntime captured = null;
+      var topology = OnePixelTopology();
+      var catalog = new LayerCatalog(new[] {
+        new LayerDefinition(
+          "test", "Test",
+          context => {
+            captured = context.Runtime;
+            return new FakeRenderer(
+              "test", new LEDDomeOutputBuffer(topology));
+          },
+          new[] {
+            new DomeLayerParam {
+              Key = "speed", Type = DomeLayerParamType.Double,
+              Min = 0, Max = 10, Default = 0,
+            },
+          })
+      });
+      var compiler = new RenderPlanCompiler(catalog);
+      RenderPlan initial = compiler.Compile(
+        new LayerStackSnapshot(ImmutableArray.Create(first)),
+        (IReadOnlyDictionary<Type, object>)null);
+      LayerSnapshot second = SnapshotWithParameter("runtime-1", "speed", 2);
+      RenderPlan updated = compiler.Compile(
+        new LayerStackSnapshot(ImmutableArray.Create(second)),
+        (IReadOnlyDictionary<Type, object>)null);
+
+      Assert(ReferenceEquals(
+        initial.Layers[0].Renderer, updated.Layers[0].Renderer),
+        "renderer instance was recreated");
+      Assert(captured.Parameter("speed") == 2,
+        "renderer runtime kept stale parameters");
+    }
+
+    private static void RuntimeOptionsSwap() {
+      DomeLayerSettings first = Layer("wave", "runtime-wave");
+      first.Params = new Dictionary<string, double> { ["speed"] = .25 };
+      (LayerStackSnapshot initial, string initialError) =
+        new LayerStackService().CreateSnapshot(new[] { first });
+      Assert(initialError == null, initialError);
+      var runtime = new LayerRendererRuntime(initial.Layers[0]);
+      Assert(runtime.Parameter("speed") == .25, "initial option missing");
+
+      DomeLayerSettings second = Layer("wave", "runtime-wave");
+      second.Params = new Dictionary<string, double> { ["speed"] = 1.25 };
+      (LayerStackSnapshot changed, string changedError) =
+        new LayerStackService().CreateSnapshot(new[] { second });
+      Assert(changedError == null, changedError);
+      runtime.Publish(changed.Layers[0]);
+      Assert(runtime.Parameter("speed") == 1.25,
+        "replacement option was not published");
+      Assert(initial.Layers[0].RendererParameters["speed"].Value == .25,
+        "the original snapshot was mutated");
+    }
+
     private static void StackOrder() {
       DomeTopology topology = OnePixelTopology();
       var bottomFrame = new LEDDomeOutputBuffer(topology);
@@ -129,6 +188,22 @@ namespace Spectrum.LayerPipeline.Tests {
         }
       }
       Assert(count == 2, "expected two renderer instances, got " + count);
+    }
+
+    private static void PlanSchedulesInstances() {
+      DomeLayerSettings disabled = Layer("background", "background-off");
+      disabled.Enabled = false;
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> {
+          disabled,
+          Layer("background", "background-on"),
+        },
+      };
+      var runtime = new global::Spectrum.Operator(config);
+      RenderPlan plan = runtime.DomeOutput.RenderPlan;
+      Assert(plan.Layers.Length == 1, "disabled layer entered the plan");
+      Assert(plan.Layers[0].Snapshot.Id.Value == "background-on",
+        "the enabled instance was not scheduled");
     }
 
     private static void ZeroOpacityIdentity() {
@@ -204,6 +279,16 @@ namespace Spectrum.LayerPipeline.Tests {
       Opacity = 1,
       Enabled = true,
     };
+
+    private static LayerSnapshot SnapshotWithParameter(
+      string id, string key, double value
+    ) {
+      var parameters = ImmutableDictionary<string, ParameterValue>.Empty.Add(
+        key, new ParameterValue(DomeLayerParamType.Double, value));
+      return new LayerSnapshot(
+        new LayerInstanceId(id), "test", DomeBlend.Add.Name, 1, true,
+        parameters, ImmutableDictionary<string, ParameterValue>.Empty, null);
+    }
 
     private static DomeTopology OnePixelTopology() => new(new[] {
       new LEDDomeOutputPixel { strutIndex = 0, strutLEDIndex = 0, x = .5, y = .5 },

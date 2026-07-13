@@ -25,13 +25,7 @@ namespace Spectrum {
       this.buffer = this.dome.MakeDomeOutputBuffer();
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "tv-static"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "tv-static";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;

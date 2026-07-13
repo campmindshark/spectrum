@@ -21,6 +21,9 @@ namespace Spectrum {
     private readonly LayerCatalog layerCatalog;
     private readonly Dictionary<string, string> createdRendererByInstance =
       new Dictionary<string, string>(StringComparer.Ordinal);
+    private readonly Dictionary<string, LayerRendererRuntime>
+      layerRuntimeByInstance =
+        new Dictionary<string, LayerRendererRuntime>(StringComparer.Ordinal);
     private int layerReconcilePending;
 
     // Exposed so diagnostic windows (e.g. the wand status display) can read the
@@ -67,6 +70,8 @@ namespace Spectrum {
       new List<Visualizer>();
     private readonly List<Visualizer> alwaysRunVisualizers =
       new List<Visualizer>();
+    private readonly HashSet<Visualizer> plannedLayerVisualizers =
+      new HashSet<Visualizer>();
 
     // Visualizers that have thrown too many times are quarantined: the
     // scheduling pass skips them so a consistently-broken visualizer can't take
@@ -215,6 +220,7 @@ namespace Spectrum {
     private void ReconcileLayerVisualizers() {
       List<DomeLayerSettings> stack = this.config.domeLayerStack;
       if (stack == null) {
+        this.DomeOutput.PublishLayerStack(LayerStackSnapshot.Empty);
         return;
       }
       bool needsIds = stack.Any(
@@ -229,36 +235,40 @@ namespace Spectrum {
         stack = normalized;
       }
       LayerStackSnapshot snapshot = LayerStackService.SnapshotFor(stack);
-      foreach (DomeLayerSettings layer in stack) {
-        if (layer == null || layer.InstanceId == null ||
-            (this.createdRendererByInstance.TryGetValue(
-              layer.InstanceId, out string createdRenderer) &&
-              createdRenderer == layer.VisualizerKey)) {
+      foreach (LayerSnapshot layer in snapshot.Layers) {
+        string instanceId = layer.Id.Value;
+        if (this.createdRendererByInstance.TryGetValue(
+              instanceId, out string createdRenderer) &&
+            createdRenderer == layer.RendererId &&
+            this.layerRuntimeByInstance.TryGetValue(
+              instanceId, out LayerRendererRuntime existingRuntime)) {
+          existingRuntime.Publish(layer);
           continue;
         }
         LayerDefinition definition = this.layerCatalog.Get(
-          layer.VisualizerKey);
-        LayerSnapshot layerSnapshot = snapshot.Layers.FirstOrDefault(
-          candidate => candidate.Id.Value == layer.InstanceId);
-        if (definition?.CreateRenderer == null || layerSnapshot == null) {
+          layer.RendererId);
+        if (definition?.CreateRenderer == null) {
           continue;
         }
+        var runtime = new LayerRendererRuntime(layer);
         Configuration instanceConfig = LayerInstanceConfiguration.Create(
-          this.config, layer.InstanceId, layer.VisualizerKey);
+          this.config, instanceId, layer.RendererId, runtime);
         var services = new Dictionary<Type, object> {
           [typeof(Configuration)] = instanceConfig,
         };
-        using (LayerInstanceScope.Push(layer.InstanceId)) {
+        using (LayerInstanceScope.Push(instanceId)) {
           ILayerRenderer renderer = definition.CreateRenderer(
-            new LayerRenderContext(layerSnapshot.Id, layerSnapshot, services));
+            new LayerRenderContext(layer.Id, layer, services, runtime));
           if (renderer is not Visualizer visualizer) {
             throw new InvalidOperationException(
               "Layer renderer must implement Visualizer: " + definition.Id);
           }
           this.visualizers.Add(visualizer);
         }
-        this.createdRendererByInstance[layer.InstanceId] = layer.VisualizerKey;
+        this.createdRendererByInstance[instanceId] = layer.RendererId;
+        this.layerRuntimeByInstance[instanceId] = runtime;
       }
+      this.DomeOutput.PublishLayerStack(snapshot);
     }
 
     private bool enabled;
@@ -335,6 +345,15 @@ namespace Spectrum {
           this.ReconcileLayerVisualizers();
         }
 
+        // Compile once before scheduling. These are the same renderer objects
+        // and immutable layer snapshots DomeCompositor will consume below.
+        this.plannedLayerVisualizers.Clear();
+        foreach (CompiledLayer layer in this.DomeOutput.RenderPlan.Layers) {
+          if (layer.Renderer is Visualizer visualizer) {
+            this.plannedLayerVisualizers.Add(visualizer);
+          }
+        }
+
         // We're going to start by figuring out which Outputs consider
         // themselves enabled. For each enabled Output, we'll find what the
         // highest priority reported by any Visualizer is, and we'll consider
@@ -349,6 +368,11 @@ namespace Spectrum {
           this.topPriVisualizers.Clear();
           this.alwaysRunVisualizers.Clear();
           foreach (var visualizer in output.GetVisualizers()) {
+            bool isLayerVisualizer = visualizer is DomeLayerVisualizer;
+            if (isLayerVisualizer &&
+                !this.plannedLayerVisualizers.Contains(visualizer)) {
+              continue;
+            }
             // We can only consider a visualizer if all its inputs are enabled
             if (!AllInputsEnabled(visualizer)) {
               continue;
@@ -359,7 +383,9 @@ namespace Spectrum {
             if (this.IsQuarantined(visualizer)) {
               continue;
             }
-            int pri = visualizer.Priority;
+            // Layer membership and enabled state were already resolved by the
+            // compiled plan. Priority remains only for diagnostic overrides.
+            int pri = isLayerVisualizer ? 2 : visualizer.Priority;
             bool canAdd = false;
             if (pri == -1) {
               this.alwaysRunVisualizers.Add(visualizer);

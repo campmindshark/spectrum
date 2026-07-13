@@ -12,6 +12,7 @@ namespace Spectrum {
   class LEDDomeSplatVisualizer : DomeLayerVisualizer {
 
     private Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private AudioInput audio;
     private BeatBroadcaster beat;
     private LEDDomeOutput dome;
@@ -26,6 +27,7 @@ namespace Spectrum {
       LEDDomeOutput dome
     ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.audio = audio;
       this.beat = beat;
       this.dome = dome;
@@ -33,13 +35,7 @@ namespace Spectrum {
       this.buffer = this.dome.MakeDomeOutputBuffer();
     }
 
-    public int Priority {
-      get {
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "splat"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "splat";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -53,8 +49,7 @@ namespace Spectrum {
 
     void Render() {
 
-      int paletteBank = (int)DomeLayerSettings.ParamValue(
-        this.config.domeLayerStack, this.LayerKey, "palette");
+      int paletteBank = (int)this.runtime.Parameter("palette");
 
       double level = this.audio.Volume;
       // Sqrt makes values larger and gives more resolution for lower values

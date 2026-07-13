@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Spectrum.Base {
 
@@ -38,6 +39,66 @@ namespace Spectrum.Base {
       new LayerStackSnapshot(ImmutableArray<LayerSnapshot>.Empty);
   }
 
+  // Per-instance runtime view of the renderer options compiled into the
+  // immutable layer snapshot. The Operator publishes a replacement snapshot
+  // before scheduling a changed stack; visualizers therefore read validated
+  // values directly without walking Configuration.domeLayerStack each frame.
+  public sealed class LayerRendererRuntime {
+    private LayerSnapshot snapshot;
+
+    public LayerRendererRuntime(LayerSnapshot snapshot) {
+      this.snapshot = snapshot ??
+        throw new ArgumentNullException(nameof(snapshot));
+    }
+
+    public LayerInstanceId InstanceId => this.Snapshot.Id;
+    public string RendererId => this.Snapshot.RendererId;
+    public LayerSnapshot Snapshot => Volatile.Read(ref this.snapshot);
+
+    public double Parameter(string key) {
+      if (key == null) {
+        throw new ArgumentNullException(nameof(key));
+      }
+      if (this.Snapshot.RendererParameters.TryGetValue(
+          key, out ParameterValue value)) {
+        return value.Value;
+      }
+      throw new InvalidOperationException(
+        "Renderer " + this.RendererId + " has no parameter " + key + ".");
+    }
+
+    public void Publish(LayerSnapshot next) {
+      if (next == null) {
+        throw new ArgumentNullException(nameof(next));
+      }
+      LayerSnapshot current = this.Snapshot;
+      if (current.Id != next.Id || current.RendererId != next.RendererId) {
+        throw new InvalidOperationException(
+          "A layer runtime cannot change instance or renderer identity.");
+      }
+      Volatile.Write(ref this.snapshot, next);
+    }
+  }
+
+  // Temporary constructor boundary while existing visualizers still receive
+  // shared non-layer settings through Configuration. Layer parameters are
+  // exposed as a separate compiled runtime and never through domeLayerStack.
+  public interface LayerRuntimeConfiguration : Configuration {
+    LayerRendererRuntime LayerRuntime { get; }
+  }
+
+  public static class LayerRuntimeConfigurationExtensions {
+    public static LayerRendererRuntime GetLayerRuntime(
+      this Configuration configuration
+    ) {
+      if (configuration is LayerRuntimeConfiguration layerConfiguration) {
+        return layerConfiguration.LayerRuntime;
+      }
+      throw new InvalidOperationException(
+        "Layer visualizers require a compiled layer runtime.");
+    }
+  }
+
   // Runtime renderers deliberately expose no persisted DTO or Configuration.
   // The compiler binds a renderer to a layer snapshot once, and the compositor
   // consumes only this narrow frame contract.
@@ -52,13 +113,16 @@ namespace Spectrum.Base {
 
     public LayerInstanceId InstanceId { get; }
     public LayerSnapshot Snapshot { get; }
+    public LayerRendererRuntime Runtime { get; }
 
     public LayerRenderContext(
       LayerInstanceId instanceId, LayerSnapshot snapshot,
-      IReadOnlyDictionary<Type, object> services = null
+      IReadOnlyDictionary<Type, object> services = null,
+      LayerRendererRuntime runtime = null
     ) {
       this.InstanceId = instanceId;
       this.Snapshot = snapshot;
+      this.Runtime = runtime ?? new LayerRendererRuntime(snapshot);
       this.services = services ?? new Dictionary<Type, object>();
     }
 
@@ -333,9 +397,14 @@ namespace Spectrum.Base {
   public sealed class RenderPlanCompiler {
     private readonly LayerCatalog catalog;
     private readonly Dictionary<
-      LayerInstanceId, (string rendererId, ILayerRenderer renderer)> instances =
+      LayerInstanceId, (
+        string rendererId, ILayerRenderer renderer, LayerRendererRuntime runtime
+      )> instances =
         new Dictionary<
-          LayerInstanceId, (string rendererId, ILayerRenderer renderer)>();
+          LayerInstanceId, (
+            string rendererId, ILayerRenderer renderer,
+            LayerRendererRuntime runtime
+          )>();
 
     public RenderPlanCompiler(LayerCatalog catalog = null) {
       this.catalog = catalog ?? LayerCatalog.Default;
@@ -347,16 +416,18 @@ namespace Spectrum.Base {
     ) => this.Compile(snapshot, layer => {
       if (this.instances.TryGetValue(layer.Id, out var existing) &&
           existing.rendererId == layer.RendererId) {
+        existing.runtime.Publish(layer);
         return existing.renderer;
       }
       LayerDefinition definition = this.catalog.Get(layer.RendererId);
       if (definition?.CreateRenderer == null) {
         return null;
       }
-      ILayerRenderer created = definition.CreateRenderer(
-        new LayerRenderContext(layer.Id, layer, services));
+      var context = new LayerRenderContext(layer.Id, layer, services);
+      ILayerRenderer created = definition.CreateRenderer(context);
       if (created != null) {
-        this.instances[layer.Id] = (layer.RendererId, created);
+        this.instances[layer.Id] = (
+          layer.RendererId, created, context.Runtime);
       }
       return created;
     });
@@ -383,7 +454,9 @@ namespace Spectrum.Base {
           layer, renderer, operation,
           operation.CompileOptions(layer.OperationParameters)));
       }
-      return new RenderPlan(layers.MoveToImmutable());
+      // Disabled or unresolved entries are intentionally filtered, so Count
+      // can be smaller than the builder's initial capacity.
+      return new RenderPlan(layers.ToImmutable());
     }
   }
 }

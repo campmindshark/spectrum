@@ -13,6 +13,7 @@ namespace Spectrum {
      * to volume, beats, constant, or still. See RacerConfig below to configure the bands.
      */
     private readonly Configuration config;
+    private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly MidiInput midi;
     private readonly BeatBroadcaster beat;
@@ -216,6 +217,7 @@ namespace Spectrum {
      LEDDomeOutput dome
      ) {
       this.config = config;
+      this.runtime = config.GetLayerRuntime();
       this.audio = audio;
       this.midi = midi;
       this.beat = beat;
@@ -247,15 +249,7 @@ namespace Spectrum {
       }
     }
 
-    public int Priority {
-      get {
-        // Priority 2 (ties all run) whenever an enabled layer names this
-        // visualizer; the compositor blends the winning layers in stack order.
-        return DomeLayerSettings.StackActivates(
-          this.config.domeLayerStack, "race"
-        ) ? 2 : 0;
-      }
-    }
+    public int Priority => 2;
 
     public string LayerKey => "race";
     public LEDDomeOutputBuffer LayerBuffer => this.buffer;
@@ -308,15 +302,11 @@ namespace Spectrum {
       // SETTING THE RACERS
       //-----------------------------------------------------------------------
 
-      // This layer's own tuning, resolved once per frame from its stack entry
+      // This layer's own tuning, read from its compiled runtime snapshot
       // (formerly the shared domeRadialSize / domeVolumeRotationSpeed knobs).
-      IList<DomeLayerSettings> stack = this.config.domeLayerStack;
-      this.racer_spacing =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "spacing");
-      double speed =
-        DomeLayerSettings.ParamValue(stack, this.LayerKey, "speed");
-      int paletteBank =
-        (int)DomeLayerSettings.ParamValue(stack, this.LayerKey, "palette");
+      this.racer_spacing = this.runtime.Parameter("spacing");
+      double speed = this.runtime.Parameter("speed");
+      int paletteBank = (int)this.runtime.Parameter("palette");
       var curTicks = DateTime.Now.Ticks;
       if (this.lastTicks == -1) {
         this.lastTicks = curTicks;

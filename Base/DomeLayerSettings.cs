@@ -41,7 +41,7 @@ namespace Spectrum.Base {
   // Instances are treated as immutable once published to the operator thread:
   // UI/web writers always replace the whole domeLayerStack list (snapshot swap)
   // rather than mutating an existing settings object in place.
-  public partial class DomeLayerSettings {
+  public class DomeLayerSettings {
     // Stable identity of this configured occurrence. Older XML omits it; the
     // LayerStackService assigns one during normalization and every writer then
     // persists it. Renderer IDs identify kinds, instance IDs identify layers.
@@ -791,52 +791,6 @@ namespace Spectrum.Base {
         TriggerIntervalParam,
       };
 
-  }
-
-  public partial class DomeLayerSettings {
-
-    // The value of one of `layerKey`'s params from the published stack
-    // snapshot: the layer's bag value when present, else the descriptor
-    // default — so an absent bag/key means the same thing on every surface.
-    // Two small array scans per call; visualizers call this once per param per
-    // frame (never per pixel), which is noise on the operator thread.
-    public static double ParamValue(
-      IList<DomeLayerSettings> stack, string layerKey, string paramKey
-    ) {
-      LayerStackSnapshot snapshot = LayerStackService.SnapshotFor(stack);
-      foreach (LayerSnapshot layer in snapshot.Layers) {
-        if (layer.RendererId == layerKey &&
-            layer.RendererParameters.TryGetValue(
-              paramKey, out ParameterValue value)) {
-          return value.Value;
-        }
-      }
-      LayerDefinition definition = LayerCatalog.Default.Get(layerKey);
-      if (definition != null) {
-        foreach (DomeLayerParam parameter in definition.Parameters) {
-          if (parameter.Key == paramKey) {
-            return parameter.Default;
-          }
-        }
-      }
-      return 0;
-    }
-
-    // (Blend-mode tunables — the prism family — live on each DomeBlend class's
-    // Params, not here: see DomeBlend.Params / DomeBlend.Param.)
-
-    // Allocation-free scan used on the scheduling hot path (visualizer Priority
-    // getters): true if the stack has an enabled entry naming `key`. Mirrors the
-    // style of Operator.AllInputsEnabled. Safe to call on the operator thread
-    // against a published (immutable) stack snapshot.
-    public static bool StackActivates(IList<DomeLayerSettings> stack, string key) {
-      foreach (LayerSnapshot layer in LayerStackService.SnapshotFor(stack).Layers) {
-        if (layer.Enabled && layer.RendererId == key) {
-          return true;
-        }
-      }
-      return false;
-    }
   }
 
 }
