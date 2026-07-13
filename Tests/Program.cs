@@ -29,8 +29,15 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("scene recall retains duplicate instance state", SceneRecallRetainsState);
       Run("duplicate commands require instance IDs", DuplicateCommandsNeedIds);
       Run("zero opacity is a kernel identity", ZeroOpacityIdentity);
+      Run("paint and adjustment kernels match the regression matrix",
+        KernelMatrix);
+      Run("operation options are normalized before compilation",
+        OperationOptionsAreNormalized);
       Run("spatial effects declare neighbor reads", SpatialRequirements);
       Run("spatial passes snapshot and reuse scratch", SpatialPassSnapshots);
+      Run("masked adjustment frames are deterministic",
+        MaskedAdjustmentFixtures);
+      Run("prism frames are deterministic", PrismFixtures);
       Run("compositor replaces plans and holds on empty", PlanReplacement);
       Run("configuration with layers serializes", ConfigurationSerializes);
       if (failures != 0) {
@@ -394,23 +401,189 @@ namespace Spectrum.LayerPipeline.Tests {
 
     private static void ZeroOpacityIdentity() {
       DomeTopology topology = OnePixelTopology();
-      foreach (DomeBlend operation in new[] {
-        DomeBlend.Over, DomeBlend.Add, DomeBlend.Screen, DomeBlend.Lighten,
-        DomeBlend.Multiply, DomeBlend.Desaturate, DomeBlend.Hue,
-      }) {
+      foreach (DomeBlend operation in DomeBlend.All) {
         var dest = new DomeFrame(topology);
         dest.pixels[0].color = 0x123456;
+        dest.pixels[0].SetAlpha(.35);
         dest.pixels[0].hue = .25;
         var source = new DomeFrame(topology);
         source.pixels[0].color = 0xFEDCBA;
         source.pixels[0].hue = .75;
+        var snapshot = new DomeFrame(topology);
+        snapshot.CopyFrom(dest);
         operation.Execute(new DomeBlendContext(
-          dest, source, null, EmptyCompositeOptions.Instance,
+          dest, source,
+          (operation.Requirements &
+            CompositeRequirements.ReadsDestinationNeighbors) != 0
+              ? snapshot : null,
+          operation.CompileOptions(
+            ImmutableDictionary<string, ParameterValue>.Empty),
           0, 0, null));
         Assert(dest.pixels[0].color == 0x123456 &&
-          dest.pixels[0].hue == .25,
+          dest.pixels[0].a == .35 && dest.pixels[0].hue == .25,
           operation.Name + " changed the destination");
       }
+    }
+
+    private static void KernelMatrix() {
+      var expectedHalf = new Dictionary<DomeBlend, int[]> {
+        [DomeBlend.Over] = new[] {
+          0x000000, 0x7F7F7F, 0x7F7F00, 0x00FF00, 0x3F00BF, 0x504040,
+        },
+        [DomeBlend.Add] = new[] {
+          0x7F7F7F, 0xFFFFFF, 0xFF7F00, 0x00FF7F, 0x7F00FF, 0x606070,
+        },
+        [DomeBlend.Screen] = new[] {
+          0x7F7F7F, 0xFFFFFF, 0xFF7F00, 0x00FF7F, 0x7F00FF, 0x575769,
+        },
+        [DomeBlend.Lighten] = new[] {
+          0x7F7F7F, 0xFFFFFF, 0xFF7F00, 0x00FF7F, 0x7F00FF, 0x404060,
+        },
+        [DomeBlend.Multiply] = new[] {
+          0x000000, 0x7F7F7F, 0x7F0000, 0x007F00, 0x00007F, 0x182836,
+        },
+        [DomeBlend.Desaturate] = new[] {
+          0x000000, 0xFFFFFF, 0xA52626, 0x00FF00, 0x0707C6, 0x2D3D4D,
+        },
+        [DomeBlend.Hue] = new[] {
+          0x000000, 0x7F7F7F, 0xE57F00, 0x00FF00, 0x003FD8, 0x106070,
+        },
+      };
+      var expectedFull = new Dictionary<DomeBlend, int[]> {
+        [DomeBlend.Over] = new[] {
+          0x000000, 0x000000, 0x00FF00, 0x00FF00, 0x7F007F, 0x804020,
+        },
+        [DomeBlend.Add] = new[] {
+          0xFFFFFF, 0xFFFFFF, 0xFFFF00, 0x00FFFF, 0xFF00FF, 0xA08080,
+        },
+        [DomeBlend.Screen] = new[] {
+          0xFFFFFF, 0xFFFFFF, 0xFFFF00, 0x00FFFF, 0xFF00FF, 0x8F6F73,
+        },
+        [DomeBlend.Lighten] = new[] {
+          0xFFFFFF, 0xFFFFFF, 0xFFFF00, 0x00FFFF, 0xFF00FF, 0x804060,
+        },
+        [DomeBlend.Multiply] = new[] {
+          0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x10100C,
+        },
+        [DomeBlend.Desaturate] = new[] {
+          0x000000, 0xFFFFFF, 0x4C4C4C, 0x00FF00, 0x0E0E8E, 0x3A3A3A,
+        },
+        [DomeBlend.Hue] = new[] {
+          0x000000, 0x000000, 0xCBFF00, 0x00FF00, 0x007FB2, 0x008080,
+        },
+      };
+
+      foreach (DomeBlend operation in expectedHalf.Keys) {
+        DomeFrame half = ExecuteKernel(operation, .5);
+        DomeFrame full = ExecuteKernel(operation, 1);
+        AssertColors(operation.Name + " at 0.5", half,
+          expectedHalf[operation]);
+        AssertColors(operation.Name + " at 1", full,
+          expectedFull[operation]);
+        AssertKernelChannels(operation, half, .5);
+        AssertKernelChannels(operation, full, 1);
+      }
+    }
+
+    private static DomeFrame ExecuteKernel(DomeBlend operation, double opacity) {
+      int[] destColors = {
+        0x000000, 0xFFFFFF, 0xFF0000, 0x00FF00, 0x0000FF, 0x204060,
+      };
+      int[] sourceColors = {
+        0xFFFFFF, 0x000000, 0x00FF00, 0x0000FF, 0xFF0000, 0x804020,
+      };
+      double[] sourceAlpha = { 0, 1, 1, 0, .5, 1 };
+      DomeTopology topology = LinearTopology(destColors.Length);
+      var dest = new DomeFrame(topology);
+      var source = new DomeFrame(topology);
+      for (int i = 0; i < destColors.Length; i++) {
+        dest.pixels[i].color = destColors[i];
+        dest.pixels[i].SetAlpha(.25);
+        dest.pixels[i].hue = i / 10d;
+        source.pixels[i].color = sourceColors[i];
+        source.pixels[i].SetAlpha(sourceAlpha[i]);
+        source.pixels[i].hue = .6 + i / 100d;
+      }
+      operation.Execute(new DomeBlendContext(
+        dest, source, null, EmptyCompositeOptions.Instance,
+        opacity, 0, null));
+      return dest;
+    }
+
+    private static void AssertKernelChannels(
+      DomeBlend operation, DomeFrame frame, double opacity
+    ) {
+      double[] expectedAlpha = operation == DomeBlend.Over
+        ? (opacity == .5
+          ? new[] { .25, .625, .625, .25, .4375, .625 }
+          : new[] { .25, 1, 1, .25, .625, 1 })
+        : new[] { .25, .25, .25, .25, .25, .25 };
+      double[] expectedHue;
+      if (operation == DomeBlend.Over) {
+        expectedHue = new[] { 0, .61, .62, .3, .64, .65 };
+      } else if ((operation.Requirements &
+          CompositeRequirements.PublishesHue) != 0) {
+        expectedHue = new[] { .6, .61, .62, .63, .64, .65 };
+      } else {
+        expectedHue = new[] { 0, .1, .2, .3, .4, .5 };
+      }
+      for (int i = 0; i < frame.pixels.Length; i++) {
+        AssertClose(expectedAlpha[i], frame.pixels[i].a,
+          operation.Name + " alpha " + i);
+        AssertClose(expectedHue[i], frame.pixels[i].hue,
+          operation.Name + " hue " + i);
+      }
+    }
+
+    private static void OperationOptionsAreNormalized() {
+      ChromaticFringeOptions fringe = (ChromaticFringeOptions)
+        CompileOptions(DomeBlend.ChromaticFringe, new Dictionary<string, double> {
+          ["offset"] = double.NaN,
+          ["spin"] = double.PositiveInfinity,
+          ["follow"] = -1,
+        });
+      AssertClose(.045, fringe.Offset, "fringe NaN default");
+      AssertClose(2, fringe.Spin, "fringe spin clamp");
+      Assert(fringe.FollowOrientation, "fringe bool coercion failed");
+
+      EdgeSpectrumOptions edge = (EdgeSpectrumOptions)
+        CompileOptions(DomeBlend.EdgeSpectrum, new Dictionary<string, double> {
+          ["strength"] = double.NegativeInfinity,
+          ["offset"] = double.PositiveInfinity,
+        });
+      AssertClose(0, edge.Strength, "edge strength clamp");
+      AssertClose(.12, edge.Offset, "edge offset clamp");
+
+      RefractOptions refract = (RefractOptions)
+        CompileOptions(DomeBlend.Refract, new Dictionary<string, double> {
+          ["strength"] = double.NaN,
+        });
+      AssertClose(.05, refract.Strength, "refract NaN default");
+
+      IridescenceOptions iridescence = (IridescenceOptions)
+        CompileOptions(DomeBlend.Iridescence, new Dictionary<string, double> {
+          ["strength"] = -1,
+          ["bands"] = 99,
+          ["spin"] = double.NaN,
+          ["follow"] = 0,
+        });
+      AssertClose(0, iridescence.Strength, "iridescence strength clamp");
+      AssertClose(8, iridescence.Bands, "iridescence bands clamp");
+      AssertClose(.2, iridescence.Spin, "iridescence spin default");
+      Assert(!iridescence.FollowOrientation,
+        "iridescence bool coercion failed");
+    }
+
+    private static ICompositeOptions CompileOptions(
+      DomeBlend operation, Dictionary<string, double> parameters
+    ) {
+      DomeLayerSettings layer = Layer("background", "options-fixture");
+      layer.BlendMode = operation.Name;
+      layer.Params = parameters;
+      (LayerStackSnapshot snapshot, string error) =
+        new LayerStackService().CreateSnapshot(new[] { layer });
+      Assert(error == null, error);
+      return operation.CompileOptions(snapshot.Layers[0].OperationParameters);
     }
 
     private static void SpatialRequirements() {
@@ -468,6 +641,139 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(result.pixels[0].color == 0x110000 &&
         result.pixels[1].color == 0x002200,
         "spatial writes smeared instead of reading the snapshot");
+    }
+
+    private static void MaskedAdjustmentFixtures() {
+      AssertFixture(
+        DomeBlend.Desaturate,
+        ImmutableDictionary<string, ParameterValue>.Empty,
+        "000000 FFFFFF A52626 959595 0707C6 333B43 4F4F4F 507040 102030");
+      AssertFixture(
+        DomeBlend.Hue,
+        ImmutableDictionary<string, ParameterValue>.Empty,
+        "000000 000000 E57F00 33FF00 003FD8 087078 0066FF 234020 102030");
+    }
+
+    private static void PrismFixtures() {
+      AssertFixture(
+        DomeBlend.ChromaticFringe,
+        Parameters(("offset", .02), ("spin", 0), ("follow", 0)),
+        "000000 FFFF00 FF007F 00FF00 0800BF 2040D7 404020 288020 102030");
+      AssertFixture(
+        DomeBlend.EdgeSpectrum,
+        Parameters(("strength", .35), ("offset", .02)),
+        "000000 FFFFFF FF0000 16FF25 0F0AFF 294E60 955920 45802E 102030");
+      AssertFixture(
+        DomeBlend.Iridescence,
+        Parameters(
+          ("strength", .6), ("bands", 2), ("spin", 0), ("follow", 0)),
+        "000000 66FF6F B24C27 11FF00 0026DB 114E4B 3B660C 2C8018 102030");
+      AssertFixture(
+        DomeBlend.Refract,
+        Parameters(("strength", .02)),
+        "000000 204060 8F2030 804020 003FBF C7CFD7 00FF00 306040 102030");
+    }
+
+    private static void AssertFixture(
+      DomeBlend operation,
+      ImmutableDictionary<string, ParameterValue> parameters,
+      string expectedFull
+    ) {
+      DomeFrame full = ComposeFixture(operation, parameters, 1);
+      string actual = ColorSignature(full);
+      Assert(actual == expectedFull,
+        operation.Name + " fixture expected " + expectedFull +
+        " but got " + actual);
+
+      DomeFrame half = ComposeFixture(operation, parameters, .5);
+      int[] bottomColors = FixtureBottomColors();
+      for (int i = 0; i < bottomColors.Length; i++) {
+        double br = (bottomColors[i] >> 16) & 0xFF;
+        double bg = (bottomColors[i] >> 8) & 0xFF;
+        double bb = bottomColors[i] & 0xFF;
+        AssertClose((br + full.pixels[i].r) / 2, half.pixels[i].r,
+          operation.Name + " half-opacity red " + i);
+        AssertClose((bg + full.pixels[i].g) / 2, half.pixels[i].g,
+          operation.Name + " half-opacity green " + i);
+        AssertClose((bb + full.pixels[i].b) / 2, half.pixels[i].b,
+          operation.Name + " half-opacity blue " + i);
+        AssertClose(1, full.pixels[i].a,
+          operation.Name + " changed destination alpha " + i);
+        AssertClose(i / 10d, full.pixels[i].hue,
+          operation.Name + " changed destination hue " + i);
+      }
+    }
+
+    private static DomeFrame ComposeFixture(
+      DomeBlend operation,
+      ImmutableDictionary<string, ParameterValue> parameters,
+      double opacity
+    ) {
+      DomeTopology topology = FixtureTopology();
+      int[] bottomColors = FixtureBottomColors();
+      int[] sourceColors = {
+        0xFFFFFF, 0x000000, 0x00FF00,
+        0x0000FF, 0xFF0000, 0x804020,
+        0xFFFFFF, 0x202020, 0xFFFFFF,
+      };
+      double[] sourceAlpha = { 0, 1, .5, 1, .25, .75, 1, .5, 0 };
+      var bottom = new DomeFrame(topology);
+      var source = new DomeFrame(topology);
+      for (int i = 0; i < bottomColors.Length; i++) {
+        bottom.pixels[i].color = bottomColors[i];
+        bottom.pixels[i].hue = i / 10d;
+        source.pixels[i].color = sourceColors[i];
+        source.pixels[i].SetAlpha(sourceAlpha[i]);
+        source.pixels[i].hue = i / 8d;
+      }
+      var plan = new RenderPlan(ImmutableArray.Create(
+        Compiled(
+          new FakeRenderer("fixture-bottom", bottom), DomeBlend.Add, 1,
+          ImmutableDictionary<string, ParameterValue>.Empty),
+        Compiled(
+          new FakeRenderer("fixture-mask", source), operation, opacity,
+          parameters)));
+      var compositor = new DomeCompositor(
+        () => new DomeFrame(topology), elapsedSeconds: () => 0);
+      compositor.Publish(plan);
+      return compositor.Compose();
+    }
+
+    private static int[] FixtureBottomColors() => new[] {
+      0x000000, 0xFFFFFF, 0xFF0000,
+      0x00FF00, 0x0000FF, 0x204060,
+      0x804020, 0x408020, 0x102030,
+    };
+
+    private static DomeTopology FixtureTopology() => new(new[] {
+      new DomeTopologyPixel(0, 0, .48, .48),
+      new DomeTopologyPixel(0, 1, .50, .48),
+      new DomeTopologyPixel(0, 2, .52, .48),
+      new DomeTopologyPixel(0, 3, .48, .50),
+      new DomeTopologyPixel(0, 4, .50, .50),
+      new DomeTopologyPixel(0, 5, .52, .50),
+      new DomeTopologyPixel(0, 6, .48, .52),
+      new DomeTopologyPixel(0, 7, .50, .52),
+      new DomeTopologyPixel(0, 8, .52, .52),
+    });
+
+    private static ImmutableDictionary<string, ParameterValue> Parameters(
+      params (string Key, double Value)[] values
+    ) {
+      var result = ImmutableDictionary.CreateBuilder<string, ParameterValue>(
+        StringComparer.Ordinal);
+      foreach ((string key, double value) in values) {
+        result[key] = new ParameterValue(DomeLayerParamType.Double, value);
+      }
+      return result.ToImmutable();
+    }
+
+    private static string ColorSignature(DomeFrame frame) {
+      var colors = new string[frame.pixels.Length];
+      for (int i = 0; i < colors.Length; i++) {
+        colors[i] = frame.pixels[i].color.ToString("X6");
+      }
+      return string.Join(" ", colors);
     }
 
     private static void PlanReplacement() {
@@ -556,6 +862,34 @@ namespace Spectrum.LayerPipeline.Tests {
       new DomeTopologyPixel(0, 0, .45, .5),
       new DomeTopologyPixel(1, 0, .55, .5),
     });
+
+    private static DomeTopology LinearTopology(int count) {
+      var pixels = new DomeTopologyPixel[count];
+      for (int i = 0; i < count; i++) {
+        pixels[i] = new DomeTopologyPixel(0, i, .4 + i * .02, .5);
+      }
+      return new DomeTopology(pixels);
+    }
+
+    private static void AssertColors(
+      string name, DomeFrame frame, int[] expected
+    ) {
+      Assert(expected.Length == frame.pixels.Length,
+        name + " has the wrong fixture length");
+      for (int i = 0; i < expected.Length; i++) {
+        Assert(frame.pixels[i].color == expected[i],
+          name + " pixel " + i + " expected 0x" +
+          expected[i].ToString("X6") + " but got 0x" +
+          frame.pixels[i].color.ToString("X6"));
+      }
+    }
+
+    private static void AssertClose(
+      double expected, double actual, string message
+    ) {
+      Assert(Math.Abs(expected - actual) < 0.000000001,
+        message + " expected " + expected + " but got " + actual);
+    }
 
     private static void Assert(bool condition, string message) {
       if (!condition) {
