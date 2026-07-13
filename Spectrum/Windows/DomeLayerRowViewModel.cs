@@ -163,8 +163,8 @@ namespace Spectrum {
 
     // Generic per-layer param editors, rebuilt from the schema whenever the
     // visualizer key or blend mode changes: the visualizer-consumed set
-    // (ParamsFor) followed by the compositor-consumed set of the current blend
-    // (ParamsForBlend). Each entry raises the row's Changed on edit.
+    // (from LayerCatalog) followed by the compositor-consumed set of the
+    // current blend. Each entry raises the row's Changed on edit.
     public ObservableCollection<LayerParamViewModel> Params { get; } =
       new ObservableCollection<LayerParamViewModel>();
 
@@ -231,7 +231,8 @@ namespace Spectrum {
         existing.Changed -= this.OnParamChanged;
       }
       this.Params.Clear();
-      AddParams(DomeLayerSettings.ParamsFor(this.visualizerKey), seed);
+      AddParams(
+        LayerCatalog.Default.ParametersFor(this.visualizerKey), seed);
       DomeBlend blend = DomeBlend.FromName(this.blendMode);
       if (blend != null) {
         AddParams(blend.Params, seed);

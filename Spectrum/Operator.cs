@@ -18,8 +18,7 @@ namespace Spectrum {
     private readonly List<Input> inputs;
     private readonly List<Output> outputs;
     private readonly List<Visualizer> visualizers;
-    private readonly Dictionary<string, Func<Configuration, Visualizer>>
-      layerFactories;
+    private readonly LayerCatalog layerCatalog;
     private readonly Dictionary<string, string> createdRendererByInstance =
       new Dictionary<string, string>(StringComparer.Ordinal);
     private int layerReconcilePending;
@@ -139,7 +138,7 @@ namespace Spectrum {
         this.config,
         dome
       ));
-      this.layerFactories = new Dictionary<
+      var layerFactories = new Dictionary<
         string, Func<Configuration, Visualizer>>(StringComparer.Ordinal) {
         ["volume"] = c => new LEDDomeVolumeVisualizer(
           c, audio, this.BeatBroadcaster, dome),
@@ -186,8 +185,17 @@ namespace Spectrum {
           c, audio, orientation, orientationCenter,
           this.BeatBroadcaster, dome),
       };
-      foreach (LayerDefinition definition in LayerCatalog.Default.Definitions) {
-        if (!this.layerFactories.ContainsKey(definition.Id)) {
+      var rendererFactories = new Dictionary<
+        string, Func<LayerRenderContext, ILayerRenderer>>(
+          StringComparer.Ordinal);
+      foreach (var pair in layerFactories) {
+        Func<Configuration, Visualizer> createVisualizer = pair.Value;
+        rendererFactories[pair.Key] = context =>
+          (ILayerRenderer)createVisualizer(context.Get<Configuration>());
+      }
+      this.layerCatalog = LayerCatalog.Default.WithFactories(rendererFactories);
+      foreach (LayerDefinition definition in this.layerCatalog.Definitions) {
+        if (definition.CreateRenderer == null) {
           throw new InvalidOperationException(
             "No renderer factory registered for layer " + definition.Id);
         }
@@ -220,20 +228,34 @@ namespace Spectrum {
         this.config.domeLayerStack = normalized;
         stack = normalized;
       }
+      LayerStackSnapshot snapshot = LayerStackService.SnapshotFor(stack);
       foreach (DomeLayerSettings layer in stack) {
         if (layer == null || layer.InstanceId == null ||
             (this.createdRendererByInstance.TryGetValue(
               layer.InstanceId, out string createdRenderer) &&
-              createdRenderer == layer.VisualizerKey) ||
-            !this.layerFactories.TryGetValue(
-              layer.VisualizerKey, out Func<Configuration, Visualizer> factory)) {
+              createdRenderer == layer.VisualizerKey)) {
+          continue;
+        }
+        LayerDefinition definition = this.layerCatalog.Get(
+          layer.VisualizerKey);
+        LayerSnapshot layerSnapshot = snapshot.Layers.FirstOrDefault(
+          candidate => candidate.Id.Value == layer.InstanceId);
+        if (definition?.CreateRenderer == null || layerSnapshot == null) {
           continue;
         }
         Configuration instanceConfig = LayerInstanceConfiguration.Create(
           this.config, layer.InstanceId, layer.VisualizerKey);
+        var services = new Dictionary<Type, object> {
+          [typeof(Configuration)] = instanceConfig,
+        };
         using (LayerInstanceScope.Push(layer.InstanceId)) {
-          Visualizer renderer = factory(instanceConfig);
-          this.visualizers.Add(renderer);
+          ILayerRenderer renderer = definition.CreateRenderer(
+            new LayerRenderContext(layerSnapshot.Id, layerSnapshot, services));
+          if (renderer is not Visualizer visualizer) {
+            throw new InvalidOperationException(
+              "Layer renderer must implement Visualizer: " + definition.Id);
+          }
+          this.visualizers.Add(visualizer);
         }
         this.createdRendererByInstance[layer.InstanceId] = layer.VisualizerKey;
       }

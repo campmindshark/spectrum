@@ -94,9 +94,12 @@ namespace Spectrum.Base {
           throw new InvalidOperationException(
             "Duplicate layer ID: " + definition.Id);
         }
+        if (definition.Parameters == null) {
+          throw new InvalidOperationException(
+            "Layer " + definition.Id + " needs a parameter schema.");
+        }
         var keys = new HashSet<string>(StringComparer.Ordinal);
-        foreach (DomeLayerParam parameter in
-          definition.Parameters ?? Array.Empty<DomeLayerParam>()) {
+        foreach (DomeLayerParam parameter in definition.Parameters) {
           if (parameter == null || string.IsNullOrWhiteSpace(parameter.Key)) {
             throw new InvalidOperationException(
               "Layer " + definition.Id + " has an invalid parameter key.");
@@ -123,6 +126,11 @@ namespace Spectrum.Base {
     public LayerDefinition Get(string id) =>
       this.TryGet(id, out LayerDefinition definition) ? definition : null;
 
+    public IReadOnlyList<DomeLayerParam> ParametersFor(string id) =>
+      this.TryGet(id, out LayerDefinition definition)
+        ? definition.Parameters
+        : Array.Empty<DomeLayerParam>();
+
     public LayerCatalog WithFactories(
       IReadOnlyDictionary<string, Func<LayerRenderContext, ILayerRenderer>> factories
     ) => new LayerCatalog(this.definitions.Select(d => d with {
@@ -131,34 +139,50 @@ namespace Spectrum.Base {
           ? factory : d.CreateRenderer,
     }));
 
-    private static LayerDefinition BuiltIn(string id, string label) =>
-      new LayerDefinition(id, label, null, DomeLayerSettings.ParamsFor(id));
+    private static LayerDefinition BuiltIn(
+      string id, string label, IReadOnlyList<DomeLayerParam> parameters
+    ) => new LayerDefinition(id, label, null, parameters);
 
     // Stable ordering is part of both picker contracts. The eight legacy IDs
     // stay first so retired domeActiveVis values retain their old meaning.
     public static LayerCatalog Default { get; } = new LayerCatalog(new[] {
-      BuiltIn("volume", "Volume (OG)"),
-      BuiltIn("radial", "Radial Effects"),
-      BuiltIn("race", "Race"),
-      BuiltIn("snakes", "Snakes"),
-      BuiltIn("quaternion-test", "Quaternion Test"),
-      BuiltIn("quaternion-paintbrush", "Quaternion Paintbrush"),
-      BuiltIn("splat", "Splat Effect"),
-      BuiltIn("tv-static", "TV Static"),
-      BuiltIn("twinkle", "Twinkle"),
-      BuiltIn("wave", "Wave"),
-      BuiltIn("ripple", "Ripple"),
-      BuiltIn("stamp", "Stamp"),
-      BuiltIn("metaball", "Metaball"),
-      BuiltIn("background", "Background"),
-      BuiltIn("flash", "Flash"),
-      BuiltIn("point-cloud", "Point Cloud"),
-      BuiltIn("gyroscope", "Gyroscope"),
-      BuiltIn("shooting-star", "Shooting Star"),
-      BuiltIn("noise-cloud", "Noise Cloud"),
-      BuiltIn("caustics", "Caustics"),
-      BuiltIn("sparkler", "Sparkler"),
-      BuiltIn("vortex", "Vortex"),
+      BuiltIn(
+        "volume", "Volume (OG)", LayerParameterSchemas.VolumeParams),
+      BuiltIn(
+        "radial", "Radial Effects", LayerParameterSchemas.RadialParams),
+      BuiltIn("race", "Race", LayerParameterSchemas.RaceParams),
+      BuiltIn("snakes", "Snakes", LayerParameterSchemas.SnakesParams),
+      BuiltIn(
+        "quaternion-test", "Quaternion Test",
+        LayerParameterSchemas.NoParams),
+      BuiltIn(
+        "quaternion-paintbrush", "Quaternion Paintbrush",
+        LayerParameterSchemas.PaintbrushParams),
+      BuiltIn("splat", "Splat Effect", LayerParameterSchemas.SplatParams),
+      BuiltIn("tv-static", "TV Static", LayerParameterSchemas.NoParams),
+      BuiltIn("twinkle", "Twinkle", LayerParameterSchemas.TwinkleParams),
+      BuiltIn("wave", "Wave", LayerParameterSchemas.WaveParams),
+      BuiltIn("ripple", "Ripple", LayerParameterSchemas.RippleParams),
+      BuiltIn("stamp", "Stamp", LayerParameterSchemas.StampParams),
+      BuiltIn(
+        "metaball", "Metaball", LayerParameterSchemas.MetaballParams),
+      BuiltIn(
+        "background", "Background", LayerParameterSchemas.BackgroundParams),
+      BuiltIn("flash", "Flash", LayerParameterSchemas.FlashParams),
+      BuiltIn(
+        "point-cloud", "Point Cloud", LayerParameterSchemas.PointCloudParams),
+      BuiltIn(
+        "gyroscope", "Gyroscope", LayerParameterSchemas.GyroscopeParams),
+      BuiltIn(
+        "shooting-star", "Shooting Star",
+        LayerParameterSchemas.ShootingStarParams),
+      BuiltIn(
+        "noise-cloud", "Noise Cloud", LayerParameterSchemas.NoiseCloudParams),
+      BuiltIn(
+        "caustics", "Caustics", LayerParameterSchemas.CausticsParams),
+      BuiltIn(
+        "sparkler", "Sparkler", LayerParameterSchemas.SparklerParams),
+      BuiltIn("vortex", "Vortex", LayerParameterSchemas.VortexParams),
     });
   }
 

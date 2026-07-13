@@ -61,7 +61,7 @@ namespace Spectrum.Base {
       }
       Dictionary<string, double> clean = null;
       foreach (DomeLayerParam descriptor in
-        DomeLayerSettings.ParamsFor(visualizerKey)) {
+        LayerCatalog.Default.ParametersFor(visualizerKey)) {
         Accumulate(descriptor, raw, ref clean);
       }
       foreach (DomeLayerParam descriptor in blend.Params) {

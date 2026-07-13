@@ -52,7 +52,8 @@ namespace Spectrum {
           // saved stack containing e.g. a wave/twinkle layer would be wiped
           // here on every load.
           if (
-            layer == null || !DomeLayerSettings.IsLayerKey(layer.VisualizerKey)
+            layer == null || !LayerCatalog.Default.TryGet(
+              layer.VisualizerKey, out _)
           ) {
             valid = false;
             break;
@@ -89,9 +90,8 @@ namespace Spectrum {
         if (layer == null || layer.VisualizerKey == null) {
           continue;
         }
-        foreach (
-          DomeLayerParam p in DomeLayerSettings.ParamsFor(layer.VisualizerKey)
-        ) {
+        foreach (DomeLayerParam p in
+          LayerCatalog.Default.ParametersFor(layer.VisualizerKey)) {
           if (
             p.LegacySetting == null ||
             !legacy.TryGetValue(p.LegacySetting, out double value)

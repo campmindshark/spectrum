@@ -60,7 +60,7 @@ namespace Spectrum.Base {
     // Cross-layer visual state: every stack layer applies the same fade /
     // hue-rotate speed to its own buffer. Per-visualizer tuning does NOT belong
     // here — it lives in each layer's DomeLayerSettings.Params bag (see
-    // DomeLayerSettings.ParamsFor; LegacyLayerParamMigration seeds the bags
+    // LayerCatalog parameter schemas; LegacyLayerParamMigration seeds the bags
     // from configs that predate the move).
     double domeGlobalFadeSpeed { get; set; }
     double domeGlobalHueSpeed { get; set; }

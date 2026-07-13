@@ -12,7 +12,7 @@ namespace Spectrum.Base {
   // DomeLayerSettings stores only values keyed by DomeLayerParam.Key; everything
   // else here (range, label, default, which consumer reads it) is compile-time
   // metadata read identically by both UIs, the resolver, and GetParam fallbacks.
-  // See ParamsFor for the visualizer registry and DomeBlend.Params for the
+  // See LayerCatalog for visualizer schemas and DomeBlend.Params for the
   // per-blend schemas.
   public sealed class DomeLayerParam {
     public string Key { get; set; }              // unique within the visualizer
@@ -41,7 +41,7 @@ namespace Spectrum.Base {
   // Instances are treated as immutable once published to the operator thread:
   // UI/web writers always replace the whole domeLayerStack list (snapshot swap)
   // rather than mutating an existing settings object in place.
-  public class DomeLayerSettings {
+  public partial class DomeLayerSettings {
     // Stable identity of this configured occurrence. Older XML omits it; the
     // LayerStackService assigns one during normalization and every writer then
     // persists it. Renderer IDs identify kinds, instance IDs identify layers.
@@ -79,7 +79,7 @@ namespace Spectrum.Base {
 
     // Value for `key` from this layer's bag, or `fallback` if the bag is
     // null/missing the key. Callers pass the descriptor Default as `fallback` so
-    // defaults stay single-sourced in ParamsFor / ParamsForBlend.
+    // defaults stay single-sourced in LayerCatalog / DomeBlend.Params.
     public double GetParam(string key, double fallback) {
       return this.Params != null && this.Params.TryGetValue(key, out double v)
         ? v : fallback;
@@ -130,25 +130,19 @@ namespace Spectrum.Base {
       return vis >= 0 && vis < LegacyVisKeys.Length ? LegacyVisKeys[vis] : null;
     }
 
-    public static string LabelForKey(string key) {
-      LayerDefinition definition = LayerCatalog.Default.Get(key);
-      return definition != null ? definition.DisplayName : key;
-    }
+  }
 
-    // Whether `key` names a layerable visualizer (any picker option). Used to
-    // validate incoming stacks; a superset of the legacy nine.
-    public static bool IsLayerKey(string key) {
-      return LayerCatalog.Default.TryGet(key, out _);
-    }
-
-    // ---- Per-layer parameter schemas -------------------------------------
-    // Single source of truth for every tunable, keyed the same way LayerKeys /
-    // LayerLabels are. Both UIs render editors generically from these, the
+  // ---- Per-layer parameter schemas ---------------------------------------
+  // Definitions are kept outside the serializer-facing layer DTO and are
+  // attached explicitly to LayerCatalog registrations.
+  internal static class LayerParameterSchemas {
+    // Single source of truth for every tunable registered in LayerCatalog.
+    // Both UIs render editors generically from these, the
     // compositor resolver reads the CompositorConsumed ones, and every GetParam
     // fallback passes the matching Default. Adding a param to a visualizer is one
     // entry here with zero UI code.
 
-    private static readonly DomeLayerParam[] NoParams =
+    internal static readonly DomeLayerParam[] NoParams =
       Array.Empty<DomeLayerParam>();
 
     // Descriptors shared by more than one visualizer. Historically one global
@@ -195,7 +189,7 @@ namespace Spectrum.Base {
       };
 
     // Radial's tuning, formerly the domeRadial* cluster of global properties.
-    private static readonly DomeLayerParam[] RadialParams = new DomeLayerParam[] {
+    internal static readonly DomeLayerParam[] RadialParams = new DomeLayerParam[] {
       new DomeLayerParam {
         Key = "effect", Label = "Effect",
         Type = DomeLayerParamType.Enum,
@@ -240,7 +234,7 @@ namespace Spectrum.Base {
 
     // Volume's tuning (animation size was a MainWindow combo, the speeds were
     // shared globals).
-    private static readonly DomeLayerParam[] VolumeParams = new DomeLayerParam[] {
+    internal static readonly DomeLayerParam[] VolumeParams = new DomeLayerParam[] {
       new DomeLayerParam {
         Key = "animationSize", Label = "Animation Size",
         Type = DomeLayerParamType.Double,
@@ -254,7 +248,7 @@ namespace Spectrum.Base {
 
     // Race repurposed two knobs that nominally belonged to other visualizers;
     // per-layer they get honest names.
-    private static readonly DomeLayerParam[] RaceParams = new DomeLayerParam[] {
+    internal static readonly DomeLayerParam[] RaceParams = new DomeLayerParam[] {
       new DomeLayerParam {
         Key = "speed", Label = "Speed",
         Type = DomeLayerParamType.Double,
@@ -272,14 +266,14 @@ namespace Spectrum.Base {
 
     // Splat and Snakes have no other tunables today; the palette bank picker is
     // their only per-layer param.
-    private static readonly DomeLayerParam[] SplatParams = new DomeLayerParam[] {
+    internal static readonly DomeLayerParam[] SplatParams = new DomeLayerParam[] {
       PaletteBankParam,
     };
-    private static readonly DomeLayerParam[] SnakesParams = new DomeLayerParam[] {
+    internal static readonly DomeLayerParam[] SnakesParams = new DomeLayerParam[] {
       PaletteBankParam,
     };
 
-    private static readonly DomeLayerParam[] TwinkleParams =
+    internal static readonly DomeLayerParam[] TwinkleParams =
       new DomeLayerParam[] {
         new DomeLayerParam {
           Key = "density", Label = "Density",
@@ -291,7 +285,7 @@ namespace Spectrum.Base {
 
     // Paintbrush's tuning: the metaball size shared domeRadialSize's knob; the
     // ripple steps and twinkle density were its own globals.
-    private static readonly DomeLayerParam[] PaintbrushParams =
+    internal static readonly DomeLayerParam[] PaintbrushParams =
       new DomeLayerParam[] {
         new DomeLayerParam {
           Key = "size", Label = "Size",
@@ -352,7 +346,7 @@ namespace Spectrum.Base {
     // pre-layers config, so there is nothing to migrate it from. Firing is
     // driven by LayerTrigger (docs/triggers.md); rippleStep is the playhead
     // expansion speed, unrelated to the trigger.
-    private static readonly DomeLayerParam[] RippleParams = new DomeLayerParam[] {
+    internal static readonly DomeLayerParam[] RippleParams = new DomeLayerParam[] {
       new DomeLayerParam {
         Key = "rippleStep", Label = "Ripple Speed",
         Type = DomeLayerParamType.Double,
@@ -373,7 +367,7 @@ namespace Spectrum.Base {
     // Paintbrush copy used hard-coded constants, not a config knob). Firing is
     // driven by LayerTrigger (docs/triggers.md), defaulting to the Audio source;
     // level/interval tune that source.
-    private static readonly DomeLayerParam[] StampParams = new DomeLayerParam[] {
+    internal static readonly DomeLayerParam[] StampParams = new DomeLayerParam[] {
       new DomeLayerParam {
         Key = "trigger", Label = "Trigger",
         Type = DomeLayerParamType.Enum,
@@ -389,7 +383,7 @@ namespace Spectrum.Base {
     // raw-XML reader only parses numeric elements, so a bool global couldn't
     // have seeded a per-layer param this way even before it was removed — new
     // stacks just default it off.
-    private static readonly DomeLayerParam[] MetaballParams = new DomeLayerParam[] {
+    internal static readonly DomeLayerParam[] MetaballParams = new DomeLayerParam[] {
       new DomeLayerParam {
         Key = "size", Label = "Size",
         Type = DomeLayerParamType.Double,
@@ -414,7 +408,7 @@ namespace Spectrum.Base {
     };
 
     // Background's only tunable: the flat color it paints every pixel.
-    private static readonly DomeLayerParam[] BackgroundParams =
+    internal static readonly DomeLayerParam[] BackgroundParams =
       new DomeLayerParam[] {
         new DomeLayerParam {
           Key = "color", Label = "Color",
@@ -430,7 +424,7 @@ namespace Spectrum.Base {
     // trigger param set (Ripple/Stamp's), defaulting to the Beat source for a
     // strobe-on-the-beat. `level`/`interval` tune the Audio source; Manual (the
     // native Fire button) and a bound wand `button` fire it regardless.
-    private static readonly DomeLayerParam[] FlashParams = new DomeLayerParam[] {
+    internal static readonly DomeLayerParam[] FlashParams = new DomeLayerParam[] {
       new DomeLayerParam {
         Key = "color", Label = "Color",
         Type = DomeLayerParamType.Color,
@@ -447,7 +441,7 @@ namespace Spectrum.Base {
     };
 
     // Visualizer-consumed params for the wave layer: read in Visualize().
-    private static readonly DomeLayerParam[] WaveParams = new DomeLayerParam[] {
+    internal static readonly DomeLayerParam[] WaveParams = new DomeLayerParam[] {
       new DomeLayerParam {
         Key = "bandWidth", Label = "Band Width",
         Type = DomeLayerParamType.Double,
@@ -499,7 +493,7 @@ namespace Spectrum.Base {
     // new standalone orientation layer with no pre-layers global, so no
     // LegacySetting on any of these. `count` reseeds the spot lattice when it
     // changes; the rest tune the per-frame physics and the drawn spot size.
-    private static readonly DomeLayerParam[] PointCloudParams =
+    internal static readonly DomeLayerParam[] PointCloudParams =
       new DomeLayerParam[] {
         new DomeLayerParam {
           Key = "count", Label = "Spot Count",
@@ -541,7 +535,7 @@ namespace Spectrum.Base {
     // per-second brightness retention of the streak, and `homing` re-reads the
     // live wand each frame (curving toward a moving wand) vs. staying ballistic
     // toward the aim captured at spawn.
-    private static readonly DomeLayerParam[] ShootingStarParams =
+    internal static readonly DomeLayerParam[] ShootingStarParams =
       new DomeLayerParam[] {
         new DomeLayerParam {
           Key = "spawnRate", Label = "Spawn Rate",
@@ -586,7 +580,7 @@ namespace Spectrum.Base {
     // Sparkler is Shooting Star in reverse: every trigger births one particle
     // at the current wand/idle aim point and sends it in a random direction at
     // constant speed. The buffer's normal global fade supplies its trail.
-    private static readonly DomeLayerParam[] SparklerParams =
+    internal static readonly DomeLayerParam[] SparklerParams =
       new DomeLayerParam[] {
         new DomeLayerParam {
           Key = "speed", Label = "Speed",
@@ -623,7 +617,7 @@ namespace Spectrum.Base {
     // reads its first three slots (relative 0/1/2) for the outer/middle/inner
     // rings, scaling each by the ring's cross-section falloff so they still fade
     // to black at the edges.
-    private static readonly DomeLayerParam[] GyroscopeParams =
+    internal static readonly DomeLayerParam[] GyroscopeParams =
       new DomeLayerParam[] {
         new DomeLayerParam {
           Key = "ringWidth", Label = "Ring Width",
@@ -647,7 +641,7 @@ namespace Spectrum.Base {
     // `octaves` adds finer detail (fractal summation), and `contrast` steepens
     // the field around its midtone so the texture reads stronger without
     // clipping to solid.
-    private static readonly DomeLayerParam[] NoiseCloudParams =
+    internal static readonly DomeLayerParam[] NoiseCloudParams =
       new DomeLayerParam[] {
         new DomeLayerParam {
           Key = "scale", Label = "Scale",
@@ -681,7 +675,7 @@ namespace Spectrum.Base {
     // continuous and shapes it into spiral arms; Sandstorm thresholds a finer
     // field into grains and lets the persistent layer buffer leave short
     // trails. All work is O(dome pixels), independent of apparent density.
-    private static readonly DomeLayerParam[] VortexParams =
+    internal static readonly DomeLayerParam[] VortexParams =
       new DomeLayerParam[] {
         new DomeLayerParam {
           Key = "style", Label = "Style",
@@ -743,7 +737,7 @@ namespace Spectrum.Base {
     // the tint (default pale cyan-white: sun through water). The trigger
     // cluster (docs/triggers.md) drives the tank's droplets and only bites in
     // that tier — the analytic tiers have nothing to fire.
-    private static readonly DomeLayerParam[] CausticsParams =
+    internal static readonly DomeLayerParam[] CausticsParams =
       new DomeLayerParam[] {
         new DomeLayerParam {
           Key = "method", Label = "Method",
@@ -797,54 +791,9 @@ namespace Spectrum.Base {
         TriggerIntervalParam,
       };
 
-    // The visualizer-consumed schema for a layer key. Empty for every key that
-    // has no tunables.
-    public static IReadOnlyList<DomeLayerParam> ParamsFor(string key) {
-      switch (key) {
-        case "volume":
-          return VolumeParams;
-        case "radial":
-          return RadialParams;
-        case "race":
-          return RaceParams;
-        case "splat":
-          return SplatParams;
-        case "snakes":
-          return SnakesParams;
-        case "quaternion-paintbrush":
-          return PaintbrushParams;
-        case "twinkle":
-          return TwinkleParams;
-        case "wave":
-          return WaveParams;
-        case "ripple":
-          return RippleParams;
-        case "stamp":
-          return StampParams;
-        case "metaball":
-          return MetaballParams;
-        case "background":
-          return BackgroundParams;
-        case "flash":
-          return FlashParams;
-        case "point-cloud":
-          return PointCloudParams;
-        case "shooting-star":
-          return ShootingStarParams;
-        case "sparkler":
-          return SparklerParams;
-        case "gyroscope":
-          return GyroscopeParams;
-        case "noise-cloud":
-          return NoiseCloudParams;
-        case "vortex":
-          return VortexParams;
-        case "caustics":
-          return CausticsParams;
-        default:
-          return NoParams;
-      }
-    }
+  }
+
+  public partial class DomeLayerSettings {
 
     // The value of one of `layerKey`'s params from the published stack
     // snapshot: the layer's bag value when present, else the descriptor
