@@ -15,7 +15,7 @@ namespace Spectrum.Web {
    * every client and the native UI converge.
    *
    * The layers array is in stack order: index 0 is the background (bottom),
-   * the last entry is the front. blendMode is carried as its DomeBlend.Name.
+   * the last entry is the front. blendMode is carried as its DomeBlend.Id.
    */
   public sealed class LayersController {
 
@@ -68,7 +68,7 @@ namespace Spectrum.Web {
     private readonly ControlGateway gateway;
     private readonly Configuration config;
     private static readonly string[] blendModeNames =
-      DomeBlend.All.Select(b => b.Name).ToArray();
+      DomeBlend.All.Select(b => b.Id).ToArray();
 
     public LayersController(ControlGateway gateway, Configuration config) {
       this.gateway = gateway;
@@ -129,7 +129,7 @@ namespace Spectrum.Web {
     private static Dictionary<string, IReadOnlyList<ParamDto>> BlendParamSchema() {
       var map = new Dictionary<string, IReadOnlyList<ParamDto>>();
       foreach (DomeBlend blend in DomeBlend.All) {
-        map[blend.Name] = ToDtos(blend.Params);
+        map[blend.Id] = ToDtos(blend.Params);
       }
       return map;
     }
@@ -168,7 +168,7 @@ namespace Spectrum.Web {
         parsed.Add(new DomeLayerSettings {
           InstanceId = dto.instanceId,
           VisualizerKey = dto.visualizerKey,
-          // The wire carries the blend by DomeBlend.Name, the same string the
+          // The wire carries the blend by DomeBlend.Id, the same string the
           // settings persist; the validator rejects names the registry
           // doesn't know.
           BlendMode = dto.blendMode,
@@ -193,10 +193,7 @@ namespace Spectrum.Web {
     // gateway, mirroring the native DomeLayersController.FireRow; firing is not a
     // stack edit, so it doesn't route through ReplaceAsync/the "layers" frame.
     // The counter (not a bool) is race-free across clients: each Fire just
-    // increments, none resets a shared flag. Renderer-key fallback is retained
-    // only for an older client addressing a kind that occurs exactly once;
-    // duplicate kinds must use their instance IDs so the wrong occurrence can
-    // never fire.
+    // increments, none resets a shared flag.
     public async Task<(bool ok, string error)> FireAsync(string instanceId) {
       (DomeLayerSettings layer, string error) = ResolveTarget(instanceId);
       if (error != null) {
@@ -234,30 +231,8 @@ namespace Spectrum.Web {
     private (DomeLayerSettings layer, string error) ResolveTarget(string id) {
       List<DomeLayerSettings> stack = this.config.domeLayerStack;
       DomeLayerSettings byInstance = DomeLayerSettings.ForInstance(stack, id);
-      if (byInstance != null) {
-        return (byInstance, null);
-      }
-
-      // Compatibility for clients from before stable instance IDs: a renderer
-      // kind is safe as an address only when it identifies exactly one entry.
-      // ForKey's historical first-match behavior is intentionally not used
-      // here because it would misroute commands in a duplicate-kind stack.
-      DomeLayerSettings byRenderer = null;
-      if (stack != null) {
-        for (int i = 0; i < stack.Count; i++) {
-          DomeLayerSettings candidate = stack[i];
-          if (candidate == null || candidate.VisualizerKey != id) {
-            continue;
-          }
-          if (byRenderer != null) {
-            return (null,
-              "multiple layers use renderer " + id + "; use an instance id");
-          }
-          byRenderer = candidate;
-        }
-      }
-      return byRenderer != null
-        ? (byRenderer, null)
+      return byInstance != null
+        ? (byInstance, null)
         : (null, "unknown layer instance: " + id);
     }
   }

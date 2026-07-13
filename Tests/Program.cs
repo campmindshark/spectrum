@@ -80,8 +80,6 @@ namespace Spectrum.LayerPipeline.Tests {
         ILayerRendererOptions options = definition.CompileOptions(
           snapshot.Layers[0].RendererParameters);
         Assert(options != null, "null options for " + definition.Id);
-        Assert(options is not LayerRendererParameterOptions,
-          "untyped built-in options for " + definition.Id);
       }
     }
 
@@ -98,7 +96,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
     private static void ParameterNamespaces() {
       DomeLayerSettings layer = Layer("wave", "wave-1");
-      layer.BlendMode = DomeBlend.ChromaticFringe.Name;
+      layer.BlendMode = DomeBlend.ChromaticFringe.Id;
       layer.Params = new Dictionary<string, double> {
         ["speed"] = 999,
         ["offset"] = 999,
@@ -125,8 +123,8 @@ namespace Spectrum.LayerPipeline.Tests {
       var catalog = new LayerCatalog(new[] {
         new LayerDefinition(
           "test", "Test",
-          context => {
-            captured = context.Runtime;
+          runtime => {
+            captured = runtime;
             return new FakeRenderer(
               "test", new DomeFrame(topology));
           },
@@ -135,21 +133,23 @@ namespace Spectrum.LayerPipeline.Tests {
               Key = "speed", Type = DomeLayerParamType.Double,
               Min = 0, Max = 10, Default = 0,
             },
-          })
+          },
+          values => new ScalarOptions(values["speed"].Value))
       });
-      var compiler = new RenderPlanCompiler(catalog);
-      RenderPlan initial = compiler.Compile(
-        new LayerStackSnapshot(ImmutableArray.Create(first)),
-        (IReadOnlyDictionary<Type, object>)null);
+      var compiler = new RenderPlanCompiler();
+      var store = new LayerRendererStore(catalog);
+      RenderPlan initial = Compile(
+        compiler, store,
+        new LayerStackSnapshot(ImmutableArray.Create(first)));
       LayerSnapshot second = SnapshotWithParameter("runtime-1", "speed", 2);
-      RenderPlan updated = compiler.Compile(
-        new LayerStackSnapshot(ImmutableArray.Create(second)),
-        (IReadOnlyDictionary<Type, object>)null);
+      RenderPlan updated = Compile(
+        compiler, store,
+        new LayerStackSnapshot(ImmutableArray.Create(second)));
 
       Assert(ReferenceEquals(
         initial.Layers[0].Renderer, updated.Layers[0].Renderer),
         "renderer instance was recreated");
-      Assert(captured.Parameter("speed") == 2,
+      Assert(captured.GetOptions<ScalarOptions>().Value == 2,
         "renderer runtime kept stale parameters");
     }
 
@@ -208,18 +208,21 @@ namespace Spectrum.LayerPipeline.Tests {
       var catalog = new LayerCatalog(new[] {
         new LayerDefinition(
           "test", "Test",
-          context => new FakeRenderer(
+          runtime => new FakeRenderer(
             "test", new DomeFrame(topology), declared),
           new[] {
             new DomeLayerParam {
               Key = "speed", Type = DomeLayerParamType.Double,
               Min = 0, Max = 10, Default = 0,
             },
-          })
+          },
+          values => new ScalarOptions(values["speed"].Value))
       });
-      RenderPlan plan = new RenderPlanCompiler(catalog).Compile(
-        new LayerStackSnapshot(ImmutableArray.Create(snapshot)),
-        (IReadOnlyDictionary<Type, object>)null);
+      var compiler = new RenderPlanCompiler();
+      var store = new LayerRendererStore(catalog);
+      RenderPlan plan = Compile(
+        compiler, store,
+        new LayerStackSnapshot(ImmutableArray.Create(snapshot)));
 
       declared[0] = null;
       Assert(plan.Layers[0].RequiredInputs.Length == 2,
@@ -422,17 +425,24 @@ namespace Spectrum.LayerPipeline.Tests {
       var catalog = new LayerCatalog(new[] {
         new LayerDefinition(
           "wave", "Wave",
-          context => {
+          runtime => {
             created++;
             return new FakeRenderer("wave", new DomeFrame(topology));
           },
-          Array.Empty<DomeLayerParam>())
+          Array.Empty<DomeLayerParam>(),
+          values => EmptyLayerRendererOptions.Instance),
+        new LayerDefinition(
+          "background", "Background",
+          runtime => new FakeRenderer(
+            "background", new DomeFrame(topology)),
+          Array.Empty<DomeLayerParam>(),
+          values => EmptyLayerRendererOptions.Instance)
       });
-      var compiler = new RenderPlanCompiler(catalog);
+      var compiler = new RenderPlanCompiler();
+      var store = new LayerRendererStore(catalog);
       LayerStackSnapshot initial =
         ((ILayerStackSnapshotSource)config).DomeLayerStackSnapshot;
-      RenderPlan first = compiler.Compile(
-        initial, (IReadOnlyDictionary<Type, object>)null);
+      RenderPlan first = Compile(compiler, store, initial);
       ILayerRenderer rendererA = first.Layers[0].Renderer;
       ILayerRenderer rendererB = first.Layers[1].Renderer;
       Assert(!ReferenceEquals(rendererA, rendererB),
@@ -442,8 +452,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
       var reorderedSnapshot = new LayerStackSnapshot(ImmutableArray.Create(
         initial.Layers[1], initial.Layers[0]));
-      RenderPlan reordered = compiler.Compile(
-        reorderedSnapshot, (IReadOnlyDictionary<Type, object>)null);
+      RenderPlan reordered = Compile(compiler, store, reorderedSnapshot);
       Assert(ReferenceEquals(reordered.Layers[0].Renderer, rendererB) &&
         ReferenceEquals(reordered.Layers[1].Renderer, rendererA),
         "reordering changed instance identity");
@@ -451,15 +460,15 @@ namespace Spectrum.LayerPipeline.Tests {
       config.domeLayerStack = new List<DomeLayerSettings> {
         Layer("background", "temporary-background"),
       };
-      compiler.Compile(
-        ((ILayerStackSnapshotSource)config).DomeLayerStackSnapshot,
-        (IReadOnlyDictionary<Type, object>)null);
+      Compile(
+        compiler, store,
+        ((ILayerStackSnapshotSource)config).DomeLayerStackSnapshot);
 
       (bool applied, string applyError) = scenes.Apply("duplicates");
       Assert(applied, applyError);
-      RenderPlan recalled = compiler.Compile(
-        ((ILayerStackSnapshotSource)config).DomeLayerStackSnapshot,
-        (IReadOnlyDictionary<Type, object>)null);
+      RenderPlan recalled = Compile(
+        compiler, store,
+        ((ILayerStackSnapshotSource)config).DomeLayerStackSnapshot);
 
       Assert(config.domeLayerStack[0].InstanceId == "scene-wave-a" &&
         config.domeLayerStack[1].InstanceId == "scene-wave-b",
@@ -485,8 +494,8 @@ namespace Spectrum.LayerPipeline.Tests {
 
       (bool ambiguousFire, string fireError) =
         controller.FireAsync("wave").GetAwaiter().GetResult();
-      Assert(!ambiguousFire && fireError.Contains("use an instance id"),
-        "ambiguous renderer-key fire was accepted");
+      Assert(!ambiguousFire && fireError.Contains("unknown layer instance"),
+        "renderer-key fire was accepted");
       Assert(config.domeLayerFireCounters.Count == 0,
         "ambiguous fire changed a counter");
 
@@ -499,8 +508,8 @@ namespace Spectrum.LayerPipeline.Tests {
 
       (bool ambiguousClear, string clearError) =
         controller.ClearAsync("wave").GetAwaiter().GetResult();
-      Assert(!ambiguousClear && clearError.Contains("use an instance id"),
-        "ambiguous renderer-key clear was accepted");
+      Assert(!ambiguousClear && clearError.Contains("unknown layer instance"),
+        "renderer-key clear was accepted");
       Assert(config.domeLayerClearCounters.Count == 0,
         "ambiguous clear changed a counter");
 
@@ -534,7 +543,7 @@ namespace Spectrum.LayerPipeline.Tests {
           0, 0, null));
         Assert(dest.pixels[0].color == 0x123456 &&
           dest.pixels[0].a == .35 && dest.pixels[0].hue == .25,
-          operation.Name + " changed the destination");
+          operation.Id + " changed the destination");
       }
     }
 
@@ -589,9 +598,9 @@ namespace Spectrum.LayerPipeline.Tests {
       foreach (DomeBlend operation in expectedHalf.Keys) {
         DomeFrame half = ExecuteKernel(operation, .5);
         DomeFrame full = ExecuteKernel(operation, 1);
-        AssertColors(operation.Name + " at 0.5", half,
+        AssertColors(operation.Id + " at 0.5", half,
           expectedHalf[operation]);
-        AssertColors(operation.Name + " at 1", full,
+        AssertColors(operation.Id + " at 1", full,
           expectedFull[operation]);
         AssertKernelChannels(operation, half, .5);
         AssertKernelChannels(operation, full, 1);
@@ -642,9 +651,9 @@ namespace Spectrum.LayerPipeline.Tests {
       }
       for (int i = 0; i < frame.pixels.Length; i++) {
         AssertClose(expectedAlpha[i], frame.pixels[i].a,
-          operation.Name + " alpha " + i);
+          operation.Id + " alpha " + i);
         AssertClose(expectedHue[i], frame.pixels[i].hue,
-          operation.Name + " hue " + i);
+          operation.Id + " hue " + i);
       }
     }
 
@@ -691,7 +700,7 @@ namespace Spectrum.LayerPipeline.Tests {
       DomeBlend operation, Dictionary<string, double> parameters
     ) {
       DomeLayerSettings layer = Layer("background", "options-fixture");
-      layer.BlendMode = operation.Name;
+      layer.BlendMode = operation.Id;
       layer.Params = parameters;
       (LayerStackSnapshot snapshot, string error) =
         new LayerStackService().CreateSnapshot(new[] { layer });
@@ -705,7 +714,7 @@ namespace Spectrum.LayerPipeline.Tests {
       }) {
         Assert((operation.Requirements &
           CompositeRequirements.ReadsDestinationNeighbors) != 0,
-          operation.Name + " omitted neighbor requirement");
+          operation.Id + " omitted neighbor requirement");
       }
       Assert((DomeBlend.Iridescence.Requirements &
         CompositeRequirements.ReadsDestinationNeighbors) == 0,
@@ -795,7 +804,7 @@ namespace Spectrum.LayerPipeline.Tests {
       DomeFrame full = ComposeFixture(operation, parameters, 1);
       string actual = ColorSignature(full);
       Assert(actual == expectedFull,
-        operation.Name + " fixture expected " + expectedFull +
+        operation.Id + " fixture expected " + expectedFull +
         " but got " + actual);
 
       DomeFrame half = ComposeFixture(operation, parameters, .5);
@@ -805,15 +814,15 @@ namespace Spectrum.LayerPipeline.Tests {
         double bg = (bottomColors[i] >> 8) & 0xFF;
         double bb = bottomColors[i] & 0xFF;
         AssertClose((br + full.pixels[i].r) / 2, half.pixels[i].r,
-          operation.Name + " half-opacity red " + i);
+          operation.Id + " half-opacity red " + i);
         AssertClose((bg + full.pixels[i].g) / 2, half.pixels[i].g,
-          operation.Name + " half-opacity green " + i);
+          operation.Id + " half-opacity green " + i);
         AssertClose((bb + full.pixels[i].b) / 2, half.pixels[i].b,
-          operation.Name + " half-opacity blue " + i);
+          operation.Id + " half-opacity blue " + i);
         AssertClose(0, full.pixels[i].a,
-          operation.Name + " changed the blank destination alpha " + i);
+          operation.Id + " changed the blank destination alpha " + i);
         AssertClose(i / 10d, full.pixels[i].hue,
-          operation.Name + " changed destination hue " + i);
+          operation.Id + " changed destination hue " + i);
       }
     }
 
@@ -962,6 +971,12 @@ namespace Spectrum.LayerPipeline.Tests {
         operation.CompileOptions(parameters));
     }
 
+    private static RenderPlan Compile(
+      RenderPlanCompiler compiler, LayerRendererStore store,
+      LayerStackSnapshot snapshot
+    ) => compiler.Compile(
+      snapshot, layer => store.Resolve(layer).Renderer);
+
     private static T BuiltInOptions<T>(DomeLayerSettings layer)
       where T : class, ILayerRendererOptions {
       (LayerStackSnapshot snapshot, string error) =
@@ -980,7 +995,7 @@ namespace Spectrum.LayerPipeline.Tests {
     private static DomeLayerSettings Layer(string key, string id) => new() {
       InstanceId = id,
       VisualizerKey = key,
-      BlendMode = DomeBlend.Add.Name,
+      BlendMode = DomeBlend.Add.Id,
       Opacity = 1,
       Enabled = true,
     };
@@ -991,7 +1006,7 @@ namespace Spectrum.LayerPipeline.Tests {
       var parameters = ImmutableDictionary<string, ParameterValue>.Empty.Add(
         key, new ParameterValue(DomeLayerParamType.Double, value));
       return new LayerSnapshot(
-        new LayerInstanceId(id), "test", DomeBlend.Add.Name, 1, true,
+        new LayerInstanceId(id), "test", DomeBlend.Add.Id, 1, true,
         parameters, ImmutableDictionary<string, ParameterValue>.Empty, null);
     }
 
@@ -1094,5 +1109,8 @@ namespace Spectrum.LayerPipeline.Tests {
         context.Dest.pixels[1].color = this.FirstSeen;
       }
     }
+
+    private sealed record ScalarOptions(double Value)
+      : ILayerRendererOptions;
   }
 }

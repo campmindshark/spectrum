@@ -159,7 +159,7 @@ namespace Spectrum {
     // selected item is the same string the settings persist.
     public IReadOnlyList<string> BlendModes => blendModes;
     private static readonly List<string> blendModes =
-      DomeBlend.All.Select(b => b.Name).ToList();
+      DomeBlend.All.Select(b => b.Id).ToList();
 
     // Generic per-layer param editors, rebuilt from the schema whenever the
     // visualizer key or blend mode changes: the visualizer-consumed set
@@ -201,7 +201,7 @@ namespace Spectrum {
       }
     }
 
-    private string blendMode = DomeBlend.Default.Name;
+    private string blendMode = DomeBlend.Default.Id;
     public string BlendMode {
       get => this.blendMode;
       set {
@@ -233,7 +233,7 @@ namespace Spectrum {
       this.Params.Clear();
       AddParams(
         LayerCatalog.Default.ParametersFor(this.visualizerKey), seed);
-      DomeBlend blend = DomeBlend.FromName(this.blendMode);
+      DomeBlend blend = DomeBlend.FromId(this.blendMode);
       if (blend != null) {
         AddParams(blend.Params, seed);
       }

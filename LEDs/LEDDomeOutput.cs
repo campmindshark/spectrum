@@ -176,13 +176,6 @@ namespace Spectrum.LEDs {
     // read for the beat-synced flash-off in the per-frame color cache.
     private readonly BeatBroadcaster beat;
     private readonly List<Visualizer> visualizers;
-    // Layer visualizers are resolved by stable instance ID. Renderer-kind
-    // fallback would select the wrong state when duplicate kinds are present.
-    private readonly Dictionary<string, DomeLayerVisualizer>
-      layerVisualizersByInstanceId =
-        new Dictionary<string, DomeLayerVisualizer>();
-    private readonly RenderPlanCompiler renderPlanCompiler =
-      new RenderPlanCompiler();
     private readonly DomeCompositor compositor;
     private static readonly int maxStripLength;
 
@@ -296,12 +289,6 @@ namespace Spectrum.LEDs {
     public void RegisterVisualizer(Visualizer visualizer) {
       this.visualizers.Add(visualizer);
       this.visualizersArray = null;
-      if (visualizer is DomeLayerVisualizer layerVisualizer) {
-        string instanceId = LayerInstanceScope.CurrentId;
-        if (instanceId != null) {
-          this.layerVisualizersByInstanceId[instanceId] = layerVisualizer;
-        }
-      }
     }
 
     // Cached snapshot of `visualizers`, rebuilt only when a visualizer is
@@ -394,18 +381,10 @@ namespace Spectrum.LEDs {
       this.frameColorCacheValid = false;
     }
 
-    // The Operator publishes the exact immutable snapshot it used to refresh
-    // renderer runtimes. The resulting plan then drives both scheduling and
-    // compositing; the output never re-reads serializer-facing configuration.
-    public RenderPlan PublishLayerStack(LayerStackSnapshot snapshot) {
-      RenderPlan plan = this.renderPlanCompiler.Compile(
-        snapshot,
-        layer => this.layerVisualizersByInstanceId.TryGetValue(
-          layer.Id.Value, out DomeLayerVisualizer renderer)
-            ? renderer : null);
+    // The Operator publishes the exact compiled plan it used for scheduling;
+    // the output never resolves renderers or re-reads persisted configuration.
+    public void PublishRenderPlan(RenderPlan plan) =>
       this.compositor.Publish(plan);
-      return plan;
-    }
 
     public RenderPlan RenderPlan => this.compositor.Plan;
 

@@ -20,14 +20,6 @@ namespace Spectrum.Base {
     public static EmptyCompositeOptions Instance { get; } = new();
   }
 
-  public sealed record CompositeParameterOptions(
-    ImmutableDictionary<string, ParameterValue> Values
-  ) : ICompositeOptions {
-    public double Get(string key, double fallback = 0) =>
-      this.Values != null && this.Values.TryGetValue(
-        key, out ParameterValue value) ? value.Value : fallback;
-  }
-
   public sealed record ChromaticFringeOptions(
     double Offset, double Spin, bool FollowOrientation
   ) : ICompositeOptions;
@@ -116,10 +108,10 @@ namespace Spectrum.Base {
   // and its per-frame math, so adding a mode is one class plus a registry
   // entry (no switch statements to extend).
   //
-  // Layers persist their blend by Name (DomeLayerSettings.BlendMode, written
+  // Layers persist their blend by Id (DomeLayerSettings.BlendMode, written
   // verbatim into config/scene XML — the same strings the retired enum
-  // serialized), so Names are frozen: never rename one, and give new blends
-  // new names.
+  // serialized), so IDs are frozen: never rename one, and give new blends
+  // new IDs.
   //
   // Desaturate and Hue are adjustment blends: they ignore the source layer's
   // own color and instead reprocess the composite below it (masked by the
@@ -133,8 +125,8 @@ namespace Spectrum.Base {
 
     // Stable identity: persisted in config/scene files, carried on the web
     // wire, and shown in both UIs' pickers.
-    public abstract string Name { get; }
-    public string Id => this.Name;
+    public abstract string Id { get; }
+    public virtual string DisplayName => this.Id;
 
     // Compositor-consumed tunables this blend reads from the selecting layer's
     // Params bag (never read by a visualizer). Empty for the plain blends.
@@ -148,7 +140,8 @@ namespace Spectrum.Base {
       ImmutableDictionary<string, ParameterValue> parameters
     ) => this.Params.Count == 0
       ? EmptyCompositeOptions.Instance
-      : new CompositeParameterOptions(parameters);
+      : throw new InvalidOperationException(
+          "Blend " + this.Id + " must compile typed options.");
 
     // Blend ctx.Src into ctx.Dest. Called once per layer per frame on the
     // operator thread; implementations own their per-pixel loop and mutate
@@ -160,7 +153,7 @@ namespace Spectrum.Base {
     // Both UIs show blends by name (the native ComboBox displayed the enum's
     // ToString; keep that contract).
     public override string ToString() {
-      return this.Name;
+      return this.DisplayName;
     }
 
     protected static readonly DomeLayerParam[] NoParams =
@@ -168,7 +161,7 @@ namespace Spectrum.Base {
 
     // ---- Registry ----------------------------------------------------------
     // The singleton instances, in the order the pickers list them (the old
-    // enum's order). Only ever append; Names are persisted.
+    // enum's order). Only ever append; IDs are persisted.
 
     public static readonly DomeBlend Over = new OverBlend();
     public static readonly DomeBlend Add = new AddBlend();
@@ -190,15 +183,15 @@ namespace Spectrum.Base {
     // The blend a fresh layer gets (the old enum default).
     public static DomeBlend Default => Add;
 
-    // The registered blend named `name`, or null if unknown. A scan of the
+    // The registered blend identified by `id`, or null if unknown. A scan of the
     // small registry; callers cache the result (render plans, the UIs' row
     // models) so this never runs per frame.
-    public static DomeBlend FromName(string name) {
-      if (name == null) {
+    public static DomeBlend FromId(string id) {
+      if (id == null) {
         return null;
       }
       for (int i = 0; i < All.Count; i++) {
-        if (All[i].Name == name) {
+        if (All[i].Id == id) {
           return All[i];
         }
       }

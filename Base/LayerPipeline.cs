@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Spectrum.Base {
@@ -64,13 +63,13 @@ namespace Spectrum.Base {
     public LayerRendererRuntime(
       LayerSnapshot snapshot,
       Func<ImmutableDictionary<string, ParameterValue>,
-        ILayerRendererOptions> compileOptions = null
+        ILayerRendererOptions> compileOptions
     ) {
       if (snapshot == null) {
         throw new ArgumentNullException(nameof(snapshot));
       }
       this.compileOptions = compileOptions ??
-        (values => new LayerRendererParameterOptions(values));
+        throw new ArgumentNullException(nameof(compileOptions));
       this.state = this.Compile(snapshot);
     }
 
@@ -89,20 +88,6 @@ namespace Spectrum.Base {
         "Renderer " + this.RendererId + " expected options " +
         typeof(T).Name + " but received " +
         (current?.GetType().Name ?? "null") + ".");
-    }
-
-    // Compatibility for custom catalogs that have not registered a typed
-    // options compiler. Built-in visualizers use GetOptions<T>() exclusively.
-    public double Parameter(string key) {
-      if (key == null) {
-        throw new ArgumentNullException(nameof(key));
-      }
-      if (this.Snapshot.RendererParameters.TryGetValue(
-          key, out ParameterValue value)) {
-        return value.Value;
-      }
-      throw new InvalidOperationException(
-        "Renderer " + this.RendererId + " has no parameter " + key + ".");
     }
 
     public void Publish(LayerSnapshot next) {
@@ -139,35 +124,13 @@ namespace Spectrum.Base {
     IReadOnlyList<Input> RequiredInputs { get; }
   }
 
-  public sealed class LayerRenderContext {
-    private readonly IReadOnlyDictionary<Type, object> services;
-
-    public LayerInstanceId InstanceId { get; }
-    public LayerSnapshot Snapshot { get; }
-    public LayerRendererRuntime Runtime { get; }
-
-    public LayerRenderContext(
-      LayerInstanceId instanceId, LayerSnapshot snapshot,
-      IReadOnlyDictionary<Type, object> services = null,
-      LayerRendererRuntime runtime = null
-    ) {
-      this.InstanceId = instanceId;
-      this.Snapshot = snapshot;
-      this.Runtime = runtime ?? new LayerRendererRuntime(snapshot);
-      this.services = services ?? new Dictionary<Type, object>();
-    }
-
-    public T Get<T>() where T : class =>
-      this.services.TryGetValue(typeof(T), out object value) ? (T)value : null;
-  }
-
   public sealed record LayerDefinition(
     string Id,
     string DisplayName,
-    Func<LayerRenderContext, ILayerRenderer> CreateRenderer,
+    Func<LayerRendererRuntime, ILayerRenderer> CreateRenderer,
     IReadOnlyList<DomeLayerParam> Parameters,
     Func<ImmutableDictionary<string, ParameterValue>,
-      ILayerRendererOptions> CompileOptions = null
+      ILayerRendererOptions> CompileOptions
   );
 
   public sealed class LayerCatalog {
@@ -194,6 +157,10 @@ namespace Spectrum.Base {
         if (definition.Parameters == null) {
           throw new InvalidOperationException(
             "Layer " + definition.Id + " needs a parameter schema.");
+        }
+        if (definition.CompileOptions == null) {
+          throw new InvalidOperationException(
+            "Layer " + definition.Id + " needs an options compiler.");
         }
         var keys = new HashSet<string>(StringComparer.Ordinal);
         foreach (DomeLayerParam parameter in definition.Parameters) {
@@ -229,10 +196,10 @@ namespace Spectrum.Base {
         : Array.Empty<DomeLayerParam>();
 
     public LayerCatalog WithFactories(
-      IReadOnlyDictionary<string, Func<LayerRenderContext, ILayerRenderer>> factories
+      IReadOnlyDictionary<string, Func<LayerRendererRuntime, ILayerRenderer>> factories
     ) => new LayerCatalog(this.definitions.Select(d => d with {
       CreateRenderer = factories != null && factories.TryGetValue(
-        d.Id, out Func<LayerRenderContext, ILayerRenderer> factory)
+        d.Id, out Func<LayerRendererRuntime, ILayerRenderer> factory)
           ? factory : d.CreateRenderer,
     }));
 
@@ -318,42 +285,10 @@ namespace Spectrum.Base {
   }
 
   public sealed class LayerStackService {
-    private sealed class SnapshotHolder {
-      public LayerStackSnapshot Snapshot { get; }
-      public SnapshotHolder(LayerStackSnapshot snapshot) {
-        this.Snapshot = snapshot;
-      }
-    }
-
-    private static readonly ConditionalWeakTable<
-      List<DomeLayerSettings>, SnapshotHolder> snapshotCache = new();
     private readonly LayerCatalog catalog;
 
     public LayerStackService(LayerCatalog catalog = null) {
       this.catalog = catalog ?? LayerCatalog.Default;
-    }
-
-    // All runtime consumers that receive the same copy-on-write DTO list share
-    // one immutable compilation boundary. The weak key lets retired UI
-    // snapshots be collected normally.
-    public static LayerStackSnapshot SnapshotFor(
-      IList<DomeLayerSettings> layers
-    ) {
-      if (layers == null) {
-        return LayerStackSnapshot.Empty;
-      }
-      if (layers is List<DomeLayerSettings> list) {
-        return snapshotCache.GetValue(list, source => {
-          (LayerStackSnapshot snapshot, string error) =
-            new LayerStackService().CreateSnapshot(source);
-          return new SnapshotHolder(
-            error == null ? snapshot : LayerStackSnapshot.Empty);
-        }).Snapshot;
-      }
-      (LayerStackSnapshot uncached, string uncachedError) =
-        new LayerStackService().CreateSnapshot(
-          layers as IReadOnlyList<DomeLayerSettings> ?? layers.ToArray());
-      return uncachedError == null ? uncached : LayerStackSnapshot.Empty;
     }
 
     public (LayerStackSnapshot snapshot, string error) CreateSnapshot(
@@ -368,11 +303,11 @@ namespace Spectrum.Base {
         normalized.Count);
       foreach (DomeLayerSettings layer in normalized) {
         LayerDefinition definition = this.catalog.Get(layer.VisualizerKey);
-        DomeBlend operation = DomeBlend.FromName(layer.BlendMode);
+        DomeBlend operation = DomeBlend.FromId(layer.BlendMode);
         snapshots.Add(new LayerSnapshot(
           new LayerInstanceId(layer.InstanceId),
           layer.VisualizerKey,
-          operation.Name,
+          operation.Id,
           layer.Opacity,
           layer.Enabled,
           CompileParameters(definition.Parameters, layer.Params),
@@ -400,7 +335,7 @@ namespace Spectrum.Base {
         if (!this.catalog.TryGet(layer.VisualizerKey, out _)) {
           return (null, "unknown visualizer key: " + layer.VisualizerKey);
         }
-        DomeBlend operation = DomeBlend.FromName(layer.BlendMode);
+        DomeBlend operation = DomeBlend.FromId(layer.BlendMode);
         if (operation == null) {
           return (null, "unknown blend mode: " + layer.BlendMode);
         }
@@ -420,7 +355,7 @@ namespace Spectrum.Base {
         normalized.Add(new DomeLayerSettings {
           InstanceId = id,
           VisualizerKey = layer.VisualizerKey,
-          BlendMode = operation.Name,
+          BlendMode = operation.Id,
           Opacity = layer.Opacity,
           Enabled = layer.Enabled,
           Notes = notes,
@@ -462,53 +397,71 @@ namespace Spectrum.Base {
       new RenderPlan(ImmutableArray<CompiledLayer>.Empty);
   }
 
-  public sealed class RenderPlanCompiler {
-    private readonly LayerCatalog catalog;
-    // Renderer state belongs to (instance ID, renderer ID) and is retained for
-    // this compiler's lifetime, even while an instance is absent from a plan.
-    // Scene recall deliberately relies on that cache: a saved scene preserves
-    // IDs, so recalling it resumes each matching renderer's trails and other
-    // live state. Rebinding an ID to another renderer kind creates fresh state
-    // and replaces the cached binding.
-    private readonly Dictionary<
-      LayerInstanceId, (
-        string rendererId, ILayerRenderer renderer, LayerRendererRuntime runtime
-      )> instances =
-        new Dictionary<
-          LayerInstanceId, (
-            string rendererId, ILayerRenderer renderer,
-            LayerRendererRuntime runtime
-          )>();
+  public sealed record LayerRendererBinding(
+    ILayerRenderer Renderer,
+    bool Created
+  );
 
-    public RenderPlanCompiler(LayerCatalog catalog = null) {
-      this.catalog = catalog ?? LayerCatalog.Default;
+  // The sole owner of layer-renderer instances and their mutable runtime
+  // options. Recompiling a stack resolves through this store, so matching
+  // instance IDs retain renderer state while receiving a new immutable option
+  // snapshot. The render-plan compiler itself remains stateless.
+  public sealed class LayerRendererStore {
+    private sealed record Entry(
+      string RendererId,
+      ILayerRenderer Renderer,
+      LayerRendererRuntime Runtime
+    );
+
+    private readonly LayerCatalog catalog;
+    private readonly Dictionary<LayerInstanceId, Entry> entries = new();
+
+    public LayerRendererStore(LayerCatalog catalog) {
+      this.catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
     }
 
-    public RenderPlan Compile(
-      LayerStackSnapshot snapshot,
-      IReadOnlyDictionary<Type, object> services
-    ) => this.Compile(snapshot, layer => {
-      if (this.instances.TryGetValue(layer.Id, out var existing) &&
-          existing.rendererId == layer.RendererId) {
-        existing.runtime.Publish(layer);
-        return existing.renderer;
+    public LayerRendererBinding Resolve(LayerSnapshot layer) {
+      if (layer == null) {
+        throw new ArgumentNullException(nameof(layer));
       }
-      LayerDefinition definition = this.catalog.Get(layer.RendererId);
-      if (definition?.CreateRenderer == null) {
-        return null;
+      if (this.entries.TryGetValue(layer.Id, out Entry existing) &&
+          existing.RendererId == layer.RendererId) {
+        existing.Runtime.Publish(layer);
+        return new LayerRendererBinding(existing.Renderer, false);
       }
+
+      LayerDefinition definition = this.catalog.Get(layer.RendererId) ??
+        throw new InvalidOperationException(
+          "Unknown layer renderer: " + layer.RendererId);
+      if (definition.CreateRenderer == null) {
+        throw new InvalidOperationException(
+          "No renderer factory registered for layer " + layer.RendererId);
+      }
+
       var runtime = new LayerRendererRuntime(
         layer, definition.CompileOptions);
-      var context = new LayerRenderContext(
-        layer.Id, layer, services, runtime);
-      ILayerRenderer created = definition.CreateRenderer(context);
-      if (created != null) {
-        this.instances[layer.Id] = (
-          layer.RendererId, created, context.Runtime);
+      ILayerRenderer renderer = definition.CreateRenderer(runtime);
+      if (renderer == null) {
+        throw new InvalidOperationException(
+          "Renderer factory returned null for layer " + layer.RendererId);
       }
-      return created;
-    });
+      this.entries[layer.Id] = new Entry(
+        layer.RendererId, renderer, runtime);
+      return new LayerRendererBinding(renderer, true);
+    }
 
+    public ILayerRenderer Get(LayerSnapshot layer) {
+      if (layer == null) {
+        return null;
+      }
+      return this.entries.TryGetValue(layer.Id, out Entry entry) &&
+        entry.RendererId == layer.RendererId
+          ? entry.Renderer
+          : null;
+    }
+  }
+
+  public sealed class RenderPlanCompiler {
     public RenderPlan Compile(
       LayerStackSnapshot snapshot,
       Func<LayerSnapshot, ILayerRenderer> rendererResolver
@@ -523,7 +476,7 @@ namespace Spectrum.Base {
           continue;
         }
         ILayerRenderer renderer = rendererResolver(layer);
-        DomeBlend operation = DomeBlend.FromName(layer.OperationId);
+        DomeBlend operation = DomeBlend.FromId(layer.OperationId);
         if (renderer == null || operation == null) {
           continue;
         }

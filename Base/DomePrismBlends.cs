@@ -27,7 +27,7 @@ namespace Spectrum.Base {
   // the spotlighted wand's orientation instead, in which case spin is
   // disregarded.
   internal sealed class ChromaticFringeBlend : DomeBlend {
-    public override string Name => "ChromaticFringe";
+    public override string Id => "ChromaticFringe";
     public override CompositeRequirements Requirements =>
       CompositeRequirements.ReadsSourceMask |
       CompositeRequirements.ReadsDestination |
@@ -96,7 +96,7 @@ namespace Spectrum.Base {
   // dispersion ramp, intensity to magnitude. Flat fills get nothing. strength
   // scales intensity; offset is the gradient sample radius.
   internal sealed class EdgeSpectrumBlend : DomeBlend {
-    public override string Name => "EdgeSpectrum";
+    public override string Id => "EdgeSpectrum";
     public override CompositeRequirements Requirements =>
       CompositeRequirements.ReadsSourceMask |
       CompositeRequirements.ReadsDestination |
@@ -181,7 +181,7 @@ namespace Spectrum.Base {
   // units; the neighbor table caps the reach at 4 × 0.02 = 0.08 (~6 LED
   // pitches) — plenty for shimmer.
   internal sealed class RefractBlend : DomeBlend {
-    public override string Name => "Refract";
+    public override string Id => "Refract";
     public override CompositeRequirements Requirements =>
       CompositeRequirements.ReadsSourceMask |
       CompositeRequirements.ReadsDestination |
@@ -234,7 +234,7 @@ namespace Spectrum.Base {
   // from the spotlighted wand's orientation instead, in which case spin is
   // disregarded. No neighbor sampling, so no snapshot needed.
   internal sealed class IridescenceBlend : DomeBlend {
-    public override string Name => "Iridescence";
+    public override string Id => "Iridescence";
     public override CompositeRequirements Requirements =>
       CompositeRequirements.ReadsSourceMask |
       CompositeRequirements.ReadsDestination;

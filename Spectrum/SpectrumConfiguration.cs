@@ -93,6 +93,7 @@ namespace Spectrum {
     // non-null default would double up the persisted entries on load. A null /
     // empty stack is synthesized on load by LegacyLayerParamMigration.
     private List<DomeLayerSettings> _domeLayerStack = null;
+    private static readonly LayerStackService layerStackService = new();
     private LayerStackSnapshot _domeLayerStackSnapshot =
       LayerStackSnapshot.Empty;
     public List<DomeLayerSettings> domeLayerStack {
@@ -110,8 +111,11 @@ namespace Spectrum {
               this._domeLayerStack, published)) {
           return;
         }
-        LayerStackSnapshot snapshot =
-          LayerStackService.SnapshotFor(published);
+        (LayerStackSnapshot snapshot, string snapshotError) =
+          layerStackService.CreateSnapshot(published);
+        if (snapshotError != null) {
+          snapshot = LayerStackSnapshot.Empty;
+        }
         this._domeLayerStack = published;
         Volatile.Write(ref this._domeLayerStackSnapshot, snapshot);
         this.PropertyChanged?.Invoke(

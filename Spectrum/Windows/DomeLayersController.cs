@@ -93,7 +93,7 @@ namespace Spectrum {
     private void AddLayer() {
       var vm = new DomeLayerRowViewModel {
         VisualizerKey = DomeLayerSettings.LegacyVisKeys[0],
-        BlendMode = DomeBlend.Default.Name,
+        BlendMode = DomeBlend.Default.Id,
         Opacity = 1.0,
         LayerEnabled = true,
       };

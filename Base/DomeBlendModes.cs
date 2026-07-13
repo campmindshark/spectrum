@@ -12,7 +12,7 @@ namespace Spectrum.Base {
   // actually drew (w = opacity * src.a), and coverage accumulates into the
   // composite so a subsequent Over layer blends against the real alpha.
   internal sealed class OverBlend : DomeBlend {
-    public override string Name => "Over";
+    public override string Id => "Over";
     public override CompositeRequirements Requirements =>
       CompositeRequirements.ReadsSourceColor |
       CompositeRequirements.ReadsSourceMask |
@@ -38,7 +38,7 @@ namespace Spectrum.Base {
 
   // The additive blends ignore coverage — black is their identity.
   internal sealed class AddBlend : DomeBlend {
-    public override string Name => "Add";
+    public override string Id => "Add";
     public override CompositeRequirements Requirements =>
       CompositeRequirements.ReadsSourceColor |
       CompositeRequirements.ReadsDestination |
@@ -58,7 +58,7 @@ namespace Spectrum.Base {
   }
 
   internal sealed class ScreenBlend : DomeBlend {
-    public override string Name => "Screen";
+    public override string Id => "Screen";
     public override CompositeRequirements Requirements =>
       CompositeRequirements.ReadsSourceColor |
       CompositeRequirements.ReadsDestination |
@@ -81,7 +81,7 @@ namespace Spectrum.Base {
   }
 
   internal sealed class LightenBlend : DomeBlend {
-    public override string Name => "Lighten";
+    public override string Id => "Lighten";
     public override CompositeRequirements Requirements =>
       CompositeRequirements.ReadsSourceColor |
       CompositeRequirements.ReadsDestination |
@@ -105,7 +105,7 @@ namespace Spectrum.Base {
 
   // Opacity lerps toward white (not black) so o = 0 is the identity.
   internal sealed class MultiplyBlend : DomeBlend {
-    public override string Name => "Multiply";
+    public override string Id => "Multiply";
     public override CompositeRequirements Requirements =>
       CompositeRequirements.ReadsSourceColor |
       CompositeRequirements.ReadsDestination |
@@ -131,7 +131,7 @@ namespace Spectrum.Base {
   // reprocess the composite below it into grayscale luma. The mask restricts
   // the effect to where the layer above (e.g. a wave) drew.
   internal sealed class DesaturateBlend : DomeBlend {
-    public override string Name => "Desaturate";
+    public override string Id => "Desaturate";
     public override CompositeRequirements Requirements =>
       CompositeRequirements.ReadsSourceMask |
       CompositeRequirements.ReadsDestination;
@@ -166,7 +166,7 @@ namespace Spectrum.Base {
   // Forcing full saturation means any brightness-only src becomes a pure
   // canvas for the carried hue.
   internal sealed class HueBlend : DomeBlend {
-    public override string Name => "Hue";
+    public override string Id => "Hue";
     public override CompositeRequirements Requirements =>
       CompositeRequirements.ReadsSourceColor |
       CompositeRequirements.ReadsSourceMask |

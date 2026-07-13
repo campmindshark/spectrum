@@ -12,12 +12,6 @@ namespace Spectrum.Base {
     public static EmptyLayerRendererOptions Instance { get; } = new();
   }
 
-  // Retained for custom catalogs that have not supplied a typed compiler.
-  // Built-in renderers never use this compatibility representation.
-  public sealed record LayerRendererParameterOptions(
-    ImmutableDictionary<string, ParameterValue> Values
-  ) : ILayerRendererOptions;
-
   public sealed record RadialLayerOptions(
     int Effect, double Size, double Frequency, double CenterAngle,
     double CenterDistance, double CenterSpeed, double RotationSpeed,

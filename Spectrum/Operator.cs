@@ -15,19 +15,16 @@ namespace Spectrum {
   public class Operator {
 
     private readonly Configuration config;
+    private readonly ILayerStackSnapshotSource layerStackSource;
     private readonly List<Input> inputs;
     private readonly List<Output> outputs;
     private readonly List<Visualizer> visualizers;
     private readonly LayerCatalog layerCatalog;
-    // Per-instance renderer state is retained for the Operator's lifetime,
-    // including while a saved scene that omits the instance is active. Scene
-    // recall preserves IDs and therefore resumes state when both ID and
-    // renderer kind match. Changing the kind bound to an ID creates new state.
-    private readonly Dictionary<string, string> createdRendererByInstance =
-      new Dictionary<string, string>(StringComparer.Ordinal);
-    private readonly Dictionary<string, LayerRendererRuntime>
-      layerRuntimeByInstance =
-        new Dictionary<string, LayerRendererRuntime>(StringComparer.Ordinal);
+    // The sole owner of per-instance renderer state. Matching IDs retain
+    // trails and other live state across plan changes and scene recall.
+    private readonly LayerRendererStore layerRendererStore;
+    private readonly RenderPlanCompiler renderPlanCompiler =
+      new RenderPlanCompiler();
     private LayerStackSnapshot publishedLayerStack = LayerStackSnapshot.Empty;
     private int layerReconcilePending;
 
@@ -96,6 +93,10 @@ namespace Spectrum {
 
     public Operator(Configuration config) {
       this.config = config;
+      this.layerStackSource = config as ILayerStackSnapshotSource ??
+        throw new ArgumentException(
+          "Operator configuration must publish immutable layer snapshots.",
+          nameof(config));
       this.BeatBroadcaster = new BeatBroadcaster(config);
       this.Telemetry = new RuntimeTelemetry();
       this.DomeCalibration = new DomeCalibrationState();
@@ -151,63 +152,63 @@ namespace Spectrum {
         dome
       ));
       var rendererFactories = new Dictionary<
-        string, Func<LayerRenderContext, ILayerRenderer>>(
+        string, Func<LayerRendererRuntime, ILayerRenderer>>(
           StringComparer.Ordinal) {
-        ["volume"] = context => new LEDDomeVolumeVisualizer(
-          layerEnvironment, context.Runtime, audio, this.BeatBroadcaster, dome),
-        ["radial"] = context => new LEDDomeRadialVisualizer(
-          layerEnvironment, context.Runtime, audio, this.BeatBroadcaster, dome),
-        ["splat"] = context => new LEDDomeSplatVisualizer(
-          context.Runtime, audio, this.BeatBroadcaster, dome),
-        ["quaternion-test"] = context =>
+        ["volume"] = runtime => new LEDDomeVolumeVisualizer(
+          layerEnvironment, runtime, audio, this.BeatBroadcaster, dome),
+        ["radial"] = runtime => new LEDDomeRadialVisualizer(
+          layerEnvironment, runtime, audio, this.BeatBroadcaster, dome),
+        ["splat"] = runtime => new LEDDomeSplatVisualizer(
+          runtime, audio, this.BeatBroadcaster, dome),
+        ["quaternion-test"] = runtime =>
           new LEDDomeQuaternionTestVisualizer(
             layerEnvironment, orientation, dome),
-        ["quaternion-paintbrush"] = context =>
+        ["quaternion-paintbrush"] = runtime =>
           new LEDDomeQuaternionPaintbrushVisualizer(
-            layerEnvironment, context.Runtime, audio, orientation,
+            layerEnvironment, runtime, audio, orientation,
             orientationCenter, this.BeatBroadcaster, dome),
-        ["race"] = context => new LEDDomeRaceVisualizer(
-          context.Runtime, audio, midi,
+        ["race"] = runtime => new LEDDomeRaceVisualizer(
+          runtime, audio, midi,
           this.BeatBroadcaster, dome),
-        ["snakes"] = context => new LEDDomeSnakesVisualizer(
-          context.Runtime, dome),
-        ["tv-static"] = context =>
+        ["snakes"] = runtime => new LEDDomeSnakesVisualizer(
+          runtime, dome),
+        ["tv-static"] = runtime =>
           new LEDDomeTVStaticVisualizer(layerEnvironment, dome),
-        ["twinkle"] = context => new LEDDomeTwinkleVisualizer(
-          layerEnvironment, context.Runtime, dome),
-        ["background"] = context => new LEDDomeBackgroundVisualizer(
-          context.Runtime, dome),
-        ["noise-cloud"] = context => new LEDDomeNoiseCloudVisualizer(
-          context.Runtime, dome),
-        ["vortex"] = context => new LEDDomeVortexVisualizer(
-          layerEnvironment, context.Runtime, dome),
-        ["caustics"] = context => new LEDDomeCausticsVisualizer(
-          layerEnvironment, context.Runtime, audio, orientation,
+        ["twinkle"] = runtime => new LEDDomeTwinkleVisualizer(
+          layerEnvironment, runtime, dome),
+        ["background"] = runtime => new LEDDomeBackgroundVisualizer(
+          runtime, dome),
+        ["noise-cloud"] = runtime => new LEDDomeNoiseCloudVisualizer(
+          runtime, dome),
+        ["vortex"] = runtime => new LEDDomeVortexVisualizer(
+          layerEnvironment, runtime, dome),
+        ["caustics"] = runtime => new LEDDomeCausticsVisualizer(
+          layerEnvironment, runtime, audio, orientation,
           orientationCenter, this.BeatBroadcaster, dome),
-        ["flash"] = context => new LEDDomeFlashVisualizer(
-          layerEnvironment, context.Runtime, audio, orientation,
+        ["flash"] = runtime => new LEDDomeFlashVisualizer(
+          layerEnvironment, runtime, audio, orientation,
           this.BeatBroadcaster, dome),
-        ["wave"] = context => new LEDDomeWaveVisualizer(
-          layerEnvironment, context.Runtime, orientation, dome),
-        ["gyroscope"] = context => new LEDDomeGyroscopeVisualizer(
-          layerEnvironment, context.Runtime, orientation,
+        ["wave"] = runtime => new LEDDomeWaveVisualizer(
+          layerEnvironment, runtime, orientation, dome),
+        ["gyroscope"] = runtime => new LEDDomeGyroscopeVisualizer(
+          layerEnvironment, runtime, orientation,
           orientationCenter, dome),
-        ["ripple"] = context => new LEDDomeRippleVisualizer(
-          layerEnvironment, context.Runtime, audio, orientation,
+        ["ripple"] = runtime => new LEDDomeRippleVisualizer(
+          layerEnvironment, runtime, audio, orientation,
           orientationCenter, this.BeatBroadcaster, dome),
-        ["stamp"] = context => new LEDDomeStampVisualizer(
-          layerEnvironment, context.Runtime, audio, orientation,
+        ["stamp"] = runtime => new LEDDomeStampVisualizer(
+          layerEnvironment, runtime, audio, orientation,
           orientationCenter, this.BeatBroadcaster, dome),
-        ["metaball"] = context => new LEDDomeMetaballVisualizer(
-          layerEnvironment, context.Runtime, audio, orientation,
+        ["metaball"] = runtime => new LEDDomeMetaballVisualizer(
+          layerEnvironment, runtime, audio, orientation,
           orientationCenter, dome),
-        ["point-cloud"] = context => new LEDDomePointCloudVisualizer(
-          layerEnvironment, context.Runtime, orientation, dome),
-        ["shooting-star"] = context => new LEDDomeShootingStarVisualizer(
-          layerEnvironment, context.Runtime, audio, orientation,
+        ["point-cloud"] = runtime => new LEDDomePointCloudVisualizer(
+          layerEnvironment, runtime, orientation, dome),
+        ["shooting-star"] = runtime => new LEDDomeShootingStarVisualizer(
+          layerEnvironment, runtime, audio, orientation,
           orientationCenter, this.BeatBroadcaster, dome),
-        ["sparkler"] = context => new LEDDomeSparklerVisualizer(
-          layerEnvironment, context.Runtime, audio, orientation,
+        ["sparkler"] = runtime => new LEDDomeSparklerVisualizer(
+          layerEnvironment, runtime, audio, orientation,
           orientationCenter, this.BeatBroadcaster, dome),
       };
       this.layerCatalog = LayerCatalog.Default.WithFactories(rendererFactories);
@@ -217,6 +218,7 @@ namespace Spectrum {
             "No renderer factory registered for layer " + definition.Id);
         }
       }
+      this.layerRendererStore = new LayerRendererStore(this.layerCatalog);
       this.config.PropertyChanged += this.OnLayerConfigurationChanged;
       this.CapturePublishedLayerStack();
       this.ReconcileLayerVisualizers();
@@ -228,9 +230,8 @@ namespace Spectrum {
     ) {
       if (e.PropertyName == nameof(this.config.domeLayerStack)) {
         // SpectrumConfiguration compiled this immutable value before raising
-        // PropertyChanged. Alternate Configuration implementations are frozen
-        // synchronously here, on their publishing thread, as a compatibility
-        // fallback; ReconcileLayerVisualizers never reads serializer DTOs.
+        // PropertyChanged; ReconcileLayerVisualizers never reads serializer
+        // DTOs.
         this.CapturePublishedLayerStack();
         Interlocked.Exchange(ref this.layerReconcilePending, 1);
       }
@@ -238,9 +239,7 @@ namespace Spectrum {
 
     private void CapturePublishedLayerStack() {
       LayerStackSnapshot snapshot =
-        this.config is ILayerStackSnapshotSource source
-          ? source.DomeLayerStackSnapshot
-          : LayerStackService.SnapshotFor(this.config.domeLayerStack);
+        this.layerStackSource.DomeLayerStackSnapshot;
       Volatile.Write(
         ref this.publishedLayerStack, snapshot ?? LayerStackSnapshot.Empty);
     }
@@ -249,35 +248,18 @@ namespace Spectrum {
       LayerStackSnapshot snapshot = Volatile.Read(
         ref this.publishedLayerStack) ?? LayerStackSnapshot.Empty;
       foreach (LayerSnapshot layer in snapshot.Layers) {
-        string instanceId = layer.Id.Value;
-        if (this.createdRendererByInstance.TryGetValue(
-              instanceId, out string createdRenderer) &&
-            createdRenderer == layer.RendererId &&
-            this.layerRuntimeByInstance.TryGetValue(
-              instanceId, out LayerRendererRuntime existingRuntime)) {
-          existingRuntime.Publish(layer);
-          continue;
-        }
-        LayerDefinition definition = this.layerCatalog.Get(
-          layer.RendererId);
-        if (definition?.CreateRenderer == null) {
-          continue;
-        }
-        var runtime = new LayerRendererRuntime(
-          layer, definition.CompileOptions);
-        using (LayerInstanceScope.Push(instanceId)) {
-          ILayerRenderer renderer = definition.CreateRenderer(
-            new LayerRenderContext(layer.Id, layer, runtime: runtime));
-          if (renderer is not Visualizer visualizer) {
+        LayerRendererBinding binding = this.layerRendererStore.Resolve(layer);
+        if (binding.Created) {
+          if (binding.Renderer is not Visualizer visualizer) {
             throw new InvalidOperationException(
-              "Layer renderer must implement Visualizer: " + definition.Id);
+              "Layer renderer must implement Visualizer: " + layer.RendererId);
           }
           this.visualizers.Add(visualizer);
         }
-        this.createdRendererByInstance[instanceId] = layer.RendererId;
-        this.layerRuntimeByInstance[instanceId] = runtime;
       }
-      this.DomeOutput.PublishLayerStack(snapshot);
+      RenderPlan plan = this.renderPlanCompiler.Compile(
+        snapshot, this.layerRendererStore.Get);
+      this.DomeOutput.PublishRenderPlan(plan);
     }
 
     private bool enabled;

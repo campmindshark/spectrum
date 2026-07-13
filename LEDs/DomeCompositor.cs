@@ -68,7 +68,7 @@ namespace Spectrum.LEDs {
 
     // Explicit phase 5: mutate persistent renderer trails only after the
     // completed destination has been written. Shared renderer frames rotate
-    // once even if compatibility data names them more than once.
+    // at most once.
     public void AdvancePostFrameHue(double delta) {
       if (delta == 0) {
         return;

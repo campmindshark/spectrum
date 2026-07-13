@@ -11,7 +11,7 @@ namespace Spectrum.Base {
   // Static schema for one tunable on a layer (or on a blend mode). The bag on a
   // DomeLayerSettings stores only values keyed by DomeLayerParam.Key; everything
   // else here (range, label, default, which consumer reads it) is compile-time
-  // metadata read identically by both UIs, the resolver, and GetParam fallbacks.
+  // metadata read identically by both UIs and the snapshot compiler.
   // See LayerCatalog for visualizer schemas and DomeBlend.Params for the
   // per-blend schemas.
   public sealed class DomeLayerParam {
@@ -49,12 +49,12 @@ namespace Spectrum.Base {
     // Stable string id of the layerable visualizer, e.g. "radial". See
     // DomeLayerVisualizer.LayerKey and LegacyVisKeys below.
     public string VisualizerKey { get; set; }
-    // The DomeBlend.Name of how this layer combines with the composite below
+    // The DomeBlend.Id of how this layer combines with the composite below
     // it. A string (not the blend object) because it's the persisted form —
     // XSerializer writes it verbatim, exactly the names the retired
     // DomeBlendMode enum used to serialize, so old config/scene files load
-    // unchanged. Resolve with DomeBlend.FromName; consumers cache the result.
-    public string BlendMode { get; set; } = DomeBlend.Default.Name;
+    // unchanged. Resolve with DomeBlend.FromId; consumers cache the result.
+    public string BlendMode { get; set; } = DomeBlend.Default.Id;
     // 0..1, applied before the blend.
     public double Opacity { get; set; } = 1.0;
     // Mute without removing from the stack.
@@ -76,33 +76,6 @@ namespace Spectrum.Base {
     // double-up the persisted entries on load — the same null-by-default rule
     // domeLayerStack and domeCableMapping already follow.
     public Dictionary<string, double> Params { get; set; }
-
-    // Value for `key` from this layer's bag, or `fallback` if the bag is
-    // null/missing the key. Callers pass the descriptor Default as `fallback` so
-    // defaults stay single-sourced in LayerCatalog / DomeBlend.Params.
-    public double GetParam(string key, double fallback) {
-      return this.Params != null && this.Params.TryGetValue(key, out double v)
-        ? v : fallback;
-    }
-
-    // The stack entry naming `key` (or null if none), so a visualizer can read
-    // its own params in Visualize(). Allocation-free linear scan of the small
-    // immutable snapshot. This compatibility lookup returns the first renderer
-    // occurrence; instance-aware runtime paths use ForInstance instead.
-    public static DomeLayerSettings ForKey(
-      IList<DomeLayerSettings> stack, string key
-    ) {
-      if (stack == null) {
-        return null;
-      }
-      for (int i = 0; i < stack.Count; i++) {
-        DomeLayerSettings layer = stack[i];
-        if (layer != null && layer.VisualizerKey == key) {
-          return layer;
-        }
-      }
-      return null;
-    }
 
     public static DomeLayerSettings ForInstance(
       IList<DomeLayerSettings> stack, string instanceId
@@ -138,9 +111,8 @@ namespace Spectrum.Base {
   internal static class LayerParameterSchemas {
     // Single source of truth for every tunable registered in LayerCatalog.
     // Both UIs render editors generically from these, the
-    // compositor resolver reads the CompositorConsumed ones, and every GetParam
-    // fallback passes the matching Default. Adding a param to a visualizer is one
-    // entry here with zero UI code.
+    // snapshot compiler applies their defaults, and the compositor reads the
+    // CompositorConsumed ones. Adding a visualizer parameter needs no UI code.
 
     internal static readonly DomeLayerParam[] NoParams =
       Array.Empty<DomeLayerParam>();

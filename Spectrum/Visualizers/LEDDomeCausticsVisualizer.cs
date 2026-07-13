@@ -144,7 +144,7 @@ namespace Spectrum.Visualizers {
       // Publish the gradient side channels only when this layer's blend will
       // read them (see the class comment).
       bool refracting =
-        this.runtime.Snapshot.OperationId == DomeBlend.Refract.Name;
+        this.runtime.Snapshot.OperationId == DomeBlend.Refract.Id;
 
       if (method == 3) {
         this.TankAdvance(scale, speed, elapsed, refracting, options);
