@@ -32,11 +32,11 @@ namespace Spectrum.Visualizers {
   // or an edge occurring during that window is missed.
   class LayerTrigger {
 
-    private readonly Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly OrientationInput orientationInput;
     private readonly BeatBroadcaster beat;
     private readonly AudioInput audio;
-    private readonly string instanceId;
+    private readonly LayerInstanceId instanceId;
 
     // Previous frame's actionFlag per device id, so a held button (flag stays
     // nonzero across frames) only fires once.
@@ -57,10 +57,11 @@ namespace Spectrum.Visualizers {
     // beat/audio are optional: the OneShot layers (Wave/Metaball) that only use
     // Manual + Button pass null and never select the Beat/Audio sources.
     public LayerTrigger(
-      Configuration config, OrientationInput orientationInput, string instanceId,
+      DomeLayerEnvironment environment, OrientationInput orientationInput,
+      LayerInstanceId instanceId,
       BeatBroadcaster beat = null, AudioInput audio = null
     ) {
-      this.config = config;
+      this.environment = environment;
       this.orientationInput = orientationInput;
       this.instanceId = instanceId;
       this.beat = beat;
@@ -97,7 +98,7 @@ namespace Spectrum.Visualizers {
     // -2 (all ignored for drawing, but a button press is still a button
     // press) let every connected wand fire it.
     private bool ButtonFired(int button) {
-      int spotlight = this.config.orientationDeviceSpotlight;
+      int spotlight = this.environment.SpotlightDeviceId;
       IReadOnlyDictionary<int, OrientationDevice> devices =
         this.orientationInput.OperatorFrameDevices;
       bool fired = false;
@@ -114,14 +115,12 @@ namespace Spectrum.Visualizers {
       return fired;
     }
 
-    // Whether config.domeLayerFireCounters[instanceId] changed since the last
-    // frame. A counter rather than a bool: the native/web Fire buttons just
+    // Whether the layer's fire generation changed since the last frame. A
+    // counter rather than a bool: the native/web Fire buttons just
     // increment it, so two clients firing around the same time never race
     // over who resets a shared flag.
     private bool ManualFired() {
-      int counter = 0;
-      this.config.domeLayerFireCounters?.TryGetValue(
-        this.instanceId, out counter);
+      int counter = this.environment.FireGeneration(this.instanceId);
       if (this.lastManualCounter == -1) {
         this.lastManualCounter = counter;
         return false;

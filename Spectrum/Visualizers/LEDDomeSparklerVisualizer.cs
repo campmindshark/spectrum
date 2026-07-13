@@ -22,7 +22,7 @@ namespace Spectrum {
     private const int MAX_PARTICLES = 64;
     private const double CULL_RADIUS = 1.25;
 
-    private readonly Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
@@ -36,7 +36,7 @@ namespace Spectrum {
     private int lastClearCounter = -1;
 
     public LEDDomeSparklerVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       AudioInput audio,
       OrientationInput orientationInput,
@@ -44,7 +44,7 @@ namespace Spectrum {
       BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
@@ -53,7 +53,7 @@ namespace Spectrum {
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.trigger = new LayerTrigger(
-        config, orientationInput, runtime.InstanceId.Value, beat, audio);
+        environment, orientationInput, runtime.InstanceId, beat, audio);
     }
 
     public int Priority => 2;
@@ -81,7 +81,8 @@ namespace Spectrum {
       double interval = options.Interval;
       int paletteBank = options.Palette;
 
-      double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
+      double frameRetention =
+        1 - Math.Pow(5, -this.environment.GlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
       if (this.ClearRequested()) {
@@ -116,9 +117,7 @@ namespace Spectrum {
     }
 
     private bool ClearRequested() {
-      int counter = 0;
-      this.config.domeLayerClearCounters?.TryGetValue(
-        this.runtime.InstanceId.Value, out counter);
+      int counter = this.environment.ClearGeneration(this.runtime.InstanceId);
       if (this.lastClearCounter == -1) {
         this.lastClearCounter = counter;
         return false;

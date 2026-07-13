@@ -8,7 +8,7 @@ namespace Spectrum.Visualizers {
   class LEDDomeQuaternionTestVisualizer : DomeLayerVisualizer {
 
 
-    private Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private OrientationInput orientation;
     private LEDDomeOutput dome;
     private DomeFrame buffer;
@@ -18,11 +18,11 @@ namespace Spectrum.Visualizers {
     private readonly ImmutableArray<Vector3> pixelPositions;
 
     public LEDDomeQuaternionTestVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       OrientationInput orientation,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.orientation = orientation;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
@@ -45,7 +45,9 @@ namespace Spectrum.Visualizers {
     void Render() {
       for (int i = 0; i < buffer.pixels.Length; i++) {
         Vector3 pixelPoint = this.pixelPositions[i];
-        Vector3 pixelPointQuat = Vector3.Transform(pixelPoint, orientation.deviceRotation(config.orientationDeviceSpotlight));
+        Vector3 pixelPointQuat = Vector3.Transform(
+          pixelPoint,
+          orientation.deviceRotation(this.environment.SpotlightDeviceId));
         // Color maxes
         int maxIndex = MaxBy(pixelPointQuat);
         Color color = new Color(0, 0, 0);

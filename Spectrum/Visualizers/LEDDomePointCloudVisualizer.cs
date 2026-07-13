@@ -33,7 +33,7 @@ namespace Spectrum.Visualizers {
     // CollectAimPoints).
     private static readonly Vector3 AimPole = new Vector3(-1, 0, 0);
 
-    private readonly Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
@@ -63,12 +63,12 @@ namespace Spectrum.Visualizers {
     private readonly List<Vector3> aimPoints = new List<Vector3>();
 
     public LEDDomePointCloudVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       OrientationInput orientationInput,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.runtime = runtime;
       this.orientationInput = orientationInput;
       this.dome = dome;
@@ -216,7 +216,8 @@ namespace Spectrum.Visualizers {
     // brightest nearby spot. Angular distance uses the dot product against the
     // baked pixel positions.
     private void Render(double frameScale, double spotSize) {
-      double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
+      double frameRetention =
+        1 - Math.Pow(5, -this.environment.GlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
       double cosRadius = Math.Cos(spotSize);

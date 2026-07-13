@@ -27,7 +27,7 @@ namespace Spectrum.Visualizers {
 
     private const int RIPPLE_PERIOD = 1000;
 
-    private readonly Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
@@ -49,7 +49,7 @@ namespace Spectrum.Visualizers {
     private bool rippleFiring = false;
 
     public LEDDomeRippleVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       AudioInput audio,
       OrientationInput orientationInput,
@@ -57,7 +57,7 @@ namespace Spectrum.Visualizers {
       BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
@@ -66,7 +66,7 @@ namespace Spectrum.Visualizers {
       this.buffer = this.dome.MakeDomeFrame();
       this.center = center;
       this.trigger = new LayerTrigger(
-        config, orientationInput, runtime.InstanceId.Value, beat, audio);
+        environment, orientationInput, runtime.InstanceId, beat, audio);
 
       // Bake the static unit-sphere position of every pixel once.
       this.pixelPositions = this.buffer.BakePixelPositions();
@@ -96,7 +96,8 @@ namespace Spectrum.Visualizers {
       double levelThreshold = options.Level;
       double interval = options.Interval;
 
-      double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
+      double frameRetention =
+        1 - Math.Pow(5, -this.environment.GlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
       // Fired() must run every frame regardless of playhead state, so an edge

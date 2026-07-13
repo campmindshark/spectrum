@@ -9,17 +9,17 @@ namespace Spectrum {
 
   class LEDDomeTVStaticVisualizer : DomeLayerVisualizer {
 
-    private readonly Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly LEDDomeOutput dome;
     private readonly DomeFrame buffer;
 
     private Random random = new Random();
 
     public LEDDomeTVStaticVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
@@ -47,10 +47,7 @@ namespace Spectrum {
     }
 
     private int RandomColor() {
-      int brightnessByte = (int)(
-        0xFF * this.config.domeMaxBrightness *
-        this.config.domeBrightness
-      );
+      int brightnessByte = this.environment.OutputBrightnessByte;
       int color = 0;
       for (int i = 0; i < 3; i++) {
         color |= (int)(random.NextDouble() * brightnessByte) << (i * 8);

@@ -51,7 +51,7 @@ namespace Spectrum {
     private const double SPAWN_RADIUS_MIN = 1.15;
     private const double SPAWN_RADIUS_MAX = 1.6;
 
-    private readonly Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
@@ -76,7 +76,7 @@ namespace Spectrum {
     private int lastClearCounter = -1;
 
     public LEDDomeShootingStarVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       AudioInput audio,
       OrientationInput orientationInput,
@@ -84,7 +84,7 @@ namespace Spectrum {
       BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
@@ -94,7 +94,7 @@ namespace Spectrum {
       this.buffer = this.dome.MakeDomeFrame();
       // Beat + Audio passed so all four trigger sources are live, like Ripple.
       this.trigger = new LayerTrigger(
-        config, orientationInput, runtime.InstanceId.Value, beat, audio);
+        environment, orientationInput, runtime.InstanceId, beat, audio);
     }
 
     public int Priority => 2;
@@ -130,9 +130,10 @@ namespace Spectrum {
       double interval = options.Interval;
       int paletteBank = options.Palette;
 
-      // Trails come from the global dome fade (config.domeGlobalFadeSpeed), the
+      // Trails come from the global dome fade, the
       // same per-frame retention Metaball/Ripple use — no per-layer trail knob.
-      double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
+      double frameRetention =
+        1 - Math.Pow(5, -this.environment.GlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
       // Clear button (native VJ HUD 🧹): drop every live star and blank the
@@ -188,11 +189,9 @@ namespace Spectrum {
 
     // Whether the layer's clear counter changed since the last frame (the 🧹
     // button bumped it). Same edge-detect + first-frame-baseline idiom as
-    // LayerTrigger.ManualFired, against config.domeLayerClearCounters.
+    // LayerTrigger.ManualFired, against the shared clear generation.
     private bool ClearRequested() {
-      int counter = 0;
-      this.config.domeLayerClearCounters?.TryGetValue(
-        this.runtime.InstanceId.Value, out counter);
+      int counter = this.environment.ClearGeneration(this.runtime.InstanceId);
       if (this.lastClearCounter == -1) {
         this.lastClearCounter = counter;
         return false;

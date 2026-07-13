@@ -29,7 +29,7 @@ namespace Spectrum.Visualizers {
     private const int GRID_STAMP_CUTOFF = 7;   // grid stamp clears once below this
     private const int RHYTHM_COOLDOWN = 8;     // measures the rhythm band plays over (its cooldown starts here)
 
-    private readonly Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
@@ -53,7 +53,7 @@ namespace Spectrum.Visualizers {
     private int stampEffect = 0; // 1 - grid of rings; 2 - rhythm stamp
 
     public LEDDomeStampVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       AudioInput audio,
       OrientationInput orientationInput,
@@ -61,7 +61,7 @@ namespace Spectrum.Visualizers {
       BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
@@ -71,7 +71,7 @@ namespace Spectrum.Visualizers {
       this.buffer = this.dome.MakeDomeFrame();
       this.center = center;
       this.trigger = new LayerTrigger(
-        config, orientationInput, runtime.InstanceId.Value, beat, audio);
+        environment, orientationInput, runtime.InstanceId, beat, audio);
 
       // Bake the static unit-sphere position of every pixel once.
       this.pixelPositions = this.buffer.BakePixelPositions();
@@ -101,7 +101,8 @@ namespace Spectrum.Visualizers {
       double interval = options.Interval;
       double levelThreshold = options.Level;
 
-      double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
+      double frameRetention =
+        1 - Math.Pow(5, -this.environment.GlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
       // Fired() must run every frame regardless of playhead state, so an edge

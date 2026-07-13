@@ -17,7 +17,7 @@ namespace Spectrum.Visualizers {
   // regardless of how fast the Operator loop ticks.
   class LEDDomeTwinkleVisualizer : DomeLayerVisualizer {
 
-    private readonly Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
     private readonly DomeFrame buffer;
@@ -33,11 +33,11 @@ namespace Spectrum.Visualizers {
     private readonly FrameClock frameClock = new FrameClock();
 
     public LEDDomeTwinkleVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.runtime = runtime;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
@@ -73,7 +73,8 @@ namespace Spectrum.Visualizers {
       // Fade the whole buffer so lit dots trail off, matching Paintbrush's
       // per-frame fade compounded over frameScale frames (see ApplyGlobalEffects
       // for the retention-factor derivation).
-      double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
+      double frameRetention =
+        1 - Math.Pow(5, -this.environment.GlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
       // Twinkle is a per-pixel chance each frame; scale the probability by

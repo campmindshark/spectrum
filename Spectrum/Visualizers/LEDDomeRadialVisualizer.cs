@@ -11,7 +11,7 @@ namespace Spectrum {
 
   class LEDDomeRadialVisualizer : DomeLayerVisualizer {
 
-    private Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private AudioInput audio;
     private BeatBroadcaster beat;
@@ -24,13 +24,13 @@ namespace Spectrum {
     private double lastProgress;
 
     public LEDDomeRadialVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       AudioInput audio,
       BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.beat = beat;
@@ -67,7 +67,7 @@ namespace Spectrum {
       double gradientSpeed = options.GradientSpeed;
       int paletteBank = options.Palette;
 
-      buffer.Fade(1 - Math.Pow(10, -this.config.domeGlobalFadeSpeed), 0);
+      buffer.Fade(1 - Math.Pow(10, -this.environment.GlobalFadeSpeed), 0);
       // Hue rotation is now applied globally by LEDDomeOutput, which rotates
       // every contributing layer's persisted buffer once per composited
       // frame — not per layer here.

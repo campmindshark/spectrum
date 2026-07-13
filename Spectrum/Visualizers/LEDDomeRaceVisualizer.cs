@@ -12,7 +12,6 @@ namespace Spectrum {
      * Visualizes spinning bands (racers) going around the dome. Each moves at a speed proportional 
      * to volume, beats, constant, or still. See RacerConfig below to configure the bands.
      */
-    private readonly Configuration config;
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly MidiInput midi;
@@ -210,14 +209,12 @@ namespace Spectrum {
     }
 
     public LEDDomeRaceVisualizer(
-     Configuration config,
      LayerRendererRuntime runtime,
      AudioInput audio,
      MidiInput midi,
      BeatBroadcaster beat,
      LEDDomeOutput dome
      ) {
-      this.config = config;
       this.runtime = runtime;
       this.audio = audio;
       this.midi = midi;

@@ -23,7 +23,7 @@ namespace Spectrum.Visualizers {
   // is what's drawn.
   class LEDDomeMetaballVisualizer : DomeLayerVisualizer {
 
-    private readonly Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
@@ -52,14 +52,14 @@ namespace Spectrum.Visualizers {
     private double burstEnvelope = 0;
 
     public LEDDomeMetaballVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       AudioInput audio,
       OrientationInput orientationInput,
       OrientationCenter center,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
@@ -68,7 +68,7 @@ namespace Spectrum.Visualizers {
       this.buffer = this.dome.MakeDomeFrame();
       this.center = center;
       this.trigger = new LayerTrigger(
-        config, orientationInput, runtime.InstanceId.Value);
+        environment, orientationInput, runtime.InstanceId);
 
       // Bake the static unit-sphere position of every pixel once.
       this.pixelPositions = this.buffer.BakePixelPositions();
@@ -96,7 +96,8 @@ namespace Spectrum.Visualizers {
       bool showContours = options.ShowContours;
       int button = options.Button;
 
-      double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
+      double frameRetention =
+        1 - Math.Pow(5, -this.environment.GlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
       // Fired() must run every frame regardless of burst state, so an edge

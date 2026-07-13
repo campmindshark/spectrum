@@ -35,7 +35,7 @@ namespace Spectrum.Visualizers {
   // band edges.
   class LEDDomeGyroscopeVisualizer : DomeLayerVisualizer {
 
-    private readonly Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly OrientationInput orientation;
     private readonly OrientationCenter orientationCenter;
@@ -56,13 +56,13 @@ namespace Spectrum.Visualizers {
     private const double IDLE_LEVEL = 0.4;
 
     public LEDDomeGyroscopeVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       OrientationInput orientation,
       OrientationCenter orientationCenter,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.runtime = runtime;
       this.orientation = orientation;
       this.orientationCenter = orientationCenter;
@@ -136,7 +136,8 @@ namespace Spectrum.Visualizers {
       double rimHalf = ringWidth * 0.6;
 
       // Gentle fade so the tumbling arcs leave a faint wake.
-      this.buffer.Fade(1 - Math.Pow(6, -this.config.domeGlobalFadeSpeed), 0);
+      this.buffer.Fade(
+        1 - Math.Pow(6, -this.environment.GlobalFadeSpeed), 0);
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         Vector3 p = this.pixelPositions[i];

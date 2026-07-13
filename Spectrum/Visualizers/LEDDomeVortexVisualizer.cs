@@ -12,7 +12,6 @@ namespace Spectrum.Visualizers {
   // O(pixels), with no per-frame allocation and no cost tied to density.
   class LEDDomeVortexVisualizer : DomeLayerVisualizer {
 
-    private readonly Configuration config;
     private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
     private readonly DomeFrame buffer;
@@ -28,11 +27,9 @@ namespace Spectrum.Visualizers {
     private int previousStyle = -1;
 
     public LEDDomeVortexVisualizer(
-      Configuration config,
       LayerRendererRuntime runtime,
       LEDDomeOutput dome
     ) {
-      this.config = config;
       this.runtime = runtime;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);

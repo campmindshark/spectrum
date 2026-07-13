@@ -56,7 +56,7 @@ namespace Spectrum.Visualizers {
   // painted).
   class LEDDomeCausticsVisualizer : DomeLayerVisualizer {
 
-    private readonly Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
@@ -82,7 +82,7 @@ namespace Spectrum.Visualizers {
     private const double OffsetY = 17.0;
 
     public LEDDomeCausticsVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       AudioInput audio,
       OrientationInput orientationInput,
@@ -90,7 +90,7 @@ namespace Spectrum.Visualizers {
       BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
@@ -99,7 +99,7 @@ namespace Spectrum.Visualizers {
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.trigger = new LayerTrigger(
-        config, orientationInput, runtime.InstanceId.Value, beat, audio);
+        environment, orientationInput, runtime.InstanceId, beat, audio);
     }
 
     public int Priority => 2;
@@ -426,7 +426,7 @@ namespace Spectrum.Visualizers {
     private int[] tankCell;
     private double[] tankWeightX, tankWeightY;
     // Same edge-detect + first-frame-baseline idiom as
-    // LayerTrigger.ManualFired, against config.domeLayerClearCounters (the 🧹
+    // LayerTrigger.ManualFired, against the shared clear generation (the 🧹
     // button): a clear flattens the water.
     private int lastClearCounter = -1;
 
@@ -525,7 +525,7 @@ namespace Spectrum.Visualizers {
       this.tankObjectFrame++;
       IReadOnlyDictionary<int, OrientationDevice> devices =
         this.orientationInput.OperatorFrameDevices;
-      int spotlight = this.config.orientationDeviceSpotlight;
+      int spotlight = this.environment.SpotlightDeviceId;
       bool spotlightMoving = spotlight >= 0
         && devices.TryGetValue(spotlight, out OrientationDevice selected)
         && selected.isMoving;
@@ -667,9 +667,7 @@ namespace Spectrum.Visualizers {
     }
 
     private bool TankClearRequested() {
-      int counter = 0;
-      this.config.domeLayerClearCounters?.TryGetValue(
-        this.runtime.InstanceId.Value, out counter);
+      int counter = this.environment.ClearGeneration(this.runtime.InstanceId);
       if (this.lastClearCounter == -1) {
         this.lastClearCounter = counter;
         return false;

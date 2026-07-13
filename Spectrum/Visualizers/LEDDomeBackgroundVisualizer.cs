@@ -10,17 +10,14 @@ namespace Spectrum.Visualizers {
   // Twinkle, since it has no data source of its own.
   class LEDDomeBackgroundVisualizer : DomeLayerVisualizer {
 
-    private readonly Configuration config;
     private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
     private readonly DomeFrame buffer;
 
     public LEDDomeBackgroundVisualizer(
-      Configuration config,
       LayerRendererRuntime runtime,
       LEDDomeOutput dome
     ) {
-      this.config = config;
       this.runtime = runtime;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);

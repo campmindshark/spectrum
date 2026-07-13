@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Spectrum.Base;
 
 namespace Spectrum.LEDs {
 
@@ -172,7 +171,6 @@ namespace Spectrum.LEDs {
     }
 
     public static StrutLayout[] ConcentricFromStartingPoints(
-      Configuration config,
       HashSet<int> startingPoints,
       int numLayers
     ) {

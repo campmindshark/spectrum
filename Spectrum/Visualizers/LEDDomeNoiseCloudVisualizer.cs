@@ -46,7 +46,6 @@ namespace Spectrum.Visualizers {
   // and the tint color.
   class LEDDomeNoiseCloudVisualizer : DomeLayerVisualizer {
 
-    private readonly Configuration config;
     private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
     private readonly DomeFrame buffer;
@@ -74,11 +73,9 @@ namespace Spectrum.Visualizers {
     private double time;
 
     public LEDDomeNoiseCloudVisualizer(
-      Configuration config,
       LayerRendererRuntime runtime,
       LEDDomeOutput dome
     ) {
-      this.config = config;
       this.runtime = runtime;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);

@@ -13,7 +13,6 @@ namespace Spectrum {
     private const int colorPaletteCount = 8;
     private const int snakeLength = 7;
 
-    private readonly Configuration config;
     private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
     private readonly DomeFrame buffer;
@@ -26,11 +25,9 @@ namespace Spectrum {
     private DateTime lastUpdate = DateTime.Now;
 
     public LEDDomeSnakesVisualizer(
-      Configuration config,
       LayerRendererRuntime runtime,
       LEDDomeOutput dome
     ) {
-      this.config = config;
       this.runtime = runtime;
       this.dome = dome;
 

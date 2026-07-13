@@ -46,7 +46,7 @@ namespace Spectrum.Visualizers {
     private const int RIPPLE_PERIOD = 1000;
     private const double RIPPLE_COOLDOWN_RESET = 100;
 
-    private readonly Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
@@ -87,7 +87,7 @@ namespace Spectrum.Visualizers {
     private double rippleCooldown = RIPPLE_COOLDOWN_RESET;
 
     public LEDDomeQuaternionPaintbrushVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       AudioInput audio,
       OrientationInput orientationInput,
@@ -95,7 +95,7 @@ namespace Spectrum.Visualizers {
       BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
@@ -161,7 +161,8 @@ namespace Spectrum.Visualizers {
       // (retention^frameScale), which reduces to the nominal value at
       // frameScale == 1. (Scaling the inner 5^ exponent instead would compound
       // 5^-fadeSpeed rather than the retention factor, a different quantity.)
-      double frameRetention = 1 - Math.Pow(5, -this.config.domeGlobalFadeSpeed);
+      double frameRetention =
+        1 - Math.Pow(5, -this.environment.GlobalFadeSpeed);
       buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
       counter += frameScale;
     }

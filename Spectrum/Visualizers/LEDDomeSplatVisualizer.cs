@@ -11,7 +11,6 @@ namespace Spectrum {
 
   class LEDDomeSplatVisualizer : DomeLayerVisualizer {
 
-    private Configuration config;
     private readonly LayerRendererRuntime runtime;
     private AudioInput audio;
     private BeatBroadcaster beat;
@@ -21,13 +20,11 @@ namespace Spectrum {
     private double lastProgress;
 
     public LEDDomeSplatVisualizer(
-      Configuration config,
       LayerRendererRuntime runtime,
       AudioInput audio,
       BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
-      this.config = config;
       this.runtime = runtime;
       this.audio = audio;
       this.beat = beat;

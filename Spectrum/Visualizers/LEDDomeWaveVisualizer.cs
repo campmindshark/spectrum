@@ -20,7 +20,7 @@ namespace Spectrum.Visualizers {
   // center/top). Edges are hard by design — no partial alpha.
   class LEDDomeWaveVisualizer : DomeLayerVisualizer {
 
-    private readonly Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
@@ -38,19 +38,19 @@ namespace Spectrum.Visualizers {
     private bool playing;
 
     public LEDDomeWaveVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       OrientationInput orientationInput,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.runtime = runtime;
       this.orientationInput = orientationInput;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.trigger = new LayerTrigger(
-        config, orientationInput, runtime.InstanceId.Value);
+        environment, orientationInput, runtime.InstanceId);
     }
 
     public int Priority => 2;

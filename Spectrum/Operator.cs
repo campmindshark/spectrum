@@ -117,6 +117,7 @@ namespace Spectrum {
       // Stamp, Metaball) so they idle-drift around the same wandering point
       // instead of each running its own independent random walk.
       var orientationCenter = new OrientationCenter(config, orientation);
+      var layerEnvironment = new ConfigurationDomeLayerEnvironment(config);
 
       this.outputs = new List<Output>();
       // orientationCenter doubles as the prism blends' live wand-angle source
@@ -153,58 +154,60 @@ namespace Spectrum {
         string, Func<LayerRenderContext, ILayerRenderer>>(
           StringComparer.Ordinal) {
         ["volume"] = context => new LEDDomeVolumeVisualizer(
-          this.config, context.Runtime, audio, this.BeatBroadcaster, dome),
+          layerEnvironment, context.Runtime, audio, this.BeatBroadcaster, dome),
         ["radial"] = context => new LEDDomeRadialVisualizer(
-          this.config, context.Runtime, audio, this.BeatBroadcaster, dome),
+          layerEnvironment, context.Runtime, audio, this.BeatBroadcaster, dome),
         ["splat"] = context => new LEDDomeSplatVisualizer(
-          this.config, context.Runtime, audio, this.BeatBroadcaster, dome),
+          context.Runtime, audio, this.BeatBroadcaster, dome),
         ["quaternion-test"] = context =>
-          new LEDDomeQuaternionTestVisualizer(this.config, orientation, dome),
+          new LEDDomeQuaternionTestVisualizer(
+            layerEnvironment, orientation, dome),
         ["quaternion-paintbrush"] = context =>
           new LEDDomeQuaternionPaintbrushVisualizer(
-            this.config, context.Runtime, audio, orientation,
+            layerEnvironment, context.Runtime, audio, orientation,
             orientationCenter, this.BeatBroadcaster, dome),
         ["race"] = context => new LEDDomeRaceVisualizer(
-          this.config, context.Runtime, audio, midi,
+          context.Runtime, audio, midi,
           this.BeatBroadcaster, dome),
         ["snakes"] = context => new LEDDomeSnakesVisualizer(
-          this.config, context.Runtime, dome),
+          context.Runtime, dome),
         ["tv-static"] = context =>
-          new LEDDomeTVStaticVisualizer(this.config, dome),
+          new LEDDomeTVStaticVisualizer(layerEnvironment, dome),
         ["twinkle"] = context => new LEDDomeTwinkleVisualizer(
-          this.config, context.Runtime, dome),
+          layerEnvironment, context.Runtime, dome),
         ["background"] = context => new LEDDomeBackgroundVisualizer(
-          this.config, context.Runtime, dome),
+          context.Runtime, dome),
         ["noise-cloud"] = context => new LEDDomeNoiseCloudVisualizer(
-          this.config, context.Runtime, dome),
+          context.Runtime, dome),
         ["vortex"] = context => new LEDDomeVortexVisualizer(
-          this.config, context.Runtime, dome),
+          context.Runtime, dome),
         ["caustics"] = context => new LEDDomeCausticsVisualizer(
-          this.config, context.Runtime, audio, orientation,
+          layerEnvironment, context.Runtime, audio, orientation,
           orientationCenter, this.BeatBroadcaster, dome),
         ["flash"] = context => new LEDDomeFlashVisualizer(
-          this.config, context.Runtime, audio, orientation,
+          layerEnvironment, context.Runtime, audio, orientation,
           this.BeatBroadcaster, dome),
         ["wave"] = context => new LEDDomeWaveVisualizer(
-          this.config, context.Runtime, orientation, dome),
+          layerEnvironment, context.Runtime, orientation, dome),
         ["gyroscope"] = context => new LEDDomeGyroscopeVisualizer(
-          this.config, context.Runtime, orientation, orientationCenter, dome),
+          layerEnvironment, context.Runtime, orientation,
+          orientationCenter, dome),
         ["ripple"] = context => new LEDDomeRippleVisualizer(
-          this.config, context.Runtime, audio, orientation,
+          layerEnvironment, context.Runtime, audio, orientation,
           orientationCenter, this.BeatBroadcaster, dome),
         ["stamp"] = context => new LEDDomeStampVisualizer(
-          this.config, context.Runtime, audio, orientation,
+          layerEnvironment, context.Runtime, audio, orientation,
           orientationCenter, this.BeatBroadcaster, dome),
         ["metaball"] = context => new LEDDomeMetaballVisualizer(
-          this.config, context.Runtime, audio, orientation,
+          layerEnvironment, context.Runtime, audio, orientation,
           orientationCenter, dome),
         ["point-cloud"] = context => new LEDDomePointCloudVisualizer(
-          this.config, context.Runtime, orientation, dome),
+          layerEnvironment, context.Runtime, orientation, dome),
         ["shooting-star"] = context => new LEDDomeShootingStarVisualizer(
-          this.config, context.Runtime, audio, orientation,
+          layerEnvironment, context.Runtime, audio, orientation,
           orientationCenter, this.BeatBroadcaster, dome),
         ["sparkler"] = context => new LEDDomeSparklerVisualizer(
-          this.config, context.Runtime, audio, orientation,
+          layerEnvironment, context.Runtime, audio, orientation,
           orientationCenter, this.BeatBroadcaster, dome),
       };
       this.layerCatalog = LayerCatalog.Default.WithFactories(rendererFactories);

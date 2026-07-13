@@ -12,7 +12,7 @@ namespace Spectrum {
 
   class LEDDomeVolumeVisualizer : DomeLayerVisualizer {
 
-    private readonly Configuration config;
+    private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly BeatBroadcaster beat;
@@ -42,13 +42,13 @@ namespace Spectrum {
     private bool wipeStrutsNextCycle = false;
 
     public LEDDomeVolumeVisualizer(
-      Configuration config,
+      DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       AudioInput audio,
       BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
-      this.config = config;
+      this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.beat = beat;
@@ -116,7 +116,6 @@ namespace Spectrum {
         points[4] -= 20;
       }
       return StrutLayoutFactory.ConcentricFromStartingPoints(
-        this.config,
         new HashSet<int>(points),
         4
       );
@@ -360,10 +359,7 @@ namespace Spectrum {
     }
 
     private int RandomColor() {
-      int brightnessByte = (int)(
-        0xFF * this.config.domeMaxBrightness *
-        this.config.domeBrightness
-      );
+      int brightnessByte = this.environment.OutputBrightnessByte;
       int color = 0;
       for (int i = 0; i < 3; i++) {
         color |= (int)(random.NextDouble() * brightnessByte) << (i * 8);

@@ -27,6 +27,8 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("scratch copies only mutable channels", ScratchCopiesChannelsOnly);
       Run("frame operations require shared topology", FramesRequireTopology);
       Run("operator creates independent duplicate renderers", DuplicateRenderers);
+      Run("layer renderers do not receive persisted configuration",
+        LayerRenderersAvoidConfiguration);
       Run("compiled plan schedules enabled instances", PlanSchedulesInstances);
       Run("scene recall retains duplicate instance state", SceneRecallRetainsState);
       Run("duplicate commands require instance IDs", DuplicateCommandsNeedIds);
@@ -314,6 +316,26 @@ namespace Spectrum.LayerPipeline.Tests {
         }
       }
       Assert(count == 2, "expected two renderer instances, got " + count);
+    }
+
+    private static void LayerRenderersAvoidConfiguration() {
+      Type layerType = typeof(DomeLayerVisualizer);
+      Type configurationType = typeof(Configuration);
+      foreach (Type type in
+          typeof(global::Spectrum.Operator).Assembly.GetTypes()) {
+        if (type.IsInterface || !layerType.IsAssignableFrom(type)) {
+          continue;
+        }
+        foreach (var constructor in type.GetConstructors(
+            System.Reflection.BindingFlags.Instance |
+            System.Reflection.BindingFlags.Public |
+            System.Reflection.BindingFlags.NonPublic)) {
+          foreach (var parameter in constructor.GetParameters()) {
+            Assert(parameter.ParameterType != configurationType,
+              type.Name + " still receives persisted Configuration");
+          }
+        }
+      }
     }
 
     private static void PlanSchedulesInstances() {
