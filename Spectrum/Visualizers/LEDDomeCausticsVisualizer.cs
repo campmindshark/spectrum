@@ -83,6 +83,7 @@ namespace Spectrum.Visualizers {
 
     public LEDDomeCausticsVisualizer(
       Configuration config,
+      LayerRendererRuntime runtime,
       AudioInput audio,
       OrientationInput orientationInput,
       OrientationCenter center,
@@ -90,7 +91,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
-      this.runtime = config.GetLayerRuntime();
+      this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.center = center;
@@ -98,7 +99,7 @@ namespace Spectrum.Visualizers {
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
       this.trigger = new LayerTrigger(
-        config, orientationInput, this.LayerKey, beat, audio);
+        config, orientationInput, runtime.InstanceId.Value, beat, audio);
     }
 
     public int Priority => 2;
@@ -663,7 +664,7 @@ namespace Spectrum.Visualizers {
     private bool TankClearRequested() {
       int counter = 0;
       this.config.domeLayerClearCounters?.TryGetValue(
-        this.LayerKey, out counter);
+        this.runtime.InstanceId.Value, out counter);
       if (this.lastClearCounter == -1) {
         this.lastClearCounter = counter;
         return false;

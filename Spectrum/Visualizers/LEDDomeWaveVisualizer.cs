@@ -39,16 +39,18 @@ namespace Spectrum.Visualizers {
 
     public LEDDomeWaveVisualizer(
       Configuration config,
+      LayerRendererRuntime runtime,
       OrientationInput orientationInput,
       LEDDomeOutput dome
     ) {
       this.config = config;
-      this.runtime = config.GetLayerRuntime();
+      this.runtime = runtime;
       this.orientationInput = orientationInput;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
-      this.trigger = new LayerTrigger(config, orientationInput, this.LayerKey);
+      this.trigger = new LayerTrigger(
+        config, orientationInput, runtime.InstanceId.Value);
     }
 
     public int Priority => 2;

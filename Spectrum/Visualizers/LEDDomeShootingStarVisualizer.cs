@@ -69,7 +69,7 @@ namespace Spectrum {
     // spawn cadence frame-rate independent (same trick Wave uses for its phase).
     private double spawnAccumulator;
 
-    // Last-seen manual-clear counter (config.domeLayerClearCounters[LayerKey]),
+    // Last-seen manual-clear counter (keyed by the stable layer instance ID),
     // edge-detected exactly like LayerTrigger's manual fire. -1 = not yet
     // baselined, so a counter already bumped in a saved config doesn't clear the
     // instant the layer is (re)constructed.
@@ -77,6 +77,7 @@ namespace Spectrum {
 
     public LEDDomeShootingStarVisualizer(
       Configuration config,
+      LayerRendererRuntime runtime,
       AudioInput audio,
       OrientationInput orientationInput,
       OrientationCenter center,
@@ -84,7 +85,7 @@ namespace Spectrum {
       LEDDomeOutput dome
     ) {
       this.config = config;
-      this.runtime = config.GetLayerRuntime();
+      this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.center = center;
@@ -93,7 +94,7 @@ namespace Spectrum {
       this.buffer = this.dome.MakeDomeOutputBuffer();
       // Beat + Audio passed so all four trigger sources are live, like Ripple.
       this.trigger = new LayerTrigger(
-        config, orientationInput, this.LayerKey, beat, audio);
+        config, orientationInput, runtime.InstanceId.Value, beat, audio);
     }
 
     public int Priority => 2;
@@ -188,7 +189,8 @@ namespace Spectrum {
     // LayerTrigger.ManualFired, against config.domeLayerClearCounters.
     private bool ClearRequested() {
       int counter = 0;
-      this.config.domeLayerClearCounters?.TryGetValue(this.LayerKey, out counter);
+      this.config.domeLayerClearCounters?.TryGetValue(
+        this.runtime.InstanceId.Value, out counter);
       if (this.lastClearCounter == -1) {
         this.lastClearCounter = counter;
         return false;

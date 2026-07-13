@@ -1,4 +1,5 @@
 using Spectrum.Base;
+using System.Collections.Generic;
 
 namespace Spectrum.LEDs {
 
@@ -22,6 +23,7 @@ namespace Spectrum.LEDs {
     string ILayerRenderer.RendererId => this.LayerKey;
     LEDDomeOutputBuffer ILayerRenderer.Frame => this.LayerBuffer;
     bool ILayerRenderer.IsAvailable => this.Enabled;
+    IReadOnlyList<Input> ILayerRenderer.RequiredInputs => this.GetInputs();
   }
 
 }

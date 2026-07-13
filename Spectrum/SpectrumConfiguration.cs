@@ -2,10 +2,11 @@ using System.Collections.Generic;
 using Spectrum.Base;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Spectrum {
 
-  public class SpectrumConfiguration : Configuration {
+  public class SpectrumConfiguration : Configuration, ILayerStackSnapshotSource {
 
     public event PropertyChangedEventHandler PropertyChanged;
 
@@ -92,9 +93,47 @@ namespace Spectrum {
     // non-null default would double up the persisted entries on load. A null /
     // empty stack is synthesized on load by LegacyLayerParamMigration.
     private List<DomeLayerSettings> _domeLayerStack = null;
+    private LayerStackSnapshot _domeLayerStackSnapshot =
+      LayerStackSnapshot.Empty;
     public List<DomeLayerSettings> domeLayerStack {
       get => _domeLayerStack;
-      set => SetField(ref _domeLayerStack, value);
+      set {
+        List<DomeLayerSettings> published = value;
+        if (NeedsLayerInstanceIds(value)) {
+          (List<DomeLayerSettings> normalized, string error) =
+            new LayerStackService().Normalize(value);
+          if (error == null) {
+            published = normalized;
+          }
+        }
+        if (EqualityComparer<List<DomeLayerSettings>>.Default.Equals(
+              this._domeLayerStack, published)) {
+          return;
+        }
+        LayerStackSnapshot snapshot =
+          LayerStackService.SnapshotFor(published);
+        this._domeLayerStack = published;
+        Volatile.Write(ref this._domeLayerStackSnapshot, snapshot);
+        this.PropertyChanged?.Invoke(
+          this, new PropertyChangedEventArgs(nameof(this.domeLayerStack)));
+      }
+    }
+    LayerStackSnapshot ILayerStackSnapshotSource.DomeLayerStackSnapshot =>
+      Volatile.Read(ref this._domeLayerStackSnapshot);
+
+    private static bool NeedsLayerInstanceIds(
+      IReadOnlyList<DomeLayerSettings> layers
+    ) {
+      if (layers == null) {
+        return false;
+      }
+      for (int i = 0; i < layers.Count; i++) {
+        DomeLayerSettings layer = layers[i];
+        if (layer != null && string.IsNullOrWhiteSpace(layer.InstanceId)) {
+          return true;
+        }
+      }
+      return false;
     }
     // Left null by default (rather than a pre-filled identity array): XSerializer
     // deserializes an array property by calling IList.Add on the *existing*

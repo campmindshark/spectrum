@@ -74,10 +74,11 @@ namespace Spectrum.Visualizers {
 
     public LEDDomeNoiseCloudVisualizer(
       Configuration config,
+      LayerRendererRuntime runtime,
       LEDDomeOutput dome
     ) {
       this.config = config;
-      this.runtime = config.GetLayerRuntime();
+      this.runtime = runtime;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();

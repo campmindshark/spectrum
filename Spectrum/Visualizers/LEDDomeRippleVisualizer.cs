@@ -49,6 +49,7 @@ namespace Spectrum.Visualizers {
 
     public LEDDomeRippleVisualizer(
       Configuration config,
+      LayerRendererRuntime runtime,
       AudioInput audio,
       OrientationInput orientationInput,
       OrientationCenter center,
@@ -56,7 +57,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
-      this.runtime = config.GetLayerRuntime();
+      this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.dome = dome;
@@ -64,7 +65,7 @@ namespace Spectrum.Visualizers {
       this.buffer = this.dome.MakeDomeOutputBuffer();
       this.center = center;
       this.trigger = new LayerTrigger(
-        config, orientationInput, this.LayerKey, beat, audio);
+        config, orientationInput, runtime.InstanceId.Value, beat, audio);
 
       // Bake the static unit-sphere position of every pixel once.
       this.pixelPositions = this.buffer.BakePixelPositions();

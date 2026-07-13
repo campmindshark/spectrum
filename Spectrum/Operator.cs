@@ -5,9 +5,9 @@ using Spectrum.Audio;
 using Spectrum.LEDs;
 using Spectrum.MIDI;
 using System.Collections.Generic;
-using System.Linq;
 using System.Diagnostics;
 using System.ComponentModel;
+using System.Collections.Immutable;
 using Spectrum.Visualizers;
 
 namespace Spectrum {
@@ -24,6 +24,7 @@ namespace Spectrum {
     private readonly Dictionary<string, LayerRendererRuntime>
       layerRuntimeByInstance =
         new Dictionary<string, LayerRendererRuntime>(StringComparer.Ordinal);
+    private LayerStackSnapshot publishedLayerStack = LayerStackSnapshot.Empty;
     private int layerReconcilePending;
 
     // Exposed so diagnostic windows (e.g. the wand status display) can read the
@@ -70,8 +71,9 @@ namespace Spectrum {
       new List<Visualizer>();
     private readonly List<Visualizer> alwaysRunVisualizers =
       new List<Visualizer>();
-    private readonly HashSet<Visualizer> plannedLayerVisualizers =
-      new HashSet<Visualizer>();
+    private readonly Dictionary<Visualizer, ImmutableArray<Input>>
+      plannedLayerInputs =
+        new Dictionary<Visualizer, ImmutableArray<Input>>();
 
     // Visualizers that have thrown too many times are quarantined: the
     // scheduling pass skips them so a consistently-broken visualizer can't take
@@ -143,61 +145,64 @@ namespace Spectrum {
         this.config,
         dome
       ));
-      var layerFactories = new Dictionary<
-        string, Func<Configuration, Visualizer>>(StringComparer.Ordinal) {
-        ["volume"] = c => new LEDDomeVolumeVisualizer(
-          c, audio, this.BeatBroadcaster, dome),
-        ["radial"] = c => new LEDDomeRadialVisualizer(
-          c, audio, this.BeatBroadcaster, dome),
-        ["splat"] = c => new LEDDomeSplatVisualizer(
-          c, audio, this.BeatBroadcaster, dome),
-        ["quaternion-test"] = c =>
-          new LEDDomeQuaternionTestVisualizer(c, orientation, dome),
-        ["quaternion-paintbrush"] = c =>
-          new LEDDomeQuaternionPaintbrushVisualizer(
-            c, audio, orientation, orientationCenter,
-            this.BeatBroadcaster, dome),
-        ["race"] = c => new LEDDomeRaceVisualizer(
-          c, audio, midi, this.BeatBroadcaster, dome),
-        ["snakes"] = c => new LEDDomeSnakesVisualizer(c, dome),
-        ["tv-static"] = c => new LEDDomeTVStaticVisualizer(c, dome),
-        ["twinkle"] = c => new LEDDomeTwinkleVisualizer(c, dome),
-        ["background"] = c => new LEDDomeBackgroundVisualizer(c, dome),
-        ["noise-cloud"] = c => new LEDDomeNoiseCloudVisualizer(c, dome),
-        ["vortex"] = c => new LEDDomeVortexVisualizer(c, dome),
-        ["caustics"] = c => new LEDDomeCausticsVisualizer(
-          c, audio, orientation, orientationCenter,
-          this.BeatBroadcaster, dome),
-        ["flash"] = c => new LEDDomeFlashVisualizer(
-          c, audio, orientation, this.BeatBroadcaster, dome),
-        ["wave"] = c => new LEDDomeWaveVisualizer(c, orientation, dome),
-        ["gyroscope"] = c => new LEDDomeGyroscopeVisualizer(
-          c, orientation, orientationCenter, dome),
-        ["ripple"] = c => new LEDDomeRippleVisualizer(
-          c, audio, orientation, orientationCenter,
-          this.BeatBroadcaster, dome),
-        ["stamp"] = c => new LEDDomeStampVisualizer(
-          c, audio, orientation, orientationCenter,
-          this.BeatBroadcaster, dome),
-        ["metaball"] = c => new LEDDomeMetaballVisualizer(
-          c, audio, orientation, orientationCenter, dome),
-        ["point-cloud"] = c =>
-          new LEDDomePointCloudVisualizer(c, orientation, dome),
-        ["shooting-star"] = c => new LEDDomeShootingStarVisualizer(
-          c, audio, orientation, orientationCenter,
-          this.BeatBroadcaster, dome),
-        ["sparkler"] = c => new LEDDomeSparklerVisualizer(
-          c, audio, orientation, orientationCenter,
-          this.BeatBroadcaster, dome),
-      };
       var rendererFactories = new Dictionary<
         string, Func<LayerRenderContext, ILayerRenderer>>(
-          StringComparer.Ordinal);
-      foreach (var pair in layerFactories) {
-        Func<Configuration, Visualizer> createVisualizer = pair.Value;
-        rendererFactories[pair.Key] = context =>
-          (ILayerRenderer)createVisualizer(context.Get<Configuration>());
-      }
+          StringComparer.Ordinal) {
+        ["volume"] = context => new LEDDomeVolumeVisualizer(
+          this.config, context.Runtime, audio, this.BeatBroadcaster, dome),
+        ["radial"] = context => new LEDDomeRadialVisualizer(
+          this.config, context.Runtime, audio, this.BeatBroadcaster, dome),
+        ["splat"] = context => new LEDDomeSplatVisualizer(
+          this.config, context.Runtime, audio, this.BeatBroadcaster, dome),
+        ["quaternion-test"] = context =>
+          new LEDDomeQuaternionTestVisualizer(this.config, orientation, dome),
+        ["quaternion-paintbrush"] = context =>
+          new LEDDomeQuaternionPaintbrushVisualizer(
+            this.config, context.Runtime, audio, orientation,
+            orientationCenter, this.BeatBroadcaster, dome),
+        ["race"] = context => new LEDDomeRaceVisualizer(
+          this.config, context.Runtime, audio, midi,
+          this.BeatBroadcaster, dome),
+        ["snakes"] = context => new LEDDomeSnakesVisualizer(
+          this.config, context.Runtime, dome),
+        ["tv-static"] = context =>
+          new LEDDomeTVStaticVisualizer(this.config, dome),
+        ["twinkle"] = context => new LEDDomeTwinkleVisualizer(
+          this.config, context.Runtime, dome),
+        ["background"] = context => new LEDDomeBackgroundVisualizer(
+          this.config, context.Runtime, dome),
+        ["noise-cloud"] = context => new LEDDomeNoiseCloudVisualizer(
+          this.config, context.Runtime, dome),
+        ["vortex"] = context => new LEDDomeVortexVisualizer(
+          this.config, context.Runtime, dome),
+        ["caustics"] = context => new LEDDomeCausticsVisualizer(
+          this.config, context.Runtime, audio, orientation,
+          orientationCenter, this.BeatBroadcaster, dome),
+        ["flash"] = context => new LEDDomeFlashVisualizer(
+          this.config, context.Runtime, audio, orientation,
+          this.BeatBroadcaster, dome),
+        ["wave"] = context => new LEDDomeWaveVisualizer(
+          this.config, context.Runtime, orientation, dome),
+        ["gyroscope"] = context => new LEDDomeGyroscopeVisualizer(
+          this.config, context.Runtime, orientation, orientationCenter, dome),
+        ["ripple"] = context => new LEDDomeRippleVisualizer(
+          this.config, context.Runtime, audio, orientation,
+          orientationCenter, this.BeatBroadcaster, dome),
+        ["stamp"] = context => new LEDDomeStampVisualizer(
+          this.config, context.Runtime, audio, orientation,
+          orientationCenter, this.BeatBroadcaster, dome),
+        ["metaball"] = context => new LEDDomeMetaballVisualizer(
+          this.config, context.Runtime, audio, orientation,
+          orientationCenter, dome),
+        ["point-cloud"] = context => new LEDDomePointCloudVisualizer(
+          this.config, context.Runtime, orientation, dome),
+        ["shooting-star"] = context => new LEDDomeShootingStarVisualizer(
+          this.config, context.Runtime, audio, orientation,
+          orientationCenter, this.BeatBroadcaster, dome),
+        ["sparkler"] = context => new LEDDomeSparklerVisualizer(
+          this.config, context.Runtime, audio, orientation,
+          orientationCenter, this.BeatBroadcaster, dome),
+      };
       this.layerCatalog = LayerCatalog.Default.WithFactories(rendererFactories);
       foreach (LayerDefinition definition in this.layerCatalog.Definitions) {
         if (definition.CreateRenderer == null) {
@@ -205,36 +210,37 @@ namespace Spectrum {
             "No renderer factory registered for layer " + definition.Id);
         }
       }
-      this.ReconcileLayerVisualizers();
       this.config.PropertyChanged += this.OnLayerConfigurationChanged;
+      this.CapturePublishedLayerStack();
+      this.ReconcileLayerVisualizers();
+      Interlocked.Exchange(ref this.layerReconcilePending, 0);
     }
 
     private void OnLayerConfigurationChanged(
       object sender, PropertyChangedEventArgs e
     ) {
       if (e.PropertyName == nameof(this.config.domeLayerStack)) {
+        // SpectrumConfiguration compiled this immutable value before raising
+        // PropertyChanged. Alternate Configuration implementations are frozen
+        // synchronously here, on their publishing thread, as a compatibility
+        // fallback; ReconcileLayerVisualizers never reads serializer DTOs.
+        this.CapturePublishedLayerStack();
         Interlocked.Exchange(ref this.layerReconcilePending, 1);
       }
     }
 
+    private void CapturePublishedLayerStack() {
+      LayerStackSnapshot snapshot =
+        this.config is ILayerStackSnapshotSource source
+          ? source.DomeLayerStackSnapshot
+          : LayerStackService.SnapshotFor(this.config.domeLayerStack);
+      Volatile.Write(
+        ref this.publishedLayerStack, snapshot ?? LayerStackSnapshot.Empty);
+    }
+
     private void ReconcileLayerVisualizers() {
-      List<DomeLayerSettings> stack = this.config.domeLayerStack;
-      if (stack == null) {
-        this.DomeOutput.PublishLayerStack(LayerStackSnapshot.Empty);
-        return;
-      }
-      bool needsIds = stack.Any(
-        layer => layer != null && string.IsNullOrWhiteSpace(layer.InstanceId));
-      if (needsIds) {
-        (List<DomeLayerSettings> normalized, string error) =
-          StackValidator.Validate(stack);
-        if (error != null) {
-          return;
-        }
-        this.config.domeLayerStack = normalized;
-        stack = normalized;
-      }
-      LayerStackSnapshot snapshot = LayerStackService.SnapshotFor(stack);
+      LayerStackSnapshot snapshot = Volatile.Read(
+        ref this.publishedLayerStack) ?? LayerStackSnapshot.Empty;
       foreach (LayerSnapshot layer in snapshot.Layers) {
         string instanceId = layer.Id.Value;
         if (this.createdRendererByInstance.TryGetValue(
@@ -251,14 +257,9 @@ namespace Spectrum {
           continue;
         }
         var runtime = new LayerRendererRuntime(layer);
-        Configuration instanceConfig = LayerInstanceConfiguration.Create(
-          this.config, instanceId, layer.RendererId, runtime);
-        var services = new Dictionary<Type, object> {
-          [typeof(Configuration)] = instanceConfig,
-        };
         using (LayerInstanceScope.Push(instanceId)) {
           ILayerRenderer renderer = definition.CreateRenderer(
-            new LayerRenderContext(layer.Id, layer, services, runtime));
+            new LayerRenderContext(layer.Id, layer, runtime: runtime));
           if (renderer is not Visualizer visualizer) {
             throw new InvalidOperationException(
               "Layer renderer must implement Visualizer: " + definition.Id);
@@ -347,10 +348,10 @@ namespace Spectrum {
 
         // Compile once before scheduling. These are the same renderer objects
         // and immutable layer snapshots DomeCompositor will consume below.
-        this.plannedLayerVisualizers.Clear();
+        this.plannedLayerInputs.Clear();
         foreach (CompiledLayer layer in this.DomeOutput.RenderPlan.Layers) {
           if (layer.Renderer is Visualizer visualizer) {
-            this.plannedLayerVisualizers.Add(visualizer);
+            this.plannedLayerInputs[visualizer] = layer.RequiredInputs;
           }
         }
 
@@ -369,12 +370,18 @@ namespace Spectrum {
           this.alwaysRunVisualizers.Clear();
           foreach (var visualizer in output.GetVisualizers()) {
             bool isLayerVisualizer = visualizer is DomeLayerVisualizer;
-            if (isLayerVisualizer &&
-                !this.plannedLayerVisualizers.Contains(visualizer)) {
-              continue;
+            IReadOnlyList<Input> requiredInputs;
+            if (isLayerVisualizer) {
+              if (!this.plannedLayerInputs.TryGetValue(
+                    visualizer, out ImmutableArray<Input> plannedInputs)) {
+                continue;
+              }
+              requiredInputs = plannedInputs;
+            } else {
+              requiredInputs = visualizer.GetInputs();
             }
             // We can only consider a visualizer if all its inputs are enabled
-            if (!AllInputsEnabled(visualizer)) {
+            if (!AllInputsEnabled(requiredInputs)) {
               continue;
             }
             // Skip visualizers that have been quarantined for throwing too
@@ -410,7 +417,11 @@ namespace Spectrum {
 
         this.activeInputs.Clear();
         foreach (var visualizer in this.activeVisualizers) {
-          foreach (var input in visualizer.GetInputs()) {
+          IReadOnlyList<Input> requiredInputs =
+            this.plannedLayerInputs.TryGetValue(
+              visualizer, out ImmutableArray<Input> plannedInputs)
+                ? plannedInputs : visualizer.GetInputs();
+          foreach (var input in requiredInputs) {
             this.activeInputs.Add(input);
           }
         }
@@ -590,12 +601,13 @@ namespace Spectrum {
       nextFrameTimestamp += MinFrameTicks;
     }
 
-    // Allocation-free replacement for GetInputs().All(i => i.Enabled): avoids
-    // the per-visualizer delegate + array enumerator that LINQ would create on
-    // the hot scheduling path.
-    private static bool AllInputsEnabled(Visualizer visualizer) {
-      foreach (var input in visualizer.GetInputs()) {
-        if (!input.Enabled) {
+    // Allocation-free replacement for inputs.All(i => i.Enabled): avoids the
+    // per-visualizer delegate + enumerator that LINQ would create on the hot
+    // scheduling path. Layer inputs come from the immutable render plan;
+    // diagnostics continue to declare theirs directly on the visualizer.
+    private static bool AllInputsEnabled(IReadOnlyList<Input> inputs) {
+      for (int i = 0; i < inputs.Count; i++) {
+        if (!inputs[i].Enabled) {
           return false;
         }
       }

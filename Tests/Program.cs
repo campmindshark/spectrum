@@ -17,6 +17,9 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("parameters compile into separate namespaces", ParameterNamespaces);
       Run("compiled renderer runtime updates in place", RuntimeUpdatesInPlace);
       Run("renderer runtime swaps immutable options", RuntimeOptionsSwap);
+      Run("compiled plan freezes renderer inputs", PlanFreezesRendererInputs);
+      Run("configuration publishes immutable layer snapshots",
+        ConfigurationPublishesSnapshot);
       Run("compositor preserves stack order and bottom behavior", StackOrder);
       Run("scratch copies only mutable channels", ScratchCopiesChannelsOnly);
       Run("operator creates independent duplicate renderers", DuplicateRenderers);
@@ -137,6 +140,55 @@ namespace Spectrum.LayerPipeline.Tests {
         "replacement option was not published");
       Assert(initial.Layers[0].RendererParameters["speed"].Value == .25,
         "the original snapshot was mutated");
+    }
+
+    private static void PlanFreezesRendererInputs() {
+      LayerSnapshot snapshot = SnapshotWithParameter("input-1", "speed", 1);
+      var first = new FakeInput();
+      var second = new FakeInput();
+      var declared = new Input[] { first, first, second };
+      var topology = OnePixelTopology();
+      var catalog = new LayerCatalog(new[] {
+        new LayerDefinition(
+          "test", "Test",
+          context => new FakeRenderer(
+            "test", new LEDDomeOutputBuffer(topology), declared),
+          new[] {
+            new DomeLayerParam {
+              Key = "speed", Type = DomeLayerParamType.Double,
+              Min = 0, Max = 10, Default = 0,
+            },
+          })
+      });
+      RenderPlan plan = new RenderPlanCompiler(catalog).Compile(
+        new LayerStackSnapshot(ImmutableArray.Create(snapshot)),
+        (IReadOnlyDictionary<Type, object>)null);
+
+      declared[0] = null;
+      Assert(plan.Layers[0].RequiredInputs.Length == 2,
+        "duplicate input requirements survived compilation");
+      Assert(ReferenceEquals(plan.Layers[0].RequiredInputs[0], first) &&
+        ReferenceEquals(plan.Layers[0].RequiredInputs[1], second),
+        "the plan retained the renderer's mutable input array");
+    }
+
+    private static void ConfigurationPublishesSnapshot() {
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> {
+          Layer("background", null),
+        },
+      };
+      var source = (ILayerStackSnapshotSource)config;
+      LayerStackSnapshot published = source.DomeLayerStackSnapshot;
+      DomeLayerSettings dto = config.domeLayerStack[0];
+
+      Assert(!string.IsNullOrWhiteSpace(dto.InstanceId),
+        "the publication boundary did not assign an instance ID");
+      Assert(published.Layers[0].Id.Value == dto.InstanceId,
+        "the DTO and immutable snapshot received different identities");
+      dto.Enabled = false;
+      Assert(published.Layers[0].Enabled,
+        "the published snapshot retained a mutable DTO");
     }
 
     private static void StackOrder() {
@@ -269,7 +321,8 @@ namespace Spectrum.LayerPipeline.Tests {
         new LayerInstanceId(renderer.RendererId), renderer.RendererId,
         operation.Name, opacity, true, parameters, parameters, null);
       return new CompiledLayer(
-        snapshot, renderer, operation, operation.CompileOptions(parameters));
+        snapshot, renderer, ImmutableArray<Input>.Empty, operation,
+        operation.CompileOptions(parameters));
     }
 
     private static DomeLayerSettings Layer(string key, string id) => new() {
@@ -304,10 +357,22 @@ namespace Spectrum.LayerPipeline.Tests {
       public string RendererId { get; }
       public LEDDomeOutputBuffer Frame { get; }
       public bool IsAvailable => true;
-      public FakeRenderer(string id, LEDDomeOutputBuffer frame) {
+      public IReadOnlyList<Input> RequiredInputs { get; }
+      public FakeRenderer(
+        string id, LEDDomeOutputBuffer frame,
+        IReadOnlyList<Input> requiredInputs = null
+      ) {
         this.RendererId = id;
         this.Frame = frame;
+        this.RequiredInputs = requiredInputs ?? Array.Empty<Input>();
       }
+    }
+
+    private sealed class FakeInput : Input {
+      public bool Active { get; set; }
+      public bool AlwaysActive => false;
+      public bool Enabled => true;
+      public void OperatorUpdate() { }
     }
   }
 }

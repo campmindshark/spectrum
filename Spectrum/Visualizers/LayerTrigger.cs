@@ -36,7 +36,7 @@ namespace Spectrum.Visualizers {
     private readonly OrientationInput orientationInput;
     private readonly BeatBroadcaster beat;
     private readonly AudioInput audio;
-    private readonly string layerKey;
+    private readonly string instanceId;
 
     // Previous frame's actionFlag per device id, so a held button (flag stays
     // nonzero across frames) only fires once.
@@ -57,12 +57,12 @@ namespace Spectrum.Visualizers {
     // beat/audio are optional: the OneShot layers (Wave/Metaball) that only use
     // Manual + Button pass null and never select the Beat/Audio sources.
     public LayerTrigger(
-      Configuration config, OrientationInput orientationInput, string layerKey,
+      Configuration config, OrientationInput orientationInput, string instanceId,
       BeatBroadcaster beat = null, AudioInput audio = null
     ) {
       this.config = config;
       this.orientationInput = orientationInput;
-      this.layerKey = layerKey;
+      this.instanceId = instanceId;
       this.beat = beat;
       this.audio = audio;
     }
@@ -114,13 +114,14 @@ namespace Spectrum.Visualizers {
       return fired;
     }
 
-    // Whether config.domeLayerFireCounters[layerKey] changed since the last
+    // Whether config.domeLayerFireCounters[instanceId] changed since the last
     // frame. A counter rather than a bool: the native/web Fire buttons just
     // increment it, so two clients firing around the same time never race
     // over who resets a shared flag.
     private bool ManualFired() {
       int counter = 0;
-      this.config.domeLayerFireCounters?.TryGetValue(this.layerKey, out counter);
+      this.config.domeLayerFireCounters?.TryGetValue(
+        this.instanceId, out counter);
       if (this.lastManualCounter == -1) {
         this.lastManualCounter = counter;
         return false;

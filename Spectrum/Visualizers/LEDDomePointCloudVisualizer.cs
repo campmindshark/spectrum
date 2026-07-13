@@ -63,11 +63,12 @@ namespace Spectrum.Visualizers {
 
     public LEDDomePointCloudVisualizer(
       Configuration config,
+      LayerRendererRuntime runtime,
       OrientationInput orientationInput,
       LEDDomeOutput dome
     ) {
       this.config = config;
-      this.runtime = config.GetLayerRuntime();
+      this.runtime = runtime;
       this.orientationInput = orientationInput;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);

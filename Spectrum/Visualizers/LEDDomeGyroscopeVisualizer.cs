@@ -56,12 +56,13 @@ namespace Spectrum.Visualizers {
 
     public LEDDomeGyroscopeVisualizer(
       Configuration config,
+      LayerRendererRuntime runtime,
       OrientationInput orientation,
       OrientationCenter orientationCenter,
       LEDDomeOutput dome
     ) {
       this.config = config;
-      this.runtime = config.GetLayerRuntime();
+      this.runtime = runtime;
       this.orientation = orientation;
       this.orientationCenter = orientationCenter;
       this.dome = dome;

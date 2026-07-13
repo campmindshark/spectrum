@@ -22,12 +22,13 @@ namespace Spectrum {
 
     public LEDDomeSplatVisualizer(
       Configuration config,
+      LayerRendererRuntime runtime,
       AudioInput audio,
       BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
       this.config = config;
-      this.runtime = config.GetLayerRuntime();
+      this.runtime = runtime;
       this.audio = audio;
       this.beat = beat;
       this.dome = dome;

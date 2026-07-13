@@ -39,6 +39,14 @@ namespace Spectrum.Base {
       new LayerStackSnapshot(ImmutableArray<LayerSnapshot>.Empty);
   }
 
+  // Implemented by serializer-facing configuration objects that compile a
+  // DTO stack at the same moment they publish its PropertyChanged event. The
+  // operator can then cross the configuration boundary through this immutable
+  // value instead of reading serializer DTOs on its render thread.
+  public interface ILayerStackSnapshotSource {
+    LayerStackSnapshot DomeLayerStackSnapshot { get; }
+  }
+
   // Per-instance runtime view of the renderer options compiled into the
   // immutable layer snapshot. The Operator publishes a replacement snapshot
   // before scheduling a changed stack; visualizers therefore read validated
@@ -80,25 +88,6 @@ namespace Spectrum.Base {
     }
   }
 
-  // Temporary constructor boundary while existing visualizers still receive
-  // shared non-layer settings through Configuration. Layer parameters are
-  // exposed as a separate compiled runtime and never through domeLayerStack.
-  public interface LayerRuntimeConfiguration : Configuration {
-    LayerRendererRuntime LayerRuntime { get; }
-  }
-
-  public static class LayerRuntimeConfigurationExtensions {
-    public static LayerRendererRuntime GetLayerRuntime(
-      this Configuration configuration
-    ) {
-      if (configuration is LayerRuntimeConfiguration layerConfiguration) {
-        return layerConfiguration.LayerRuntime;
-      }
-      throw new InvalidOperationException(
-        "Layer visualizers require a compiled layer runtime.");
-    }
-  }
-
   // Runtime renderers deliberately expose no persisted DTO or Configuration.
   // The compiler binds a renderer to a layer snapshot once, and the compositor
   // consumes only this narrow frame contract.
@@ -106,6 +95,7 @@ namespace Spectrum.Base {
     string RendererId { get; }
     LEDDomeOutputBuffer Frame { get; }
     bool IsAvailable { get; }
+    IReadOnlyList<Input> RequiredInputs { get; }
   }
 
   public sealed class LayerRenderContext {
@@ -385,6 +375,7 @@ namespace Spectrum.Base {
   public sealed record CompiledLayer(
     LayerSnapshot Snapshot,
     ILayerRenderer Renderer,
+    ImmutableArray<Input> RequiredInputs,
     ICompositeOperation Operation,
     ICompositeOptions OperationOptions
   );
@@ -451,12 +442,37 @@ namespace Spectrum.Base {
           continue;
         }
         layers.Add(new CompiledLayer(
-          layer, renderer, operation,
+          layer, renderer, CompileRequiredInputs(renderer), operation,
           operation.CompileOptions(layer.OperationParameters)));
       }
       // Disabled or unresolved entries are intentionally filtered, so Count
       // can be smaller than the builder's initial capacity.
       return new RenderPlan(layers.ToImmutable());
+    }
+
+    private static ImmutableArray<Input> CompileRequiredInputs(
+      ILayerRenderer renderer
+    ) {
+      IReadOnlyList<Input> inputs = renderer.RequiredInputs;
+      if (inputs == null || inputs.Count == 0) {
+        return ImmutableArray<Input>.Empty;
+      }
+      var compiled = ImmutableArray.CreateBuilder<Input>(inputs.Count);
+      var seen = new HashSet<Input>();
+      for (int i = 0; i < inputs.Count; i++) {
+        Input input = inputs[i];
+        if (input == null) {
+          throw new InvalidOperationException(
+            "Renderer " + renderer.RendererId +
+            " declared a null input requirement.");
+        }
+        if (seen.Add(input)) {
+          compiled.Add(input);
+        }
+      }
+      // Duplicate declarations are collapsed, so Count may be smaller than
+      // the builder's initial capacity.
+      return compiled.ToImmutable();
     }
   }
 }

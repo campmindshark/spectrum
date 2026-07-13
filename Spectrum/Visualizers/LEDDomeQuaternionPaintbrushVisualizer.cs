@@ -87,6 +87,7 @@ namespace Spectrum.Visualizers {
 
     public LEDDomeQuaternionPaintbrushVisualizer(
       Configuration config,
+      LayerRendererRuntime runtime,
       AudioInput audio,
       OrientationInput orientationInput,
       OrientationCenter center,
@@ -94,7 +95,7 @@ namespace Spectrum.Visualizers {
       LEDDomeOutput dome
     ) {
       this.config = config;
-      this.runtime = config.GetLayerRuntime();
+      this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.beat = beat;

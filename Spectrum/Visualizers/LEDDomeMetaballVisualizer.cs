@@ -52,20 +52,22 @@ namespace Spectrum.Visualizers {
 
     public LEDDomeMetaballVisualizer(
       Configuration config,
+      LayerRendererRuntime runtime,
       AudioInput audio,
       OrientationInput orientationInput,
       OrientationCenter center,
       LEDDomeOutput dome
     ) {
       this.config = config;
-      this.runtime = config.GetLayerRuntime();
+      this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
       this.center = center;
-      this.trigger = new LayerTrigger(config, orientationInput, this.LayerKey);
+      this.trigger = new LayerTrigger(
+        config, orientationInput, runtime.InstanceId.Value);
 
       // Bake the static unit-sphere position of every pixel once.
       this.pixelPositions = this.buffer.BakePixelPositions();

@@ -35,13 +35,14 @@ namespace Spectrum.Visualizers {
 
     public LEDDomeFlashVisualizer(
       Configuration config,
+      LayerRendererRuntime runtime,
       AudioInput audio,
       OrientationInput orientationInput,
       BeatBroadcaster beat,
       LEDDomeOutput dome
     ) {
       this.config = config;
-      this.runtime = config.GetLayerRuntime();
+      this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.beat = beat;
@@ -49,7 +50,7 @@ namespace Spectrum.Visualizers {
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeOutputBuffer();
       this.trigger = new LayerTrigger(
-        config, orientationInput, this.LayerKey, beat, audio);
+        config, orientationInput, runtime.InstanceId.Value, beat, audio);
     }
 
     public int Priority => 2;

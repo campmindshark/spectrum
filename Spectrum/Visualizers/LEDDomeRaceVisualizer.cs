@@ -211,13 +211,14 @@ namespace Spectrum {
 
     public LEDDomeRaceVisualizer(
      Configuration config,
+     LayerRendererRuntime runtime,
      AudioInput audio,
      MidiInput midi,
      BeatBroadcaster beat,
      LEDDomeOutput dome
      ) {
       this.config = config;
-      this.runtime = config.GetLayerRuntime();
+      this.runtime = runtime;
       this.audio = audio;
       this.midi = midi;
       this.beat = beat;
