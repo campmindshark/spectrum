@@ -18,6 +18,11 @@ namespace Spectrum.Base {
    * StackValidator, so a scene authored against a slightly different schema is
    * normalized (params clamped, unknown keys dropped) the same way a web
    * PUT /api/layers is.
+   *
+   * Layer instance IDs are part of the scene snapshot and are deliberately
+   * preserved by both copies. The runtime caches state by instance ID and
+   * renderer kind, so recalling a scene resumes matching trails/playheads;
+   * a missing/new ID or a changed renderer kind starts a fresh renderer.
    */
   public sealed class SceneService {
 
@@ -91,11 +96,11 @@ namespace Spectrum.Base {
       return (true, null);
     }
 
-    // Recall the named scene: deep-copy its layers, run them through the shared
-    // validator, then set domeLayerStack + the two globals. Three config writes
-    // => three PropertyChanged events (order irrelevant); every subscriber
-    // (native layer rows, SSE frames, the operator) converges through the
-    // existing whole-stack plumbing.
+    // Recall the named scene: deep-copy its layers (preserving instance IDs),
+    // run them through the shared validator, then set domeLayerStack + the two
+    // globals. Three config writes => three PropertyChanged events (order
+    // irrelevant); every subscriber (native layer rows, SSE frames, the
+    // operator) converges through the existing whole-stack plumbing.
     public (bool ok, string error) Apply(string name) {
       DomeScene scene = Find(this.config.domeScenes, name);
       if (scene == null) {

@@ -387,6 +387,12 @@ namespace Spectrum.Base {
 
   public sealed class RenderPlanCompiler {
     private readonly LayerCatalog catalog;
+    // Renderer state belongs to (instance ID, renderer ID) and is retained for
+    // this compiler's lifetime, even while an instance is absent from a plan.
+    // Scene recall deliberately relies on that cache: a saved scene preserves
+    // IDs, so recalling it resumes each matching renderer's trails and other
+    // live state. Rebinding an ID to another renderer kind creates fresh state
+    // and replaces the cached binding.
     private readonly Dictionary<
       LayerInstanceId, (
         string rendererId, ILayerRenderer renderer, LayerRendererRuntime runtime

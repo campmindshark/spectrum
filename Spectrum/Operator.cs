@@ -19,6 +19,10 @@ namespace Spectrum {
     private readonly List<Output> outputs;
     private readonly List<Visualizer> visualizers;
     private readonly LayerCatalog layerCatalog;
+    // Per-instance renderer state is retained for the Operator's lifetime,
+    // including while a saved scene that omits the instance is active. Scene
+    // recall preserves IDs and therefore resumes state when both ID and
+    // renderer kind match. Changing the kind bound to an ID creates new state.
     private readonly Dictionary<string, string> createdRendererByInstance =
       new Dictionary<string, string>(StringComparer.Ordinal);
     private readonly Dictionary<string, LayerRendererRuntime>

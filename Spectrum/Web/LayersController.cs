@@ -193,11 +193,14 @@ namespace Spectrum.Web {
     // gateway, mirroring the native DomeLayersController.FireRow; firing is not a
     // stack edit, so it doesn't route through ReplaceAsync/the "layers" frame.
     // The counter (not a bool) is race-free across clients: each Fire just
-    // increments, none resets a shared flag.
+    // increments, none resets a shared flag. Renderer-key fallback is retained
+    // only for an older client addressing a kind that occurs exactly once;
+    // duplicate kinds must use their instance IDs so the wrong occurrence can
+    // never fire.
     public async Task<(bool ok, string error)> FireAsync(string instanceId) {
-      DomeLayerSettings layer = ResolveTarget(instanceId);
-      if (layer == null) {
-        return (false, "unknown layer instance: " + instanceId);
+      (DomeLayerSettings layer, string error) = ResolveTarget(instanceId);
+      if (error != null) {
+        return (false, error);
       }
       await this.gateway.InvokeAsync(() => {
         var counters = new Dictionary<string, int>(
@@ -214,9 +217,9 @@ namespace Spectrum.Web {
     // layer that holds accumulated live state (Shooting Star) edge-detects the
     // bump and drops it; layers with no such state ignore it (harmless no-op).
     public async Task<(bool ok, string error)> ClearAsync(string instanceId) {
-      DomeLayerSettings layer = ResolveTarget(instanceId);
-      if (layer == null) {
-        return (false, "unknown layer instance: " + instanceId);
+      (DomeLayerSettings layer, string error) = ResolveTarget(instanceId);
+      if (error != null) {
+        return (false, error);
       }
       await this.gateway.InvokeAsync(() => {
         var counters = new Dictionary<string, int>(
@@ -228,10 +231,34 @@ namespace Spectrum.Web {
       return (true, null);
     }
 
-    private DomeLayerSettings ResolveTarget(string id) {
+    private (DomeLayerSettings layer, string error) ResolveTarget(string id) {
       List<DomeLayerSettings> stack = this.config.domeLayerStack;
       DomeLayerSettings byInstance = DomeLayerSettings.ForInstance(stack, id);
-      return byInstance ?? DomeLayerSettings.ForKey(stack, id);
+      if (byInstance != null) {
+        return (byInstance, null);
+      }
+
+      // Compatibility for clients from before stable instance IDs: a renderer
+      // kind is safe as an address only when it identifies exactly one entry.
+      // ForKey's historical first-match behavior is intentionally not used
+      // here because it would misroute commands in a duplicate-kind stack.
+      DomeLayerSettings byRenderer = null;
+      if (stack != null) {
+        for (int i = 0; i < stack.Count; i++) {
+          DomeLayerSettings candidate = stack[i];
+          if (candidate == null || candidate.VisualizerKey != id) {
+            continue;
+          }
+          if (byRenderer != null) {
+            return (null,
+              "multiple layers use renderer " + id + "; use an instance id");
+          }
+          byRenderer = candidate;
+        }
+      }
+      return byRenderer != null
+        ? (byRenderer, null)
+        : (null, "unknown layer instance: " + id);
     }
   }
 }

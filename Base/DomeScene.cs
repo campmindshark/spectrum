@@ -16,8 +16,10 @@ namespace Spectrum.Base {
   // elements, which deserialize to their defaults.
   //
   // Instances are treated as immutable once stored: SceneService always deep
-  // copies on both save (so a scene never aliases the live stack) and apply (so a
-  // later stack edit never mutates the stored scene).
+  // copies on both save (so a scene never aliases the live stack) and apply (so
+  // a later stack edit never mutates the stored scene). InstanceId is copied,
+  // not regenerated: recalling a scene resumes runtime state for an existing
+  // matching instance; a different ID or renderer kind creates fresh state.
   public class DomeScene {
     public string Name { get; set; }
 

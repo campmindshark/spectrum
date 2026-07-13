@@ -26,7 +26,7 @@ namespace Spectrum {
     private void ColorPalettePropertyChanged(object sender, PropertyChangedEventArgs e) {
       PropertyChangedEventArgs forwardedEvent =
         new PropertyChangedEventArgs("colorPalette." + e.PropertyName);
-      this.PropertyChanged(this, forwardedEvent);
+      this.PropertyChanged?.Invoke(this, forwardedEvent);
     }
 
     private string _audioDeviceID = null;
