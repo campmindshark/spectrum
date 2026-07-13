@@ -206,6 +206,10 @@ namespace Spectrum.LEDs {
     // Identity by default, so an uncalibrated dome behaves exactly as before.
     private readonly int[] controllerForEndpoint = new int[NumCables];
     private DomeOutputMapping outputMapping;
+    // Touched only by the operator thread. Comparing mapping snapshots makes a
+    // cable-map transition clear OPC's persistent next frame exactly when the
+    // first frame using that new projection is written.
+    private DomeOutputMapping lastWireMapping;
     private DomeTopology topology;
 
     private static int calculateMaxStripLength() {
@@ -827,6 +831,11 @@ namespace Spectrum.LEDs {
       int stride = maxStripLength * 8;
       DomeOutputMapping mapping = System.Threading.Volatile.Read(
         ref this.outputMapping);
+      if (opcAPI != null &&
+          !ReferenceEquals(mapping, this.lastWireMapping)) {
+        opcAPI.ClearPixels();
+        this.lastWireMapping = mapping;
+      }
       // Rent a whole-frame snapshot for the latest-frame mailbox. If the UI has
       // not consumed the previous frame, PublishSimulatorFrame replaces and
       // returns it instead of building a backlog.

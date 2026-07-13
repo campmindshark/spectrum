@@ -70,6 +70,13 @@ namespace Spectrum {
         return;
       }
       this.stopwatch.Restart();
+      this.AdvancePattern();
+    }
+
+    // One deterministic state transition, separated from the one-second wall
+    // clock gate so the complete physical-order sequence can be regression
+    // tested without waiting more than three minutes.
+    internal void AdvancePattern() {
       this.lastIndex++;
       byte brightnessByte = (byte)(
         0xFF * this.config.domeMaxBrightness *

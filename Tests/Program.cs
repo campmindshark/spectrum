@@ -46,6 +46,7 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("prism frames are deterministic", PrismFixtures);
       Run("compositor replaces plans and holds on empty", PlanReplacement);
       Run("configuration with layers serializes", ConfigurationSerializes);
+      OPCWireTests.Register(Run);
       if (failures != 0) {
         Environment.ExitCode = 1;
       }

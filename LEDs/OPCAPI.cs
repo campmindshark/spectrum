@@ -40,6 +40,11 @@ namespace Spectrum.LEDs {
     // index actually written.
     private const int InitialChannelCapacity = 64;
 
+    // The OPC payload length is an unsigned 16-bit byte count. RGB pixels use
+    // three bytes each, so this is the largest dense channel that can be
+    // represented without wrapping the header length on the wire.
+    internal const int MaxPixelsPerChannel = ushort.MaxValue / 3;
+
     // Cap on how often we actually push a frame to the controller, independent
     // of the operator loop's own rate cap. This matters most when the output
     // runs on its own thread (separateThread): OutputThread spins free of the
@@ -370,7 +375,29 @@ namespace Spectrum.LEDs {
       }
     }
 
+    // Clears the pending dense pixel set for one channel. The dome uses this
+    // before writing the first complete frame after a cable-map change; without
+    // it, persistent pixels at addresses used only by the old mapping would be
+    // retransmitted as stale colors.
+    public void ClearPixels(byte channelIndex) {
+      ChannelBuffer channel = this.GetOrCreateChannel(channelIndex);
+      Array.Clear(channel.next, 0, channel.nextCount);
+      channel.nextCount = 0;
+    }
+
+    public void ClearPixels() {
+      Debug.Assert(this.defaultChannelSet, "defaultChannel should be set");
+      this.ClearPixels(this.defaultChannel);
+    }
+
     public void SetPixel(byte channelIndex, int pixelIndex, int color) {
+      if ((uint)pixelIndex >= (uint)MaxPixelsPerChannel) {
+        throw new ArgumentOutOfRangeException(
+          nameof(pixelIndex), pixelIndex,
+          "An OPC channel can contain at most " +
+          MaxPixelsPerChannel + " RGB pixels."
+        );
+      }
       ChannelBuffer channel = this.GetOrCreateChannel(channelIndex);
       if (pixelIndex >= channel.next.Length) {
         int newCapacity = channel.next.Length;

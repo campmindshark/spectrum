@@ -10,4 +10,8 @@
     <ProjectReference Include="..\Base\Base.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spectrum.LayerPipeline.Tests" />
+  </ItemGroup>
+
 </Project>
