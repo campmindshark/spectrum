@@ -200,18 +200,6 @@ namespace Spectrum.Base {
     // the same buffer shape (index-aligned), so accessing its private channels
     // is fine (same struct type). o is the source layer's opacity, 0..1.
 
-    // Bottom-most active layer: seed this composite pixel from src scaled by
-    // opacity. Coverage is carried through (not scaled by opacity) so a
-    // subsequent Over layer blends against the base's real alpha.
-    public void CompositeCopyScaled(LEDDomeOutputPixel src, double o) {
-      _r = src._r * o;
-      _g = src._g * o;
-      _b = src._b * o;
-      _a = src._a;
-      hue = src.hue;
-      updateColor();
-    }
-
     // Copy mutable frame channels only. Logical identity and projected
     // position belong to DomeTopology and are never part of a scratch copy.
     public void CopyChannelsFrom(LEDDomeOutputPixel src) {
@@ -472,11 +460,13 @@ namespace Spectrum.Base {
       }
     }
 
-    // Seed this composite buffer from a bottom layer scaled by opacity.
-    public void CompositeBottom(DomeFrame src, double opacity) {
-      this.EnsureCompatible(src, nameof(src));
+    // Initialize every mutable channel before executing a non-empty render
+    // plan. Pixel.Clear deliberately preserves a renderer's published hue, so
+    // the compositor resets that auxiliary channel explicitly as well.
+    public void ResetComposite() {
       for (int i = 0; i < pixels.Length; i++) {
-        pixels[i].CompositeCopyScaled(src.pixels[i], opacity);
+        pixels[i].Clear();
+        pixels[i].hue = 0;
       }
     }
 

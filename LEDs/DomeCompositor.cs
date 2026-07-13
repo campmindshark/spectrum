@@ -40,20 +40,18 @@ namespace Spectrum.LEDs {
     public DomeFrame Compose() {
       this.seconds += Math.Max(0, this.elapsedSeconds());
       RenderPlan current = this.Plan;
-      bool initialized = false;
+      bool hasAvailableLayer = false;
       for (int i = 0; i < current.Layers.Length; i++) {
         CompiledLayer layer = current.Layers[i];
         if (!layer.Renderer.IsAvailable) {
           continue;
         }
-        this.destination ??= this.createFrame();
-        DomeFrame source = layer.Renderer.Frame;
-        if (!initialized) {
-          // Phase 1 deliberately preserves the historical bottom-layer seed.
-          this.destination.CompositeBottom(source, layer.Snapshot.Opacity);
-          initialized = true;
-          continue;
+        if (!hasAvailableLayer) {
+          this.destination ??= this.createFrame();
+          this.destination.ResetComposite();
+          hasAvailableLayer = true;
         }
+        DomeFrame source = layer.Renderer.Frame;
         bool needsSnapshot = (layer.Operation.Requirements &
           CompositeRequirements.ReadsDestinationNeighbors) != 0;
         if (needsSnapshot) {
@@ -65,7 +63,7 @@ namespace Spectrum.LEDs {
           layer.OperationOptions, layer.Snapshot.Opacity, this.seconds,
           this.orientation));
       }
-      return initialized ? this.destination : null;
+      return hasAvailableLayer ? this.destination : null;
     }
 
     // Explicit phase 5: mutate persistent renderer trails only after the

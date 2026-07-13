@@ -21,7 +21,7 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("compiled plan freezes renderer inputs", PlanFreezesRendererInputs);
       Run("configuration publishes immutable layer snapshots",
         ConfigurationPublishesSnapshot);
-      Run("compositor preserves stack order and bottom behavior", StackOrder);
+      Run("compositor executes every operation in stack order", StackOrder);
       Run("scratch copies only mutable channels", ScratchCopiesChannelsOnly);
       Run("frame operations require shared topology", FramesRequireTopology);
       Run("operator creates independent duplicate renderers", DuplicateRenderers);
@@ -220,7 +220,7 @@ namespace Spectrum.LayerPipeline.Tests {
         () => new DomeFrame(topology), elapsedSeconds: () => 0);
       compositor.Publish(plan);
       DomeFrame result = compositor.Compose();
-      Assert(result.pixels[0].color == 0x201000,
+      Assert(result.pixels[0].color == 0x001000,
         "unexpected composite 0x" + result.pixels[0].color.ToString("X6"));
     }
 
@@ -697,8 +697,8 @@ namespace Spectrum.LayerPipeline.Tests {
           operation.Name + " half-opacity green " + i);
         AssertClose((bb + full.pixels[i].b) / 2, half.pixels[i].b,
           operation.Name + " half-opacity blue " + i);
-        AssertClose(1, full.pixels[i].a,
-          operation.Name + " changed destination alpha " + i);
+        AssertClose(0, full.pixels[i].a,
+          operation.Name + " changed the blank destination alpha " + i);
         AssertClose(i / 10d, full.pixels[i].hue,
           operation.Name + " changed destination hue " + i);
       }
@@ -797,6 +797,19 @@ namespace Spectrum.LayerPipeline.Tests {
           ImmutableDictionary<string, ParameterValue>.Empty))));
       Assert(compositor.Compose().pixels[0].color == 0x003400,
         "the replacement plan retained the old destination");
+
+      var maskFrame = new DomeFrame(topology);
+      maskFrame.pixels[0].color = 0xFFFFFF;
+      maskFrame.pixels[0].hue = .75;
+      compositor.Publish(new RenderPlan(ImmutableArray.Create(
+        Compiled(
+          new FakeRenderer("mask", maskFrame), DomeBlend.Desaturate, 1,
+          ImmutableDictionary<string, ParameterValue>.Empty))));
+      DomeFrame blankAdjustment = compositor.Compose();
+      Assert(blankAdjustment.pixels[0].color == 0 &&
+        blankAdjustment.pixels[0].a == 0 &&
+        blankAdjustment.pixels[0].hue == 0,
+        "the explicit destination retained stale mutable channels");
 
       compositor.Publish(RenderPlan.Empty);
       Assert(compositor.Compose() == null,
