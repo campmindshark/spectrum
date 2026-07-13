@@ -30,18 +30,19 @@ namespace Spectrum.Visualizers {
   //                    shimmer and brightness agree.
   //   3 Ripple Tank  — the interactive rung: a damped wave-equation grid over
   //                    the plan-view square, shaded by the same thin-lens form
-  //                    on the grid's Laplacian. The LayerTrigger cluster
-  //                    (default Beat) drops droplets where the wand aims —
-  //                    OrientationCenter's idle drift wanders the drop point
-  //                    when no wand is moving — and audio loudness stirs a
-  //                    continuous churn of small pokes. 🧹 flattens the water.
+  //                    on the grid's Laplacian. Every moving orientation input
+  //                    is a surface object whose projected path presses a wake
+  //                    into the water. The LayerTrigger cluster (default Beat)
+  //                    also drops droplets where the wand aims, audio loudness
+  //                    stirs a continuous churn of small pokes, and 🧹 flattens
+  //                    the water.
   // A GPU rung would append to the enum later without shifting these indices.
   //
   // Per-layer params (visualizer-consumed, read each frame): method, scale
   // (feature size / wavenumber; the tank maps it inversely to droplet size),
   // speed (churn rate; the tank maps it to sim step rate), sharpness (filament
   // thinness — the pow exponent), brightness (output gain), the tint color,
-  // and the trigger cluster (tank droplets only).
+  // wake size/strength, and the trigger cluster (tank droplets only).
   //
   // When this layer's blend is Refract (docs/caustics.md), the layer is a
   // displacement field rather than paint: alongside the color (which Refract,
@@ -408,6 +409,14 @@ namespace Spectrum.Visualizers {
     // beat drops at an idle (slowly wandering) aim point don't stack into a
     // standing bullseye.
     private const double TankDropJitter = 0.04;
+    // Ignore sub-pixel orientation jitter, and re-baseline rather than drawing
+    // a slash across the tank after calibration, reconnect, or a long stall.
+    private const double TankWakeMinTravel = 0.001;
+    private const double TankWakeMaxTravel = 0.25;
+    // Converts the user-facing 0..1 Wake Strength into displacement. Sweeping
+    // overlapping Gaussian presses along the travelled segment then produces
+    // a bow wave plus a readable trailing wake without drawing the object.
+    private const double TankWakeAmp = 0.32;
 
     // Sim state, allocated on the first Ripple Tank frame so the analytic
     // tiers never pay the ~600KB. tankCur/tankPrev are the leapfrog pair;
@@ -428,6 +437,23 @@ namespace Spectrum.Visualizers {
     // button): a clear flattens the water.
     private int lastClearCounter = -1;
 
+    private struct TankObjectState {
+      public double X;
+      public double Y;
+      public long SeenFrame;
+    }
+    // One previous projected position per live orientation device. This is
+    // deliberately local to the layer: the tank needs trajectory history,
+    // while OrientationCenter exposes only the shared current aim point.
+    private readonly Dictionary<int, TankObjectState> tankObjects =
+      new Dictionary<int, TankObjectState>();
+    private readonly List<int> staleTankObjects = new List<int>();
+    private long tankObjectFrame;
+    // Device ids are one byte on the wire, so this cannot collide with a real
+    // sensor. It lets the shared idle OrientationCenter carry trajectory state
+    // through the exact same wake path as a physical input.
+    private const int TankIdleObjectId = -1;
+
     // One frame of tank upkeep, called only in the Ripple Tank tier: handle
     // clear, fire droplets, stir churn, advance the fixed-step sim by the
     // elapsed wall time, and refresh the derived fields the pixel loop
@@ -441,6 +467,7 @@ namespace Spectrum.Visualizers {
       if (this.TankClearRequested()) {
         Array.Clear(this.tankCur, 0, this.tankCur.Length);
         Array.Clear(this.tankPrev, 0, this.tankPrev.Length);
+        this.tankObjects.Clear();
         this.tankLapDirty = true;
         this.tankGradDirty = true;
       }
@@ -453,6 +480,10 @@ namespace Spectrum.Visualizers {
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "level");
       double interval =
         DomeLayerSettings.ParamValue(stack, this.LayerKey, "interval");
+      double wakeSize =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "wakeSize");
+      double wakeStrength =
+        DomeLayerSettings.ParamValue(stack, this.LayerKey, "wakeStrength");
 
       double level = this.audio.Volume;
       this.center.Update(level);
@@ -479,6 +510,12 @@ namespace Spectrum.Visualizers {
         this.TankDrop(dropX, dropY, this.TankDropRadius(scale), TankDropAmp);
       }
 
+      // Unlike the trigger droplet above, wakes use every eligible orientation
+      // input independently. Respect the global spotlight exactly as the other
+      // orientation layers do: a moving selected wand is solo; an unavailable
+      // selection falls back to all moving wands; -2 forces idle/no objects.
+      this.TankMoveObjects(wakeSize, wakeStrength, elapsed);
+
       this.tankStepAccumulator += elapsed * TankStepsPerSecond * speed;
       int steps = (int)this.tankStepAccumulator;
       if (steps > TankMaxStepsPerFrame) {
@@ -493,6 +530,121 @@ namespace Spectrum.Visualizers {
       }
 
       this.TankRefreshDerived(refracting);
+    }
+
+    private void TankMoveObjects(
+      double wakeSize, double wakeStrength, double elapsed
+    ) {
+      this.tankObjectFrame++;
+      IReadOnlyDictionary<int, OrientationDevice> devices =
+        this.orientationInput.OperatorFrameDevices;
+      int spotlight = this.config.orientationDeviceSpotlight;
+      bool spotlightMoving = spotlight >= 0
+        && devices.TryGetValue(spotlight, out OrientationDevice selected)
+        && selected.isMoving;
+      bool movedRealObject = false;
+
+      if (spotlight != -2 && wakeStrength > 0) {
+        foreach (var kvp in devices) {
+          if (!kvp.Value.isMoving
+              || (spotlightMoving && kvp.Key != spotlight)) {
+            continue;
+          }
+
+          Vector3 aim = Vector3.Transform(
+            OrientationCenter.Spot,
+            Quaternion.Conjugate(kvp.Value.currentRotation())
+          );
+          double x = Math.Clamp((aim.X + 1) / 2, 0, 1);
+          double y = Math.Clamp((1 - aim.Y) / 2, 0, 1);
+          this.TankMoveObject(
+            kvp.Key, x, y, wakeSize, wakeStrength, elapsed);
+          movedRealObject = true;
+        }
+      }
+
+      // OrientationCenter owns the installation's idle screen-saver drift.
+      // When no physical input is eligible (including connected-but-still
+      // sensors, which OrientationCenter classifies as idle), treat that
+      // wandering aim as one virtual object so quiet installations still make
+      // gentle, coherent waves rather than leaving the tank motionless.
+      if (!movedRealObject && this.center.Idle && wakeStrength > 0) {
+        Vector3 idleAim = Vector3.Transform(
+          OrientationCenter.Spot,
+          Quaternion.Conjugate(this.center.CurrentCenter)
+        );
+        this.TankMoveObject(
+          TankIdleObjectId,
+          Math.Clamp((idleAim.X + 1) / 2, 0, 1),
+          Math.Clamp((1 - idleAim.Y) / 2, 0, 1),
+          wakeSize, wakeStrength, elapsed);
+      }
+
+      // Forget disconnected, stationary, spotlight-filtered, and idle-forced
+      // objects. If one becomes eligible again it starts cleanly at its new
+      // position instead of drawing a stale cross-tank wake.
+      this.staleTankObjects.Clear();
+      foreach (var kvp in this.tankObjects) {
+        if (kvp.Value.SeenFrame != this.tankObjectFrame) {
+          this.staleTankObjects.Add(kvp.Key);
+        }
+      }
+      for (int i = 0; i < this.staleTankObjects.Count; i++) {
+        this.tankObjects.Remove(this.staleTankObjects[i]);
+      }
+    }
+
+    private void TankMoveObject(
+      int id, double x, double y, double wakeSize, double wakeStrength,
+      double elapsed
+    ) {
+      if (!this.tankObjects.TryGetValue(id, out TankObjectState state)) {
+        this.tankObjects[id] = new TankObjectState {
+          X = x, Y = y, SeenFrame = this.tankObjectFrame,
+        };
+        return;
+      }
+
+      double dx = x - state.X, dy = y - state.Y;
+      double travel = Math.Sqrt(dx * dx + dy * dy);
+      // elapsed protects reactivation after the layer has been dormant;
+      // travel protects calibration jumps and reconnect discontinuities.
+      if (elapsed > 0.25 || travel > TankWakeMaxTravel) {
+        state.X = x;
+        state.Y = y;
+      } else if (travel >= TankWakeMinTravel) {
+        this.TankSweepWake(
+          state.X, state.Y, x, y, travel, wakeSize, wakeStrength);
+        state.X = x;
+        state.Y = y;
+      }
+      // For sub-threshold travel, retain the old position so slow motion
+      // accumulates until it is distinguishable from sensor/frame jitter.
+      state.SeenFrame = this.tankObjectFrame;
+      this.tankObjects[id] = state;
+    }
+
+    private void TankSweepWake(
+      double x0, double y0, double x1, double y1, double travel,
+      double wakeSize, double wakeStrength
+    ) {
+      double radiusCells = Math.Clamp(
+        wakeSize * (TankSize - 1), 2.5, 18);
+      // Half-radius spacing overlaps the presses into one continuous swept
+      // object. Very short moves get proportionally less energy; longer paths
+      // add presses, making wake energy track distance travelled.
+      double spacing = Math.Max(0.5 * radiusCells / (TankSize - 1), 0.005);
+      int samples = Math.Max(1, (int)Math.Ceiling(travel / spacing));
+      double amp = TankWakeAmp * wakeStrength
+        * Math.Min(1, travel / spacing);
+      for (int i = 1; i <= samples; i++) {
+        double p = (double)i / samples;
+        this.TankDrop(
+          x0 + (x1 - x0) * p,
+          y0 + (y1 - y0) * p,
+          radiusCells,
+          amp);
+      }
     }
 
     private double TankDropRadius(double scale) {

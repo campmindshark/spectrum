@@ -40,7 +40,7 @@ namespace Spectrum {
     public DomeCalibrationState DomeCalibration { get; }
     public LEDDomeOutput DomeOutput { get; }
     private readonly Stopwatch frameRateStopwatch;
-    private int framesThisSecond;
+    private int completedFramesInWindow;
 
     // Global rate cap: the operator loop runs no faster than 400Hz, i.e. at
     // least this many Stopwatch ticks per frame (2.5ms). Stopwatch.Frequency
@@ -86,7 +86,7 @@ namespace Spectrum {
 
       this.frameRateStopwatch = new Stopwatch();
       this.frameRateStopwatch.Start();
-      this.framesThisSecond = 0;
+      this.completedFramesInWindow = 0;
 
       this.inputs = new List<Input>();
       var audio = new AudioInput(config, this.BeatBroadcaster);
@@ -312,18 +312,17 @@ namespace Spectrum {
     }
 
     private void OperatorThread() {
+      // The Operator may sit disabled for an arbitrary amount of time after it
+      // is constructed. Start the telemetry window when work actually starts
+      // so the first reading is not diluted by that idle time.
+      this.frameRateStopwatch.Restart();
+      this.completedFramesInWindow = 0;
+
       // Timestamp this frame is allowed to start, advanced by one frame budget
       // each tick to cap the loop at MaxFramesPerSecond.
       long nextFrameTimestamp = Stopwatch.GetTimestamp();
       while (!this.operatorThreadStop) {
         ThrottleFrame(ref nextFrameTimestamp);
-
-        if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
-          this.frameRateStopwatch.Restart();
-          this.Telemetry.OperatorFPS = this.framesThisSecond;
-          this.framesThisSecond = 0;
-        }
-        this.framesThisSecond++;
 
         // We're going to start by figuring out which Outputs consider
         // themselves enabled. For each enabled Output, we'll find what the
@@ -430,6 +429,22 @@ namespace Spectrum {
               "Operator: output " + output.GetType().Name +
               " threw in OperatorUpdate: " + e);
           }
+        }
+
+        // A frame is generated only after all visualizers and outputs have
+        // finished. Counting at the top of the loop made an expensive,
+        // in-progress frame appear complete and reported a raw frame count as
+        // FPS even when the measurement window stretched well past a second.
+        this.completedFramesInWindow++;
+        if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
+          double elapsedSeconds =
+            this.frameRateStopwatch.Elapsed.TotalSeconds;
+          this.Telemetry.OperatorFPS = (int)Math.Round(
+            this.completedFramesInWindow / elapsedSeconds,
+            MidpointRounding.AwayFromZero
+          );
+          this.completedFramesInWindow = 0;
+          this.frameRateStopwatch.Restart();
         }
       }
     }

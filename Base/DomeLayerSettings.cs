@@ -717,6 +717,16 @@ namespace Spectrum.Base {
           Min = 0, Max = 0xFFFFFF, Default = 0xCCF7FF, // pale cyan-white
         },
         new DomeLayerParam {
+          Key = "wakeSize", Label = "Object Size",
+          Type = DomeLayerParamType.Double,
+          Min = 0.02, Max = 0.15, Step = 0.005, Default = 0.055,
+        },
+        new DomeLayerParam {
+          Key = "wakeStrength", Label = "Wake Strength",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 1, Step = 0.05, Default = 0.35,
+        },
+        new DomeLayerParam {
           Key = "trigger", Label = "Trigger",
           Type = DomeLayerParamType.Enum,
           Options = TriggerSourceOptions, Default = 1, // Beat

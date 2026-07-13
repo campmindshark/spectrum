@@ -65,7 +65,7 @@ namespace Spectrum.LEDs {
     private readonly bool separateThread;
     private readonly Action<int> setFPS;
     private readonly Stopwatch frameRateStopwatch;
-    private int framesThisSecond;
+    private int sentFramesInWindow;
     // Measures time since the last frame actually sent, to enforce
     // MaxRefreshRateHz. Touched only on a single thread — the output thread when
     // separateThread (Update() plus OutputThread's inter-send sleep), else the
@@ -110,7 +110,7 @@ namespace Spectrum.LEDs {
 
       this.frameRateStopwatch = new Stopwatch();
       this.frameRateStopwatch.Start();
-      this.framesThisSecond = 0;
+      this.sentFramesInWindow = 0;
       this.sendThrottleStopwatch = Stopwatch.StartNew();
     }
 
@@ -276,7 +276,22 @@ namespace Spectrum.LEDs {
       // socket are only ever touched on this single Update() thread, so they
       // need no lock here.
       try {
-        this.socket.Send(this.sendBuffer, 0, totalLength, SocketFlags.None);
+        // Socket.Send may legally accept fewer bytes than requested. A frame
+        // only counts as sent once its entire OPC payload has been handed to
+        // the TCP stack.
+        int sent = 0;
+        while (sent < totalLength) {
+          int bytesSent = this.socket.Send(
+            this.sendBuffer,
+            sent,
+            totalLength - sent,
+            SocketFlags.None
+          );
+          if (bytesSent == 0) {
+            throw new SocketException((int)SocketError.ConnectionReset);
+          }
+          sent += bytesSent;
+        }
         this.sendThrottleStopwatch.Restart();
         this.flushHappened = false;
         return true;
@@ -296,16 +311,15 @@ namespace Spectrum.LEDs {
 
     private void OutputThread() {
       this.ConnectSocket();
+      // Do not include time spent inactive or establishing the initial
+      // connection in the first send-rate reading.
+      this.frameRateStopwatch.Restart();
+      this.sentFramesInWindow = 0;
       while (!this.outputThreadStop) {
-        if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
-          this.frameRateStopwatch.Restart();
-          this.setFPS(this.framesThisSecond);
-          this.framesThisSecond = 0;
-        }
         // Count only frames that actually went out so the reported FPS reflects
         // the real (throttled) refresh rate rather than the spin-loop rate.
         if (this.Update()) {
-          this.framesThisSecond++;
+          this.sentFramesInWindow++;
         } else {
           // Nothing was sent this pass: either we're inside the MaxRefreshRateHz
           // window, there's no new frame, or we're disconnected. Sleep instead
@@ -318,6 +332,16 @@ namespace Spectrum.LEDs {
             this.sendThrottleStopwatch.Elapsed.TotalMilliseconds;
           int sleepMs = remainingMs > 1 ? (int)remainingMs : 1;
           Thread.Sleep(sleepMs);
+        }
+        if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
+          double elapsedSeconds =
+            this.frameRateStopwatch.Elapsed.TotalSeconds;
+          this.setFPS((int)Math.Round(
+            this.sentFramesInWindow / elapsedSeconds,
+            MidpointRounding.AwayFromZero
+          ));
+          this.sentFramesInWindow = 0;
+          this.frameRateStopwatch.Restart();
         }
       }
       this.DisconnectSocket();
