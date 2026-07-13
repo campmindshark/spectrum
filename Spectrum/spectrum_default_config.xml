@@ -22,11 +22,12 @@
   <domeTestPattern>0</domeTestPattern>
   <domeLayerStack>
     <DomeLayerSettings>
+      <InstanceId>default-radial</InstanceId>
       <VisualizerKey>radial</VisualizerKey>
       <BlendMode>Over</BlendMode>
       <Opacity>1</Opacity>
       <Enabled>true</Enabled>
-      <Params>
+      <RendererParams>
         <Item>
           <Key>size</Key>
           <Value>1</Value>
@@ -43,19 +44,20 @@
           <Key>gradientSpeed</Key>
           <Value>0.25</Value>
         </Item>
-      </Params>
+      </RendererParams>
     </DomeLayerSettings>
     <DomeLayerSettings>
+      <InstanceId>default-paintbrush</InstanceId>
       <VisualizerKey>quaternion-paintbrush</VisualizerKey>
       <BlendMode>Add</BlendMode>
       <Opacity>1</Opacity>
       <Enabled>true</Enabled>
-      <Params>
+      <RendererParams>
         <Item>
           <Key>size</Key>
           <Value>1</Value>
         </Item>
-      </Params>
+      </RendererParams>
     </DomeLayerSettings>
   </domeLayerStack>
   <hueDelay>125</hueDelay>

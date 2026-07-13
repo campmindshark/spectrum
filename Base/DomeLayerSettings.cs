@@ -26,12 +26,6 @@ namespace Spectrum.Base {
     // true => read by the compositor (CompositeBlend) once per frame, never by
     // the visualizer. false => read by the visualizer in Visualize().
     public bool CompositorConsumed { get; set; }
-    // Name of the retired top-level Configuration property this param replaced
-    // (e.g. "domeRadialSize"), or null for params that never were global. Read
-    // only by LegacyLayerParamMigration, which seeds the value from a config
-    // file that predates the per-layer move. Defaults deliberately equal the
-    // old property defaults so an absent bag reproduces pre-params behavior.
-    public string LegacySetting { get; set; }
   }
 
   // One layer in the dome's compositing stack: which visualizer produces it,
@@ -46,8 +40,7 @@ namespace Spectrum.Base {
     // LayerStackService assigns one during normalization and every writer then
     // persists it. Renderer IDs identify kinds, instance IDs identify layers.
     public string InstanceId { get; set; }
-    // Stable string id of the layerable visualizer, e.g. "radial". See
-    // DomeLayerVisualizer.LayerKey and LegacyVisKeys below.
+    // Stable string id of the layerable visualizer, e.g. "radial".
     public string VisualizerKey { get; set; }
     // The DomeBlend.Id of how this layer combines with the composite below
     // it. A string (not the blend object) because it's the persisted form —
@@ -66,16 +59,16 @@ namespace Spectrum.Base {
     // other field on this POCO (DomeScene.Layers reuses DomeLayerSettings).
     public string Notes { get; set; }
 
-    // Per-layer parameter overrides: key (a DomeLayerParam.Key from the layer's
-    // schema, or its blend's) -> value. A missing key means "use the descriptor
-    // default" everywhere (see GetParam), so an absent/empty bag reproduces the
-    // pre-params behavior exactly.
+    // Per-renderer and per-operation parameter overrides. Separate bags make
+    // ownership explicit and allow a renderer and operation to use the same key
+    // without colliding. Missing keys use the descriptor defaults.
     //
     // Null by default on purpose: XSerializer deserializes dictionary members by
     // Add-ing into the existing instance, so a non-null initializer would
     // double-up the persisted entries on load — the same null-by-default rule
     // domeLayerStack and domeCableMapping already follow.
-    public Dictionary<string, double> Params { get; set; }
+    public Dictionary<string, double> RendererParams { get; set; }
+    public Dictionary<string, double> OperationParams { get; set; }
 
     public static DomeLayerSettings ForInstance(
       IList<DomeLayerSettings> stack, string instanceId
@@ -92,17 +85,6 @@ namespace Spectrum.Base {
       return null;
     }
 
-    // The legacy domeActiveVis int -> layer key mapping, kept so config
-    // migration can synthesize a stack from an old file's selector (the
-    // domeActiveVis property itself is retired). Index == the old magic int.
-    public static readonly string[] LegacyVisKeys = new string[] {
-      "volume", "radial", "race", "snakes", "quaternion-test",
-      "quaternion-paintbrush", "splat", "tv-static",
-    };
-    public static string KeyForLegacyVis(int vis) {
-      return vis >= 0 && vis < LegacyVisKeys.Length ? LegacyVisKeys[vis] : null;
-    }
-
   }
 
   // ---- Per-layer parameter schemas ---------------------------------------
@@ -117,29 +99,24 @@ namespace Spectrum.Base {
     internal static readonly DomeLayerParam[] NoParams =
       Array.Empty<DomeLayerParam>();
 
-    // Descriptors shared by more than one visualizer. Historically one global
-    // knob drove all of these consumers at once (the LegacySetting property);
-    // per-layer they are independent values that happen to share a schema.
+    // Descriptors shared by more than one visualizer.
     private static readonly DomeLayerParam RotationSpeedParam =
       new DomeLayerParam {
         Key = "rotationSpeed", Label = "Rotation Speed",
         Type = DomeLayerParamType.Double,
         Min = 0, Max = 4, Step = 0.125, Default = 1.0,
-        LegacySetting = "domeVolumeRotationSpeed",
       };
     private static readonly DomeLayerParam GradientSpeedParam =
       new DomeLayerParam {
         Key = "gradientSpeed", Label = "Gradient Speed",
         Type = DomeLayerParamType.Double,
         Min = 0, Max = 4, Step = 0.125, Default = 1.0,
-        LegacySetting = "domeGradientSpeed",
       };
     private static readonly DomeLayerParam TwinkleDensityParam =
       new DomeLayerParam {
         Key = "twinkleDensity", Label = "Twinkle Density",
         Type = DomeLayerParamType.Double,
         Min = 0, Max = 0.001, Step = 0.0001, Default = 0,
-        LegacySetting = "domeTwinkleDensity",
       };
 
     // Which of the eight palette banks (colorPalette slots bank*8 .. bank*8+7)
@@ -147,8 +124,6 @@ namespace Spectrum.Base {
     // (the ones that call dome.Get*Color); the visualizer reads it once per frame
     // and passes it into the color lookups. Default 0 = bank 0 = the historical
     // single live palette, so a layer with no "palette" key renders unchanged.
-    // No LegacySetting: the old global colorPaletteIndex was retired, not a
-    // per-layer value to migrate from.
     private static readonly DomeLayerParam PaletteBankParam =
       new DomeLayerParam {
         Key = "palette", Label = "Palette",
@@ -167,37 +142,31 @@ namespace Spectrum.Base {
         Type = DomeLayerParamType.Enum,
         Options = new string[] { "Radar", "Pulse", "Spiral", "Bubbles" },
         Default = 0,
-        LegacySetting = "domeRadialEffect",
       },
       new DomeLayerParam {
         Key = "size", Label = "Size",
         Type = DomeLayerParamType.Double,
         Min = 0, Max = 4, Step = 0.05, Default = 0.1,
-        LegacySetting = "domeRadialSize",
       },
       new DomeLayerParam {
         Key = "frequency", Label = "Frequency",
         Type = DomeLayerParamType.Double,
         Min = 1, Max = 12, Step = 1, Default = 1,
-        LegacySetting = "domeRadialFrequency",
       },
       new DomeLayerParam {
         Key = "centerAngle", Label = "Center Angle",
         Type = DomeLayerParamType.Double,
         Min = -Math.PI, Max = Math.PI, Step = 0.01, Default = 0,
-        LegacySetting = "domeRadialCenterAngle",
       },
       new DomeLayerParam {
         Key = "centerDistance", Label = "Center Distance",
         Type = DomeLayerParamType.Double,
         Min = 0, Max = 1, Step = 0.01, Default = 0,
-        LegacySetting = "domeRadialCenterDistance",
       },
       new DomeLayerParam {
         Key = "centerSpeed", Label = "Center Speed",
         Type = DomeLayerParamType.Double,
         Min = 0, Max = 4, Step = 0.125, Default = 0,
-        LegacySetting = "domeRadialCenterSpeed",
       },
       RotationSpeedParam,
       GradientSpeedParam,
@@ -211,7 +180,6 @@ namespace Spectrum.Base {
         Key = "animationSize", Label = "Animation Size",
         Type = DomeLayerParamType.Double,
         Min = 0, Max = 4, Step = 1, Default = 4,
-        LegacySetting = "domeVolumeAnimationSize",
       },
       RotationSpeedParam,
       GradientSpeedParam,
@@ -225,13 +193,11 @@ namespace Spectrum.Base {
         Key = "speed", Label = "Speed",
         Type = DomeLayerParamType.Double,
         Min = 0, Max = 4, Step = 0.125, Default = 1.0,
-        LegacySetting = "domeVolumeRotationSpeed",
       },
       new DomeLayerParam {
         Key = "spacing", Label = "Spacing",
         Type = DomeLayerParamType.Double,
         Min = 0, Max = 1, Step = 0.01, Default = 0.1,
-        LegacySetting = "domeRadialSize",
       },
       PaletteBankParam,
     };
@@ -251,7 +217,6 @@ namespace Spectrum.Base {
           Key = "density", Label = "Density",
           Type = DomeLayerParamType.Double,
           Min = 0, Max = 0.001, Step = 0.0001, Default = 0,
-          LegacySetting = "domeTwinkleDensity",
         },
       };
 
@@ -263,20 +228,17 @@ namespace Spectrum.Base {
           Key = "size", Label = "Size",
           Type = DomeLayerParamType.Double,
           Min = 0, Max = 4, Step = 0.05, Default = 0.1,
-          LegacySetting = "domeRadialSize",
         },
         TwinkleDensityParam,
         new DomeLayerParam {
           Key = "rippleCDStep", Label = "Ripple Cooldown",
           Type = DomeLayerParamType.Double,
           Min = 0, Max = 10, Step = 0.1, Default = 1,
-          LegacySetting = "domeRippleCDStep",
         },
         new DomeLayerParam {
           Key = "rippleStep", Label = "Ripple Speed",
           Type = DomeLayerParamType.Double,
           Min = 0, Max = 4, Step = 0.1, Default = 1,
-          LegacySetting = "domeRippleStep",
         },
       };
 
@@ -314,9 +276,8 @@ namespace Spectrum.Base {
     // Ripple's own tuning, independent of the copy still fused inside
     // Paintbrush (docs/layers_inventory.md: twinkle's precedent — the two
     // copies are separate and unremoved until the rest of the disassembly
-    // lands). No LegacySetting: a standalone "ripple" layer never existed in
-    // pre-layers config, so there is nothing to migrate it from. Firing is
-    // driven by LayerTrigger (docs/triggers.md); rippleStep is the playhead
+    // lands). Firing is driven by LayerTrigger (docs/triggers.md); rippleStep
+    // is the playhead
     // expansion speed, unrelated to the trigger.
     internal static readonly DomeLayerParam[] RippleParams = new DomeLayerParam[] {
       new DomeLayerParam {
@@ -334,10 +295,8 @@ namespace Spectrum.Base {
       TriggerIntervalParam,
     };
 
-    // Stamp's own tuning. No LegacySetting — like Ripple, this is a new
-    // standalone layer with no pre-layers global to migrate from (the fused
-    // Paintbrush copy used hard-coded constants, not a config knob). Firing is
-    // driven by LayerTrigger (docs/triggers.md), defaulting to the Audio source;
+    // Stamp's own tuning. Firing is driven by LayerTrigger (docs/triggers.md),
+    // defaulting to the Audio source;
     // level/interval tune that source.
     internal static readonly DomeLayerParam[] StampParams = new DomeLayerParam[] {
       new DomeLayerParam {
@@ -350,17 +309,12 @@ namespace Spectrum.Base {
       TriggerIntervalParam,
     };
 
-    // Metaball's own tuning. No LegacySetting on "contours": the old
-    // orientationShowContours global was a bool, and LegacyLayerParamMigration's
-    // raw-XML reader only parses numeric elements, so a bool global couldn't
-    // have seeded a per-layer param this way even before it was removed — new
-    // stacks just default it off.
+    // Metaball's own tuning. Contours default off.
     internal static readonly DomeLayerParam[] MetaballParams = new DomeLayerParam[] {
       new DomeLayerParam {
         Key = "size", Label = "Size",
         Type = DomeLayerParamType.Double,
         Min = 0, Max = 4, Step = 0.05, Default = 0.1,
-        LegacySetting = "domeRadialSize",
       },
       new DomeLayerParam {
         Key = "contours", Label = "Show Contours",
@@ -461,9 +415,8 @@ namespace Spectrum.Base {
       },
     };
 
-    // Point Cloud's tuning, all visualizer-consumed (read in Visualize()). A
-    // new standalone orientation layer with no pre-layers global, so no
-    // LegacySetting on any of these. `count` reseeds the spot lattice when it
+    // Point Cloud's tuning, all visualizer-consumed (read in Visualize()).
+    // `count` reseeds the spot lattice when it
     // changes; the rest tune the per-frame physics and the drawn spot size.
     internal static readonly DomeLayerParam[] PointCloudParams =
       new DomeLayerParam[] {
@@ -499,9 +452,8 @@ namespace Spectrum.Base {
         },
       };
 
-    // Shooting Star's tuning, all visualizer-consumed (read in Visualize()). A
-    // new standalone orientation layer with no pre-layers global, so no
-    // LegacySetting on any of these. Dots are born just off the rim and
+    // Shooting Star's tuning, all visualizer-consumed (read in Visualize()).
+    // Dots are born just off the rim and
     // accelerate toward the wand aim point; `spawnRate` is stars/sec, the
     // physics knobs are in centered (u,v) units per second, `trail` is the
     // per-second brightness retention of the streak, and `homing` re-reads the
@@ -575,9 +527,8 @@ namespace Spectrum.Base {
         PaletteBankParam,
       };
 
-    // Gyroscope's tuning, all visualizer-consumed (read in Visualize()). A new
-    // standalone effect layer with no pre-layers global, so no LegacySetting on
-    // any of these. The gimbal motion is driven by device/idle orientation
+    // Gyroscope's tuning, all visualizer-consumed (read in Visualize()). The
+    // gimbal motion is driven by device/idle orientation
     // (OrientationCenter), not a clock, so there are no spin/precession/tilt
     // knobs: `ringWidth` is the great-circle band thickness (dot-product units);
     // `rotorRate` is the orbit speed of the bright highlight chasing the rotor
@@ -604,9 +555,8 @@ namespace Spectrum.Base {
         PaletteBankParam,
       };
 
-    // Noise Cloud's tuning, all visualizer-consumed (read in Visualize()). A new
-    // standalone texture layer with no pre-layers global, so no LegacySetting on
-    // any of these. It emits an animated fractal-value-noise field tinting
+    // Noise Cloud's tuning, all visualizer-consumed (read in Visualize()). It
+    // emits an animated fractal-value-noise field tinting
     // `color` — meant to sit under Multiply/Add to break up a flat layer below.
     // `scale` is the spatial frequency (bigger = smaller blobs), `speed` morphs
     // the field in place through a time axis (0 = frozen, no directional drift),
@@ -696,9 +646,8 @@ namespace Spectrum.Base {
         },
       };
 
-    // Caustics' tuning, all visualizer-consumed (read in Visualize()). A new
-    // standalone texture layer with no pre-layers global, so no LegacySetting on
-    // any of these (docs/caustics.md). `method` is the fidelity ladder — three
+    // Caustics' tuning, all visualizer-consumed (read in Visualize()). See
+    // docs/caustics.md. `method` is the fidelity ladder — three
     // analytic rungs plus the interactive Ripple Tank simulation; a GPU tier
     // would append to Options later without shifting these indices. `scale` is
     // the feature size (wavenumber multiplier; the tank maps it inversely to

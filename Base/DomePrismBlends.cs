@@ -7,8 +7,8 @@ using static Spectrum.Base.CompositeOptionValues;
 namespace Spectrum.Base {
 
   // The prism family (docs/prism.md): adjustment blends (source alpha is the
-  // mask) whose tunables live in each class's Params — the value rides the
-  // Params bag of whichever layer selects the blend, and only the compositor
+  // mask) whose tunables live in each class's Params — values ride the
+  // operation parameter bag of whichever layer selects the blend, and only the compositor
   // reads it, never a visualizer. Offsets are in projected-plane units (the
   // same normalized x/y the buffer bakes), which is why the defaults look
   // small: a dome LED pitch is ~0.013, and fringes want a few pitches to read

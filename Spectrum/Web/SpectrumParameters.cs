@@ -42,7 +42,7 @@ namespace Spectrum.Web {
 
         // Dome global speeds — cross-layer scene state. Per-visualizer tuning
         // (radial size, ripple steps, twinkle density, ...) lives in each
-        // layer's Params bag, served by LayersController rather than here.
+        // layer's namespaced parameter bags, served by LayersController.
         new DoubleParameter("domeGlobalFadeSpeed", user, 0.0, 3.0,
           c => c.domeGlobalFadeSpeed, (c, v) => c.domeGlobalFadeSpeed = v),
         new DoubleParameter("domeGlobalHueSpeed", user, 0.0, 3.0,

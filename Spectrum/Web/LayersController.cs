@@ -19,9 +19,8 @@ namespace Spectrum.Web {
    */
   public sealed class LayersController {
 
-    // One layer as sent to / received from the client. `params` (C# @params) is
-    // the per-layer value bag: param key -> value, matching the visualizer's and
-    // blend's schema. Absent/empty means "all defaults".
+    // One layer as sent to / received from the client. Renderer and operation
+    // parameters have distinct namespaces so equal keys can never collide.
     public sealed class LayerDto {
       public string instanceId { get; set; }
       public string visualizerKey { get; set; }
@@ -29,7 +28,8 @@ namespace Spectrum.Web {
       public double opacity { get; set; }
       public bool enabled { get; set; }
       public string notes { get; set; }
-      public Dictionary<string, double> @params { get; set; }
+      public Dictionary<string, double> rendererParams { get; set; }
+      public Dictionary<string, double> operationParams { get; set; }
     }
 
     // One param descriptor as sent to the client so it can build editors
@@ -53,23 +53,23 @@ namespace Spectrum.Web {
       public IReadOnlyList<ParamDto> @params { get; set; }
     }
 
+    public sealed class OperationOptionDto {
+      public string id { get; set; }
+      public string label { get; set; }
+      public IReadOnlyList<ParamDto> @params { get; set; }
+    }
+
     // The full snapshot GET returns: the current stack plus the fixed pick-lists
-    // (available visualizers and blend modes) the client renders its editors
-    // from, plus the compositor-consumed param schema per blend-mode name.
+    // (available visualizers and compositing operations) the client renders its
+    // editors from. Each option carries its stable id, display label, and schema.
     public sealed class LayersState {
       public IReadOnlyList<LayerDto> layers { get; set; }
       public IReadOnlyList<VisualizerOptionDto> visualizers { get; set; }
-      public IReadOnlyList<string> blendModes { get; set; }
-      public IReadOnlyDictionary<string, IReadOnlyList<ParamDto>> blendParams {
-        get; set;
-      }
+      public IReadOnlyList<OperationOptionDto> operations { get; set; }
     }
 
     private readonly ControlGateway gateway;
     private readonly Configuration config;
-    private static readonly string[] blendModeNames =
-      DomeBlend.All.Select(b => b.Id).ToArray();
-
     public LayersController(ControlGateway gateway, Configuration config) {
       this.gateway = gateway;
       this.config = config;
@@ -79,8 +79,7 @@ namespace Spectrum.Web {
       return new LayersState {
         layers = SerializeStack(this.config),
         visualizers = VisualizerOptions(),
-        blendModes = blendModeNames,
-        blendParams = BlendParamSchema(),
+        operations = OperationOptions(),
       };
     }
 
@@ -103,9 +102,12 @@ namespace Spectrum.Web {
             enabled = layer.Enabled,
             notes = layer.Notes,
             // Copy so the wire DTO never aliases the config's live bag.
-            @params = layer.Params == null
+            rendererParams = layer.RendererParams == null
               ? null
-              : new Dictionary<string, double>(layer.Params),
+              : new Dictionary<string, double>(layer.RendererParams),
+            operationParams = layer.OperationParams == null
+              ? null
+              : new Dictionary<string, double>(layer.OperationParams),
           });
         }
       }
@@ -124,14 +126,16 @@ namespace Spectrum.Web {
       return options;
     }
 
-    // Compositor-consumed param schema keyed by blend-mode name, so the client
-    // can look up the extra editors a blend contributes (the prism family).
-    private static Dictionary<string, IReadOnlyList<ParamDto>> BlendParamSchema() {
-      var map = new Dictionary<string, IReadOnlyList<ParamDto>>();
+    private static List<OperationOptionDto> OperationOptions() {
+      var options = new List<OperationOptionDto>();
       foreach (DomeBlend blend in DomeBlend.All) {
-        map[blend.Id] = ToDtos(blend.Params);
+        options.Add(new OperationOptionDto {
+          id = blend.Id,
+          label = blend.DisplayName,
+          @params = ToDtos(blend.Params),
+        });
       }
-      return map;
+      return options;
     }
 
     private static List<ParamDto> ToDtos(IReadOnlyList<DomeLayerParam> schema) {
@@ -175,7 +179,8 @@ namespace Spectrum.Web {
           Opacity = dto.opacity,
           Enabled = dto.enabled,
           Notes = dto.notes,
-          Params = dto.@params,
+          RendererParams = dto.rendererParams,
+          OperationParams = dto.operationParams,
         });
       }
       (List<DomeLayerSettings> newStack, string error) =

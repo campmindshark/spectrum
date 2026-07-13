@@ -80,7 +80,7 @@ namespace Spectrum {
       };
       // Seed param values from the saved bag (the setters above installed schema
       // defaults); do this before wiring Changed so it doesn't republish.
-      vm.LoadParams(settings.Params);
+      vm.LoadParams(settings.RendererParams, settings.OperationParams);
       vm.Changed += this.Publish;
       vm.RemoveRequested += this.RemoveRow;
       vm.MoveUpRequested += this.MoveRowUp;
@@ -92,7 +92,7 @@ namespace Spectrum {
 
     private void AddLayer() {
       var vm = new DomeLayerRowViewModel {
-        VisualizerKey = DomeLayerSettings.LegacyVisKeys[0],
+        VisualizerKey = LayerCatalog.Default.Definitions[0].Id,
         BlendMode = DomeBlend.Default.Id,
         Opacity = 1.0,
         LayerEnabled = true,
@@ -172,11 +172,17 @@ namespace Spectrum {
         DomeLayerRowViewModel vm = this.Rows[i];
         // Snapshot the row's param VMs into a fresh bag; null when the layer has
         // no params (an absent bag reads as all-defaults everywhere).
-        Dictionary<string, double> paramBag = null;
+        Dictionary<string, double> rendererParams = null;
+        Dictionary<string, double> operationParams = null;
         if (vm.Params.Count > 0) {
-          paramBag = new Dictionary<string, double>();
           foreach (LayerParamViewModel p in vm.Params) {
-            paramBag[p.Key] = p.Value;
+            Dictionary<string, double> target;
+            if (p.IsOperationParameter) {
+              target = operationParams ??= new Dictionary<string, double>();
+            } else {
+              target = rendererParams ??= new Dictionary<string, double>();
+            }
+            target[p.Key] = p.Value;
           }
         }
         stack.Add(new DomeLayerSettings {
@@ -186,7 +192,8 @@ namespace Spectrum {
           Opacity = vm.Opacity,
           Enabled = vm.LayerEnabled,
           Notes = vm.Notes,
-          Params = paramBag,
+          RendererParams = rendererParams,
+          OperationParams = operationParams,
         });
       }
       this.lastPublished = stack;

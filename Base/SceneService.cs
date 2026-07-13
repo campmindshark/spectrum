@@ -107,7 +107,7 @@ namespace Spectrum.Base {
         return (false, "no scene named " + name);
       }
       // Validate produces a fresh list of fresh DomeLayerSettings (with fresh
-      // Params bags) without mutating its input, so the published stack never
+      // parameter bags) without mutating its input, so the published stack never
       // aliases the stored scene — no separate deep copy needed here.
       (List<DomeLayerSettings> stack, string error) =
         StackValidator.Validate(scene.Layers);
@@ -203,7 +203,7 @@ namespace Spectrum.Base {
     private static bool NameEquals(string a, string b) =>
       string.Equals(a, b, System.StringComparison.OrdinalIgnoreCase);
 
-    // Deep-copy a layer stack, including a fresh Params dictionary per layer, so
+    // Deep-copy a layer stack, including fresh parameter dictionaries per layer, so
     // neither the live stack nor a stored scene ever aliases the other. Mirrors
     // the copy in DomeLayersController.Publish / LayersController.SerializeStack.
     private static List<DomeLayerSettings> DeepCopyStack(
@@ -224,9 +224,12 @@ namespace Spectrum.Base {
           Opacity = layer.Opacity,
           Enabled = layer.Enabled,
           Notes = layer.Notes,
-          Params = layer.Params == null
+          RendererParams = layer.RendererParams == null
             ? null
-            : new Dictionary<string, double>(layer.Params),
+            : new Dictionary<string, double>(layer.RendererParams),
+          OperationParams = layer.OperationParams == null
+            ? null
+            : new Dictionary<string, double>(layer.OperationParams),
         });
       }
       return copy;

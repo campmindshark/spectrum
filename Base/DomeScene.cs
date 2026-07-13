@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace Spectrum.Base {
 
   // A named snapshot of the dome look: the whole compositing stack (every
-  // layer's visualizer, blend, opacity, mute, and per-layer Params bag) plus the
+  // layer's visualizer, operation, opacity, mute, and parameter bags) plus the
   // two cross-layer global speeds. Recalling a scene reproduces a curated
   // combination of dome visualizers (e.g. the Quaternion Paintbrush look as its
   // constituent twinkle/ripple/stamp/metaball layers).

@@ -18,6 +18,8 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("parameters compile into separate namespaces", ParameterNamespaces);
       Run("compiled renderer runtime updates in place", RuntimeUpdatesInPlace);
       Run("renderer runtime swaps immutable options", RuntimeOptionsSwap);
+      Run("renderer store replaces and evicts instance state",
+        RendererStoreLifecycle);
       Run("typed renderer options preserve numeric casts",
         TypedOptionsPreserveNumericCasts);
       Run("compiled plan freezes renderer inputs", PlanFreezesRendererInputs);
@@ -46,6 +48,8 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("prism frames are deterministic", PrismFixtures);
       Run("compositor replaces plans and holds on empty", PlanReplacement);
       Run("configuration with layers serializes", ConfigurationSerializes);
+      Run("web layer contract exposes namespaced bags and operation descriptors",
+        WebLayerContract);
       OPCWireTests.Register(Run);
       if (failures != 0) {
         Environment.ExitCode = 1;
@@ -97,8 +101,11 @@ namespace Spectrum.LayerPipeline.Tests {
     private static void ParameterNamespaces() {
       DomeLayerSettings layer = Layer("wave", "wave-1");
       layer.BlendMode = DomeBlend.ChromaticFringe.Id;
-      layer.Params = new Dictionary<string, double> {
+      layer.RendererParams = new Dictionary<string, double> {
         ["speed"] = 999,
+        ["unknown"] = 1,
+      };
+      layer.OperationParams = new Dictionary<string, double> {
         ["offset"] = 999,
         ["unknown"] = 1,
       };
@@ -155,7 +162,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
     private static void RuntimeOptionsSwap() {
       DomeLayerSettings first = Layer("wave", "runtime-wave");
-      first.Params = new Dictionary<string, double> { ["speed"] = .25 };
+      first.RendererParams = new Dictionary<string, double> { ["speed"] = .25 };
       (LayerStackSnapshot initial, string initialError) =
         new LayerStackService().CreateSnapshot(new[] { first });
       Assert(initialError == null, initialError);
@@ -166,7 +173,7 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(original.Speed == .25, "initial typed option missing");
 
       DomeLayerSettings second = Layer("wave", "runtime-wave");
-      second.Params = new Dictionary<string, double> { ["speed"] = 1.25 };
+      second.RendererParams = new Dictionary<string, double> { ["speed"] = 1.25 };
       (LayerStackSnapshot changed, string changedError) =
         new LayerStackService().CreateSnapshot(new[] { second });
       Assert(changedError == null, changedError);
@@ -180,21 +187,62 @@ namespace Spectrum.LayerPipeline.Tests {
         "the original snapshot was mutated");
     }
 
+    private static void RendererStoreLifecycle() {
+      var created = new List<DisposableFakeRenderer>();
+      LayerDefinition Definition(string id) => new(
+        id, id,
+        runtime => {
+          var renderer = new DisposableFakeRenderer(id, OnePixelTopology());
+          created.Add(renderer);
+          return renderer;
+        },
+        Array.Empty<DomeLayerParam>(),
+        values => EmptyLayerRendererOptions.Instance);
+      var store = new LayerRendererStore(new LayerCatalog(new[] {
+        Definition("first"), Definition("second"),
+      }));
+
+      LayerRendererBinding initial = store.Resolve(
+        SnapshotForRenderer("lifecycle", "first"));
+      LayerRendererBinding retained = store.Resolve(
+        SnapshotForRenderer("lifecycle", "first"));
+      Assert(initial.Created && !retained.Created,
+        "matching instance was not retained");
+      Assert(ReferenceEquals(initial.Renderer, retained.Renderer),
+        "matching instance changed renderer");
+
+      LayerRendererBinding replaced = store.Resolve(
+        SnapshotForRenderer("lifecycle", "second"));
+      Assert(replaced.Created, "renderer-kind change was not created");
+      Assert(ReferenceEquals(initial.Renderer, replaced.ReplacedRenderer),
+        "replaced renderer was not returned to the owner");
+      ((IDisposable)replaced.ReplacedRenderer).Dispose();
+      Assert(created[0].Disposed, "replaced renderer was not disposable");
+
+      IReadOnlyList<ILayerRenderer> evicted = store.Retain(
+        new HashSet<LayerInstanceId>());
+      Assert(evicted.Count == 1 &&
+        ReferenceEquals(evicted[0], replaced.Renderer),
+        "unretained renderer was not evicted");
+      ((IDisposable)evicted[0]).Dispose();
+      Assert(created[1].Disposed, "evicted renderer was not disposable");
+    }
+
     private static void TypedOptionsPreserveNumericCasts() {
       DomeLayerSettings volume = Layer("volume", "typed-volume");
-      volume.Params = new Dictionary<string, double> {
+      volume.RendererParams = new Dictionary<string, double> {
         ["animationSize"] = 3.75,
       };
       Assert(BuiltInOptions<VolumeLayerOptions>(volume).AnimationSize == 3,
         "volume animation size no longer truncates");
 
       DomeLayerSettings points = Layer("point-cloud", "typed-points");
-      points.Params = new Dictionary<string, double> { ["count"] = 47.75 };
+      points.RendererParams = new Dictionary<string, double> { ["count"] = 47.75 };
       Assert(BuiltInOptions<PointCloudLayerOptions>(points).Count == 47,
         "point count no longer truncates");
 
       DomeLayerSettings noise = Layer("noise-cloud", "typed-noise");
-      noise.Params = new Dictionary<string, double> { ["octaves"] = 2.75 };
+      noise.RendererParams = new Dictionary<string, double> { ["octaves"] = 2.75 };
       Assert(BuiltInOptions<NoiseCloudLayerOptions>(noise).Octaves == 2,
         "noise octave count no longer truncates");
     }
@@ -701,7 +749,7 @@ namespace Spectrum.LayerPipeline.Tests {
     ) {
       DomeLayerSettings layer = Layer("background", "options-fixture");
       layer.BlendMode = operation.Id;
-      layer.Params = parameters;
+      layer.OperationParams = parameters;
       (LayerStackSnapshot snapshot, string error) =
         new LayerStackService().CreateSnapshot(new[] { layer });
       Assert(error == null, error);
@@ -939,10 +987,18 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     private static void ConfigurationSerializes() {
+      DomeLayerSettings serializedLayer = Layer(
+        "background", "serialize-background");
+      serializedLayer.RendererParams = new Dictionary<string, double> {
+        ["color"] = 0x123456,
+      };
+      serializedLayer.OperationParams = new Dictionary<string, double> {
+        ["amount"] = .5,
+      };
       var config = new global::Spectrum.SpectrumConfiguration {
         audioDeviceID = "test-device",
         domeLayerStack = new List<DomeLayerSettings> {
-          Layer("background", "serialize-background"),
+          serializedLayer,
         },
       };
       using var stream = new MemoryStream();
@@ -957,6 +1013,45 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(restored.domeLayerStack.Count == 1 &&
         restored.domeLayerStack[0].InstanceId == "serialize-background",
         "round trip lost layer identity");
+      Assert(restored.domeLayerStack[0].RendererParams["color"] == 0x123456 &&
+        restored.domeLayerStack[0].OperationParams["amount"] == .5,
+        "round trip merged or lost parameter namespaces");
+    }
+
+    private static void WebLayerContract() {
+      DomeLayerSettings layer = Layer("background", "web-background");
+      layer.RendererParams = new Dictionary<string, double> {
+        ["color"] = 0xABCDEF,
+      };
+      layer.BlendMode = DomeBlend.ChromaticFringe.Id;
+      layer.OperationParams = new Dictionary<string, double> {
+        ["offset"] = .125,
+      };
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> { layer },
+      };
+      var controller = new global::Spectrum.Web.LayersController(
+        new InlineGateway(), config);
+      global::Spectrum.Web.LayersController.LayersState state =
+        controller.State();
+      Assert(state.layers[0].rendererParams["color"] == 0xABCDEF &&
+        state.layers[0].operationParams["offset"] == .125,
+        "web contract merged parameter namespaces");
+      global::Spectrum.Web.LayersController.OperationOptionDto operation =
+        null;
+      foreach (
+        global::Spectrum.Web.LayersController.OperationOptionDto candidate
+        in state.operations
+      ) {
+        if (candidate.id == DomeBlend.ChromaticFringe.Id) {
+          operation = candidate;
+          break;
+        }
+      }
+      Assert(operation != null &&
+        operation.label == DomeBlend.ChromaticFringe.DisplayName &&
+        operation.@params.Count > 0,
+        "web operation descriptor is incomplete");
     }
 
     private static CompiledLayer Compiled(
@@ -1009,6 +1104,12 @@ namespace Spectrum.LayerPipeline.Tests {
         new LayerInstanceId(id), "test", DomeBlend.Add.Id, 1, true,
         parameters, ImmutableDictionary<string, ParameterValue>.Empty, null);
     }
+
+    private static LayerSnapshot SnapshotForRenderer(string id, string renderer) =>
+      new LayerSnapshot(
+        new LayerInstanceId(id), renderer, DomeBlend.Add.Id, 1, true,
+        ImmutableDictionary<string, ParameterValue>.Empty,
+        ImmutableDictionary<string, ParameterValue>.Empty, null);
 
     private static DomeTopology OnePixelTopology() => new(new[] {
       new DomeTopologyPixel(0, 0, .5, .5),
@@ -1066,6 +1167,21 @@ namespace Spectrum.LayerPipeline.Tests {
         this.Frame = frame;
         this.RequiredInputs = requiredInputs ?? Array.Empty<Input>();
       }
+    }
+
+    private sealed class DisposableFakeRenderer : ILayerRenderer, IDisposable {
+      public string RendererId { get; }
+      public DomeFrame Frame { get; }
+      public bool IsAvailable => true;
+      public IReadOnlyList<Input> RequiredInputs => Array.Empty<Input>();
+      public bool Disposed { get; private set; }
+
+      public DisposableFakeRenderer(string id, DomeTopology topology) {
+        this.RendererId = id;
+        this.Frame = new DomeFrame(topology);
+      }
+
+      public void Dispose() => this.Disposed = true;
     }
 
     private sealed class FakeInput : Input {

@@ -291,6 +291,12 @@ namespace Spectrum.LEDs {
       this.visualizersArray = null;
     }
 
+    public void UnregisterVisualizer(Visualizer visualizer) {
+      if (this.visualizers.Remove(visualizer)) {
+        this.visualizersArray = null;
+      }
+    }
+
     // Cached snapshot of `visualizers`, rebuilt only when a visualizer is
     // registered (startup) rather than allocated fresh every Operator frame.
     private Visualizer[] visualizersArray;

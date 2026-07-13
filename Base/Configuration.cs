@@ -14,7 +14,7 @@ namespace Spectrum.Base {
    * log on MidiInput, the dome-mapping calibration selection on
    * DomeCalibrationState, and the simulator frame queue on LEDDomeOutput
    * itself. Per-visualizer tuning lives in each dome layer's
-   * DomeLayerSettings.Params bag inside domeLayerStack.
+   * DomeLayerSettings parameter bags inside domeLayerStack.
    */
   public interface Configuration : INotifyPropertyChanged {
 
@@ -43,9 +43,7 @@ namespace Spectrum.Base {
 
     // The dome's compositing stack, index 0 = background (bottom), last = front.
     // Persisted. Writers replace the whole list (snapshot swap) so PropertyChanged
-    // fires and the operator thread never observes a mid-mutation list. A missing
-    // / invalid value is synthesized on config load (LegacyLayerParamMigration,
-    // which also reads the retired domeActiveVis selector out of old files).
+    // fires and the operator thread never observes a mid-mutation list.
     List<DomeLayerSettings> domeLayerStack { get; set; }
 
     // Dome cable mapping. The dome is wired as 10 cables (5 control boxes, each
@@ -59,9 +57,8 @@ namespace Spectrum.Base {
 
     // Cross-layer visual state: every stack layer applies the same fade /
     // hue-rotate speed to its own buffer. Per-visualizer tuning does NOT belong
-    // here — it lives in each layer's DomeLayerSettings.Params bag (see
-    // LayerCatalog parameter schemas; LegacyLayerParamMigration seeds the bags
-    // from configs that predate the move).
+    // here — it lives in each layer's renderer parameter bag (see LayerCatalog
+    // parameter schemas).
     double domeGlobalFadeSpeed { get; set; }
     double domeGlobalHueSpeed { get; set; }
 

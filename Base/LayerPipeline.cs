@@ -195,13 +195,29 @@ namespace Spectrum.Base {
         ? definition.Parameters
         : Array.Empty<DomeLayerParam>();
 
-    public LayerCatalog WithFactories(
+    public LayerCatalog BindFactories(
       IReadOnlyDictionary<string, Func<LayerRendererRuntime, ILayerRenderer>> factories
-    ) => new LayerCatalog(this.definitions.Select(d => d with {
-      CreateRenderer = factories != null && factories.TryGetValue(
-        d.Id, out Func<LayerRendererRuntime, ILayerRenderer> factory)
-          ? factory : d.CreateRenderer,
-    }));
+    ) {
+      if (factories == null) {
+        throw new ArgumentNullException(nameof(factories));
+      }
+      foreach (string id in factories.Keys) {
+        if (!this.byId.ContainsKey(id)) {
+          throw new InvalidOperationException(
+            "Renderer factory has no layer definition: " + id);
+        }
+      }
+      return new LayerCatalog(this.definitions.Select(definition => {
+        if (!factories.TryGetValue(
+          definition.Id,
+          out Func<LayerRendererRuntime, ILayerRenderer> factory
+        )) {
+          throw new InvalidOperationException(
+            "No renderer factory registered for layer " + definition.Id);
+        }
+        return definition with { CreateRenderer = factory };
+      }));
+    }
 
     private static LayerDefinition BuiltIn(
       string id, string label, IReadOnlyList<DomeLayerParam> parameters,
@@ -310,8 +326,8 @@ namespace Spectrum.Base {
           operation.Id,
           layer.Opacity,
           layer.Enabled,
-          CompileParameters(definition.Parameters, layer.Params),
-          CompileParameters(operation.Params, layer.Params),
+          CompileParameters(definition.Parameters, layer.RendererParams),
+          CompileParameters(operation.Params, layer.OperationParams),
           layer.Notes));
       }
       return (new LayerStackSnapshot(snapshots.MoveToImmutable()), null);
@@ -359,8 +375,10 @@ namespace Spectrum.Base {
           Opacity = layer.Opacity,
           Enabled = layer.Enabled,
           Notes = notes,
-          Params = StackValidator.SanitizeParams(
-            layer.VisualizerKey, operation, layer.Params),
+          RendererParams = StackValidator.SanitizeRendererParams(
+            layer.VisualizerKey, layer.RendererParams),
+          OperationParams = StackValidator.SanitizeOperationParams(
+            operation, layer.OperationParams),
         });
       }
       return (normalized, null);
@@ -399,7 +417,8 @@ namespace Spectrum.Base {
 
   public sealed record LayerRendererBinding(
     ILayerRenderer Renderer,
-    bool Created
+    bool Created,
+    ILayerRenderer ReplacedRenderer
   );
 
   // The sole owner of layer-renderer instances and their mutable runtime
@@ -427,7 +446,7 @@ namespace Spectrum.Base {
       if (this.entries.TryGetValue(layer.Id, out Entry existing) &&
           existing.RendererId == layer.RendererId) {
         existing.Runtime.Publish(layer);
-        return new LayerRendererBinding(existing.Renderer, false);
+        return new LayerRendererBinding(existing.Renderer, false, null);
       }
 
       LayerDefinition definition = this.catalog.Get(layer.RendererId) ??
@@ -445,9 +464,10 @@ namespace Spectrum.Base {
         throw new InvalidOperationException(
           "Renderer factory returned null for layer " + layer.RendererId);
       }
+      ILayerRenderer replaced = existing?.Renderer;
       this.entries[layer.Id] = new Entry(
         layer.RendererId, renderer, runtime);
-      return new LayerRendererBinding(renderer, true);
+      return new LayerRendererBinding(renderer, true, replaced);
     }
 
     public ILayerRenderer Get(LayerSnapshot layer) {
@@ -458,6 +478,23 @@ namespace Spectrum.Base {
         entry.RendererId == layer.RendererId
           ? entry.Renderer
           : null;
+    }
+
+    public IReadOnlyList<ILayerRenderer> Retain(
+      IReadOnlySet<LayerInstanceId> retainedIds
+    ) {
+      if (retainedIds == null) {
+        throw new ArgumentNullException(nameof(retainedIds));
+      }
+      var removed = new List<ILayerRenderer>();
+      foreach (LayerInstanceId id in this.entries.Keys.ToArray()) {
+        if (retainedIds.Contains(id)) {
+          continue;
+        }
+        removed.Add(this.entries[id].Renderer);
+        this.entries.Remove(id);
+      }
+      return removed;
     }
   }
 

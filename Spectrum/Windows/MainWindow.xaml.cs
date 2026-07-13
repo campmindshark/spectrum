@@ -268,9 +268,6 @@ namespace Spectrum {
       if (this.config == null) {
         this.config = new SpectrumConfiguration();
       }
-      // Synthesizes a missing/invalid layer stack and seeds per-layer params
-      // from any retired global properties still present in the file.
-      LegacyLayerParamMigration.Apply(this.config, loadFile);
       this.op = new Operator(this.config);
 
       this.RefreshAudioDevices(null, null);

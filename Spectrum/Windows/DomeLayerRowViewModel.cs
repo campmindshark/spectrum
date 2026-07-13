@@ -29,6 +29,11 @@ namespace Spectrum {
     public string Label { get; set; }
   }
 
+  public class DomeLayerOperationOption {
+    public string Id { get; set; }
+    public string Label { get; set; }
+  }
+
   // View-model wrapping one DomeLayerParam descriptor plus its current value for
   // the generic per-layer param editors. The row DataTemplate binds the control
   // matching Type (Slider / CheckBox / ComboBox / ColorPicker) via the
@@ -41,9 +46,12 @@ namespace Spectrum {
 
     private readonly DomeLayerParam descriptor;
 
-    public LayerParamViewModel(DomeLayerParam descriptor, double value) {
+    public LayerParamViewModel(
+      DomeLayerParam descriptor, double value, bool isOperationParameter
+    ) {
       this.descriptor = descriptor;
       this.value = value;
+      this.IsOperationParameter = isOperationParameter;
     }
 
     public string Key => this.descriptor.Key;
@@ -52,6 +60,7 @@ namespace Spectrum {
     public double Max => this.descriptor.Max;
     public double Step => this.descriptor.Step;
     public IReadOnlyList<string> Options => this.descriptor.Options;
+    public bool IsOperationParameter { get; }
 
     public bool IsDouble => this.descriptor.Type == DomeLayerParamType.Double;
     public bool IsBool => this.descriptor.Type == DomeLayerParamType.Bool;
@@ -155,11 +164,12 @@ namespace Spectrum {
     }
     public IReadOnlyList<DomeLayerVisualizerOption> VisualizerOptions =>
       visualizerOptions;
-    // The blend ComboBox binds the registry's names (registry order); the
-    // selected item is the same string the settings persist.
-    public IReadOnlyList<string> BlendModes => blendModes;
-    private static readonly List<string> blendModes =
-      DomeBlend.All.Select(b => b.Id).ToList();
+    public IReadOnlyList<DomeLayerOperationOption> BlendModes => blendModes;
+    private static readonly List<DomeLayerOperationOption> blendModes =
+      DomeBlend.All.Select(b => new DomeLayerOperationOption {
+        Id = b.Id,
+        Label = b.DisplayName,
+      }).ToList();
 
     // Generic per-layer param editors, rebuilt from the schema whenever the
     // visualizer key or blend mode changes: the visualizer-consumed set
@@ -196,7 +206,7 @@ namespace Spectrum {
           this, new PropertyChangedEventArgs(nameof(VisualizerKey)));
         // The visualizer's param schema changed: rebuild to defaults, dropping
         // keys not in the new schema.
-        this.RebuildParams(null);
+        this.RebuildParams(null, this.CurrentParamValues(true));
         this.Changed?.Invoke();
       }
     }
@@ -214,7 +224,8 @@ namespace Spectrum {
         // The blend's compositor-consumed param schema changed: rebuild, but
         // seed from the current values so unrelated (visualizer) params
         // survive and only newly-introduced blend keys fall back to default.
-        this.RebuildParams(this.CurrentParamValues());
+        this.RebuildParams(
+          this.CurrentParamValues(false), this.CurrentParamValues(true));
         this.Changed?.Invoke();
       }
     }
@@ -226,28 +237,34 @@ namespace Spectrum {
     // key/blend change. Does not itself raise Changed — callers do (a schema
     // rebuild always accompanies a key/blend edit that already publishes, and
     // seeding happens before the row is wired up).
-    private void RebuildParams(IDictionary<string, double> seed) {
+    private void RebuildParams(
+      IDictionary<string, double> rendererSeed,
+      IDictionary<string, double> operationSeed
+    ) {
       foreach (LayerParamViewModel existing in this.Params) {
         existing.Changed -= this.OnParamChanged;
       }
       this.Params.Clear();
       AddParams(
-        LayerCatalog.Default.ParametersFor(this.visualizerKey), seed);
+        LayerCatalog.Default.ParametersFor(this.visualizerKey),
+        rendererSeed, false);
       DomeBlend blend = DomeBlend.FromId(this.blendMode);
       if (blend != null) {
-        AddParams(blend.Params, seed);
+        AddParams(blend.Params, operationSeed, true);
       }
     }
 
     private void AddParams(
-      IReadOnlyList<DomeLayerParam> schema, IDictionary<string, double> seed
+      IReadOnlyList<DomeLayerParam> schema, IDictionary<string, double> seed,
+      bool isOperationParameter
     ) {
       foreach (DomeLayerParam descriptor in schema) {
         double value = descriptor.Default;
         if (seed != null && seed.TryGetValue(descriptor.Key, out double v)) {
           value = v;
         }
-        var vm = new LayerParamViewModel(descriptor, value);
+        var vm = new LayerParamViewModel(
+          descriptor, value, isOperationParameter);
         vm.Changed += this.OnParamChanged;
         this.Params.Add(vm);
       }
@@ -260,10 +277,14 @@ namespace Spectrum {
     // Snapshot of the current Params collection, used to seed a rebuild so
     // values already set by the user survive a schema change that keeps the
     // same keys.
-    private IDictionary<string, double> CurrentParamValues() {
+    private IDictionary<string, double> CurrentParamValues(
+      bool operationParameters
+    ) {
       var values = new Dictionary<string, double>();
       foreach (LayerParamViewModel vm in this.Params) {
-        values[vm.Key] = vm.Value;
+        if (vm.IsOperationParameter == operationParameters) {
+          values[vm.Key] = vm.Value;
+        }
       }
       return values;
     }
@@ -271,8 +292,11 @@ namespace Spectrum {
     // Seed the param values from a saved config bag, keeping the current schema.
     // Called by the controller after constructing the row so loaded values
     // replace the defaults the setters installed.
-    public void LoadParams(IDictionary<string, double> saved) {
-      this.RebuildParams(saved);
+    public void LoadParams(
+      IDictionary<string, double> rendererParams,
+      IDictionary<string, double> operationParams
+    ) {
+      this.RebuildParams(rendererParams, operationParams);
     }
 
     private double opacity = 1.0;

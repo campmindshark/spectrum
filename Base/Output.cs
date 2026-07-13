@@ -38,6 +38,9 @@
      */
     void RegisterVisualizer(Visualizer visualizer);
 
+    /** Removes a previously registered Visualizer. */
+    void UnregisterVisualizer(Visualizer visualizer);
+
     /**
      * Returns all the Visualizers that have called RegisterVisualizer on this
      * Output.

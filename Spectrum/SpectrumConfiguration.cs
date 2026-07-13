@@ -90,8 +90,7 @@ namespace Spectrum {
     }
     // Left null by default (not a pre-filled list): XSerializer deserializes a
     // collection property by calling IList.Add on the *existing* instance, so a
-    // non-null default would double up the persisted entries on load. A null /
-    // empty stack is synthesized on load by LegacyLayerParamMigration.
+    // non-null default would double up the persisted entries on load.
     private List<DomeLayerSettings> _domeLayerStack = null;
     private static readonly LayerStackService layerStackService = new();
     private LayerStackSnapshot _domeLayerStackSnapshot =
@@ -151,7 +150,7 @@ namespace Spectrum {
       set => SetField(ref _domeCableMapping, value);
     }
     // Cross-layer visual state; per-visualizer tuning lives in each layer's
-    // Params bag instead (see Configuration).
+    // renderer parameter bag instead (see Configuration).
     private double _domeGlobalFadeSpeed = 0;
     public double domeGlobalFadeSpeed {
       get => _domeGlobalFadeSpeed;

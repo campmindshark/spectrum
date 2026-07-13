@@ -151,73 +151,9 @@ namespace Spectrum {
         this.config,
         dome
       ));
-      var rendererFactories = new Dictionary<
-        string, Func<LayerRendererRuntime, ILayerRenderer>>(
-          StringComparer.Ordinal) {
-        ["volume"] = runtime => new LEDDomeVolumeVisualizer(
-          layerEnvironment, runtime, audio, this.BeatBroadcaster, dome),
-        ["radial"] = runtime => new LEDDomeRadialVisualizer(
-          layerEnvironment, runtime, audio, this.BeatBroadcaster, dome),
-        ["splat"] = runtime => new LEDDomeSplatVisualizer(
-          runtime, audio, this.BeatBroadcaster, dome),
-        ["quaternion-test"] = runtime =>
-          new LEDDomeQuaternionTestVisualizer(
-            layerEnvironment, orientation, dome),
-        ["quaternion-paintbrush"] = runtime =>
-          new LEDDomeQuaternionPaintbrushVisualizer(
-            layerEnvironment, runtime, audio, orientation,
-            orientationCenter, this.BeatBroadcaster, dome),
-        ["race"] = runtime => new LEDDomeRaceVisualizer(
-          runtime, audio, midi,
-          this.BeatBroadcaster, dome),
-        ["snakes"] = runtime => new LEDDomeSnakesVisualizer(
-          runtime, dome),
-        ["tv-static"] = runtime =>
-          new LEDDomeTVStaticVisualizer(layerEnvironment, dome),
-        ["twinkle"] = runtime => new LEDDomeTwinkleVisualizer(
-          layerEnvironment, runtime, dome),
-        ["background"] = runtime => new LEDDomeBackgroundVisualizer(
-          runtime, dome),
-        ["noise-cloud"] = runtime => new LEDDomeNoiseCloudVisualizer(
-          runtime, dome),
-        ["vortex"] = runtime => new LEDDomeVortexVisualizer(
-          layerEnvironment, runtime, dome),
-        ["caustics"] = runtime => new LEDDomeCausticsVisualizer(
-          layerEnvironment, runtime, audio, orientation,
-          orientationCenter, this.BeatBroadcaster, dome),
-        ["flash"] = runtime => new LEDDomeFlashVisualizer(
-          layerEnvironment, runtime, audio, orientation,
-          this.BeatBroadcaster, dome),
-        ["wave"] = runtime => new LEDDomeWaveVisualizer(
-          layerEnvironment, runtime, orientation, dome),
-        ["gyroscope"] = runtime => new LEDDomeGyroscopeVisualizer(
-          layerEnvironment, runtime, orientation,
-          orientationCenter, dome),
-        ["ripple"] = runtime => new LEDDomeRippleVisualizer(
-          layerEnvironment, runtime, audio, orientation,
-          orientationCenter, this.BeatBroadcaster, dome),
-        ["stamp"] = runtime => new LEDDomeStampVisualizer(
-          layerEnvironment, runtime, audio, orientation,
-          orientationCenter, this.BeatBroadcaster, dome),
-        ["metaball"] = runtime => new LEDDomeMetaballVisualizer(
-          layerEnvironment, runtime, audio, orientation,
-          orientationCenter, dome),
-        ["point-cloud"] = runtime => new LEDDomePointCloudVisualizer(
-          layerEnvironment, runtime, orientation, dome),
-        ["shooting-star"] = runtime => new LEDDomeShootingStarVisualizer(
-          layerEnvironment, runtime, audio, orientation,
-          orientationCenter, this.BeatBroadcaster, dome),
-        ["sparkler"] = runtime => new LEDDomeSparklerVisualizer(
-          layerEnvironment, runtime, audio, orientation,
-          orientationCenter, this.BeatBroadcaster, dome),
-      };
-      this.layerCatalog = LayerCatalog.Default.WithFactories(rendererFactories);
-      foreach (LayerDefinition definition in this.layerCatalog.Definitions) {
-        if (definition.CreateRenderer == null) {
-          throw new InvalidOperationException(
-            "No renderer factory registered for layer " + definition.Id);
-        }
-      }
+      this.layerCatalog = DomeLayerCatalog.Create(
+        layerEnvironment, audio, midi, orientation, orientationCenter,
+        this.BeatBroadcaster, dome);
       this.layerRendererStore = new LayerRendererStore(this.layerCatalog);
       this.config.PropertyChanged += this.OnLayerConfigurationChanged;
       this.CapturePublishedLayerStack();
@@ -234,6 +170,8 @@ namespace Spectrum {
         // DTOs.
         this.CapturePublishedLayerStack();
         Interlocked.Exchange(ref this.layerReconcilePending, 1);
+      } else if (e.PropertyName == nameof(this.config.domeScenes)) {
+        Interlocked.Exchange(ref this.layerReconcilePending, 1);
       }
     }
 
@@ -249,6 +187,9 @@ namespace Spectrum {
         ref this.publishedLayerStack) ?? LayerStackSnapshot.Empty;
       foreach (LayerSnapshot layer in snapshot.Layers) {
         LayerRendererBinding binding = this.layerRendererStore.Resolve(layer);
+        if (binding.ReplacedRenderer != null) {
+          this.ReleaseLayerRenderer(binding.ReplacedRenderer);
+        }
         if (binding.Created) {
           if (binding.Renderer is not Visualizer visualizer) {
             throw new InvalidOperationException(
@@ -260,6 +201,43 @@ namespace Spectrum {
       RenderPlan plan = this.renderPlanCompiler.Compile(
         snapshot, this.layerRendererStore.Get);
       this.DomeOutput.PublishRenderPlan(plan);
+      foreach (ILayerRenderer retired in this.layerRendererStore.Retain(
+        this.RetainedLayerInstanceIds(snapshot))) {
+        this.ReleaseLayerRenderer(retired);
+      }
+    }
+
+    private HashSet<LayerInstanceId> RetainedLayerInstanceIds(
+      LayerStackSnapshot current
+    ) {
+      var retained = new HashSet<LayerInstanceId>();
+      foreach (LayerSnapshot layer in current.Layers) {
+        retained.Add(layer.Id);
+      }
+      if (this.config.domeScenes != null) {
+        foreach (DomeScene scene in this.config.domeScenes) {
+          if (scene?.Layers == null) {
+            continue;
+          }
+          foreach (DomeLayerSettings layer in scene.Layers) {
+            if (layer != null && !string.IsNullOrWhiteSpace(layer.InstanceId)) {
+              retained.Add(new LayerInstanceId(layer.InstanceId));
+            }
+          }
+        }
+      }
+      return retained;
+    }
+
+    private void ReleaseLayerRenderer(ILayerRenderer renderer) {
+      if (renderer is Visualizer visualizer) {
+        this.visualizers.Remove(visualizer);
+        this.DomeOutput.UnregisterVisualizer(visualizer);
+        this.visualizerFailureCounts.Remove(visualizer);
+      }
+      if (renderer is IDisposable disposable) {
+        disposable.Dispose();
+      }
     }
 
     private bool enabled;

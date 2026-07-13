@@ -20,7 +20,7 @@ namespace Spectrum.Base {
    * still applies the params it does understand.
    *
    * Validate always returns a *fresh* list of *fresh* DomeLayerSettings with a
-   * fresh Params dictionary per layer, so the caller can hand the result straight
+   * fresh parameter dictionaries per layer, so the caller can hand the result straight
    * to a snapshot swap without aliasing its input (the live stack on the web
    * path, the stored scene on the apply path).
    */
@@ -47,24 +47,30 @@ namespace Spectrum.Base {
       return new LayerStackService().Normalize(layers);
     }
 
-    // Sanitize a param bag against the layer's schema (visualizer + blend): drop
+    // Sanitize a param bag against its owning schema: drop
     // keys with no descriptor, clamp Double to [Min,Max], coerce Bool to 0/1 and
     // Enum to a valid index. Returns null for an empty result so an absent bag
     // persists as "all defaults". Never rejects — unknown keys are silently
     // dropped so a client on a newer/older schema still applies what it
     // understands. Always allocates a fresh dictionary, never aliasing `raw`.
-    public static Dictionary<string, double> SanitizeParams(
-      string visualizerKey, DomeBlend blend, IReadOnlyDictionary<string, double> raw
+    public static Dictionary<string, double> SanitizeRendererParams(
+      string visualizerKey, IReadOnlyDictionary<string, double> raw
+    ) => Sanitize(
+      LayerCatalog.Default.ParametersFor(visualizerKey), raw);
+
+    public static Dictionary<string, double> SanitizeOperationParams(
+      DomeBlend operation, IReadOnlyDictionary<string, double> raw
+    ) => Sanitize(operation.Params, raw);
+
+    private static Dictionary<string, double> Sanitize(
+      IReadOnlyList<DomeLayerParam> schema,
+      IReadOnlyDictionary<string, double> raw
     ) {
       if (raw == null || raw.Count == 0) {
         return null;
       }
       Dictionary<string, double> clean = null;
-      foreach (DomeLayerParam descriptor in
-        LayerCatalog.Default.ParametersFor(visualizerKey)) {
-        Accumulate(descriptor, raw, ref clean);
-      }
-      foreach (DomeLayerParam descriptor in blend.Params) {
+      foreach (DomeLayerParam descriptor in schema) {
         Accumulate(descriptor, raw, ref clean);
       }
       return clean;

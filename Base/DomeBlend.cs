@@ -120,7 +120,7 @@ namespace Spectrum.Base {
   // blends, but ChromaticFringe, EdgeSpectrum and Refract are *spatial* —
   // they resample the composite through the baked neighbor table, so they
   // declare destination-neighbor requirements and read the pre-pass copy.
-  // compositor-consumed tunables via Params.
+  // They expose compositor-consumed tunable descriptors via Params.
   public abstract class DomeBlend : ICompositeOperation {
 
     // Stable identity: persisted in config/scene files, carried on the web
@@ -128,8 +128,8 @@ namespace Spectrum.Base {
     public abstract string Id { get; }
     public virtual string DisplayName => this.Id;
 
-    // Compositor-consumed tunables this blend reads from the selecting layer's
-    // Params bag (never read by a visualizer). Empty for the plain blends.
+    // Compositor-consumed tunables this operation reads from the selecting
+    // layer's operation parameter bag. Empty for the plain blends.
     public virtual IReadOnlyList<DomeLayerParam> Params => NoParams;
 
     public virtual CompositeRequirements Requirements =>

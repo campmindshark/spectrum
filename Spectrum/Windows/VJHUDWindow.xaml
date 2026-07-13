@@ -373,7 +373,7 @@
                                             <Button DockPanel.Dock="Right" Content="🔥" Command="{Binding FireCommand}" Width="20" ToolTip="Fire (manual trigger)" />
                                             <Button DockPanel.Dock="Right" Content="▼" Command="{Binding MoveDownCommand}" Width="20" ToolTip="Move back" />
                                             <Button DockPanel.Dock="Right" Content="▲" Command="{Binding MoveUpCommand}" Width="20" ToolTip="Move front" />
-                                            <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding BlendModes}" SelectedItem="{Binding BlendMode}" Width="80" ToolTip="Blend mode" />
+                                            <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding BlendModes}" DisplayMemberPath="Label" SelectedValuePath="Id" SelectedValue="{Binding BlendMode}" Width="96" ToolTip="Blend mode" />
                                             <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}" VerticalAlignment="Center" Margin="4,0,4,0" ToolTip="Opacity" />
                                         </DockPanel>
                                         <ItemsControl ItemsSource="{Binding Params}" Margin="0,2,0,0">
