@@ -180,7 +180,7 @@ namespace Spectrum {
         ["noise-cloud"] = context => new LEDDomeNoiseCloudVisualizer(
           context.Runtime, dome),
         ["vortex"] = context => new LEDDomeVortexVisualizer(
-          context.Runtime, dome),
+          layerEnvironment, context.Runtime, dome),
         ["caustics"] = context => new LEDDomeCausticsVisualizer(
           layerEnvironment, context.Runtime, audio, orientation,
           orientationCenter, this.BeatBroadcaster, dome),

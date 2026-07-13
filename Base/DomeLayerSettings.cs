@@ -673,8 +673,8 @@ namespace Spectrum.Base {
     // A stateless polar flow field that reads as a dense particle system
     // without maintaining particles. Whirlpool keeps the advected noise
     // continuous and shapes it into spiral arms; Sandstorm thresholds a finer
-    // field into grains and lets the persistent layer buffer leave short
-    // trails. All work is O(dome pixels), independent of apparent density.
+    // field into grains. Both retain faded field history as trails. All work is
+    // O(dome pixels), independent of apparent density.
     internal static readonly DomeLayerParam[] VortexParams =
       new DomeLayerParam[] {
         new DomeLayerParam {

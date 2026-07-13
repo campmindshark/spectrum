@@ -29,6 +29,8 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("operator creates independent duplicate renderers", DuplicateRenderers);
       Run("layer renderers do not receive persisted configuration",
         LayerRenderersAvoidConfiguration);
+      Run("vortex uses global fade for hue-bearing trails",
+        VortexUsesGlobalFade);
       Run("compiled plan schedules enabled instances", PlanSchedulesInstances);
       Run("scene recall retains duplicate instance state", SceneRecallRetainsState);
       Run("duplicate commands require instance IDs", DuplicateCommandsNeedIds);
@@ -336,6 +338,55 @@ namespace Spectrum.LayerPipeline.Tests {
           }
         }
       }
+    }
+
+    private static void VortexUsesGlobalFade() {
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeGlobalFadeSpeed = 3,
+        domeGlobalHueSpeed = 0,
+        domeLayerStack = new List<DomeLayerSettings> {
+          Layer("vortex", "vortex-trail"),
+        },
+      };
+      var runtime = new global::Spectrum.Operator(config);
+      DomeLayerVisualizer vortex = null;
+      foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
+        if (visualizer is DomeLayerVisualizer layer &&
+            layer.LayerKey == "vortex") {
+          vortex = layer;
+          break;
+        }
+      }
+      Assert(vortex != null, "vortex renderer was not created");
+
+      Visualizer renderer = (Visualizer)vortex;
+      renderer.Visualize();
+
+      // Use the weakest field sample and give its history a distinctive hue,
+      // mirroring the output-wide post-frame hue rotation. A long global fade
+      // must preserve it when the next, weaker current sample is rendered.
+      DomeFrame frame = vortex.LayerBuffer;
+      int trailIndex = 0;
+      for (int i = 1; i < frame.pixels.Length; i++) {
+        if (frame.pixels[i].a < frame.pixels[trailIndex].a) {
+          trailIndex = i;
+        }
+      }
+      frame.pixels[trailIndex].color = 0x00FF00;
+      renderer.Visualize();
+      Assert(frame.pixels[trailIndex].r == 0 &&
+          frame.pixels[trailIndex].g > 0 &&
+          frame.pixels[trailIndex].b == 0,
+        "global fade did not retain the hue-bearing vortex trail");
+
+      // Fade speed zero has zero retention, so the artificial history must be
+      // removed and replaced only by this frame's brown-tinted field sample.
+      config.domeGlobalFadeSpeed = 0;
+      renderer.Visualize();
+      Assert(!(frame.pixels[trailIndex].r == 0 &&
+          frame.pixels[trailIndex].g > 0 &&
+          frame.pixels[trailIndex].b == 0),
+        "zero global fade retained stale vortex history");
     }
 
     private static void PlanSchedulesInstances() {

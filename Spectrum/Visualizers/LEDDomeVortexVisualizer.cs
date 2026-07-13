@@ -12,6 +12,7 @@ namespace Spectrum.Visualizers {
   // O(pixels), with no per-frame allocation and no cost tied to density.
   class LEDDomeVortexVisualizer : DomeLayerVisualizer {
 
+    private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly LEDDomeOutput dome;
     private readonly DomeFrame buffer;
@@ -27,9 +28,11 @@ namespace Spectrum.Visualizers {
     private int previousStyle = -1;
 
     public LEDDomeVortexVisualizer(
+      DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       LEDDomeOutput dome
     ) {
+      this.environment = environment;
       this.runtime = runtime;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
@@ -75,14 +78,17 @@ namespace Spectrum.Visualizers {
       double frameScale = this.frameClock.Tick();
       this.time += frameScale / FrameClock.NominalFps;
 
-      // Sand grains retain a short tail. Whirlpool is a continuous field and
-      // replaces every pixel. Clear when switching styles so one rendering
-      // contract cannot leave stale pixels in the other.
+      // Retain the previous field according to the global Fade speed. At zero
+      // retention this clears the previous frame; increasing Fade speed keeps
+      // progressively longer trails. Clear when switching styles so one
+      // rendering contract cannot leave stale pixels in the other.
       if (style != this.previousStyle) {
         ClearBuffer();
         this.previousStyle = style;
-      } else if (style == 1) {
-        this.buffer.Fade(Math.Pow(0.82, frameScale), 0);
+      } else {
+        double frameRetention =
+          1 - Math.Pow(5, -this.environment.GlobalFadeSpeed);
+        this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
       }
 
       double tr = (tint >> 16) & 0xFF;
@@ -144,6 +150,17 @@ namespace Spectrum.Visualizers {
 
         value = Math.Clamp(value, 0, 1);
         ref LEDDomeOutputPixel pixel = ref this.buffer.pixels[i];
+
+        // Paint the current sample only when it is stronger than the faded
+        // history at this pixel. This persistence envelope gives Whirlpool's
+        // continuous field visible trails instead of overwriting them every
+        // frame. It also preserves post-frame global Hue rotation on older
+        // trail segments until a brighter, freshly tinted sample replaces
+        // them. With Fade speed zero, history alpha is zero and the current
+        // field is reproduced without persistence.
+        if (value <= pixel.a) {
+          continue;
+        }
         pixel.color =
           ((int)(tr * value) << 16) |
           ((int)(tg * value) << 8) |
