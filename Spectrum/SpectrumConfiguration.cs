@@ -67,6 +67,11 @@ namespace Spectrum {
       get => _domeSimulationEnabled;
       set => SetField(ref _domeSimulationEnabled, value);
     }
+    private bool _webDomeSimulatorEnabled = true;
+    public bool webDomeSimulatorEnabled {
+      get => _webDomeSimulatorEnabled;
+      set => SetField(ref _webDomeSimulatorEnabled, value);
+    }
     private double _domeMaxBrightness = 0.5;
     public double domeMaxBrightness {
       get => _domeMaxBrightness;

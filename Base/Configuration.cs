@@ -33,6 +33,9 @@ namespace Spectrum.Base {
 
     // Configuration params for the dome
     bool domeSimulationEnabled { get; set; }
+    // Startup feature flag for the browser dome simulator. When false the web
+    // host does not map its geometry or WebSocket endpoints at all.
+    bool webDomeSimulatorEnabled { get; set; }
     double domeMaxBrightness { get; set; }
     double domeBrightness { get; set; }
     // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts, 3 - Strip test

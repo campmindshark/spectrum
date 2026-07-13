@@ -16,6 +16,7 @@
   <boardBrightness>0.326415094339623</boardBrightness>
   <domeBeagleboneOPCAddress>192.168.1.69:7890</domeBeagleboneOPCAddress>
   <domeSimulationEnabled>false</domeSimulationEnabled>
+  <webDomeSimulatorEnabled>true</webDomeSimulatorEnabled>
   <domeMaxBrightness>1</domeMaxBrightness>
   <domeBrightness>0.356915762888129</domeBrightness>
   <domeTestPattern>0</domeTestPattern>

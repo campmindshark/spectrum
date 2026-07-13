@@ -380,7 +380,8 @@ namespace Spectrum.LEDs {
 
     public bool Enabled {
       get {
-        return this.config.domeEnabled || this.config.domeSimulationEnabled;
+        return this.config.domeEnabled || this.config.domeSimulationEnabled ||
+          this.WebSimulatorHasConsumer;
       }
     }
 
@@ -642,12 +643,23 @@ namespace Spectrum.LEDs {
     public ConcurrentQueue<DomeLEDCommand> SimulatorCommandQueue { get; } =
       new ConcurrentQueue<DomeLEDCommand>();
 
+    // Separate from the native queue/mailbox so both simulators can be open
+    // without competing for the same latest frame.
+    public ConcurrentQueue<DomeLEDCommand> WebSimulatorCommandQueue { get; } =
+      new ConcurrentQueue<DomeLEDCommand>();
+
     private readonly object simulatorFrameGate = new object();
     private volatile bool simulatorHasConsumer;
     private int[] latestSimulatorFrame;
     // Set on the operator thread when WriteBuffer publishes a mailbox frame;
     // Flush then knows it needn't also enqueue a redundant redraw command.
     private bool simulatorFramePublishedSinceFlush;
+    private readonly object webSimulatorFrameGate = new object();
+    private volatile bool webSimulatorHasConsumer;
+    private int[] latestWebSimulatorFrame;
+    private bool webSimulatorFramePublishedSinceFlush;
+    private long nextWebSimulatorFrameAt;
+    private const int WebSimulatorFrameIntervalMs = 100;
 
     // True while the simulator window is open. Disabling the consumer also
     // atomically detaches and returns any pending pooled frame.
@@ -668,12 +680,51 @@ namespace Spectrum.LEDs {
       }
     }
 
+    public bool WebSimulatorHasConsumer {
+      get { return this.webSimulatorHasConsumer; }
+      set {
+        int[] abandoned = null;
+        lock (this.webSimulatorFrameGate) {
+          this.webSimulatorHasConsumer = value;
+          if (!value) {
+            abandoned = this.latestWebSimulatorFrame;
+            this.latestWebSimulatorFrame = null;
+            this.nextWebSimulatorFrameAt = 0;
+          }
+        }
+        if (abandoned != null) {
+          ArrayPool<int>.Shared.Return(abandoned);
+        }
+        if (!value) {
+          this.WebSimulatorCommandQueue.Clear();
+        }
+      }
+    }
+
     // Only produce simulator output when simulation is on AND a window is
     // consuming it. Without the consumer check, diagnostic commands could grow
     // the queue and normal rendering would keep cycling pooled frame buffers
     // with nobody displaying them.
     private bool ShouldEnqueueDomeCommand =>
       this.config.domeSimulationEnabled && this.SimulatorHasConsumer;
+
+    private bool ShouldEnqueueWebDomeCommand => this.WebSimulatorHasConsumer;
+
+    // Normal browser frames are deliberately sampled at 10 FPS. The operator
+    // may run at 400 FPS; copying every one of those frames would be pure waste.
+    private bool ShouldCaptureWebSimulatorFrame() {
+      if (!this.ShouldEnqueueWebDomeCommand) {
+        return false;
+      }
+      long now = Environment.TickCount64;
+      lock (this.webSimulatorFrameGate) {
+        if (!this.webSimulatorHasConsumer || now < this.nextWebSimulatorFrameAt) {
+          return false;
+        }
+        this.nextWebSimulatorFrameAt = now + WebSimulatorFrameIntervalMs;
+        return true;
+      }
+    }
 
     // Replaces the pending normal frame. The producer returns any superseded
     // pooled array immediately; a frame already taken by the UI is owned by the
@@ -712,6 +763,30 @@ namespace Spectrum.LEDs {
       }
     }
 
+    private bool PublishWebSimulatorFrame(int[] frame) {
+      int[] superseded = null;
+      lock (this.webSimulatorFrameGate) {
+        if (!this.webSimulatorHasConsumer) {
+          return false;
+        }
+        superseded = this.latestWebSimulatorFrame;
+        this.latestWebSimulatorFrame = frame;
+      }
+      if (superseded != null) {
+        ArrayPool<int>.Shared.Return(superseded);
+      }
+      this.WebSimulatorCommandQueue.Clear();
+      return true;
+    }
+
+    public bool TryTakeWebSimulatorFrame(out int[] frame) {
+      lock (this.webSimulatorFrameGate) {
+        frame = this.latestWebSimulatorFrame;
+        this.latestWebSimulatorFrame = null;
+        return frame != null;
+      }
+    }
+
     // Hard ceiling on SimulatorCommandQueue depth. The consumer
     // (DomeSimulatorWindow) drains on a ~100Hz UI tick, but the operator thread
     // produces at up to 400Hz, and if the UI thread stalls (window dragged,
@@ -728,10 +803,21 @@ namespace Spectrum.LEDs {
     // tolerates a command being pulled out from under it (see
     // DomeSimulatorWindow.Update).
     private void EnqueueSimulatorCommand(DomeLEDCommand command) {
-      this.SimulatorCommandQueue.Enqueue(command);
+      EnqueueSimulatorCommand(this.SimulatorCommandQueue, command);
+    }
+
+    private void EnqueueWebSimulatorCommand(DomeLEDCommand command) {
+      EnqueueSimulatorCommand(this.WebSimulatorCommandQueue, command);
+    }
+
+    private static void EnqueueSimulatorCommand(
+      ConcurrentQueue<DomeLEDCommand> queue,
+      DomeLEDCommand command
+    ) {
+      queue.Enqueue(command);
       while (
-        this.SimulatorCommandQueue.Count > SimulatorCommandQueueCap &&
-        this.SimulatorCommandQueue.TryDequeue(out _)
+        queue.Count > SimulatorCommandQueueCap &&
+        queue.TryDequeue(out _)
       ) {
       }
     }
@@ -748,7 +834,16 @@ namespace Spectrum.LEDs {
           new DomeLEDCommand() { isFlush = true }
         );
       }
+      if (
+        this.ShouldEnqueueWebDomeCommand &&
+        !this.webSimulatorFramePublishedSinceFlush
+      ) {
+        this.EnqueueWebSimulatorCommand(
+          new DomeLEDCommand() { isFlush = true }
+        );
+      }
       this.simulatorFramePublishedSinceFlush = false;
+      this.webSimulatorFramePublishedSinceFlush = false;
     }
 
     private void SetDevicePixel(int controlBoxIndex, int pixelIndex, int color) {
@@ -816,6 +911,13 @@ namespace Spectrum.LEDs {
           color = color,
         });
       }
+      if (this.ShouldEnqueueWebDomeCommand) {
+        this.EnqueueWebSimulatorCommand(new DomeLEDCommand() {
+          strutIndex = strutIndex,
+          ledIndex = ledIndex,
+          color = color,
+        });
+      }
     }
 
     // Like SetPixel but writes to the raw (unpermuted) control-box address, so
@@ -828,6 +930,13 @@ namespace Spectrum.LEDs {
 
       if (this.ShouldEnqueueDomeCommand) {
         this.EnqueueSimulatorCommand(new DomeLEDCommand() {
+          strutIndex = strutIndex,
+          ledIndex = ledIndex,
+          color = color,
+        });
+      }
+      if (this.ShouldEnqueueWebDomeCommand) {
+        this.EnqueueWebSimulatorCommand(new DomeLEDCommand() {
           strutIndex = strutIndex,
           ledIndex = ledIndex,
           color = color,
@@ -891,7 +1000,14 @@ namespace Spectrum.LEDs {
       // per-pixel lock in SetDevicePixel guarded nothing here.
       OPCAPI opcAPI = this.opcAPI;
       bool simulationEnabled = this.ShouldEnqueueDomeCommand;
-      if (opcAPI == null && !simulationEnabled) {
+      // Even when this particular normal frame is skipped by the 10 FPS
+      // sampler, Flush must not enqueue an empty diagnostic redraw command.
+      // WriteBuffer itself establishes that this is the normal-buffer path.
+      if (this.ShouldEnqueueWebDomeCommand) {
+        this.webSimulatorFramePublishedSinceFlush = true;
+      }
+      bool webSimulationEnabled = this.ShouldCaptureWebSimulatorFrame();
+      if (opcAPI == null && !simulationEnabled && !webSimulationEnabled) {
         return;
       }
       // Use the device indexes precomputed once in MakeDomeOutputBuffer rather
@@ -903,6 +1019,8 @@ namespace Spectrum.LEDs {
       // returns it instead of building a backlog.
       int[] frame = simulationEnabled
         ? ArrayPool<int>.Shared.Rent(buffer.pixels.Length) : null;
+      int[] webFrame = webSimulationEnabled
+        ? ArrayPool<int>.Shared.Rent(buffer.pixels.Length) : null;
       for (int i = 0; i < buffer.pixels.Length; i++) {
         LEDDomeOutputPixel pixel = buffer.pixels[i];
         int totalPixelIndex =
@@ -913,12 +1031,22 @@ namespace Spectrum.LEDs {
         if (simulationEnabled) {
           frame[i] = pixel.color;
         }
+        if (webSimulationEnabled) {
+          webFrame[i] = pixel.color;
+        }
       }
       if (simulationEnabled) {
         if (this.PublishSimulatorFrame(frame)) {
           this.simulatorFramePublishedSinceFlush = true;
         } else {
           ArrayPool<int>.Shared.Return(frame);
+        }
+      }
+      if (webSimulationEnabled) {
+        if (this.PublishWebSimulatorFrame(webFrame)) {
+          this.webSimulatorFramePublishedSinceFlush = true;
+        } else {
+          ArrayPool<int>.Shared.Return(webFrame);
         }
       }
     }

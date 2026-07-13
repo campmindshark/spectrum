@@ -150,9 +150,15 @@ namespace Spectrum {
       // last-write-wins, broadcast over the SSE "palette" frame) plus named
       // presets (parallel to scenes, broadcast over the "palettes" frame).
       var palettes = new Web.PaletteController(gateway, this.config);
+      // Startup-only feature flag: when disabled no simulator service is
+      // constructed and WebServer maps no simulator routes.
+      var domeSimulator = this.config.webDomeSimulatorEnabled
+        ? new Web.WebDomeSimulator(this.op.DomeOutput)
+        : null;
       this.webServer = new Web.WebServer(
         controls, this.webEventStream, locks, calibration, wands,
-        operatorControl, tempo, layers, scenes, palettes, WebServerPort);
+        operatorControl, tempo, layers, scenes, palettes, domeSimulator,
+        WebServerPort);
       this.webServer.Start();
     }
 

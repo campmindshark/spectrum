@@ -105,6 +105,18 @@
     .palette-saverow input[type=text] { flex: 1; min-width: 0; font-size: 1rem; }
     .palette-saverow button { background: #333; color: #eee; border: none;
       border-radius: 4px; padding: 0.4rem 0.7rem; cursor: pointer; }
+    .dome-simulator { border-top: 1px solid #333; margin-top: 1.5rem;
+      padding-top: 0.5rem; margin-bottom: 1rem; }
+    .dome-simulator h2 { font-size: 1rem; margin: 0 0 0.5rem; }
+    .dome-simulator-toolbar { display: flex; gap: 0.6rem; align-items: center;
+      margin-bottom: 0.5rem; }
+    .dome-simulator-toolbar button { background: #185018; color: #fff;
+      border: none; border-radius: 4px; padding: 0.4rem 0.7rem; cursor: pointer; }
+    .dome-simulator-toolbar button.running { background: #7a1818; }
+    .dome-simulator-state { color: #888; font-size: 0.75rem; }
+    .dome-simulator canvas { display: block; width: 100%; max-width: 620px;
+      aspect-ratio: 1; background: #000; border: 1px solid #333;
+      image-rendering: pixelated; }
     /* Two-column layout mirroring the native VJ HUD: controls (global speeds,
        palette, wands) on the left, the performance surface (scenes + layers) on
        the right. Collapses to a single stacked column on phones. */
@@ -121,12 +133,14 @@
       #params-section { order: 1; }
       #scenes         { order: 2; }
       #layers         { order: 3; }
-      #palette        { order: 4; }
-      #wands          { order: 5; }
+      #dome-simulator { order: 4; }
+      #palette        { order: 5; }
+      #wands          { order: 6; }
       /* Dividers follow the visual order: a top border on every section except
          the first. ID specificity overrides the desktop .column > :first-child
          reset, which is keyed on DOM order and no longer matches the stack. */
-      #scenes, #layers, #palette, #wands { border-top: 1px solid #333;
+      #scenes, #layers, #dome-simulator, #palette, #wands {
+        border-top: 1px solid #333;
         margin-top: 1.5rem; padding-top: 0.5rem; }
       #params-section { border-top: none; margin-top: 0; padding-top: 0; }
     }
@@ -162,6 +176,14 @@
       <div class="wands collapsible" id="wands"></div>
     </div>
     <div class="column column-right">
+      <div class="dome-simulator collapsible" id="dome-simulator">
+        <h2>Dome Simulator</h2>
+        <div class="dome-simulator-toolbar">
+          <button type="button" id="dome-simulator-toggle">Start preview</button>
+          <span class="dome-simulator-state" id="dome-simulator-state">off</span>
+        </div>
+        <canvas id="dome-simulator-canvas" width="420" height="420" hidden></canvas>
+      </div>
       <div class="scenes collapsible" id="scenes"></div>
       <div class="layers collapsible" id="layers"></div>
     </div>
@@ -174,5 +196,6 @@
   <script src="scenes.js"></script>
   <script src="palettes.js"></script>
   <script src="wands-mini.js"></script>
+  <script src="dome-simulator.js"></script>
 </body>
 </html>

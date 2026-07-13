@@ -34,6 +34,7 @@ namespace Spectrum.Web {
     private readonly LayersController layers;
     private readonly SceneController scenes;
     private readonly PaletteController palettes;
+    private readonly WebDomeSimulator domeSimulator;
     private readonly int port;
     private WebApplication app;
     private Task hostLifetimeTask;
@@ -68,6 +69,7 @@ namespace Spectrum.Web {
       LayersController layers,
       SceneController scenes,
       PaletteController palettes,
+      WebDomeSimulator domeSimulator,
       int port
     ) {
       this.controls = controls;
@@ -80,6 +82,7 @@ namespace Spectrum.Web {
       this.layers = layers;
       this.scenes = scenes;
       this.palettes = palettes;
+      this.domeSimulator = domeSimulator;
       this.port = port;
     }
 
@@ -98,6 +101,9 @@ namespace Spectrum.Web {
 
       this.app = builder.Build();
 
+      if (this.domeSimulator != null) {
+        this.app.UseWebSockets();
+      }
       this.app.UseDefaultFiles();
       this.app.UseStaticFiles();
 
@@ -158,6 +164,15 @@ namespace Spectrum.Web {
     }
 
     private void MapApi(WebApplication app) {
+      // The routes do not exist when the startup feature flag is false. Merely
+      // loading the control page therefore cannot activate or poll a disabled
+      // simulator component.
+      if (this.domeSimulator != null) {
+        app.MapGet("/api/dome-simulator/geometry", () =>
+          Results.Json(this.domeSimulator.Geometry()));
+        app.Map("/api/dome-simulator/frames", this.domeSimulator.StreamAsync);
+      }
+
       // ---- Global engine on/off (the Start/Stop button) ----
       // Not scoped or role-gated: it's the one switch the whole installation
       // shares, exposed to every surface exactly like the native power button.
