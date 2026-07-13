@@ -16,9 +16,12 @@ namespace Spectrum.LEDs {
    *
    * LayerKey is a stable string id used in config files.
    */
-  public interface DomeLayerVisualizer : Visualizer {
+  public interface DomeLayerVisualizer : Visualizer, ILayerRenderer {
     string LayerKey { get; }
     LEDDomeOutputBuffer LayerBuffer { get; }
+    string ILayerRenderer.RendererId => this.LayerKey;
+    LEDDomeOutputBuffer ILayerRenderer.Frame => this.LayerBuffer;
+    bool ILayerRenderer.IsAvailable => this.Enabled;
   }
 
 }

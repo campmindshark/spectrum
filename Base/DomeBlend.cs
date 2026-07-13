@@ -1,7 +1,51 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 
 namespace Spectrum.Base {
+
+  [Flags]
+  public enum CompositeRequirements {
+    None = 0,
+    ReadsSourceColor = 1,
+    ReadsSourceMask = 2,
+    ReadsDestination = 4,
+    ReadsDestinationNeighbors = 8,
+    PublishesHue = 16,
+  }
+
+  public interface ICompositeOptions { }
+
+  public sealed record EmptyCompositeOptions : ICompositeOptions {
+    public static EmptyCompositeOptions Instance { get; } = new();
+  }
+
+  public sealed record CompositeParameterOptions(
+    ImmutableDictionary<string, ParameterValue> Values
+  ) : ICompositeOptions {
+    public double Get(string key, double fallback = 0) =>
+      this.Values != null && this.Values.TryGetValue(
+        key, out ParameterValue value) ? value.Value : fallback;
+  }
+
+  public sealed record ChromaticFringeOptions(
+    double Offset, double Spin, bool FollowOrientation
+  ) : ICompositeOptions;
+  public sealed record EdgeSpectrumOptions(
+    double Strength, double Offset
+  ) : ICompositeOptions;
+  public sealed record RefractOptions(double Strength) : ICompositeOptions;
+  public sealed record IridescenceOptions(
+    double Strength, double Bands, double Spin, bool FollowOrientation
+  ) : ICompositeOptions;
+
+  public interface ICompositeOperation {
+    string Id { get; }
+    CompositeRequirements Requirements { get; }
+    ICompositeOptions CompileOptions(
+      ImmutableDictionary<string, ParameterValue> parameters);
+    void Execute(in DomeBlendContext context);
+  }
 
   // Everything a blend needs to run, handed to DomeBlend.Blend once per layer
   // per frame by the compositor (LEDDomeOutput.Composite). A readonly struct so
@@ -12,13 +56,12 @@ namespace Spectrum.Base {
     // The blending layer's own buffer (index-aligned with Dest). Never mutated.
     public LEDDomeOutputBuffer Src { get; }
     // Pre-pass copy of Dest, taken by the compositor immediately before this
-    // blend runs — non-null exactly when the blend declares NeedsSnapshot.
+    // blend runs — non-null when requirements include destination neighbors.
     // Spatial blends read neighbors from here so the effect never smears
     // order-dependently along the pixel array they are mutating.
     public LEDDomeOutputBuffer Snapshot { get; }
-    // The stack entry that selected this blend, for reading its Params bag.
-    // The published stack is an immutable snapshot, so aliasing it is safe.
-    public DomeLayerSettings Settings { get; }
+    // Typed, validated operation options compiled when the stack changed.
+    public ICompositeOptions Options { get; }
     // The layer's opacity, 0..1, applied before the blend.
     public double Opacity { get; }
     // Wall-clock seconds accumulated by the compositor, driving the
@@ -31,13 +74,13 @@ namespace Spectrum.Base {
 
     public DomeBlendContext(
       LEDDomeOutputBuffer dest, LEDDomeOutputBuffer src,
-      LEDDomeOutputBuffer snapshot, DomeLayerSettings settings,
+      LEDDomeOutputBuffer snapshot, ICompositeOptions options,
       double opacity, double seconds, OrientationAngleProvider orientation
     ) {
       this.Dest = dest;
       this.Src = src;
       this.Snapshot = snapshot;
-      this.Settings = settings;
+      this.Options = options ?? EmptyCompositeOptions.Instance;
       this.Opacity = opacity;
       this.Seconds = seconds;
       this.Orientation = orientation;
@@ -74,43 +117,35 @@ namespace Spectrum.Base {
   // are the prism family (docs/prism.md, docs/caustics.md): also adjustment
   // blends, but ChromaticFringe, EdgeSpectrum and Refract are *spatial* —
   // they resample the composite through the baked neighbor table, so they
-  // declare NeedsSnapshot and read the pre-pass copy. All four carry
+  // declare destination-neighbor requirements and read the pre-pass copy.
   // compositor-consumed tunables via Params.
-  public abstract class DomeBlend {
+  public abstract class DomeBlend : ICompositeOperation {
 
     // Stable identity: persisted in config/scene files, carried on the web
     // wire, and shown in both UIs' pickers.
     public abstract string Name { get; }
+    public string Id => this.Name;
 
     // Compositor-consumed tunables this blend reads from the selecting layer's
     // Params bag (never read by a visualizer). Empty for the plain blends.
     public virtual IReadOnlyList<DomeLayerParam> Params => NoParams;
 
-    // True if the compositor must snapshot the composite into ctx.Snapshot
-    // before this blend runs (i.e. the blend samples neighbors of the buffer
-    // it mutates).
-    public virtual bool NeedsSnapshot => false;
+    public virtual CompositeRequirements Requirements =>
+      CompositeRequirements.ReadsSourceColor |
+      CompositeRequirements.ReadsDestination;
+
+    public virtual ICompositeOptions CompileOptions(
+      ImmutableDictionary<string, ParameterValue> parameters
+    ) => this.Params.Count == 0
+      ? EmptyCompositeOptions.Instance
+      : new CompositeParameterOptions(parameters);
 
     // Blend ctx.Src into ctx.Dest. Called once per layer per frame on the
     // operator thread; implementations own their per-pixel loop and mutate
     // pixels only through the single-repack channel ops on LEDDomeOutputPixel.
     public abstract void Blend(in DomeBlendContext ctx);
 
-    // The value of one of this blend's params, resolved the same way
-    // DomeLayerSettings.ParamValue resolves a visualizer param: the layer's
-    // bag value when present, else this blend's descriptor default. Called
-    // once per param per frame (never per pixel).
-    public double Param(DomeLayerSettings layer, string paramKey) {
-      double fallback = 0;
-      IReadOnlyList<DomeLayerParam> schema = this.Params;
-      for (int i = 0; i < schema.Count; i++) {
-        if (schema[i].Key == paramKey) {
-          fallback = schema[i].Default;
-          break;
-        }
-      }
-      return layer != null ? layer.GetParam(paramKey, fallback) : fallback;
-    }
+    public void Execute(in DomeBlendContext context) => this.Blend(context);
 
     // Both UIs show blends by name (the native ComboBox displayed the enum's
     // ToString; keep that contract).
@@ -146,7 +181,7 @@ namespace Spectrum.Base {
     public static DomeBlend Default => Add;
 
     // The registered blend named `name`, or null if unknown. A scan of the
-    // small registry; callers cache the result (ResolvedLayer, the UIs' row
+    // small registry; callers cache the result (render plans, the UIs' row
     // models) so this never runs per frame.
     public static DomeBlend FromName(string name) {
       if (name == null) {

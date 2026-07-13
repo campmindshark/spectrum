@@ -28,6 +28,13 @@ namespace Spectrum {
         : new Dictionary<string, double>();
       EnsureStack(config, legacy);
       SeedLayerParams(config, legacy);
+      // Assign stable instance IDs to pre-instance stacks and normalize once at
+      // the serializer boundary before the operator can observe them.
+      (List<DomeLayerSettings> normalized, string error) =
+        StackValidator.Validate(config.domeLayerStack);
+      if (error == null) {
+        config.domeLayerStack = normalized;
+      }
     }
 
     // If the loaded config has no usable domeLayerStack (missing from an older

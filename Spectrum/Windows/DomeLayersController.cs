@@ -71,6 +71,7 @@ namespace Spectrum {
 
     private DomeLayerRowViewModel MakeRow(DomeLayerSettings settings) {
       var vm = new DomeLayerRowViewModel {
+        InstanceId = settings.InstanceId ?? LayerInstanceId.NewId().Value,
         VisualizerKey = settings.VisualizerKey,
         BlendMode = settings.BlendMode,
         Opacity = settings.Opacity,
@@ -134,14 +135,14 @@ namespace Spectrum {
     // (like Publish's whole-stack swap), keyed by the row's own layer key
     // rather than routed through Params/Publish — firing is not a stack edit.
     private void FireRow(DomeLayerRowViewModel row) {
-      string layerKey = row.VisualizerKey;
-      if (layerKey == null) {
+      string instanceId = row.InstanceId;
+      if (instanceId == null) {
         return;
       }
       var counters = new Dictionary<string, int>(
         this.config.domeLayerFireCounters ?? new Dictionary<string, int>());
-      counters.TryGetValue(layerKey, out int count);
-      counters[layerKey] = count + 1;
+      counters.TryGetValue(instanceId, out int count);
+      counters[instanceId] = count + 1;
       this.config.domeLayerFireCounters = counters;
     }
 
@@ -149,14 +150,14 @@ namespace Spectrum {
     // holds accumulated live state (Shooting Star) edge-detects the bump and
     // drops it; layers with no such state ignore it (harmless no-op).
     private void ClearRow(DomeLayerRowViewModel row) {
-      string layerKey = row.VisualizerKey;
-      if (layerKey == null) {
+      string instanceId = row.InstanceId;
+      if (instanceId == null) {
         return;
       }
       var counters = new Dictionary<string, int>(
         this.config.domeLayerClearCounters ?? new Dictionary<string, int>());
-      counters.TryGetValue(layerKey, out int count);
-      counters[layerKey] = count + 1;
+      counters.TryGetValue(instanceId, out int count);
+      counters[instanceId] = count + 1;
       this.config.domeLayerClearCounters = counters;
     }
 
@@ -179,6 +180,7 @@ namespace Spectrum {
           }
         }
         stack.Add(new DomeLayerSettings {
+          InstanceId = vm.InstanceId,
           VisualizerKey = vm.VisualizerKey,
           BlendMode = vm.BlendMode,
           Opacity = vm.Opacity,

@@ -213,6 +213,7 @@ namespace Spectrum.Base {
           continue;
         }
         copy.Add(new DomeLayerSettings {
+          InstanceId = layer.InstanceId,
           VisualizerKey = layer.VisualizerKey,
           BlendMode = layer.BlendMode,
           Opacity = layer.Opacity,

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Numerics;
+using static Spectrum.Base.CompositeOptionValues;
 
 namespace Spectrum.Base {
 
@@ -14,7 +16,7 @@ namespace Spectrum.Base {
   //
   // ChromaticFringe, EdgeSpectrum and Refract are *spatial* — they resample
   // the composite below through the baked neighbor table on
-  // LEDDomeOutputBuffer, so they declare NeedsSnapshot and read the
+  // LEDDomeOutputBuffer, so they declare neighbor-read requirements and read the
   // compositor's pre-pass copy. Iridescence is per-pixel but keyed to the
   // baked unit-sphere normals.
 
@@ -26,7 +28,10 @@ namespace Spectrum.Base {
   // disregarded.
   internal sealed class ChromaticFringeBlend : DomeBlend {
     public override string Name => "ChromaticFringe";
-    public override bool NeedsSnapshot => true;
+    public override CompositeRequirements Requirements =>
+      CompositeRequirements.ReadsSourceMask |
+      CompositeRequirements.ReadsDestination |
+      CompositeRequirements.ReadsDestinationNeighbors;
     public override IReadOnlyList<DomeLayerParam> Params => paramSchema;
     private static readonly DomeLayerParam[] paramSchema = new DomeLayerParam[] {
       new DomeLayerParam {
@@ -49,12 +54,18 @@ namespace Spectrum.Base {
       },
     };
 
+    public override ICompositeOptions CompileOptions(
+      ImmutableDictionary<string, ParameterValue> parameters
+    ) => new ChromaticFringeOptions(
+      Value(parameters, "offset"), Value(parameters, "spin"),
+      Value(parameters, "follow") != 0);
+
     public override void Blend(in DomeBlendContext ctx) {
+      var options = (ChromaticFringeOptions)ctx.Options;
       double angle = ctx.PrismAngle(
-        this.Param(ctx.Settings, "spin"),
-        this.Param(ctx.Settings, "follow") != 0);
+        options.Spin, options.FollowOrientation);
       int radiusBin = LEDDomeOutputBuffer.RadiusBin(
-        this.Param(ctx.Settings, "offset"));
+        options.Offset);
       LEDDomeOutputBuffer dest = ctx.Dest;
       dest.EnsureNeighborTable();
       int fwd = LEDDomeOutputBuffer.DirBin(angle);
@@ -86,7 +97,10 @@ namespace Spectrum.Base {
   // scales intensity; offset is the gradient sample radius.
   internal sealed class EdgeSpectrumBlend : DomeBlend {
     public override string Name => "EdgeSpectrum";
-    public override bool NeedsSnapshot => true;
+    public override CompositeRequirements Requirements =>
+      CompositeRequirements.ReadsSourceMask |
+      CompositeRequirements.ReadsDestination |
+      CompositeRequirements.ReadsDestinationNeighbors;
     public override IReadOnlyList<DomeLayerParam> Params => paramSchema;
     private static readonly DomeLayerParam[] paramSchema = new DomeLayerParam[] {
       new DomeLayerParam {
@@ -103,10 +117,16 @@ namespace Spectrum.Base {
       },
     };
 
+    public override ICompositeOptions CompileOptions(
+      ImmutableDictionary<string, ParameterValue> parameters
+    ) => new EdgeSpectrumOptions(
+      Value(parameters, "strength"), Value(parameters, "offset"));
+
     public override void Blend(in DomeBlendContext ctx) {
-      double strength = this.Param(ctx.Settings, "strength");
+      var options = (EdgeSpectrumOptions)ctx.Options;
+      double strength = options.Strength;
       int radiusBin = LEDDomeOutputBuffer.RadiusBin(
-        this.Param(ctx.Settings, "offset"));
+        options.Offset);
       LEDDomeOutputBuffer dest = ctx.Dest;
       dest.EnsureNeighborTable();
       int right = LEDDomeOutputBuffer.DirBin(0);
@@ -162,7 +182,10 @@ namespace Spectrum.Base {
   // pitches) — plenty for shimmer.
   internal sealed class RefractBlend : DomeBlend {
     public override string Name => "Refract";
-    public override bool NeedsSnapshot => true;
+    public override CompositeRequirements Requirements =>
+      CompositeRequirements.ReadsSourceMask |
+      CompositeRequirements.ReadsDestination |
+      CompositeRequirements.ReadsDestinationNeighbors;
     public override IReadOnlyList<DomeLayerParam> Params => paramSchema;
     private static readonly DomeLayerParam[] paramSchema = new DomeLayerParam[] {
       new DomeLayerParam {
@@ -173,8 +196,12 @@ namespace Spectrum.Base {
       },
     };
 
+    public override ICompositeOptions CompileOptions(
+      ImmutableDictionary<string, ParameterValue> parameters
+    ) => new RefractOptions(Value(parameters, "strength"));
+
     public override void Blend(in DomeBlendContext ctx) {
-      double strength = this.Param(ctx.Settings, "strength");
+      double strength = ((RefractOptions)ctx.Options).Strength;
       LEDDomeOutputBuffer dest = ctx.Dest;
       dest.EnsureNeighborTable();
       LEDDomeOutputPixel[] pixels = dest.pixels;
@@ -208,6 +235,9 @@ namespace Spectrum.Base {
   // disregarded. No neighbor sampling, so no snapshot needed.
   internal sealed class IridescenceBlend : DomeBlend {
     public override string Name => "Iridescence";
+    public override CompositeRequirements Requirements =>
+      CompositeRequirements.ReadsSourceMask |
+      CompositeRequirements.ReadsDestination;
     public override IReadOnlyList<DomeLayerParam> Params => paramSchema;
     private static readonly DomeLayerParam[] paramSchema = new DomeLayerParam[] {
       new DomeLayerParam {
@@ -236,12 +266,18 @@ namespace Spectrum.Base {
       },
     };
 
+    public override ICompositeOptions CompileOptions(
+      ImmutableDictionary<string, ParameterValue> parameters
+    ) => new IridescenceOptions(
+      Value(parameters, "strength"), Value(parameters, "bands"),
+      Value(parameters, "spin"), Value(parameters, "follow") != 0);
+
     public override void Blend(in DomeBlendContext ctx) {
-      double strength = this.Param(ctx.Settings, "strength");
-      double bands = this.Param(ctx.Settings, "bands");
+      var options = (IridescenceOptions)ctx.Options;
+      double strength = options.Strength;
+      double bands = options.Bands;
       double azim = ctx.PrismAngle(
-        this.Param(ctx.Settings, "spin"),
-        this.Param(ctx.Settings, "follow") != 0);
+        options.Spin, options.FollowOrientation);
       // Virtual light swept in azimuth, held at a fixed elevation so the
       // sheen bands read as horizontal-ish arcs across the dome.
       Vector3 light = Vector3.Normalize(new Vector3(
@@ -264,5 +300,12 @@ namespace Spectrum.Base {
         pixels[i].LerpRGB(sr * v, sg * v, sb * v, w);
       }
     }
+  }
+
+  internal static class CompositeOptionValues {
+    public static double Value(
+      ImmutableDictionary<string, ParameterValue> parameters, string key
+    ) => parameters != null && parameters.TryGetValue(
+      key, out ParameterValue value) ? value.Value : 0;
   }
 }

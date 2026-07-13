@@ -13,12 +13,23 @@ namespace Spectrum.Base {
   // composite so a subsequent Over layer blends against the real alpha.
   internal sealed class OverBlend : DomeBlend {
     public override string Name => "Over";
+    public override CompositeRequirements Requirements =>
+      CompositeRequirements.ReadsSourceColor |
+      CompositeRequirements.ReadsSourceMask |
+      CompositeRequirements.ReadsDestination |
+      CompositeRequirements.PublishesHue;
     public override void Blend(in DomeBlendContext ctx) {
       LEDDomeOutputPixel[] dest = ctx.Dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
       double o = ctx.Opacity;
+      if (o == 0) {
+        return;
+      }
       for (int i = 0; i < dest.Length; i++) {
         double w = o * src[i].a;
+        if (w == 0) {
+          continue;
+        }
         dest[i].LerpRGBA(src[i].r, src[i].g, src[i].b, 1, w);
         dest[i].hue = src[i].hue;
       }
@@ -28,10 +39,17 @@ namespace Spectrum.Base {
   // The additive blends ignore coverage — black is their identity.
   internal sealed class AddBlend : DomeBlend {
     public override string Name => "Add";
+    public override CompositeRequirements Requirements =>
+      CompositeRequirements.ReadsSourceColor |
+      CompositeRequirements.ReadsDestination |
+      CompositeRequirements.PublishesHue;
     public override void Blend(in DomeBlendContext ctx) {
       LEDDomeOutputPixel[] dest = ctx.Dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
       double o = ctx.Opacity;
+      if (o == 0) {
+        return;
+      }
       for (int i = 0; i < dest.Length; i++) {
         dest[i].AddRGB(src[i].r * o, src[i].g * o, src[i].b * o);
         dest[i].hue = src[i].hue;
@@ -41,10 +59,17 @@ namespace Spectrum.Base {
 
   internal sealed class ScreenBlend : DomeBlend {
     public override string Name => "Screen";
+    public override CompositeRequirements Requirements =>
+      CompositeRequirements.ReadsSourceColor |
+      CompositeRequirements.ReadsDestination |
+      CompositeRequirements.PublishesHue;
     public override void Blend(in DomeBlendContext ctx) {
       LEDDomeOutputPixel[] dest = ctx.Dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
       double o = ctx.Opacity;
+      if (o == 0) {
+        return;
+      }
       for (int i = 0; i < dest.Length; i++) {
         dest[i].SetRGB(
           255 - (255 - dest[i].r) * (255 - src[i].r * o) / 255,
@@ -57,10 +82,17 @@ namespace Spectrum.Base {
 
   internal sealed class LightenBlend : DomeBlend {
     public override string Name => "Lighten";
+    public override CompositeRequirements Requirements =>
+      CompositeRequirements.ReadsSourceColor |
+      CompositeRequirements.ReadsDestination |
+      CompositeRequirements.PublishesHue;
     public override void Blend(in DomeBlendContext ctx) {
       LEDDomeOutputPixel[] dest = ctx.Dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
       double o = ctx.Opacity;
+      if (o == 0) {
+        return;
+      }
       for (int i = 0; i < dest.Length; i++) {
         dest[i].SetRGB(
           Math.Max(dest[i].r, src[i].r * o),
@@ -74,10 +106,17 @@ namespace Spectrum.Base {
   // Opacity lerps toward white (not black) so o = 0 is the identity.
   internal sealed class MultiplyBlend : DomeBlend {
     public override string Name => "Multiply";
+    public override CompositeRequirements Requirements =>
+      CompositeRequirements.ReadsSourceColor |
+      CompositeRequirements.ReadsDestination |
+      CompositeRequirements.PublishesHue;
     public override void Blend(in DomeBlendContext ctx) {
       LEDDomeOutputPixel[] dest = ctx.Dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
       double o = ctx.Opacity;
+      if (o == 0) {
+        return;
+      }
       for (int i = 0; i < dest.Length; i++) {
         dest[i].SetRGB(
           dest[i].r * (255 - o * (255 - src[i].r)) / 255,
@@ -93,6 +132,9 @@ namespace Spectrum.Base {
   // the effect to where the layer above (e.g. a wave) drew.
   internal sealed class DesaturateBlend : DomeBlend {
     public override string Name => "Desaturate";
+    public override CompositeRequirements Requirements =>
+      CompositeRequirements.ReadsSourceMask |
+      CompositeRequirements.ReadsDestination;
     public override void Blend(in DomeBlendContext ctx) {
       LEDDomeOutputPixel[] dest = ctx.Dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
@@ -125,6 +167,10 @@ namespace Spectrum.Base {
   // canvas for the carried hue.
   internal sealed class HueBlend : DomeBlend {
     public override string Name => "Hue";
+    public override CompositeRequirements Requirements =>
+      CompositeRequirements.ReadsSourceColor |
+      CompositeRequirements.ReadsSourceMask |
+      CompositeRequirements.ReadsDestination;
     public override void Blend(in DomeBlendContext ctx) {
       LEDDomeOutputPixel[] dest = ctx.Dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;

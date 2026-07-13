@@ -12,8 +12,8 @@ namespace Spectrum.Base {
    *     into DomeLayerSettings, and
    *   - scene apply (SceneService), against the deep-copied stored stack.
    *
-   * Validate rejects an unknown/duplicate visualizer key, an undefined blend
-   * mode, an out-of-range opacity, or an over-long stack (returning an error
+   * Validate rejects an unknown visualizer key, duplicate instance ID,
+   * undefined blend mode, an out-of-range opacity, or an over-long stack (returning an error
    * string without touching config). Per-layer params are sanitized rather than
    * rejected — unknown keys are silently dropped and values clamped to their
    * descriptor range — so a stack authored against a slightly newer/older schema
@@ -44,40 +44,7 @@ namespace Spectrum.Base {
       if (layers.Count > MaxLayers) {
         return (null, "too many layers (max " + MaxLayers + ")");
       }
-      var seen = new HashSet<string>();
-      var newStack = new List<DomeLayerSettings>(layers.Count);
-      foreach (DomeLayerSettings layer in layers) {
-        if (layer == null || layer.VisualizerKey == null) {
-          return (null, "each layer needs a visualizerKey");
-        }
-        if (!DomeLayerSettings.IsLayerKey(layer.VisualizerKey)) {
-          return (null, "unknown visualizer key: " + layer.VisualizerKey);
-        }
-        if (!seen.Add(layer.VisualizerKey)) {
-          return (null, "duplicate visualizer: " + layer.VisualizerKey);
-        }
-        DomeBlend blend = DomeBlend.FromName(layer.BlendMode);
-        if (blend == null) {
-          return (null, "unknown blend mode: " + layer.BlendMode);
-        }
-        double opacity = layer.Opacity;
-        if (double.IsNaN(opacity) || opacity < 0 || opacity > 1) {
-          return (null, "opacity must be between 0 and 1");
-        }
-        string notes = layer.Notes;
-        if (notes != null && notes.Length > MaxNotesLength) {
-          notes = notes.Substring(0, MaxNotesLength);
-        }
-        newStack.Add(new DomeLayerSettings {
-          VisualizerKey = layer.VisualizerKey,
-          BlendMode = layer.BlendMode,
-          Opacity = opacity,
-          Enabled = layer.Enabled,
-          Notes = notes,
-          Params = SanitizeParams(layer.VisualizerKey, blend, layer.Params),
-        });
-      }
-      return (newStack, null);
+      return new LayerStackService().Normalize(layers);
     }
 
     // Sanitize a param bag against the layer's schema (visualizer + blend): drop

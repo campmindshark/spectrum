@@ -42,6 +42,10 @@ namespace Spectrum.Base {
   // UI/web writers always replace the whole domeLayerStack list (snapshot swap)
   // rather than mutating an existing settings object in place.
   public class DomeLayerSettings {
+    // Stable identity of this configured occurrence. Older XML omits it; the
+    // LayerStackService assigns one during normalization and every writer then
+    // persists it. Renderer IDs identify kinds, instance IDs identify layers.
+    public string InstanceId { get; set; }
     // Stable string id of the layerable visualizer, e.g. "radial". See
     // DomeLayerVisualizer.LayerKey and LegacyVisKeys below.
     public string VisualizerKey { get; set; }
@@ -83,8 +87,8 @@ namespace Spectrum.Base {
 
     // The stack entry naming `key` (or null if none), so a visualizer can read
     // its own params in Visualize(). Allocation-free linear scan of the small
-    // immutable snapshot, matching StackActivates; the first match wins (v1
-    // disallows duplicate visualizer keys anyway).
+    // immutable snapshot. This compatibility lookup returns the first renderer
+    // occurrence; instance-aware runtime paths use ForInstance instead.
     public static DomeLayerSettings ForKey(
       IList<DomeLayerSettings> stack, string key
     ) {
@@ -100,6 +104,21 @@ namespace Spectrum.Base {
       return null;
     }
 
+    public static DomeLayerSettings ForInstance(
+      IList<DomeLayerSettings> stack, string instanceId
+    ) {
+      if (stack == null || instanceId == null) {
+        return null;
+      }
+      for (int i = 0; i < stack.Count; i++) {
+        DomeLayerSettings layer = stack[i];
+        if (layer != null && layer.InstanceId == instanceId) {
+          return layer;
+        }
+      }
+      return null;
+    }
+
     // The legacy domeActiveVis int -> layer key mapping, kept so config
     // migration can synthesize a stack from an old file's selector (the
     // domeActiveVis property itself is retired). Index == the old magic int.
@@ -107,59 +126,19 @@ namespace Spectrum.Base {
       "volume", "radial", "race", "snakes", "quaternion-test",
       "quaternion-paintbrush", "splat", "tv-static",
     };
-    // Human-readable labels for the layer visualizer pickers, parallel to
-    // LegacyVisKeys (same order). Shared by the native GUI and web UI.
-    public static readonly string[] LegacyVisLabels = new string[] {
-      "Volume (OG)", "Radial Effects", "Race", "Snakes", "Quaternion Test",
-      "Quaternion Paintbrush", "Splat Effect", "TV Static",
-    };
-
-    // Layerable visualizers that have no legacy domeActiveVis int: split-out
-    // Quaternion Paintbrush effects and other new stack primitives. These are
-    // only ever appended (never reordered or removed), so the LegacyVisKeys
-    // indices that config migration depends on never shift. ExtraLayerLabels
-    // is parallel (same order).
-    private static readonly string[] ExtraLayerKeys = new string[] {
-      "twinkle", "wave", "ripple", "stamp", "metaball", "background", "flash",
-      "point-cloud", "gyroscope", "shooting-star", "noise-cloud", "caustics",
-      "sparkler", "vortex",
-    };
-    private static readonly string[] ExtraLayerLabels = new string[] {
-      "Twinkle", "Wave", "Ripple", "Stamp", "Metaball", "Background", "Flash",
-      "Point Cloud", "Gyroscope", "Shooting Star", "Noise Cloud", "Caustics",
-      "Sparkler", "Vortex",
-    };
-
-    // The full set of layerable keys/labels offered in the UI pickers: the
-    // eight legacy visualizers followed by the extra layers above. The
-    // pickers, LabelForKey, and IsLayerKey all draw from this superset;
-    // LegacyVisKeys stays exactly the eight so old domeActiveVis values never
-    // re-map.
-    public static readonly string[] LayerKeys =
-      Concat(LegacyVisKeys, ExtraLayerKeys);
-    public static readonly string[] LayerLabels =
-      Concat(LegacyVisLabels, ExtraLayerLabels);
-
-    private static string[] Concat(string[] a, string[] b) {
-      var result = new string[a.Length + b.Length];
-      Array.Copy(a, result, a.Length);
-      Array.Copy(b, 0, result, a.Length, b.Length);
-      return result;
-    }
-
     public static string KeyForLegacyVis(int vis) {
       return vis >= 0 && vis < LegacyVisKeys.Length ? LegacyVisKeys[vis] : null;
     }
 
     public static string LabelForKey(string key) {
-      int i = Array.IndexOf(LayerKeys, key);
-      return i >= 0 ? LayerLabels[i] : key;
+      LayerDefinition definition = LayerCatalog.Default.Get(key);
+      return definition != null ? definition.DisplayName : key;
     }
 
     // Whether `key` names a layerable visualizer (any picker option). Used to
     // validate incoming stacks; a superset of the legacy nine.
     public static bool IsLayerKey(string key) {
-      return key != null && Array.IndexOf(LayerKeys, key) >= 0;
+      return LayerCatalog.Default.TryGet(key, out _);
     }
 
     // ---- Per-layer parameter schemas -------------------------------------
@@ -875,16 +854,23 @@ namespace Spectrum.Base {
     public static double ParamValue(
       IList<DomeLayerSettings> stack, string layerKey, string paramKey
     ) {
-      double fallback = 0;
-      IReadOnlyList<DomeLayerParam> schema = ParamsFor(layerKey);
-      for (int i = 0; i < schema.Count; i++) {
-        if (schema[i].Key == paramKey) {
-          fallback = schema[i].Default;
-          break;
+      LayerStackSnapshot snapshot = LayerStackService.SnapshotFor(stack);
+      foreach (LayerSnapshot layer in snapshot.Layers) {
+        if (layer.RendererId == layerKey &&
+            layer.RendererParameters.TryGetValue(
+              paramKey, out ParameterValue value)) {
+          return value.Value;
         }
       }
-      DomeLayerSettings layer = ForKey(stack, layerKey);
-      return layer != null ? layer.GetParam(paramKey, fallback) : fallback;
+      LayerDefinition definition = LayerCatalog.Default.Get(layerKey);
+      if (definition != null) {
+        foreach (DomeLayerParam parameter in definition.Parameters) {
+          if (parameter.Key == paramKey) {
+            return parameter.Default;
+          }
+        }
+      }
+      return 0;
     }
 
     // (Blend-mode tunables — the prism family — live on each DomeBlend class's
@@ -895,12 +881,8 @@ namespace Spectrum.Base {
     // style of Operator.AllInputsEnabled. Safe to call on the operator thread
     // against a published (immutable) stack snapshot.
     public static bool StackActivates(IList<DomeLayerSettings> stack, string key) {
-      if (stack == null) {
-        return false;
-      }
-      for (int i = 0; i < stack.Count; i++) {
-        DomeLayerSettings layer = stack[i];
-        if (layer != null && layer.Enabled && layer.VisualizerKey == key) {
+      foreach (LayerSnapshot layer in LayerStackService.SnapshotFor(stack).Layers) {
+        if (layer.Enabled && layer.RendererId == key) {
           return true;
         }
       }

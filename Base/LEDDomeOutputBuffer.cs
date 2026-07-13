@@ -11,9 +11,6 @@ namespace Spectrum.Base {
     // index by strut and led within that strut
     public int strutIndex;
     public int strutLEDIndex;
-    // index by control box and pixel within that control box
-    public int controlBoxIndex;
-    public int controlBoxPixelIndex;
     // position in projection
     public double x;
     public double y;
@@ -221,6 +218,17 @@ namespace Spectrum.Base {
       updateColor();
     }
 
+    // Copy mutable frame channels only. Logical identity and projected
+    // position belong to DomeTopology and are never part of a scratch copy.
+    public void CopyChannelsFrom(LEDDomeOutputPixel src) {
+      _color = src._color;
+      _r = src._r;
+      _g = src._g;
+      _b = src._b;
+      _a = src._a;
+      hue = src.hue;
+    }
+
     // ---- Generic single-repack channel ops for the blend classes ----------
     // The per-blend math itself lives in the DomeBlend implementations
     // (DomeBlendModes.cs / DomePrismBlends.cs); these are the only ways a blend
@@ -265,8 +273,40 @@ namespace Spectrum.Base {
     }
   }
 
-  public class LEDDomeOutputBuffer {
+  public sealed class DomeTopology {
+    private readonly LEDDomeOutputPixel[] templates;
+    internal readonly int[] StrutStartIndex;
+    internal int[] NeighborTable;
+    internal Vector3[] CachedNormals;
+
+    public int PixelCount => this.templates.Length;
+
+    public DomeTopology(LEDDomeOutputPixel[] pixels) {
+      this.templates = (LEDDomeOutputPixel[])pixels.Clone();
+      int maxStrut = -1;
+      foreach (LEDDomeOutputPixel pixel in pixels) {
+        maxStrut = Math.Max(maxStrut, pixel.strutIndex);
+      }
+      this.StrutStartIndex = new int[maxStrut + 1];
+      for (int i = 0; i < pixels.Length; i++) {
+        if (pixels[i].strutLEDIndex == 0) {
+          this.StrutStartIndex[pixels[i].strutIndex] = i;
+        }
+      }
+    }
+
+    internal LEDDomeOutputPixel[] CreateFramePixels() =>
+      (LEDDomeOutputPixel[])this.templates.Clone();
+
+    public (int strutIndex, int ledIndex, double x, double y) PixelAt(int i) {
+      LEDDomeOutputPixel p = this.templates[i];
+      return (p.strutIndex, p.strutLEDIndex, p.x, p.y);
+    }
+  }
+
+  public class DomeFrame {
     public LEDDomeOutputPixel[] pixels;
+    public DomeTopology Topology { get; }
 
     // Maps a strut index to the position in `pixels` of that strut's LED 0.
     // MakeDomeOutputBuffer lays every strut's LEDs down contiguously in
@@ -284,8 +324,7 @@ namespace Spectrum.Base {
     // (pixel * NeighborRadii + radiusBin) * NeighborDirections + dirBin. Built
     // lazily (EnsureNeighborTable) only on the buffer a spatial blend actually
     // runs on — the composite buffer — so layer buffers never pay for it. Like
-    // strutStartIndex it depends only on the baked x/y geometry, so it survives
-    // RebakeBuffer (which only re-derives device indexes) unchanged. A tap that
+    // strutStartIndex it depends only on the shared x/y geometry. A tap that
     // finds no pixel near its target stores the pixel's own index, degrading to
     // an in-place read rather than smearing across a gap in the layout.
     public const int NeighborDirections = 16;
@@ -293,26 +332,25 @@ namespace Spectrum.Base {
     // Projected-plane units between radius steps; a dome LED pitch is ~0.013, so
     // the four steps span ~1.5–6 LED pitches.
     public const double NeighborRadiusStep = 0.02;
-    private int[] neighborTable;
+    private int[] neighborTable {
+      get => this.Topology.NeighborTable;
+      set => this.Topology.NeighborTable = value;
+    }
 
     // Baked unit-sphere normals (BakePixelPositions), cached lazily for the
     // Iridescence blend the same way the orientation layers cache them.
-    private Vector3[] normals;
+    private Vector3[] normals {
+      get => this.Topology.CachedNormals;
+      set => this.Topology.CachedNormals = value;
+    }
 
-    public LEDDomeOutputBuffer(LEDDomeOutputPixel[] pixels) {
-      this.pixels = pixels;
-      int maxStrut = -1;
-      for (int i = 0; i < pixels.Length; i++) {
-        if (pixels[i].strutIndex > maxStrut) {
-          maxStrut = pixels[i].strutIndex;
-        }
-      }
-      this.strutStartIndex = new int[maxStrut + 1];
-      for (int i = 0; i < pixels.Length; i++) {
-        if (pixels[i].strutLEDIndex == 0) {
-          this.strutStartIndex[pixels[i].strutIndex] = i;
-        }
-      }
+    public DomeFrame(LEDDomeOutputPixel[] pixels)
+      : this(new DomeTopology(pixels)) { }
+
+    public DomeFrame(DomeTopology topology) {
+      this.Topology = topology ?? throw new ArgumentNullException(nameof(topology));
+      this.pixels = topology.CreateFramePixels();
+      this.strutStartIndex = topology.StrutStartIndex;
     }
 
     // Writes a pixel addressed by strut and LED-within-strut — the same
@@ -360,7 +398,7 @@ namespace Spectrum.Base {
     }
 
     // Seed this composite buffer from a bottom layer scaled by opacity.
-    public void CompositeBottom(LEDDomeOutputBuffer src, double opacity) {
+    public void CompositeBottom(DomeFrame src, double opacity) {
       for (int i = 0; i < pixels.Length; i++) {
         pixels[i].CompositeCopyScaled(src.pixels[i], opacity);
       }
@@ -375,8 +413,10 @@ namespace Spectrum.Base {
     // composite before a spatial blend, since those read neighbors of the buffer
     // they mutate and must read the pre-pass state. LEDDomeOutputPixel is a
     // struct, so this copies values, not references.
-    public void CopyFrom(LEDDomeOutputBuffer other) {
-      Array.Copy(other.pixels, this.pixels, this.pixels.Length);
+    public void CopyFrom(DomeFrame other) {
+      for (int i = 0; i < this.pixels.Length; i++) {
+        this.pixels[i].CopyChannelsFrom(other.pixels[i]);
+      }
     }
 
     // Nearest dir-bin for an arbitrary angle (radians).
@@ -507,5 +547,12 @@ namespace Spectrum.Base {
         return this.normals;
       }
     }
+  }
+
+  // Compatibility name retained at visualizer/output boundaries while new
+  // pipeline code can depend on the topology-aware DomeFrame abstraction.
+  public sealed class LEDDomeOutputBuffer : DomeFrame {
+    public LEDDomeOutputBuffer(LEDDomeOutputPixel[] pixels) : base(pixels) { }
+    public LEDDomeOutputBuffer(DomeTopology topology) : base(topology) { }
   }
 }

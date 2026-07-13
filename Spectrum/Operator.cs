@@ -7,6 +7,7 @@ using Spectrum.MIDI;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
+using System.ComponentModel;
 using Spectrum.Visualizers;
 
 namespace Spectrum {
@@ -17,6 +18,11 @@ namespace Spectrum {
     private readonly List<Input> inputs;
     private readonly List<Output> outputs;
     private readonly List<Visualizer> visualizers;
+    private readonly Dictionary<string, Func<Configuration, Visualizer>>
+      layerFactories;
+    private readonly Dictionary<string, string> createdRendererByInstance =
+      new Dictionary<string, string>(StringComparer.Ordinal);
+    private int layerReconcilePending;
 
     // Exposed so diagnostic windows (e.g. the wand status display) can read the
     // live orientation-device state. Stable for the Operator's lifetime — Reboot
@@ -133,138 +139,104 @@ namespace Spectrum {
         this.config,
         dome
       ));
-      this.visualizers.Add(new LEDDomeVolumeVisualizer(
-        this.config,
-        audio,
-        this.BeatBroadcaster,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeRadialVisualizer(
-        this.config,
-        audio,
-        this.BeatBroadcaster,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeSplatVisualizer(
-        this.config,
-        audio,
-        this.BeatBroadcaster,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeQuaternionTestVisualizer(
-        this.config,
-        orientation,
-        dome
-        ));
-      this.visualizers.Add(new LEDDomeQuaternionPaintbrushVisualizer(
-        this.config,
-        audio,
-        orientation,
-        orientationCenter,
-        this.BeatBroadcaster,
-        dome
-        ));
-      this.visualizers.Add(new LEDDomeRaceVisualizer(
-        this.config,
-        audio,
-        midi,
-        this.BeatBroadcaster,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeSnakesVisualizer(
-        this.config,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeTVStaticVisualizer(
-        this.config,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeTwinkleVisualizer(
-        this.config,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeBackgroundVisualizer(
-        this.config,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeNoiseCloudVisualizer(
-        this.config,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeVortexVisualizer(
-        this.config,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeCausticsVisualizer(
-        this.config,
-        audio,
-        orientation,
-        orientationCenter,
-        this.BeatBroadcaster,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeFlashVisualizer(
-        this.config,
-        audio,
-        orientation,
-        this.BeatBroadcaster,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeWaveVisualizer(
-        this.config,
-        orientation,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeGyroscopeVisualizer(
-        this.config,
-        orientation,
-        orientationCenter,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeRippleVisualizer(
-        this.config,
-        audio,
-        orientation,
-        orientationCenter,
-        this.BeatBroadcaster,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeStampVisualizer(
-        this.config,
-        audio,
-        orientation,
-        orientationCenter,
-        this.BeatBroadcaster,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeMetaballVisualizer(
-        this.config,
-        audio,
-        orientation,
-        orientationCenter,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomePointCloudVisualizer(
-        this.config,
-        orientation,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeShootingStarVisualizer(
-        this.config,
-        audio,
-        orientation,
-        orientationCenter,
-        this.BeatBroadcaster,
-        dome
-      ));
-      this.visualizers.Add(new LEDDomeSparklerVisualizer(
-        this.config,
-        audio,
-        orientation,
-        orientationCenter,
-        this.BeatBroadcaster,
-        dome
-      ));
+      this.layerFactories = new Dictionary<
+        string, Func<Configuration, Visualizer>>(StringComparer.Ordinal) {
+        ["volume"] = c => new LEDDomeVolumeVisualizer(
+          c, audio, this.BeatBroadcaster, dome),
+        ["radial"] = c => new LEDDomeRadialVisualizer(
+          c, audio, this.BeatBroadcaster, dome),
+        ["splat"] = c => new LEDDomeSplatVisualizer(
+          c, audio, this.BeatBroadcaster, dome),
+        ["quaternion-test"] = c =>
+          new LEDDomeQuaternionTestVisualizer(c, orientation, dome),
+        ["quaternion-paintbrush"] = c =>
+          new LEDDomeQuaternionPaintbrushVisualizer(
+            c, audio, orientation, orientationCenter,
+            this.BeatBroadcaster, dome),
+        ["race"] = c => new LEDDomeRaceVisualizer(
+          c, audio, midi, this.BeatBroadcaster, dome),
+        ["snakes"] = c => new LEDDomeSnakesVisualizer(c, dome),
+        ["tv-static"] = c => new LEDDomeTVStaticVisualizer(c, dome),
+        ["twinkle"] = c => new LEDDomeTwinkleVisualizer(c, dome),
+        ["background"] = c => new LEDDomeBackgroundVisualizer(c, dome),
+        ["noise-cloud"] = c => new LEDDomeNoiseCloudVisualizer(c, dome),
+        ["vortex"] = c => new LEDDomeVortexVisualizer(c, dome),
+        ["caustics"] = c => new LEDDomeCausticsVisualizer(
+          c, audio, orientation, orientationCenter,
+          this.BeatBroadcaster, dome),
+        ["flash"] = c => new LEDDomeFlashVisualizer(
+          c, audio, orientation, this.BeatBroadcaster, dome),
+        ["wave"] = c => new LEDDomeWaveVisualizer(c, orientation, dome),
+        ["gyroscope"] = c => new LEDDomeGyroscopeVisualizer(
+          c, orientation, orientationCenter, dome),
+        ["ripple"] = c => new LEDDomeRippleVisualizer(
+          c, audio, orientation, orientationCenter,
+          this.BeatBroadcaster, dome),
+        ["stamp"] = c => new LEDDomeStampVisualizer(
+          c, audio, orientation, orientationCenter,
+          this.BeatBroadcaster, dome),
+        ["metaball"] = c => new LEDDomeMetaballVisualizer(
+          c, audio, orientation, orientationCenter, dome),
+        ["point-cloud"] = c =>
+          new LEDDomePointCloudVisualizer(c, orientation, dome),
+        ["shooting-star"] = c => new LEDDomeShootingStarVisualizer(
+          c, audio, orientation, orientationCenter,
+          this.BeatBroadcaster, dome),
+        ["sparkler"] = c => new LEDDomeSparklerVisualizer(
+          c, audio, orientation, orientationCenter,
+          this.BeatBroadcaster, dome),
+      };
+      foreach (LayerDefinition definition in LayerCatalog.Default.Definitions) {
+        if (!this.layerFactories.ContainsKey(definition.Id)) {
+          throw new InvalidOperationException(
+            "No renderer factory registered for layer " + definition.Id);
+        }
+      }
+      this.ReconcileLayerVisualizers();
+      this.config.PropertyChanged += this.OnLayerConfigurationChanged;
+    }
+
+    private void OnLayerConfigurationChanged(
+      object sender, PropertyChangedEventArgs e
+    ) {
+      if (e.PropertyName == nameof(this.config.domeLayerStack)) {
+        Interlocked.Exchange(ref this.layerReconcilePending, 1);
+      }
+    }
+
+    private void ReconcileLayerVisualizers() {
+      List<DomeLayerSettings> stack = this.config.domeLayerStack;
+      if (stack == null) {
+        return;
+      }
+      bool needsIds = stack.Any(
+        layer => layer != null && string.IsNullOrWhiteSpace(layer.InstanceId));
+      if (needsIds) {
+        (List<DomeLayerSettings> normalized, string error) =
+          StackValidator.Validate(stack);
+        if (error != null) {
+          return;
+        }
+        this.config.domeLayerStack = normalized;
+        stack = normalized;
+      }
+      foreach (DomeLayerSettings layer in stack) {
+        if (layer == null || layer.InstanceId == null ||
+            (this.createdRendererByInstance.TryGetValue(
+              layer.InstanceId, out string createdRenderer) &&
+              createdRenderer == layer.VisualizerKey) ||
+            !this.layerFactories.TryGetValue(
+              layer.VisualizerKey, out Func<Configuration, Visualizer> factory)) {
+          continue;
+        }
+        Configuration instanceConfig = LayerInstanceConfiguration.Create(
+          this.config, layer.InstanceId, layer.VisualizerKey);
+        using (LayerInstanceScope.Push(layer.InstanceId)) {
+          Visualizer renderer = factory(instanceConfig);
+          this.visualizers.Add(renderer);
+        }
+        this.createdRendererByInstance[layer.InstanceId] = layer.VisualizerKey;
+      }
     }
 
     private bool enabled;
@@ -289,6 +261,7 @@ namespace Spectrum {
             return;
           }
           if (value) {
+            this.ReconcileLayerVisualizers();
             this.inputActivationFailures.Clear();
             this.outputActivationFailures.Clear();
             this.operatorThreadStop = false;
@@ -335,6 +308,10 @@ namespace Spectrum {
       long nextFrameTimestamp = Stopwatch.GetTimestamp();
       while (!this.operatorThreadStop) {
         ThrottleFrame(ref nextFrameTimestamp);
+
+        if (Interlocked.Exchange(ref this.layerReconcilePending, 0) != 0) {
+          this.ReconcileLayerVisualizers();
+        }
 
         // We're going to start by figuring out which Outputs consider
         // themselves enabled. For each enabled Output, we'll find what the

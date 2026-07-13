@@ -92,8 +92,7 @@
     }
   }
 
-  // Fire one layer's manual trigger. POSTs to the per-layer fire endpoint (keyed
-  // by visualizerKey, which names a single layer since duplicates are disallowed)
+  // Fire one layer's manual trigger. POSTs to the instance-addressed endpoint
   // rather than PUTing the stack — firing bumps a counter, not the stack.
   async function fireLayer(key) {
     try {
@@ -252,7 +251,7 @@
     fire.textContent = "🔥";
     fire.title = "Fire (manual trigger)";
     fire.addEventListener("click", () => {
-      fireLayer(layer.visualizerKey);
+      fireLayer(layer.instanceId || layer.visualizerKey);
     });
     bottom.appendChild(fire);
 
@@ -261,7 +260,7 @@
     clear.textContent = "🧹";
     clear.title = "Clear (drop this layer's live particles)";
     clear.addEventListener("click", () => {
-      clearLayer(layer.visualizerKey);
+      clearLayer(layer.instanceId || layer.visualizerKey);
     });
     bottom.appendChild(clear);
 
@@ -375,6 +374,7 @@
       // New layer goes on the bottom (background) = the start of the stack array
       // (index 0 is the background, the last entry is the front).
       const layer = {
+        instanceId: crypto.randomUUID().replaceAll("-", ""),
         visualizerKey: key,
         blendMode: "Add",
         opacity: 1.0,

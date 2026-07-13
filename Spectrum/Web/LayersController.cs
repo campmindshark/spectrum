@@ -23,6 +23,7 @@ namespace Spectrum.Web {
     // the per-layer value bag: param key -> value, matching the visualizer's and
     // blend's schema. Absent/empty means "all defaults".
     public sealed class LayerDto {
+      public string instanceId { get; set; }
       public string visualizerKey { get; set; }
       public string blendMode { get; set; }
       public double opacity { get; set; }
@@ -95,6 +96,7 @@ namespace Spectrum.Web {
             continue;
           }
           list.Add(new LayerDto {
+            instanceId = layer.InstanceId,
             visualizerKey = layer.VisualizerKey,
             blendMode = layer.BlendMode,
             opacity = layer.Opacity,
@@ -112,12 +114,11 @@ namespace Spectrum.Web {
 
     private static List<VisualizerOptionDto> VisualizerOptions() {
       var options = new List<VisualizerOptionDto>();
-      for (int i = 0; i < DomeLayerSettings.LayerKeys.Length; i++) {
-        string key = DomeLayerSettings.LayerKeys[i];
+      foreach (LayerDefinition definition in LayerCatalog.Default.Definitions) {
         options.Add(new VisualizerOptionDto {
-          key = key,
-          label = DomeLayerSettings.LayerLabels[i],
-          @params = ToDtos(DomeLayerSettings.ParamsFor(key)),
+          key = definition.Id,
+          label = definition.DisplayName,
+          @params = ToDtos(definition.Parameters),
         });
       }
       return options;
@@ -150,8 +151,7 @@ namespace Spectrum.Web {
     // Parse the wire DTOs into DomeLayerSettings, hand the stack to the shared
     // StackValidator, then replace config.domeLayerStack via the gateway
     // (snapshot swap on the UI thread). The validator rejects unknown keys,
-    // duplicate visualizers (v1 disallows duplicates — each visualizer is a
-    // singleton owning one buffer), out-of-range opacity, unknown blend names,
+    // duplicate instance IDs, out-of-range opacity, unknown blend names,
     // or an over-long stack, without touching config; scene apply routes
     // through the same validator so the two paths can't diverge.
     public async Task<(bool ok, string error)> ReplaceAsync(
@@ -166,6 +166,7 @@ namespace Spectrum.Web {
           return (false, "each layer needs a visualizerKey");
         }
         parsed.Add(new DomeLayerSettings {
+          InstanceId = dto.instanceId,
           VisualizerKey = dto.visualizerKey,
           // The wire carries the blend by DomeBlend.Name, the same string the
           // settings persist; the validator rejects names the registry
@@ -188,24 +189,21 @@ namespace Spectrum.Web {
 
     // Manual fire (docs/triggers.md): bump the layer's monotonic fire counter so
     // a triggerable layer (Wave/Metaball OneShot, Ripple/Stamp) fires once. Keyed
-    // by visualizerKey — the stack disallows duplicate visualizers, so the key
-    // names exactly one layer. A whole-dictionary copy-and-swap through the
+    // by stable instance ID. A whole-dictionary copy-and-swap through the
     // gateway, mirroring the native DomeLayersController.FireRow; firing is not a
     // stack edit, so it doesn't route through ReplaceAsync/the "layers" frame.
     // The counter (not a bool) is race-free across clients: each Fire just
     // increments, none resets a shared flag.
-    public async Task<(bool ok, string error)> FireAsync(string visualizerKey) {
-      if (string.IsNullOrEmpty(visualizerKey)) {
-        return (false, "visualizerKey required");
-      }
-      if (Array.IndexOf(DomeLayerSettings.LayerKeys, visualizerKey) < 0) {
-        return (false, "unknown visualizer: " + visualizerKey);
+    public async Task<(bool ok, string error)> FireAsync(string instanceId) {
+      DomeLayerSettings layer = ResolveTarget(instanceId);
+      if (layer == null) {
+        return (false, "unknown layer instance: " + instanceId);
       }
       await this.gateway.InvokeAsync(() => {
         var counters = new Dictionary<string, int>(
           this.config.domeLayerFireCounters ?? new Dictionary<string, int>());
-        counters.TryGetValue(visualizerKey, out int count);
-        counters[visualizerKey] = count + 1;
+        counters.TryGetValue(layer.InstanceId, out int count);
+        counters[layer.InstanceId] = count + 1;
         this.config.domeLayerFireCounters = counters;
       });
       return (true, null);
@@ -215,21 +213,25 @@ namespace Spectrum.Web {
     // domeLayerClearCounters entry (mirrors DomeLayersController.ClearRow). A
     // layer that holds accumulated live state (Shooting Star) edge-detects the
     // bump and drops it; layers with no such state ignore it (harmless no-op).
-    public async Task<(bool ok, string error)> ClearAsync(string visualizerKey) {
-      if (string.IsNullOrEmpty(visualizerKey)) {
-        return (false, "visualizerKey required");
-      }
-      if (Array.IndexOf(DomeLayerSettings.LayerKeys, visualizerKey) < 0) {
-        return (false, "unknown visualizer: " + visualizerKey);
+    public async Task<(bool ok, string error)> ClearAsync(string instanceId) {
+      DomeLayerSettings layer = ResolveTarget(instanceId);
+      if (layer == null) {
+        return (false, "unknown layer instance: " + instanceId);
       }
       await this.gateway.InvokeAsync(() => {
         var counters = new Dictionary<string, int>(
           this.config.domeLayerClearCounters ?? new Dictionary<string, int>());
-        counters.TryGetValue(visualizerKey, out int count);
-        counters[visualizerKey] = count + 1;
+        counters.TryGetValue(layer.InstanceId, out int count);
+        counters[layer.InstanceId] = count + 1;
         this.config.domeLayerClearCounters = counters;
       });
       return (true, null);
+    }
+
+    private DomeLayerSettings ResolveTarget(string id) {
+      List<DomeLayerSettings> stack = this.config.domeLayerStack;
+      DomeLayerSettings byInstance = DomeLayerSettings.ForInstance(stack, id);
+      return byInstance ?? DomeLayerSettings.ForKey(stack, id);
     }
   }
 }

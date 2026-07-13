@@ -213,19 +213,19 @@ namespace Spectrum.Web {
           : Results.BadRequest(new { error });
       });
 
-      // Manual fire for one layer (docs/triggers.md): bumps that visualizer's
+      // Manual fire for one layer (docs/triggers.md): bumps that instance's
       // fire counter so a triggerable layer fires once. Not a stack edit, so it
       // returns no body and doesn't broadcast a "layers" frame.
-      app.MapPost("/api/layers/{visualizerKey}/fire", async (string visualizerKey) => {
-        (bool ok, string error) = await this.layers.FireAsync(visualizerKey);
+      app.MapPost("/api/layers/{instanceId}/fire", async (string instanceId) => {
+        (bool ok, string error) = await this.layers.FireAsync(instanceId);
         return ok ? Results.Ok() : Results.BadRequest(new { error });
       });
 
       // Manual clear for one layer (docs/triggers.md): bumps that visualizer's
       // clear counter so a layer holding live state (Shooting Star) drops it.
       // Parallel to fire — no body, no "layers" frame.
-      app.MapPost("/api/layers/{visualizerKey}/clear", async (string visualizerKey) => {
-        (bool ok, string error) = await this.layers.ClearAsync(visualizerKey);
+      app.MapPost("/api/layers/{instanceId}/clear", async (string instanceId) => {
+        (bool ok, string error) = await this.layers.ClearAsync(instanceId);
         return ok ? Results.Ok() : Results.BadRequest(new { error });
       });
 

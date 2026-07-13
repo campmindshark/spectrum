@@ -180,10 +180,14 @@ namespace Spectrum.LEDs {
     // DomeLayerVisualizer), plus a key→visualizer index. Populated at
     // registration (startup) alongside `visualizers`. The compositor blends
     // these; debug visualizers are not layerable and are absent here.
-    private readonly List<DomeLayerVisualizer> layerVisualizers =
-      new List<DomeLayerVisualizer>();
     private readonly Dictionary<string, DomeLayerVisualizer>
       layerVisualizersByKey = new Dictionary<string, DomeLayerVisualizer>();
+    private readonly Dictionary<string, DomeLayerVisualizer>
+      layerVisualizersByInstanceId =
+        new Dictionary<string, DomeLayerVisualizer>();
+    private readonly RenderPlanCompiler renderPlanCompiler =
+      new RenderPlanCompiler();
+    private readonly DomeCompositor compositor;
     private static readonly int maxStripLength;
 
     // The dome is wired as 10 "cables": each of the 5 control boxes drives 8
@@ -205,11 +209,8 @@ namespace Spectrum.LEDs {
     // records, per controller cable, the endpoint that lit during calibration).
     // Identity by default, so an uncalibrated dome behaves exactly as before.
     private readonly int[] controllerForEndpoint = new int[NumCables];
-    // Buffers handed out by MakeDomeOutputBuffer, tracked so their baked-in
-    // device indexes can be recomputed in place when the cable mapping changes,
-    // letting a calibration take effect live without restarting the app.
-    private readonly List<LEDDomeOutputBuffer> buffers =
-      new List<LEDDomeOutputBuffer>();
+    private DomeOutputMapping outputMapping;
+    private DomeTopology topology;
 
     private static int calculateMaxStripLength() {
       int maxLength = 0;
@@ -242,8 +243,6 @@ namespace Spectrum.LEDs {
     // Live wand angle for the prism blends' "Follow Orientation" option
     // (docs/prism.md). Nullable — a dome wired up without an orientation source
     // simply never follows and the blends use their static angle.
-    private readonly OrientationAngleProvider orientationAngle;
-
     public LEDDomeOutput(
       Configuration config, RuntimeTelemetry telemetry, BeatBroadcaster beat,
       OrientationAngleProvider orientationAngle = null
@@ -251,15 +250,16 @@ namespace Spectrum.LEDs {
       this.config = config;
       this.telemetry = telemetry;
       this.beat = beat;
-      this.orientationAngle = orientationAngle;
       this.visualizers = new List<Visualizer>();
+      this.compositor = new DomeCompositor(
+        this.MakeDomeOutputBuffer, orientationAngle);
       this.RebuildCableMapping();
       this.config.PropertyChanged += ConfigUpdated;
     }
 
-    // Rebuilds controllerForEndpoint (the inverse of config.domeCableMapping)
-    // and re-bakes the device indexes of every outstanding buffer so a new
-    // calibration takes effect immediately. Falls back to the identity mapping
+    // Rebuilds controllerForEndpoint and atomically replaces the immutable
+    // logical-to-device mapping, so no renderer/compositor frame is mutated.
+    // Falls back to the identity mapping
     // if the config value is missing or not a valid permutation of 0..9, so a
     // corrupt or short config can never scramble or crash output.
     private void RebuildCableMapping() {
@@ -279,34 +279,29 @@ namespace Spectrum.LEDs {
         int endpoint = valid ? mapping[controller] : controller;
         this.controllerForEndpoint[endpoint] = controller;
       }
-      lock (this.buffers) {
-        foreach (LEDDomeOutputBuffer buffer in this.buffers) {
-          this.RebakeBuffer(buffer);
+      var boxes = new List<int>();
+      var pixels = new List<int>();
+      for (int strut = 0; strut < GetNumStruts(); strut++) {
+        for (int led = 0; led < GetNumLEDs(strut); led++) {
+          Tuple<int, int> address = this.GetDeviceIndexes(strut, led);
+          boxes.Add(address.Item1);
+          pixels.Add(address.Item2);
         }
       }
-    }
-
-    // Recomputes the cached (control box, pixel-within-box) address of every
-    // pixel in a buffer from its strut identity, applying the current cable
-    // mapping. Called when the mapping changes; MakeDomeOutputBuffer bakes the
-    // same values in once at creation.
-    private void RebakeBuffer(LEDDomeOutputBuffer buffer) {
-      for (int i = 0; i < buffer.pixels.Length; i++) {
-        var deviceIndexes = this.GetDeviceIndexes(
-          buffer.pixels[i].strutIndex,
-          buffer.pixels[i].strutLEDIndex
-        );
-        buffer.pixels[i].controlBoxIndex = deviceIndexes.Item1;
-        buffer.pixels[i].controlBoxPixelIndex = deviceIndexes.Item2;
-      }
+      System.Threading.Volatile.Write(
+        ref this.outputMapping,
+        new DomeOutputMapping(boxes.ToArray(), pixels.ToArray()));
     }
 
     public void RegisterVisualizer(Visualizer visualizer) {
       this.visualizers.Add(visualizer);
       this.visualizersArray = null;
       if (visualizer is DomeLayerVisualizer layerVisualizer) {
-        this.layerVisualizers.Add(layerVisualizer);
         this.layerVisualizersByKey[layerVisualizer.LayerKey] = layerVisualizer;
+        string instanceId = LayerInstanceScope.CurrentId;
+        if (instanceId != null) {
+          this.layerVisualizersByInstanceId[instanceId] = layerVisualizer;
+        }
       }
     }
 
@@ -392,7 +387,13 @@ namespace Spectrum.LEDs {
       // with the cache still valid; Composite reads only their buffers, so the
       // ordering composite -> opc send -> cache invalidate is required. See the
       // GetGradientColor cache note in EnsureFrameColorCache.
-      this.Composite();
+      this.EnsureCompiledPlan();
+      LEDDomeOutputBuffer completed = this.compositor.Compose();
+      if (completed != null) {
+        this.WriteBuffer(completed);
+        this.Flush();
+        this.ApplyGlobalHueRotation();
+      }
       if (this.opcAPI != null) {
          this.opcAPI.OperatorUpdate();
       }
@@ -403,165 +404,36 @@ namespace Spectrum.LEDs {
       this.frameColorCacheValid = false;
     }
 
-    // Scratch composite frame the layer stack blends into, reused every frame.
-    // Lazily created via MakeDomeOutputBuffer so it participates in cable-mapping
-    // rebakes and is index-aligned pixel-for-pixel with every layer buffer.
-    private LEDDomeOutputBuffer compositeBuffer;
-
     // Wall clock for the global hue rotation's per-frame increment. The
     // rotation is applied to the layers' own persistent buffers (which are
     // faded, not cleared, so in-place rotations accumulate across frames) —
     // never to the composite, whose pixels include this frame's fresh draws.
     private readonly FrameClock hueClock = new FrameClock();
-
-    // Pre-pass snapshot the spatial prism blends (ChromaticFringe, EdgeSpectrum)
-    // read while they mutate compositeBuffer — one reusable copy, lazily created
-    // like compositeBuffer. Never touched unless such a blend is active.
-    private LEDDomeOutputBuffer scratchBuffer;
-    // Wall-clock seconds accumulated while compositing, driving the time-varying
-    // prism params (ChromaticFringe angle spin, Iridescence light spin). Ticked
-    // every frame off its own FrameClock so the motion is smooth and frame-rate
-    // independent; unbounded but double-precision holds seconds fine.
-    private double prismSeconds = 0;
-    private readonly FrameClock prismClock = new FrameClock();
-
-    // One layer of config.domeLayerStack resolved to a live visualizer plus its
-    // blend settings, cached so the per-frame path allocates nothing. Whether the
-    // visualizer actually ran (Enabled) is still checked per frame, not cached.
-    private struct ResolvedLayer {
-      public DomeLayerVisualizer visualizer;
-      public DomeBlend blend;
-      public double opacity;
-      // The immutable stack snapshot entry, held so the compositor can read a
-      // blend's CompositorConsumed params (the prism family) without re-scanning
-      // config.domeLayerStack. Safe to alias: published settings are never
-      // mutated in place (whole-stack snapshot swap), and resolvedStack is
-      // invalidated whenever domeLayerStack changes.
-      public DomeLayerSettings settings;
-    }
-    // Rebuilt lazily on the operator thread whenever the stack changes. The UI
-    // thread increments stackGeneration on every snapshot swap; the operator
-    // only publishes a resolved result if that generation stayed current for
-    // the whole build. This prevents a concurrent update from being overwritten
-    // by a late "valid" write for the previous stack.
     private int stackGeneration;
-    private int resolvedStackGeneration = -1;
-    private ResolvedLayer[] resolvedStack = System.Array.Empty<ResolvedLayer>();
+    private int compiledStackGeneration = -1;
 
-    private void EnsureResolvedStack() {
+    private void EnsureCompiledPlan() {
       while (true) {
         int generation = System.Threading.Volatile.Read(ref this.stackGeneration);
-        if (this.resolvedStackGeneration == generation) {
+        if (this.compiledStackGeneration == generation) {
           return;
         }
-        var resolved = new List<ResolvedLayer>();
-        List<DomeLayerSettings> stack = this.config.domeLayerStack;
-        if (stack != null) {
-          foreach (DomeLayerSettings layer in stack) {
-            if (
-              layer == null || !layer.Enabled || layer.VisualizerKey == null
-            ) {
-              continue;
-            }
-            if (!this.layerVisualizersByKey.TryGetValue(
-              layer.VisualizerKey, out DomeLayerVisualizer visualizer
-            )) {
-              continue;
-            }
-            resolved.Add(new ResolvedLayer {
-              visualizer = visualizer,
-              // A name the registry doesn't know (a hand-edited config file —
-              // the validator rejects unknowns on every publish path) falls
-              // back to Over, like the retired enum switch's default arm.
-              blend = DomeBlend.FromName(layer.BlendMode) ?? DomeBlend.Over,
-              opacity = layer.Opacity,
-              settings = layer,
-            });
-          }
-        }
-        // If a newer stack arrived while this one was being resolved, discard
-        // the stale result and immediately retry against the latest snapshot.
+        LayerStackSnapshot snapshot =
+          LayerStackService.SnapshotFor(this.config.domeLayerStack);
+        RenderPlan plan = this.renderPlanCompiler.Compile(
+          snapshot,
+          layer => this.layerVisualizersByInstanceId.TryGetValue(
+            layer.Id.Value, out DomeLayerVisualizer renderer)
+              ? renderer
+              : this.layerVisualizersByKey.TryGetValue(
+                layer.RendererId, out renderer) ? renderer : null);
         if (generation != System.Threading.Volatile.Read(ref this.stackGeneration)) {
           continue;
         }
-        this.resolvedStack = resolved.ToArray();
-        this.resolvedStackGeneration = generation;
+        this.compositor.Publish(plan);
+        this.compiledStackGeneration = generation;
         return;
       }
-    }
-
-    // Blends the active layer stack into compositeBuffer and pushes exactly one
-    // frame (one WriteBuffer + one Flush) to the wire and simulator. No-ops when
-    // no layer ran this frame: either a debug visualizer owns the frame via its
-    // own SetPixel + self-Flush path (which passes through untouched), or nothing
-    // is eligible at all and the dome holds its last frame.
-    private void Composite() {
-      this.EnsureResolvedStack();
-      ResolvedLayer[] stack = this.resolvedStack;
-
-      // Advance the prism spin clock every frame (even when no prism blend is
-      // active) so the time-varying params move in real wall-clock time and
-      // re-enabling a spin doesn't jump. Tick() returns nominal frames; convert
-      // to seconds.
-      this.prismSeconds += this.prismClock.Tick() / FrameClock.NominalFps;
-
-      // A layer contributes only if the Operator scheduled its visualizer this
-      // frame (Enabled true: inputs enabled, not quarantined). The bottom-most
-      // such layer seeds the composite; the rest blend over it in stack order.
-      bool destInitialized = false;
-      for (int s = 0; s < stack.Length; s++) {
-        ResolvedLayer layer = stack[s];
-        if (!layer.visualizer.Enabled) {
-          continue;
-        }
-        LEDDomeOutputBuffer src = layer.visualizer.LayerBuffer;
-        if (this.compositeBuffer == null) {
-          this.compositeBuffer = this.MakeDomeOutputBuffer();
-        }
-        if (!destInitialized) {
-          this.compositeBuffer.CompositeBottom(src, layer.opacity);
-          destInitialized = true;
-        } else {
-          this.BlendLayer(layer, src);
-        }
-      }
-      if (!destInitialized) {
-        return;
-      }
-      this.WriteBuffer(this.compositeBuffer);
-      this.Flush();
-      // Post-frame: advance the global hue rotation on the layers' persisted
-      // pixels, so it lands "before" (underneath) whatever the layers draw
-      // next frame — fresh pixels always reach the wire unrotated.
-      this.ApplyGlobalHueRotation();
-    }
-
-    // Blend one upper layer into compositeBuffer: take the pre-pass snapshot if
-    // the blend samples neighbors of the buffer it mutates, then hand the blend
-    // everything it needs (buffers, the layer's settings for its Params, and
-    // the prism clock / wand angle source for the time-varying params).
-    private void BlendLayer(ResolvedLayer layer, LEDDomeOutputBuffer src) {
-      DomeBlend blend = layer.blend;
-      if (blend.NeedsSnapshot) {
-        this.SnapshotComposite();
-      }
-      blend.Blend(new DomeBlendContext(
-        this.compositeBuffer, src,
-        blend.NeedsSnapshot ? this.scratchBuffer : null,
-        layer.settings, layer.opacity, this.prismSeconds,
-        this.orientationAngle));
-    }
-
-    // Copy the current composite into the reusable scratch buffer so a spatial
-    // prism blend can read the pre-pass state while it mutates compositeBuffer.
-    // Taken immediately before each spatial blend because the composite changes
-    // between layers. The scratch buffer is lazily created via
-    // MakeDomeOutputBuffer so it stays index-aligned with the composite.
-    private void SnapshotComposite() {
-      if (this.scratchBuffer == null) {
-        this.scratchBuffer = this.MakeDomeOutputBuffer();
-      }
-      this.scratchBuffer.CopyFrom(this.compositeBuffer);
     }
 
     // The output-wide "Hue Rotation" (the knob that used to be applied
@@ -591,27 +463,7 @@ namespace Spectrum.LEDs {
       double p = this.beat.ProgressThroughMeasure;
       double mod = 3 * p * p - 3 * p + 1;
       double delta = rate * mod * frameScale;
-      ResolvedLayer[] stack = this.resolvedStack;
-      for (int s = 0; s < stack.Length; s++) {
-        DomeLayerVisualizer visualizer = stack[s].visualizer;
-        // Rotate exactly the buffers that contributed to this frame, once
-        // each — two stack entries with the same VisualizerKey share one
-        // visualizer instance (and buffer), so skip repeats.
-        if (!visualizer.Enabled) {
-          continue;
-        }
-        bool alreadyRotated = false;
-        for (int t = 0; t < s; t++) {
-          if (ReferenceEquals(stack[t].visualizer, visualizer)) {
-            alreadyRotated = true;
-            break;
-          }
-        }
-        if (alreadyRotated) {
-          continue;
-        }
-        visualizer.LayerBuffer.HueRotate(delta);
-      }
+      this.compositor.AdvancePostFrameHue(delta);
     }
 
     // Per-frame snapshot of the beat/brightness state that every GetSingleColor /
@@ -945,18 +797,18 @@ namespace Spectrum.LEDs {
     }
 
     public LEDDomeOutputBuffer MakeDomeOutputBuffer() {
+      if (this.topology != null) {
+        return new LEDDomeOutputBuffer(this.topology);
+      }
       List<LEDDomeOutputPixel> pixels = new List<LEDDomeOutputPixel>();
 
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
         var leds = LEDDomeOutput.GetNumLEDs(i);
         for (int j = 0; j < leds; j++) {
           var point = StrutLayoutFactory.GetProjectedLEDPoint(i, j);
-          var deviceIndexes = GetDeviceIndexes(i, j);
           LEDDomeOutputPixel pixel = new LEDDomeOutputPixel();
           pixel.strutIndex = i;
           pixel.strutLEDIndex = j;
-          pixel.controlBoxIndex = deviceIndexes.Item1;
-          pixel.controlBoxPixelIndex = deviceIndexes.Item2;
           pixel.x = point.Item1;
           pixel.y = point.Item2;
           // Leave color/coverage at their struct defaults (0 => transparent
@@ -968,13 +820,8 @@ namespace Spectrum.LEDs {
         }
       }
 
-      var buffer = new LEDDomeOutputBuffer(pixels.ToArray());
-      // Track the buffer so its baked-in device indexes can be re-derived in
-      // place if the cable mapping changes (see RebuildCableMapping).
-      lock (this.buffers) {
-        this.buffers.Add(buffer);
-      }
-      return buffer;
+      this.topology = new DomeTopology(pixels.ToArray());
+      return new LEDDomeOutputBuffer(this.topology);
     }
 
     // The strut indices physically carried by one controller cable
@@ -1010,10 +857,11 @@ namespace Spectrum.LEDs {
       if (opcAPI == null && !simulationEnabled && !webSimulationEnabled) {
         return;
       }
-      // Use the device indexes precomputed once in MakeDomeOutputBuffer rather
-      // than re-deriving the control-box/pixel mapping for every pixel every
-      // frame (P3).
+      // The immutable mapping is snapshotted once for this write; calibration
+      // can replace it concurrently without touching the logical frame.
       int stride = maxStripLength * 8;
+      DomeOutputMapping mapping = System.Threading.Volatile.Read(
+        ref this.outputMapping);
       // Rent a whole-frame snapshot for the latest-frame mailbox. If the UI has
       // not consumed the previous frame, PublishSimulatorFrame replaces and
       // returns it instead of building a backlog.
@@ -1024,7 +872,7 @@ namespace Spectrum.LEDs {
       for (int i = 0; i < buffer.pixels.Length; i++) {
         LEDDomeOutputPixel pixel = buffer.pixels[i];
         int totalPixelIndex =
-          pixel.controlBoxIndex * stride + pixel.controlBoxPixelIndex;
+          mapping.ControlBoxAt(i) * stride + mapping.PixelWithinBoxAt(i);
         if (opcAPI != null) {
           opcAPI.SetPixel(totalPixelIndex, pixel.color);
         }

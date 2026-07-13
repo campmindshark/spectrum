@@ -145,10 +145,10 @@ namespace Spectrum {
       BuildVisualizerOptions();
     private static List<DomeLayerVisualizerOption> BuildVisualizerOptions() {
       var options = new List<DomeLayerVisualizerOption>();
-      for (int i = 0; i < DomeLayerSettings.LayerKeys.Length; i++) {
+      foreach (LayerDefinition definition in LayerCatalog.Default.Definitions) {
         options.Add(new DomeLayerVisualizerOption {
-          Key = DomeLayerSettings.LayerKeys[i],
-          Label = DomeLayerSettings.LayerLabels[i],
+          Key = definition.Id,
+          Label = definition.DisplayName,
         });
       }
       return options;
@@ -184,6 +184,7 @@ namespace Spectrum {
     }
 
     private string visualizerKey;
+    public string InstanceId { get; set; } = LayerInstanceId.NewId().Value;
     public string VisualizerKey {
       get => this.visualizerKey;
       set {
