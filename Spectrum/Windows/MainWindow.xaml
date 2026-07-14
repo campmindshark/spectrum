@@ -25,17 +25,26 @@
       <TabItem x:Name="homeTab" Header="Readiness">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <StackPanel Margin="10">
-            <DockPanel Margin="0,0,0,10">
-              <StackPanel DockPanel.Dock="Left">
+            <Grid Margin="0,0,0,10">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <StackPanel Grid.Column="0" VerticalAlignment="Center">
                 <TextBlock Text="System readiness" Style="{StaticResource WindowTitleText}" />
                 <TextBlock Text="Confirm input, engine, dome output, and wands before the show."
-                           Style="{StaticResource CaptionText}" Margin="0,3,0,0" />
+                           Style="{StaticResource CaptionText}" Margin="0,3,0,0" TextWrapping="Wrap" />
               </StackPanel>
-              <Border x:Name="overallReadinessBadge" DockPanel.Dock="Right" Style="{StaticResource DisabledBadge}"
+              <Image Grid.Column="1" Width="180" Height="42" Margin="16,0"
+                     Source="pack://siteoforigin:,,,/Resources/spectrum wordmark.PNG"
+                     Stretch="Uniform" VerticalAlignment="Center"
+                     AutomationProperties.Name="Spectrum" IsHitTestVisible="False" />
+              <Border x:Name="overallReadinessBadge" Grid.Column="2" Style="{StaticResource DisabledBadge}"
                       VerticalAlignment="Center" Margin="8,0,0,0">
                 <TextBlock x:Name="overallReadinessText" Text="Checking systems…" FontWeight="SemiBold" />
               </Border>
-            </DockPanel>
+            </Grid>
 
             <Border Style="{StaticResource SectionCard}" Margin="0,0,0,8">
               <Grid>
@@ -69,8 +78,8 @@
               <Border Style="{StaticResource SectionCard}">
                 <StackPanel>
                   <DockPanel>
-                    <TextBlock Text="Audio input" Style="{StaticResource SectionHeadingText}" />
-                    <Border x:Name="audioStatusBadge" DockPanel.Dock="Right" Style="{StaticResource WarningBadge}">
+                    <TextBlock Text="Audio input  " Style="{StaticResource SectionHeadingText}" />
+                    <Border x:Name="audioStatusBadge" DockPanel.Dock="Right" Style="{StaticResource WarningBadge}" RenderTransformOrigin="2.168,0.286">
                       <TextBlock x:Name="audioStatusText" Text="⚠ Select input" FontWeight="SemiBold" />
                     </Border>
                   </DockPanel>
@@ -94,7 +103,7 @@
               <Border Style="{StaticResource SectionCard}">
                 <StackPanel>
                   <DockPanel>
-                    <TextBlock Text="Dome output" Style="{StaticResource SectionHeadingText}" />
+                    <TextBlock Text="Dome output  " Style="{StaticResource SectionHeadingText}" />
                     <Border x:Name="domeStatusBadge" DockPanel.Dock="Right" Style="{StaticResource DisabledBadge}">
                       <TextBlock x:Name="domeStatusText" Text="○ Off" FontWeight="SemiBold" />
                     </Border>
@@ -114,7 +123,7 @@
               <Border Style="{StaticResource SectionCard}">
                 <StackPanel>
                   <DockPanel>
-                    <TextBlock Text="Wands" Style="{StaticResource SectionHeadingText}" />
+                    <TextBlock Text="Wands  " Style="{StaticResource SectionHeadingText}" />
                     <Border x:Name="homeWandStatusBadge" DockPanel.Dock="Right" Style="{StaticResource DisabledBadge}">
                       <TextBlock x:Name="homeWandStatusText" Text="○ Off" FontWeight="SemiBold" />
                     </Border>
