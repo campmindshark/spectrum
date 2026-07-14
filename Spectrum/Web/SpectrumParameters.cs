@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Spectrum.Base;
 
@@ -20,6 +21,24 @@ namespace Spectrum.Web {
    * maintenance-only and go through the gateway, not field-level LWW).
    */
   public static class SpectrumParameters {
+
+    public static string NormalizeOpcAddress(string raw) {
+      string value = (raw ?? "").Trim();
+      string[] parts = value.Split(':');
+      if ((parts.Length != 2 && parts.Length != 3) ||
+          string.IsNullOrWhiteSpace(parts[0])) {
+        throw new ArgumentException(
+          "address must use host:port or host:port:channel");
+      }
+      if (!int.TryParse(parts[1], out int port) || port < 1 || port > 65535) {
+        throw new ArgumentException("port must be between 1 and 65535");
+      }
+      if (parts.Length == 3 &&
+          (!byte.TryParse(parts[2], out _))) {
+        throw new ArgumentException("channel must be between 0 and 255");
+      }
+      return value;
+    }
 
     // Dome test patterns (domeTestPattern index).
     private static readonly IReadOnlyList<string> DomeTestPatternNames = new[] {
@@ -44,9 +63,13 @@ namespace Spectrum.Web {
         // (radial size, ripple steps, twinkle density, ...) lives in each
         // layer's namespaced parameter bags, served by LayersController.
         new DoubleParameter("domeGlobalFadeSpeed", user, 0.0, 3.0,
-          c => c.domeGlobalFadeSpeed, (c, v) => c.domeGlobalFadeSpeed = v),
+          c => c.domeGlobalFadeSpeed, (c, v) => c.domeGlobalFadeSpeed = v,
+          label: "Fade speed",
+          description: "How quickly active layers fade between frames."),
         new DoubleParameter("domeGlobalHueSpeed", user, 0.0, 3.0,
-          c => c.domeGlobalHueSpeed, (c, v) => c.domeGlobalHueSpeed = v),
+          c => c.domeGlobalHueSpeed, (c, v) => c.domeGlobalHueSpeed = v,
+          label: "Hue speed",
+          description: "How quickly the live palette rotates through hues."),
 
         // The dome layer stack replaces the old single-visualizer selector; it
         // is compound state served by LayersController (GET/PUT /api/layers) and
@@ -54,7 +77,9 @@ namespace Spectrum.Web {
 
         // Global flash
         new DoubleParameter("flashSpeed", user, 0.0, 32.0,
-          c => c.flashSpeed, (c, v) => c.flashSpeed = v),
+          c => c.flashSpeed, (c, v) => c.flashSpeed = v,
+          label: "Flash rate",
+          description: "Flash multiplier relative to the active tempo."),
 
         // The color palette replaces the retired 8-bank colorPaletteIndex
         // switcher: it is compound state served by PaletteController
@@ -65,45 +90,70 @@ namespace Spectrum.Web {
 
         // Brightness
         new DoubleParameter("domeBrightness", maint, 0.0, 1.0,
-          c => c.domeBrightness, (c, v) => c.domeBrightness = v),
+          c => c.domeBrightness, (c, v) => c.domeBrightness = v,
+          label: "Brightness", description: "Current dome output level.",
+          unit: "%"),
         new DoubleParameter("domeMaxBrightness", maint, 0.0, 1.0,
-          c => c.domeMaxBrightness, (c, v) => c.domeMaxBrightness = v),
+          c => c.domeMaxBrightness, (c, v) => c.domeMaxBrightness = v,
+          label: "Maximum brightness",
+          description: "Safety ceiling applied to dome output.", unit: "%"),
 
         // BPM source (Human tap-tempo / Madmom beat tracker / Pro DJ Link)
         new EnumIntParameter("beatInput", maint, BeatInputNames,
-          c => c.beatInput, (c, v) => c.beatInput = v),
+          c => c.beatInput, (c, v) => c.beatInput = v,
+          label: "Tempo source",
+          description: "Source used for the live BPM."),
 
         // Device enable flags
         new BoolParameter("domeEnabled", maint,
-          c => c.domeEnabled, (c, v) => c.domeEnabled = v),
+          c => c.domeEnabled, (c, v) => c.domeEnabled = v,
+          label: "Enable dome output",
+          description: "Send live frames to the configured OPC controller."),
         new BoolParameter("midiInputEnabled", maint,
-          c => c.midiInputEnabled, (c, v) => c.midiInputEnabled = v),
+          c => c.midiInputEnabled, (c, v) => c.midiInputEnabled = v,
+          label: "Enable MIDI input",
+          description: "Listen to configured MIDI devices."),
         new BoolParameter("vjHUDEnabled", maint,
-          c => c.vjHUDEnabled, (c, v) => c.vjHUDEnabled = v),
+          c => c.vjHUDEnabled, (c, v) => c.vjHUDEnabled = v,
+          label: "Show performance HUD",
+          description: "Open the native live-performance window."),
 
         // Simulators
         new BoolParameter("domeSimulationEnabled", maint,
-          c => c.domeSimulationEnabled, (c, v) => c.domeSimulationEnabled = v),
+          c => c.domeSimulationEnabled, (c, v) => c.domeSimulationEnabled = v,
+          label: "Show dome simulator",
+          description: "Render the dome output in a resizable preview window."),
 
         // OPC addresses
         new StringParameter("domeBeagleboneOPCAddress", maint,
-          c => c.domeBeagleboneOPCAddress, (c, v) => c.domeBeagleboneOPCAddress = v),
+          c => c.domeBeagleboneOPCAddress, (c, v) => c.domeBeagleboneOPCAddress = v,
+          label: "OPC host and port",
+          description: "Controller address in host:port or host:port:channel format.",
+          normalize: NormalizeOpcAddress),
 
         // Wand USB-CDC receiver COM port ("" = no serial input). The receiver
         // reacts live via PropertyChanged; the port list is served separately by
         // GET /api/maintenance/wands/serial.
         new StringParameter("wandSerialPort", maint,
-          c => c.wandSerialPort, (c, v) => c.wandSerialPort = v),
+          c => c.wandSerialPort, (c, v) => c.wandSerialPort = v,
+          label: "Wand receiver port",
+          description: "USB receiver serial port; leave empty to disable it."),
 
         // Threading flags (these trigger an Operator reboot in MainWindow)
         new BoolParameter("midiInputInSeparateThread", maint,
-          c => c.midiInputInSeparateThread, (c, v) => c.midiInputInSeparateThread = v),
+          c => c.midiInputInSeparateThread, (c, v) => c.midiInputInSeparateThread = v,
+          label: "Process MIDI on a separate thread",
+          description: "Advanced: restarts the engine when changed."),
         new BoolParameter("domeOutputInSeparateThread", maint,
-          c => c.domeOutputInSeparateThread, (c, v) => c.domeOutputInSeparateThread = v),
+          c => c.domeOutputInSeparateThread, (c, v) => c.domeOutputInSeparateThread = v,
+          label: "Send dome output on a separate thread",
+          description: "Advanced: restarts the engine when changed."),
 
         // Test patterns (modal — will get advisory locks in step 5)
         new EnumIntParameter("domeTestPattern", maint, DomeTestPatternNames,
-          c => c.domeTestPattern, (c, v) => c.domeTestPattern = v),
+          c => c.domeTestPattern, (c, v) => c.domeTestPattern = v,
+          label: "Dome test pattern",
+          description: "Overrides the live look while a diagnostic pattern is active."),
       };
 
       return new ParameterRegistry(descriptors);

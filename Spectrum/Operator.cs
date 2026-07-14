@@ -107,6 +107,7 @@ namespace Spectrum {
 
       this.inputs = new List<Input>();
       var audio = new AudioInput(config, this.BeatBroadcaster);
+      this.AudioInput = audio;
       this.inputs.Add(audio);
       var midi = new MidiInput(config, this.BeatBroadcaster);
       this.inputs.Add(midi);
@@ -160,6 +161,10 @@ namespace Spectrum {
       this.ReconcileLayerVisualizers();
       Interlocked.Exchange(ref this.layerReconcilePending, 0);
     }
+
+    // Live input signal for readiness surfaces. AudioInput owns capture state;
+    // exposing the instance avoids duplicating device or meter logic in UI code.
+    public AudioInput AudioInput { get; }
 
     private void OnLayerConfigurationChanged(
       object sender, PropertyChangedEventArgs e

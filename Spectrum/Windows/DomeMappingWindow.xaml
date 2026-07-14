@@ -9,77 +9,83 @@
   Title="Set Dome Mapping"
   Height="850"
   Width="1090"
-  ResizeMode="CanMinimize"
-  Background="#FF1A1A1A"
+  MinHeight="620"
+  MinWidth="820"
+  ResizeMode="CanResize"
   Icon="pack://siteoforigin:,,,/Resources/s.PNG"
   Loaded="WindowLoaded"
   Closed="WindowClosed"
 >
   <Grid>
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="740" />
-      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="2*" MinWidth="460" />
+      <ColumnDefinition Width="*" MinWidth="320" />
     </Grid.ColumnDefinitions>
 
-    <Canvas x:Name="canvas" Grid.Column="0" Width="740" Height="740" />
+    <Viewbox Grid.Column="0" Margin="12" Stretch="Uniform">
+      <Canvas x:Name="canvas" Width="740" Height="740" />
+    </Viewbox>
 
-    <StackPanel Grid.Column="1" Margin="12,16,12,12">
+    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="12,16,12,12">
       <TextBlock Text="Set Dome Mapping" FontSize="18" FontWeight="Bold"
-        Foreground="White" />
-      <TextBlock TextWrapping="Wrap" Margin="0,8,0,0" Foreground="#FFCCCCCC"
+        Foreground="{StaticResource TextBrush}" />
+      <TextBlock TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{StaticResource MutedTextBrush}"
         Text="The dome is lighting one controller cable at a time. Look at the physical dome and click the sector + cable that ACTUALLY lit up." />
 
-      <Border BorderBrush="#FF444444" BorderThickness="1" CornerRadius="3"
+      <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
         Margin="0,14,0,0" Padding="10">
         <StackPanel>
-          <TextBlock Text="Now lighting" Foreground="#FF999999" FontSize="11" />
+          <TextBlock Text="Now lighting" Foreground="{StaticResource MutedTextBrush}" FontSize="11" />
           <TextBlock x:Name="currentCableLabel" Text="-" FontSize="22"
-            FontWeight="Bold" Foreground="#FFFFD24D" />
-          <TextBlock x:Name="progressLabel" Text="" Foreground="#FFCCCCCC"
+            FontWeight="Bold" Foreground="{StaticResource WarningBrush}" />
+          <TextBlock x:Name="progressLabel" Text="" Foreground="{StaticResource MutedTextBrush}"
             TextWrapping="Wrap" Margin="0,4,0,0" />
         </StackPanel>
       </Border>
 
-      <Button x:Name="startButton" Content="Start Dome Mapping" Height="34"
+      <Button x:Name="startButton" Content="Start Dome Mapping" Height="26"
         FontWeight="Bold" Margin="0,12,0,0" Click="StartClicked" />
 
       <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-        <Button x:Name="backButton" Content="Back" Width="80" Height="28"
+        <Button x:Name="backButton" Content="Back" Width="80" Height="24"
           Click="BackClicked" />
         <Button x:Name="skipButton" Content="Nothing lit / Skip" Width="130"
-          Height="28" Margin="8,0,0,0" Click="SkipClicked" />
-        <Button x:Name="restartButton" Content="Restart" Width="80" Height="28"
+          Height="24" Margin="8,0,0,0" Click="SkipClicked" />
+        <Button x:Name="restartButton" Content="Restart" Width="80" Height="24"
           Margin="8,0,0,0" Click="RestartClicked" />
       </StackPanel>
 
-      <TextBlock Text="Recorded so far" Foreground="#FF999999" FontSize="11"
+      <TextBlock Text="Recorded so far" Foreground="{StaticResource MutedTextBrush}" FontSize="11"
         Margin="0,16,0,4" />
-      <Border BorderBrush="#FF444444" BorderThickness="1" CornerRadius="3"
+      <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
         Padding="8" MinHeight="220">
         <TextBlock x:Name="recordedLabel" FontFamily="Consolas" FontSize="13"
-          Foreground="#FFDDDDDD" />
+          Foreground="{StaticResource TextBrush}" />
       </Border>
 
-      <TextBlock Text="Swap two cables" Foreground="#FF999999" FontSize="11"
+      <TextBlock Text="Swap two cables" Foreground="{StaticResource MutedTextBrush}" FontSize="11"
         Margin="0,16,0,4" />
       <StackPanel Orientation="Horizontal">
         <ComboBox x:Name="swapComboA" Width="135" />
-        <TextBlock Text="↔" Foreground="#FFCCCCCC" FontSize="16"
+        <TextBlock Text="↔" Foreground="{StaticResource MutedTextBrush}" FontSize="16"
           VerticalAlignment="Center" Margin="6,0,6,0" />
         <ComboBox x:Name="swapComboB" Width="135" />
       </StackPanel>
-      <Button x:Name="swapButton" Content="Swap" Width="100" Height="28"
+      <Button x:Name="swapButton" Content="Swap" Width="100" Height="24"
         HorizontalAlignment="Left" Margin="0,8,0,0" Click="SwapClicked" />
 
       <TextBlock x:Name="statusLabel" TextWrapping="Wrap" Margin="0,12,0,0"
-        Foreground="#FFFF6B6B" />
+        Foreground="{StaticResource ErrorBrush}" />
 
       <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
         <Button x:Name="saveButton" Content="Save Mapping" Width="130"
-          Height="32" FontWeight="Bold" Click="SaveClicked" IsEnabled="False" />
-        <Button x:Name="closeButton" Content="Close" Width="80" Height="32"
+          Height="26" FontWeight="Bold" Click="SaveClicked" IsEnabled="False" />
+        <Button x:Name="closeButton" Content="Close" Width="80" Height="26"
           Margin="8,0,0,0" Click="CloseClicked" />
       </StackPanel>
     </StackPanel>
+    </ScrollViewer>
   </Grid>
 </Window>

@@ -2,194 +2,59 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>Spectrum</title>
-  <style>
-    :root { color-scheme: dark; }
-    body {
-      font-family: system-ui, sans-serif; margin: 0; padding: 1rem;
-      background: #111; color: #eee; -webkit-tap-highlight-color: transparent;
-    }
-    h1 { font-size: 1.2rem; margin: 0 0 1rem; }
-    .param { margin-bottom: 1rem; }
-    .param label { display: block; font-size: 0.85rem; margin-bottom: 0.25rem; }
-    .param .val { color: #8cf; float: right; font-variant-numeric: tabular-nums; }
-    input[type=range] { width: 100%; }
-    select, input[type=checkbox] { font-size: 1rem; }
-    .status { position: fixed; bottom: 0; left: 0; right: 0; padding: 0.4rem 1rem;
-      font-size: 0.75rem; background: #000; color: #6c6; }
-    .telemetry { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;
-      font-size: 0.8rem; color: #8cf; font-variant-numeric: tabular-nums; }
-    .telemetry-item { background: #1c1c22; padding: 0.25rem 0.5rem; border-radius: 4px; }
-    a { color: #8cf; }
-    .operator { margin-bottom: 1rem; }
-    .operator button { width: 100%; font-size: 1.1rem; font-weight: bold;
-      padding: 0.7rem; border: none; border-radius: 6px; cursor: pointer;
-      color: #fff; }
-    .operator button.stopped { background: #185018; }
-    .operator button.running { background: #7a1818; }
-    .operator button:disabled { opacity: 0.5; cursor: default; }
-    .wands { border-top: 1px solid #333; margin-top: 1.5rem; padding-top: 0.5rem; }
-    .wands h2 { font-size: 1rem; margin: 0 0 0.25rem; }
-    .wand-summary { font-size: 0.85rem; color: #8cf; margin: 0.25rem 0 0.5rem; }
-    .wand-table { width: 100%; border-collapse: collapse;
-      font-family: ui-monospace, monospace; font-size: 0.8rem; }
-    .wand-table th { text-align: left; font-weight: normal; color: #8cf;
-      border-bottom: 1px solid #333; padding: 0.15rem 0.4rem; white-space: nowrap; }
-    .wand-table td { padding: 0.15rem 0.4rem; white-space: nowrap;
-      font-variant-numeric: tabular-nums; }
-    .layers { border-top: 1px solid #333; margin-top: 1.5rem; padding-top: 0.5rem;
-      margin-bottom: 1rem; }
-    .layers h2 { font-size: 1rem; margin: 0 0 0.5rem; }
-    .layers .hint { font-size: 0.75rem; color: #888; margin: 0 0 0.5rem; }
-    .layer-row { background: #1c1c22; border-radius: 6px; padding: 0.5rem;
-      margin-bottom: 0.5rem; }
-    .layer-row .top { display: flex; gap: 0.4rem; align-items: center;
-      margin-bottom: 0.4rem; }
-    .layer-row .top select { flex: 1; min-width: 0; }
-    .layer-row .bottom { display: flex; gap: 0.4rem; align-items: center; }
-    .layer-row .bottom input[type=range] { flex: 1; min-width: 0; }
-    .layer-row .layer-params { margin-top: 0.4rem; display: flex;
-      flex-direction: column; gap: 0.3rem; }
-    .layer-row .param { display: flex; gap: 0.4rem; align-items: center;
-      font-size: 0.75rem; color: #bbb; }
-    .layer-row .param .param-label { flex: 0 0 5rem; }
-    .layer-row .param input[type=range] { flex: 1; min-width: 0; }
-    .layer-row .param select { flex: 1; min-width: 0; }
-    .layer-row .layer-notes { width: 100%; box-sizing: border-box; margin-bottom: 0.4rem;
-      background: #111; color: #eee; border: 1px solid #333; border-radius: 4px;
-      padding: 0.3rem 0.4rem; font-size: 0.8rem; }
-    .layer-row button { background: #333; color: #eee; border: none;
-      border-radius: 4px; padding: 0.3rem 0.5rem; cursor: pointer; }
-    .layer-row button:disabled { opacity: 0.4; cursor: default; }
-    .layers .add { background: #185018; color: #fff; border: none;
-      border-radius: 6px; padding: 0.5rem 0.8rem; cursor: pointer;
-      font-size: 0.9rem; }
-    .scenes { border-top: 1px solid #333; margin-top: 1.5rem; padding-top: 0.5rem;
-      margin-bottom: 1rem; }
-    .scenes h2 { font-size: 1rem; margin: 0 0 0.5rem; }
-    .scenes .scene-row { display: flex; gap: 0.4rem; align-items: center;
-      margin-bottom: 0.4rem; }
-    .scenes .scene-row select, .scenes .scene-row input[type=text] {
-      flex: 1; min-width: 0; font-size: 1rem; }
-    .scenes .scene-row button { background: #333; color: #eee; border: none;
-      border-radius: 4px; padding: 0.4rem 0.7rem; cursor: pointer; }
-    .palette { border-top: 1px solid #333; margin-top: 1.5rem; padding-top: 0.5rem;
-      margin-bottom: 1rem; }
-    .palette h2 { font-size: 1rem; margin: 0 0 0.5rem; }
-    .palette .palette-subtitle { font-size: 0.75rem; color: #888;
-      margin: 0.5rem 0 0.3rem; }
-    .palette-row { display: flex; gap: 0.4rem; align-items: center;
-      margin-bottom: 0.3rem; }
-    .palette-row .palette-idx { flex: 0 0 1rem; font-size: 0.8rem; color: #888;
-      font-variant-numeric: tabular-nums; }
-    .palette-row input[type=color] { width: 2rem; height: 1.6rem; padding: 0;
-      border: none; background: none; }
-    .palette-row .palette-grad { display: flex; align-items: center; }
-    .palette-row .palette-preview { flex: 1; height: 1.4rem; border-radius: 4px;
-      border: 1px solid #333; }
-    .palette-presets { display: flex; flex-direction: column; gap: 0.3rem;
-      margin-bottom: 0.4rem; }
-    .palette-empty { font-size: 0.8rem; color: #888; }
-    .palette-preset { display: flex; gap: 0.4rem; align-items: center;
-      background: #1c1c22; border-radius: 6px; padding: 0.35rem 0.5rem;
-      cursor: pointer; }
-    .palette-preset .palette-strip { display: flex; flex: 0 0 auto;
-      border: 1px solid #333; border-radius: 3px; overflow: hidden; }
-    .palette-preset .palette-cell { width: 0.7rem; height: 1rem; }
-    .palette-preset .palette-name { flex: 1; min-width: 0; font-size: 0.85rem;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .palette-preset button { background: #333; color: #eee; border: none;
-      border-radius: 4px; padding: 0.3rem 0.5rem; cursor: pointer; }
-    .palette-saverow { display: flex; gap: 0.4rem; align-items: center; }
-    .palette-saverow input[type=text] { flex: 1; min-width: 0; font-size: 1rem; }
-    .palette-saverow button { background: #333; color: #eee; border: none;
-      border-radius: 4px; padding: 0.4rem 0.7rem; cursor: pointer; }
-    .dome-simulator { border-top: 1px solid #333; margin-top: 1.5rem;
-      padding-top: 0.5rem; margin-bottom: 1rem; }
-    .dome-simulator h2 { font-size: 1rem; margin: 0 0 0.5rem; }
-    .dome-simulator-toolbar { display: flex; gap: 0.6rem; align-items: center;
-      margin-bottom: 0.5rem; }
-    .dome-simulator-toolbar button { background: #185018; color: #fff;
-      border: none; border-radius: 4px; padding: 0.4rem 0.7rem; cursor: pointer; }
-    .dome-simulator-toolbar button.running { background: #7a1818; }
-    .dome-simulator-state { color: #888; font-size: 0.75rem; }
-    .dome-simulator canvas { display: block; width: 100%; max-width: 620px;
-      aspect-ratio: 1; background: #000; border: 1px solid #333;
-      image-rendering: pixelated; }
-    /* Two-column layout mirroring the native VJ HUD: controls (global speeds,
-       palette, wands) on the left, the performance surface (scenes + layers) on
-       the right. Collapses to a single stacked column on phones. */
-    .columns { display: flex; gap: 1.5rem; align-items: flex-start; }
-    .column-left { flex: 0 0 340px; }
-    .column-right { flex: 1; min-width: 0; }
-    .column > :first-child { margin-top: 0; border-top: none; padding-top: 0; }
-    @media (max-width: 760px) {
-      .columns { flex-direction: column; gap: 0; }
-      /* Flatten the two desktop columns so all sections become flex items of
-         .columns and can be reordered for phones independently of the desktop
-         left/right split. */
-      .column { display: contents; }
-      #params-section { order: 1; }
-      #scenes         { order: 2; }
-      #layers         { order: 3; }
-      #dome-simulator { order: 4; }
-      #palette        { order: 5; }
-      #wands          { order: 6; }
-      /* Dividers follow the visual order: a top border on every section except
-         the first. ID specificity overrides the desktop .column > :first-child
-         reset, which is keyed on DOM order and no longer matches the stack. */
-      #scenes, #layers, #dome-simulator, #palette, #wands {
-        border-top: 1px solid #333;
-        margin-top: 1.5rem; padding-top: 0.5rem; }
-      #params-section { border-top: none; margin-top: 0; padding-top: 0; }
-    }
-    /* The global-speeds list (#params) has no header of its own; wrap it in a
-       labeled section so it collapses like the others. */
-    .params-section { border-top: 1px solid #333; margin-top: 1.5rem;
-      padding-top: 0.5rem; margin-bottom: 1rem; }
-    .params-section h2 { font-size: 1rem; margin: 0 0 0.5rem; }
-    /* Collapsible sections: tap a section's <h2> to fold it away. The toggled
-       class lives on the persistent container (survives each panel's innerHTML
-       rebuild) and the header is caught by delegation, so this holds up across
-       re-renders. See collapsible.js. */
-    .collapsible > h2 { cursor: pointer; user-select: none;
-      -webkit-user-select: none; display: flex; align-items: center;
-      gap: 0.4rem; }
-    .collapsible > h2::before { content: "\25be"; font-size: 0.8em;
-      line-height: 1; opacity: 0.7; transition: transform 0.12s ease; }
-    .collapsible.collapsed > h2::before { transform: rotate(-90deg); }
-    .collapsible.collapsed > :not(h2) { display: none; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#090b10" />
+  <title>Spectrum Operator Console</title>
+  <link rel="stylesheet" href="console.css?v=square-corners" />
 </head>
 <body>
-  <h1>Spectrum &mdash; Controls</h1>
-  <div class="operator" id="operator"></div>
-  <div class="telemetry" id="telemetry"></div>
-  <div class="columns">
-    <div class="column column-left">
-      <div class="params-section collapsible" id="params-section">
-        <h2>Global speeds</h2>
-        <div id="params"></div>
+  <a class="skip-link" href="#main">Skip to controls</a>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">S</span>
+      <div>
+        <h1>Spectrum</h1>
+        <p>Operator console</p>
       </div>
-      <div class="palette collapsible" id="palette"></div>
-      <div class="wands collapsible" id="wands"></div>
     </div>
-    <div class="column column-right">
-      <div class="dome-simulator collapsible" id="dome-simulator">
-        <h2>Dome Simulator</h2>
-        <div class="dome-simulator-toolbar">
-          <button type="button" id="dome-simulator-toggle">Start preview</button>
-          <span class="dome-simulator-state" id="dome-simulator-state">off</span>
-        </div>
-        <canvas id="dome-simulator-canvas" width="420" height="420" hidden></canvas>
+    <div class="header-actions">
+      <span class="connection-badge pending" id="connection" role="status" aria-live="polite">Connecting</span>
+      <a class="header-link" href="/maintenance.html" aria-label="Open maintenance controls"><span>Maintenance</span><b aria-hidden="true">⚙</b></a>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="hero" aria-label="Engine readiness">
+      <div class="operator" id="operator"></div>
+      <div class="telemetry" id="telemetry" aria-label="Live telemetry"></div>
+    </div>
+    <div class="status-message pending" id="status" role="alert" aria-live="assertive">Loading controls…</div>
+
+    <div class="columns">
+      <div class="column column-left">
+        <section class="params-section collapsible" id="params-section" data-default-collapsed-mobile="true">
+          <h2>Global speeds</h2>
+          <div id="params"></div>
+        </section>
+        <section class="palette collapsible" id="palette"></section>
+        <section class="wands collapsible" id="wands"></section>
       </div>
-      <div class="scenes collapsible" id="scenes"></div>
-      <div class="layers collapsible" id="layers"></div>
+      <div class="column column-right">
+        <section class="scenes collapsible" id="scenes"></section>
+        <section class="layers collapsible" id="layers"></section>
+        <section class="dome-simulator collapsible" id="dome-simulator" data-default-collapsed="true">
+          <h2>Dome preview</h2>
+          <div class="dome-simulator-toolbar">
+            <button type="button" id="dome-simulator-toggle">Start preview</button>
+            <span class="dome-simulator-state" id="dome-simulator-state">Off</span>
+          </div>
+          <canvas id="dome-simulator-canvas" width="420" height="420" hidden aria-label="Live dome preview"></canvas>
+        </section>
+      </div>
     </div>
-  </div>
-  <div class="status" id="status">loading&hellip;</div>
-  <p style="font-size:0.75rem"><a href="/maintenance.html">Maintenance &rarr;</a></p>
+  </main>
+
+  <footer class="page-footer">Spectrum live controller · <a href="/maintenance.html">Open maintenance</a></footer>
   <script src="app.js"></script>
   <script src="collapsible.js"></script>
   <script src="layers.js"></script>

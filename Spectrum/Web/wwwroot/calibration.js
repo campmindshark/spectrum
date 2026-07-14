@@ -135,8 +135,8 @@
         g.appendChild(seg);
       });
 
-      // The label is the pick target, drawn as an obvious button (rounded
-      // background + border) centered on the endpoint's centroid.
+      // The label is the pick target, drawn as an obvious square-cornered
+      // button centered on the endpoint's centroid.
       const btn = document.createElementNS(SVG_NS, "g");
       btn.setAttribute("class", "calib-label-btn" + (epPickable ? " pickable" : ""));
       if (epPickable) btn.addEventListener("click", () => pick(ep.endpoint));
@@ -148,7 +148,7 @@
       bg.setAttribute("y", ep.cy - H / 2);
       bg.setAttribute("width", W);
       bg.setAttribute("height", H);
-      bg.setAttribute("rx", 5);
+      bg.setAttribute("rx", 0);
       btn.appendChild(bg);
 
       const text = document.createElementNS(SVG_NS, "text");

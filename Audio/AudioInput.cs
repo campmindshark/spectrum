@@ -15,7 +15,8 @@ namespace Spectrum.Audio {
     private MMDevice recordingDevice;
     private WasapiCapture captureStream;
 
-    public float Volume { get; private set; } = 0.0f;
+    private volatile float volume;
+    public float Volume => this.volume;
 
     private readonly MadmomHandler madmomHandler;
     private readonly ProDjLinkHandler proDjLinkHandler;
@@ -110,7 +111,7 @@ namespace Spectrum.Audio {
         this.recordingDevice = null;
       }
       // Don't leave a stale peak reading behind once capture has stopped.
-      this.Volume = 0.0f;
+      this.volume = 0.0f;
     }
 
     private void Update(object sender, NAudio.Wave.WaveInEventArgs args) {
@@ -120,7 +121,7 @@ namespace Spectrum.Audio {
       if (device == null) {
         return;
       }
-      this.Volume = device.AudioMeterInformation.MasterPeakValue;
+      this.volume = device.AudioMeterInformation.MasterPeakValue;
     }
 
     public void OperatorUpdate() {

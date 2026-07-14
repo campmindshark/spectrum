@@ -128,9 +128,9 @@ namespace Spectrum {
     private const double RateFairFraction = 0.6;
     private const double RatePoorFraction = 0.3;
 
-    private static readonly Brush GoodBrush = Frozen(0xDD, 0xDD, 0xDD);
-    private static readonly Brush FairBrush = Frozen(0xFF, 0xD2, 0x4D);
-    private static readonly Brush PoorBrush = Frozen(0xFF, 0x6B, 0x6B);
+    private static readonly Brush GoodBrush = Frozen(0x16, 0x73, 0x3D);
+    private static readonly Brush FairBrush = Frozen(0x8A, 0x5A, 0x00);
+    private static readonly Brush PoorBrush = Frozen(0xB3, 0x26, 0x1E);
 
     public event PropertyChangedEventHandler PropertyChanged;
 

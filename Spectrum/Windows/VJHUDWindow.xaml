@@ -10,7 +10,11 @@
   Icon="pack://siteoforigin:,,,/Resources/s.PNG"
   Height="850"
   Width="900"
+  MinHeight="600"
+  MinWidth="720"
+  ResizeMode="CanResize"
   WindowState="Maximized"
+  KeyDown="VJHUDKeyDown"
 >
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="boolToVis" />
@@ -19,15 +23,17 @@
     </Window.Resources>
     <Grid Margin="4">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="300" />
+            <ColumnDefinition x:Name="controlRailColumn" Width="280" MinWidth="0" />
+            <ColumnDefinition Width="5" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
         <!-- Left column: Tempo, Globals, live palette, presets, Orientation -->
         <ScrollViewer Grid.Column="0" Margin="0,0,4,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
-                <Label Content="Tempo" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+                <Label Content="Tempo" Margin="4,0,0,4" FontSize="13" FontWeight="SemiBold" />
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
+                        Margin="5,0,5,0" Padding="5">
                     <StackPanel>
                         <DockPanel>
                             <Label Content="BPM:" FontSize="12" FontFamily="Segoe UI Semilight" DockPanel.Dock="Left" Padding="1,5" />
@@ -50,21 +56,22 @@
                     </StackPanel>
                 </Border>
 
-                <Label Content="Globals" Margin="4,8,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+                <Label Content="Global speeds" Margin="4,12,0,4" FontSize="13" FontWeight="SemiBold" />
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
+                        Margin="5,0,5,0" Padding="5">
                     <StackPanel>
                         <DockPanel Margin="0,2,0,0">
-                            <Label Content="Fade" Width="60" Padding="0" VerticalAlignment="Center" />
+                            <Label Content="Fade speed" Width="82" Padding="0" VerticalAlignment="Center" />
                             <Label x:Name="domeGlobalFadeSpeedLabel" DockPanel.Dock="Right" Content="0" Width="34" Padding="0" ContentStringFormat="F3" VerticalAlignment="Center" />
                             <Slider x:Name="domeGlobalFadeSpeedSlider" Value="0" VerticalAlignment="Center" Maximum="3.0" LargeChange="1" SmallChange="0.2" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                         </DockPanel>
                         <DockPanel Margin="0,4,0,0">
-                            <Label Content="Hue" Width="60" Padding="0" VerticalAlignment="Center" />
+                            <Label Content="Hue speed" Width="82" Padding="0" VerticalAlignment="Center" />
                             <Label x:Name="domeGlobalHueSpeedLabel" DockPanel.Dock="Right" Content="0" Width="34" Padding="0" ContentStringFormat="F3" VerticalAlignment="Center" />
                             <Slider x:Name="domeGlobalHueSpeedSlider" Value="1" VerticalAlignment="Center" Minimum="0.0" Maximum="3.0" LargeChange="1" SmallChange="0.2" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                         </DockPanel>
                         <DockPanel Margin="0,4,0,0">
-                            <Label Content="Flash" Width="60" Padding="0" VerticalAlignment="Center" />
+                            <Label Content="Flash rate" Width="82" Padding="0" VerticalAlignment="Center" />
                             <ComboBox x:Name="flashRotationSpeed">
                                 <ComboBoxItem x:Name="frs0" Content="0" IsSelected="True" />
                                 <ComboBoxItem x:Name="frs1" Content="1/2" />
@@ -79,8 +86,9 @@
                     </StackPanel>
                 </Border>
 
-                <Label Content="Live palette" Margin="4,8,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+                <Label Content="Live palette" Margin="4,12,0,4" FontSize="13" FontWeight="SemiBold" />
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
+                        Margin="5,0,5,0" Padding="5">
                     <StackPanel>
                         <!-- Which of the eight palette banks these rows edit; each
                              dome layer picks its bank via its own Palette param. -->
@@ -119,7 +127,7 @@
                             <Label Grid.Column="0" Content="0" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
                             <local:ColorPicker x:Name="livecolor0_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
                             <local:ColorPicker x:Name="livecolor0_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
-                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="{StaticResource BorderBrush}" StrokeThickness="1">
                                 <Rectangle.Fill>
                                     <MultiBinding Converter="{StaticResource gradientPreview}">
                                         <Binding ElementName="livecolor0_0" Path="SelectedColor" />
@@ -138,7 +146,7 @@
                             <Label Grid.Column="0" Content="1" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
                             <local:ColorPicker x:Name="livecolor1_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
                             <local:ColorPicker x:Name="livecolor1_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
-                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="{StaticResource BorderBrush}" StrokeThickness="1">
                                 <Rectangle.Fill>
                                     <MultiBinding Converter="{StaticResource gradientPreview}">
                                         <Binding ElementName="livecolor1_0" Path="SelectedColor" />
@@ -157,7 +165,7 @@
                             <Label Grid.Column="0" Content="2" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
                             <local:ColorPicker x:Name="livecolor2_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
                             <local:ColorPicker x:Name="livecolor2_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
-                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="{StaticResource BorderBrush}" StrokeThickness="1">
                                 <Rectangle.Fill>
                                     <MultiBinding Converter="{StaticResource gradientPreview}">
                                         <Binding ElementName="livecolor2_0" Path="SelectedColor" />
@@ -176,7 +184,7 @@
                             <Label Grid.Column="0" Content="3" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
                             <local:ColorPicker x:Name="livecolor3_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
                             <local:ColorPicker x:Name="livecolor3_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
-                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="{StaticResource BorderBrush}" StrokeThickness="1">
                                 <Rectangle.Fill>
                                     <MultiBinding Converter="{StaticResource gradientPreview}">
                                         <Binding ElementName="livecolor3_0" Path="SelectedColor" />
@@ -195,7 +203,7 @@
                             <Label Grid.Column="0" Content="4" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
                             <local:ColorPicker x:Name="livecolor4_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
                             <local:ColorPicker x:Name="livecolor4_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
-                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="{StaticResource BorderBrush}" StrokeThickness="1">
                                 <Rectangle.Fill>
                                     <MultiBinding Converter="{StaticResource gradientPreview}">
                                         <Binding ElementName="livecolor4_0" Path="SelectedColor" />
@@ -214,7 +222,7 @@
                             <Label Grid.Column="0" Content="5" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
                             <local:ColorPicker x:Name="livecolor5_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
                             <local:ColorPicker x:Name="livecolor5_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
-                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="{StaticResource BorderBrush}" StrokeThickness="1">
                                 <Rectangle.Fill>
                                     <MultiBinding Converter="{StaticResource gradientPreview}">
                                         <Binding ElementName="livecolor5_0" Path="SelectedColor" />
@@ -233,7 +241,7 @@
                             <Label Grid.Column="0" Content="6" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
                             <local:ColorPicker x:Name="livecolor6_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
                             <local:ColorPicker x:Name="livecolor6_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
-                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="{StaticResource BorderBrush}" StrokeThickness="1">
                                 <Rectangle.Fill>
                                     <MultiBinding Converter="{StaticResource gradientPreview}">
                                         <Binding ElementName="livecolor6_0" Path="SelectedColor" />
@@ -252,7 +260,7 @@
                             <Label Grid.Column="0" Content="7" Padding="0" VerticalAlignment="Center" FontFamily="Segoe UI Semilight" />
                             <local:ColorPicker x:Name="livecolor7_0" Grid.Column="1" Width="24" Height="20" HorizontalAlignment="Left" />
                             <local:ColorPicker x:Name="livecolor7_1" Grid.Column="2" Width="24" Height="20" HorizontalAlignment="Left" />
-                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="Gainsboro" StrokeThickness="1">
+                            <Rectangle Grid.Column="3" Height="20" Margin="2,0,0,0" Stroke="{StaticResource BorderBrush}" StrokeThickness="1">
                                 <Rectangle.Fill>
                                     <MultiBinding Converter="{StaticResource gradientPreview}">
                                         <Binding ElementName="livecolor7_0" Path="SelectedColor" />
@@ -264,8 +272,9 @@
                     </StackPanel>
                 </Border>
 
-                <Label Content="Palette presets" Margin="4,8,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+                <Label Content="Palette presets" Margin="4,12,0,4" FontSize="13" FontWeight="SemiBold" />
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
+                        Margin="5,0,5,0" Padding="5">
                     <StackPanel>
                         <ListBox x:Name="palettePresetList" Height="150" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ToolTip="Saved palettes">
                             <ListBox.ItemTemplate>
@@ -279,7 +288,7 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Rectangle Width="10" Height="14" Stroke="Gainsboro" StrokeThickness="0.5" Fill="{Binding Converter={StaticResource ledColorToBrush}}" />
+                                                    <Rectangle Width="10" Height="14" Stroke="{StaticResource BorderBrush}" StrokeThickness="0.5" Fill="{Binding Converter={StaticResource ledColorToBrush}}" />
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
@@ -297,8 +306,9 @@
                     </StackPanel>
                 </Border>
 
-                <Label Content="Orientation controls" Margin="4,8,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-                <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+                <Label Content="Wand controls" Margin="4,12,0,4" FontSize="13" FontWeight="SemiBold" />
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
+                        Margin="5,0,5,0" Padding="5">
                     <StackPanel>
                         <TextBlock x:Name="wandSpotlightSummary" Text="Listening for devices&#8230;" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,4" />
                         <!-- The two spotlight modes (all wands / idle) plus the
@@ -340,10 +350,30 @@
             </StackPanel>
         </ScrollViewer>
 
+        <GridSplitter x:Name="controlRailSplitter" Grid.Column="1" Width="5"
+                      HorizontalAlignment="Stretch" ResizeDirection="Columns"
+                      ResizeBehavior="PreviousAndNext" Background="{StaticResource BorderBrush}" />
+
         <!-- Right column: Scenes bar + layer stack -->
-        <DockPanel Grid.Column="1" Margin="4,0,0,0">
-            <Label DockPanel.Dock="Top" Content="Scenes" Margin="4,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
-            <Border DockPanel.Dock="Top" BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+        <DockPanel Grid.Column="2" Margin="4,0,0,0">
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="5,0,0,6">
+                <Button x:Name="toggleControlRailButton"
+                        Content="Hide setup controls" HorizontalAlignment="Left"
+                        Style="{StaticResource SubtleButton}"
+                        Click="ToggleControlRail" />
+                <Button Content="Shortcuts" HorizontalAlignment="Left"
+                        Style="{StaticResource SubtleButton}" Margin="6,0,0,0"
+                        Click="ToggleShortcutReference" />
+            </StackPanel>
+            <Border x:Name="shortcutReference" DockPanel.Dock="Top"
+                    Style="{StaticResource SectionCard}" Margin="5,0,5,8"
+                    Visibility="Collapsed">
+                <TextBlock Text="T  Tap tempo     C  Clear tempo     A  Add layer     F1  Show/hide shortcuts"
+                           TextWrapping="Wrap" Style="{StaticResource CaptionText}" />
+            </Border>
+            <Label DockPanel.Dock="Top" Content="Scenes" Margin="4,0,0,4" FontSize="13" FontWeight="SemiBold" />
+            <Border DockPanel.Dock="Top" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
+                    Margin="5,0,5,0" Padding="5">
                 <DockPanel LastChildFill="True">
                     <Button x:Name="domeSceneDeleteButton" DockPanel.Dock="Right" Content="Delete" Width="52" ToolTip="Delete selected scene" />
                     <Button x:Name="domeSceneSaveButton" DockPanel.Dock="Right" Content="Save" Width="44" Margin="4,0,4,0" ToolTip="Save current look under this name" />
@@ -353,26 +383,42 @@
                 </DockPanel>
             </Border>
 
-            <Label DockPanel.Dock="Top" Content="Layers (top = front)" Margin="4,8,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
+            <Label DockPanel.Dock="Top" Content="Layers (top = front)" Margin="4,12,0,4" FontSize="13" FontWeight="SemiBold" />
             <Button DockPanel.Dock="Bottom" x:Name="domeAddLayerButton" Content="Add layer" HorizontalAlignment="Left" Width="90" Margin="5,4,0,0" />
-            <Border BorderBrush="Gainsboro" BorderThickness="1" CornerRadius="3" Margin="5,0,5,0" Padding="5">
+            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
+                    Margin="5,0,5,0" Padding="5">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <ItemsControl x:Name="domeLayersItemsControl">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="2" Margin="0,1,0,1" Padding="4">
+                                <Border CornerRadius="0" Margin="0,2,0,2" Padding="5">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+                                            <Setter Property="BorderThickness" Value="1" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding LayerEnabled}" Value="True">
+                                                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                                    <Setter Property="BorderThickness" Value="2" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <StackPanel>
                                         <DockPanel LastChildFill="True">
-                                            <Button DockPanel.Dock="Right" Content="✕" Command="{Binding RemoveCommand}" Width="20" ToolTip="Remove layer" />
-                                            <CheckBox DockPanel.Dock="Right" IsChecked="{Binding LayerEnabled}" VerticalAlignment="Center" Margin="0,0,4,0" ToolTip="Enabled" />
+                                            <Button DockPanel.Dock="Right" Content="Remove" Command="{Binding RemoveCommand}" MinWidth="58" ToolTip="Remove layer" />
+                                            <CheckBox DockPanel.Dock="Right" Content="On" IsChecked="{Binding LayerEnabled}" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Enable this layer" />
                                             <ComboBox ItemsSource="{Binding VisualizerOptions}" SelectedValuePath="Key" DisplayMemberPath="Label" SelectedValue="{Binding VisualizerKey}" />
                                         </DockPanel>
                                         <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,0,0" FontSize="10" ToolTip="Notes to yourself about this layer" />
                                         <DockPanel LastChildFill="True" Margin="0,2,0,0">
-                                            <Button DockPanel.Dock="Right" Content="🧹" Command="{Binding ClearCommand}" Width="20" ToolTip="Clear (drop this layer's live particles)" />
-                                            <Button DockPanel.Dock="Right" Content="🔥" Command="{Binding FireCommand}" Width="20" ToolTip="Fire (manual trigger)" />
-                                            <Button DockPanel.Dock="Right" Content="▼" Command="{Binding MoveDownCommand}" Width="20" ToolTip="Move back" />
-                                            <Button DockPanel.Dock="Right" Content="▲" Command="{Binding MoveUpCommand}" Width="20" ToolTip="Move front" />
+                                            <Button DockPanel.Dock="Right" Content="Clear" Command="{Binding ClearCommand}" MinWidth="50" ToolTip="Clear this layer's live particles" />
+                                            <Button DockPanel.Dock="Right" Content="Fire" Command="{Binding FireCommand}" MinWidth="46" ToolTip="Fire manual trigger" />
+                                            <Button DockPanel.Dock="Right" Content="Back" Command="{Binding MoveDownCommand}" MinWidth="46" ToolTip="Move toward back" />
+                                            <Button DockPanel.Dock="Right" Content="Front" Command="{Binding MoveUpCommand}" MinWidth="48" ToolTip="Move toward front" />
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Opacity, StringFormat={}{0:P0}}"
+                                                       MinWidth="38" Margin="5,0" VerticalAlignment="Center"
+                                                       HorizontalAlignment="Right" FontFamily="Cascadia Mono, Consolas" />
                                             <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding BlendModes}" DisplayMemberPath="Label" SelectedValuePath="Id" SelectedValue="{Binding BlendMode}" Width="96" ToolTip="Blend mode" />
                                             <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}" VerticalAlignment="Center" Margin="4,0,4,0" ToolTip="Opacity" />
                                         </DockPanel>
@@ -383,12 +429,16 @@
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="140" />
                                                             <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="48" />
                                                         </Grid.ColumnDefinitions>
                                                         <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                                         <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}" VerticalAlignment="Center" Visibility="{Binding IsDouble, Converter={StaticResource boolToVis}}" />
-                                                        <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}" VerticalAlignment="Center" HorizontalAlignment="Left" Visibility="{Binding IsBool, Converter={StaticResource boolToVis}}" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding Value, StringFormat={}{0:F2}}" VerticalAlignment="Center"
+                                                                   HorizontalAlignment="Right" FontFamily="Cascadia Mono, Consolas"
+                                                                   Visibility="{Binding IsDouble, Converter={StaticResource boolToVis}}" />
+                                                        <CheckBox Grid.Column="1" Content="On" IsChecked="{Binding BoolValue}" VerticalAlignment="Center" HorizontalAlignment="Left" Visibility="{Binding IsBool, Converter={StaticResource boolToVis}}" />
                                                         <ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedIndex="{Binding IntValue}" Visibility="{Binding IsEnum, Converter={StaticResource boolToVis}}" />
-                                                        <local:ColorPicker Grid.Column="1" SelectedColor="{Binding ColorValue}" HorizontalAlignment="Left" Width="24" Height="18" Visibility="{Binding IsColor, Converter={StaticResource boolToVis}}" />
+                                                        <local:ColorPicker Grid.Column="1" SelectedColor="{Binding ColorValue}" HorizontalAlignment="Left" Width="34" Height="30" Visibility="{Binding IsColor, Converter={StaticResource boolToVis}}" />
                                                     </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>

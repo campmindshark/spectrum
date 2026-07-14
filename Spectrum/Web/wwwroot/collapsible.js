@@ -1,55 +1,107 @@
-// Makes the labeled sections on the web surfaces collapsible so the control
-// stack fits a phone screen — tap a section's <h2> header to fold it away.
-//
-// A collapsible section is a persistent container div carrying the `collapsible`
-// class whose first child is its <h2> header. Clicking the header toggles a
-// `collapsed` class on the container; the rest is CSS (hide every child except
-// the header, rotate the chevron). Two properties make this robust:
-//   - The class lives on the container, which each section's renderer keeps
-//     across its innerHTML rebuilds (only the inner content is replaced), so the
-//     collapsed state survives live updates.
-//   - The click is caught by delegation on document, so a header recreated by a
-//     re-render is still wired up without re-binding anything.
-// Collapsed state is remembered per section id in localStorage so a phone keeps
-// your choices across reloads (and across the user/maintenance pages, same
-// origin).
-
+// Accessible, persistent disclosure sections. Renderers may replace a panel's
+// children at any time; the observer re-establishes the button/content
+// structure after each render without requiring every feature module to know
+// about disclosure behavior.
 (function () {
-  const KEY = "spectrum.collapsed";
+  const KEY = "spectrum.section-state.v2";
 
-  function loadSet() {
+  function loadState() {
     try {
-      return new Set(JSON.parse(localStorage.getItem(KEY) || "[]"));
+      const parsed = JSON.parse(localStorage.getItem(KEY) || "{}");
+      return parsed && !Array.isArray(parsed) ? parsed : {};
     } catch (_) {
-      return new Set();
+      return {};
     }
   }
-  function saveSet(set) {
+
+  const state = loadState();
+
+  function saveState() {
     try {
-      localStorage.setItem(KEY, JSON.stringify([...set]));
-    } catch (_) { /* private mode / quota — collapsing still works this session */ }
+      localStorage.setItem(KEY, JSON.stringify(state));
+    } catch (_) { /* Disclosure still works when storage is unavailable. */ }
   }
 
-  const collapsed = loadSet();
+  function contentId(section) {
+    return `${section.id || "spectrum-section"}-content`;
+  }
 
-  // Restore remembered state. The containers are static markup, so they exist
-  // now even though each section fills in its content asynchronously; applying
-  // `collapsed` up front means the content renders already folded.
-  document.querySelectorAll(".collapsible").forEach((el) => {
-    if (el.id && collapsed.has(el.id)) el.classList.add("collapsed");
-  });
+  function sync(section, button) {
+    const collapsed = section.classList.contains("collapsed");
+    button.setAttribute("aria-expanded", String(!collapsed));
+  }
 
-  document.addEventListener("click", (e) => {
-    const h2 = e.target.closest("h2");
-    if (!h2) return;
-    const section = h2.parentElement;
-    if (!section || !section.classList.contains("collapsible")) return;
-    if (section.firstElementChild !== h2) return; // only the header toggles
-    const nowCollapsed = section.classList.toggle("collapsed");
-    if (section.id) {
-      if (nowCollapsed) collapsed.add(section.id);
-      else collapsed.delete(section.id);
-      saveSet(collapsed);
+  function enhance(section) {
+    if (!section.classList.contains("collapsible")) return;
+    const heading = section.firstElementChild;
+    if (!heading || heading.tagName !== "H2") return;
+
+    let button = heading.querySelector(":scope > .section-toggle");
+    if (!button) {
+      const title = heading.textContent.trim() || "Section";
+      heading.textContent = "";
+      button = document.createElement("button");
+      button.type = "button";
+      button.className = "section-toggle";
+      button.textContent = title;
+      heading.appendChild(button);
     }
-  });
+
+    let content = section.querySelector(":scope > .collapsible-content");
+    if (!content) {
+      content = document.createElement("div");
+      content.className = "collapsible-content";
+      content.id = contentId(section);
+      const children = Array.from(section.children).filter((el) => el !== heading);
+      children.forEach((el) => content.appendChild(el));
+      section.appendChild(content);
+    }
+
+    button.setAttribute("aria-controls", content.id);
+    if (!button.dataset.disclosureBound) {
+      button.dataset.disclosureBound = "true";
+      const toggle = () => {
+        const collapsed = section.classList.toggle("collapsed");
+        if (section.id) {
+          state[section.id] = collapsed;
+          saveState();
+        }
+        sync(section, button);
+      };
+      button.addEventListener("click", toggle);
+      // Buttons provide this natively, but an explicit path keeps the control
+      // reliable in embedded browsers and remote-control webviews too.
+      button.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        toggle();
+      });
+    }
+
+    if (!section.dataset.disclosureRestored) {
+      section.dataset.disclosureRestored = "true";
+      const remembered = section.id &&
+        Object.prototype.hasOwnProperty.call(state, section.id)
+        ? state[section.id]
+        : section.dataset.defaultCollapsed === "true" ||
+          (section.dataset.defaultCollapsedMobile === "true" &&
+           window.matchMedia("(max-width: 760px)").matches);
+      section.classList.toggle("collapsed", Boolean(remembered));
+    }
+    sync(section, button);
+  }
+
+  function enhanceAll(root) {
+    if (root.nodeType !== Node.ELEMENT_NODE && root !== document) return;
+    if (root.matches && root.matches(".collapsible")) enhance(root);
+    root.querySelectorAll?.(".collapsible").forEach(enhance);
+  }
+
+  enhanceAll(document);
+  new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      enhance(mutation.target.closest?.(".collapsible") || mutation.target);
+      mutation.addedNodes.forEach(enhanceAll);
+    });
+  }).observe(document.body, { childList: true, subtree: true });
 })();

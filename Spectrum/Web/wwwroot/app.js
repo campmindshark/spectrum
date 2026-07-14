@@ -17,13 +17,42 @@
   const holderName = "web-" + Math.random().toString(36).slice(2, 7);
 
   const statusEl = document.getElementById("status");
-  function setStatus(msg, isError) {
+  const connectionEl = document.getElementById("connection");
+  function setStatus(msg, isError, isPending) {
+    if (!statusEl) return;
     statusEl.textContent = msg;
-    statusEl.style.color = isError ? "#e66" : "#6c6";
+    statusEl.className = "status-message " +
+      (isError ? "error" : isPending ? "pending" : "success");
+  }
+
+  function setConnection(label, state) {
+    if (!connectionEl) return;
+    connectionEl.textContent = label;
+    connectionEl.className = `connection-badge ${state}`;
   }
 
   function fmt(v) {
     return typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(3)) : v;
+  }
+
+  function humanize(key) {
+    return String(key || "Control")
+      .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+      .replace(/[_-]+/g, " ")
+      .replace(/^./, (s) => s.toUpperCase());
+  }
+
+  function formatValue(p, value) {
+    if (p.unit === "%" && typeof value === "number") {
+      return `${Math.round(value * 100)}%`;
+    }
+    return `${fmt(value)}${p.unit ? ` ${p.unit}` : ""}`;
+  }
+
+  function setControlState(el, state, message) {
+    if (!el) return;
+    el.className = `control-state ${state || ""}`.trim();
+    el.textContent = message || "";
   }
 
   // ---- Advisory locks (maintenance only; exposed for calibration.js) --------
@@ -146,11 +175,20 @@
   // Writes value to key. If lockResource is set (a modal parameter), acquire the
   // lease first and stamp the token on the request; abort if the lease can't be
   // had (someone else holds it).
-  async function putValue(key, value, lockResource) {
+  async function putValue(
+    key, value, lockResource, feedbackEl, control, displayLabel
+  ) {
     const headers = { "Content-Type": "application/json" };
+    const name = displayLabel || humanize(key);
+    setControlState(feedbackEl, "pending", "Applying…");
+    if (control) control.disabled = true;
     if (lockResource) {
       const token = await ensureLock(lockResource);
-      if (!token) return null;
+      if (!token) {
+        setControlState(feedbackEl, "error", "Could not acquire the required lock. Try again.");
+        if (control) control.disabled = false;
+        return null;
+      }
       headers["X-Spectrum-Lock-Token"] = token;
     }
     try {
@@ -161,24 +199,32 @@
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setStatus(`${key}: ${body.error || res.status}`, true);
+        const detail = body.error || `request failed (${res.status})`;
+        setStatus(`${name}: ${detail}. Retry the control.`, true);
+        setControlState(feedbackEl, "error", `${detail}. Retry.`);
         return null;
       }
       const body = await res.json();
-      setStatus(`${key} = ${fmt(body.value)}`);
+      setStatus(`${name} applied.`);
+      setControlState(feedbackEl, "success", "Applied");
       return body.value;
     } catch (e) {
-      setStatus(`${key}: ${e}`, true);
+      setStatus(`${name}: connection failed. Retry the control.`, true);
+      setControlState(feedbackEl, "error", "Connection failed. Retry.");
       return null;
+    } finally {
+      if (control) control.disabled = false;
     }
   }
 
   function renderParam(p, labelText) {
     const wrap = document.createElement("div");
     wrap.className = "param";
+    wrap.title = `Configuration key: ${p.key}`;
 
     const label = document.createElement("label");
-    label.textContent = labelText || p.key;
+    const displayLabel = labelText || p.label || humanize(p.key);
+    label.textContent = displayLabel;
     if (p.lock) {
       const tag = document.createElement("span");
       tag.className = "lock-tag";
@@ -191,27 +237,53 @@
     label.appendChild(valSpan);
     wrap.appendChild(label);
 
+    if (p.description) {
+      const description = document.createElement("p");
+      description.className = "param-description";
+      description.textContent = p.description;
+      wrap.appendChild(description);
+    }
+
+    const feedback = document.createElement("div");
+    feedback.className = "control-state";
+    feedback.setAttribute("aria-live", "polite");
+
+    const inputId = `control-${p.key.replace(/[^a-z0-9_-]/gi, "-")}`;
+
     if (p.type === "double" || p.type === "int") {
       const input = document.createElement("input");
       input.type = "range";
+      input.id = inputId;
+      label.htmlFor = inputId;
       input.min = p.min;
       input.max = p.max;
       input.step = p.type === "int" ? 1 : (p.max - p.min) / 1000 || 0.001;
       input.value = p.value;
-      valSpan.textContent = fmt(p.value);
+      input.dataset.appliedValue = String(p.value);
+      valSpan.textContent = formatValue(p, p.value);
       input.addEventListener("input", () => {
-        valSpan.textContent = fmt(parseFloat(input.value));
+        valSpan.textContent = formatValue(p, parseFloat(input.value));
       });
       input.addEventListener("change", async () => {
         const num = p.type === "int" ? parseInt(input.value, 10) : parseFloat(input.value);
-        const applied = await putValue(p.key, num, p.lock);
-        if (applied != null) { input.value = applied; valSpan.textContent = fmt(applied); }
+        const applied = await putValue(
+          p.key, num, p.lock, feedback, input, displayLabel);
+        if (applied != null) {
+          input.value = applied;
+          input.dataset.appliedValue = String(applied);
+          valSpan.textContent = formatValue(p, applied);
+        } else {
+          input.value = input.dataset.appliedValue;
+          valSpan.textContent = formatValue(
+            p, parseFloat(input.dataset.appliedValue));
+        }
       });
       // Push from another client: move the slider unless the user is actively
       // dragging this one (don't yank the thumb out from under them).
       controlSetters[p.key] = (v) => {
         if (document.activeElement !== input) {
-          input.value = v; valSpan.textContent = fmt(v);
+          input.value = v; valSpan.textContent = formatValue(p, v);
+          input.dataset.appliedValue = String(v);
         }
       };
       wrap.appendChild(input);
@@ -219,35 +291,65 @@
       valSpan.remove();
       const input = document.createElement("input");
       input.type = "checkbox";
+      input.id = inputId;
+      label.htmlFor = inputId;
       input.checked = p.value;
-      input.addEventListener("change", () => putValue(p.key, input.checked, p.lock));
+      input.addEventListener("change", async () => {
+        const requested = input.checked;
+        const applied = await putValue(
+          p.key, requested, p.lock, feedback, input, displayLabel);
+        if (applied == null) input.checked = !requested;
+        else input.checked = Boolean(applied);
+      });
       controlSetters[p.key] = (v) => { input.checked = v; };
       label.insertBefore(input, label.firstChild);
-      input.style.marginRight = "0.5rem";
     } else if (p.type === "enum") {
       valSpan.remove();
       const select = document.createElement("select");
+      select.id = inputId;
+      label.htmlFor = inputId;
       (p.options || []).forEach((opt, i) => {
         const o = document.createElement("option");
         o.value = i; o.textContent = opt;
         if (i === p.value) o.selected = true;
         select.appendChild(o);
       });
-      select.addEventListener("change", () => putValue(p.key, parseInt(select.value, 10), p.lock));
-      controlSetters[p.key] = (v) => { select.value = v; };
+      select.dataset.appliedValue = String(p.value);
+      select.addEventListener("change", async () => {
+        const previous = select.dataset.appliedValue;
+        const applied = await putValue(
+          p.key, parseInt(select.value, 10), p.lock,
+          feedback, select, displayLabel);
+        select.value = applied == null ? previous : applied;
+        if (applied != null) select.dataset.appliedValue = String(applied);
+      });
+      controlSetters[p.key] = (v) => {
+        select.value = v;
+        select.dataset.appliedValue = String(v);
+      };
       wrap.appendChild(select);
     } else { // string
       valSpan.remove();
       const input = document.createElement("input");
       input.type = "text";
+      input.id = inputId;
+      label.htmlFor = inputId;
       input.value = p.value || "";
-      input.style.width = "100%";
-      input.addEventListener("change", () => putValue(p.key, input.value, p.lock));
+      input.dataset.appliedValue = input.value;
+      input.addEventListener("change", async () => {
+        const previous = input.dataset.appliedValue;
+        const applied = await putValue(
+          p.key, input.value, p.lock, feedback, input, displayLabel);
+        input.value = applied == null ? previous : applied;
+        if (applied != null) input.dataset.appliedValue = String(applied);
+      });
       controlSetters[p.key] = (v) => {
         if (document.activeElement !== input) input.value = v;
+        input.dataset.appliedValue = String(v ?? "");
       };
       wrap.appendChild(input);
     }
+    wrap.appendChild(feedback);
     return wrap;
   }
 
@@ -271,13 +373,24 @@
   const CURATED_SECTIONS = [
     { id: "brightness", title: "Brightness", controls: [
       { key: "domeBrightness", label: "Brightness" },
-      { key: "domeMaxBrightness", label: "Max brightness" },
+      { key: "domeMaxBrightness", label: "Maximum brightness" },
     ] },
     { id: "tempo", title: "BPM source", controls: [
-      { key: "beatInput", label: "Source" },
+      { key: "beatInput", label: "Tempo source" },
     ], extra: appendTapTempo },
     { id: "testpatterns", title: "Test patterns", controls: [
-      { key: "domeTestPattern", label: "Dome" },
+      { key: "domeTestPattern", label: "Dome test pattern" },
+    ] },
+    { id: "devices", title: "Devices and windows", controls: [
+      { key: "domeEnabled" },
+      { key: "midiInputEnabled" },
+      { key: "vjHUDEnabled" },
+      { key: "domeSimulationEnabled" },
+      { key: "domeBeagleboneOPCAddress" },
+    ] },
+    { id: "advanced", title: "Advanced", controls: [
+      { key: "midiInputInSeparateThread" },
+      { key: "domeOutputInSeparateThread" },
     ] },
   ];
 
@@ -289,7 +402,11 @@
       if (!el) return;
       el.innerHTML = "";
       const present = section.controls.filter((c) => byKey[c.key]);
-      if (present.length === 0) return;
+      if (present.length === 0) {
+        el.hidden = true;
+        return;
+      }
+      el.hidden = false;
       const h = document.createElement("h2");
       h.textContent = section.title;
       el.appendChild(h);
@@ -399,32 +516,43 @@
         if (operatorEnabled == null) return;
         const target = !operatorEnabled;
         operatorBtn.disabled = true;
+        operatorBtn.className = "pending";
+        operatorBtn.textContent = target ? "Starting engine" : "Stopping engine";
+        operatorBtn.setAttribute("aria-busy", "true");
+        setStatus(target ? "Starting engine…" : "Stopping engine…", false, true);
         try {
           const res = await fetch("/api/operator", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ enabled: target }),
           });
-          if (!res.ok) { setStatus(`operator: ${res.status}`, true); return; }
+          if (!res.ok) {
+            setStatus(`Engine action failed (${res.status}). Press the engine control to retry.`, true);
+            return;
+          }
           const body = await res.json();
           applyOperator(body.enabled); // SSE confirms too; this is immediate
+          setStatus(body.enabled ? "Engine started." : "Engine stopped.");
         } catch (e) {
-          setStatus(`operator: ${e}`, true);
+          setStatus("Engine action could not reach Spectrum. Press the engine control to retry.", true);
         } finally {
+          operatorBtn.removeAttribute("aria-busy");
           operatorBtn.disabled = false;
+          renderOperator();
         }
       });
       operatorEl.appendChild(operatorBtn);
     }
     if (operatorEnabled == null) {
-      operatorBtn.textContent = "…";
-      operatorBtn.className = "";
+      operatorBtn.textContent = "Loading engine state";
+      operatorBtn.className = "pending";
       operatorBtn.disabled = true;
       return;
     }
     operatorBtn.disabled = false;
-    operatorBtn.textContent = operatorEnabled ? "Stop" : "Start";
+    operatorBtn.textContent = operatorEnabled ? "Stop engine" : "Start engine";
     operatorBtn.className = operatorEnabled ? "running" : "stopped";
+    operatorBtn.setAttribute("aria-pressed", String(operatorEnabled));
   }
 
   function applyOperator(enabled) {
@@ -437,8 +565,9 @@
   const telemetryEl = document.getElementById("telemetry");
   const telemetryRows = {};
   const TELEMETRY_LABELS = {
-    operatorFPS: "Engine FPS", domeOPCFPS: "Dome OPC",
-    bpm: "BPM",
+    operatorFPS: { label: "Engine", unit: "FPS" },
+    domeOPCFPS: { label: "Dome output", unit: "FPS" },
+    bpm: { label: "Tempo", unit: "BPM" },
   };
   function applyTelemetry(key, value) {
     if (!telemetryEl) return;
@@ -446,10 +575,21 @@
     if (!row) {
       row = document.createElement("span");
       row.className = "telemetry-item";
+      const label = document.createElement("span");
+      label.className = "telemetry-label";
+      const number = document.createElement("span");
+      number.className = "telemetry-value";
+      row.appendChild(label);
+      row.appendChild(number);
       telemetryEl.appendChild(row);
       telemetryRows[key] = row;
     }
-    row.textContent = `${TELEMETRY_LABELS[key] || key}: ${value}`;
+    const meta = TELEMETRY_LABELS[key] || { label: humanize(key), unit: "" };
+    row.querySelector(".telemetry-label").textContent = meta.label;
+    const raw = String(value ?? "—");
+    const alreadyHasUnit = meta.unit && raw.toUpperCase().includes(meta.unit);
+    row.querySelector(".telemetry-value").textContent =
+      `${raw}${meta.unit && !alreadyHasUnit ? ` ${meta.unit}` : ""}`;
   }
 
   // ---- Change feed ----------------------------------------------------------
@@ -479,8 +619,13 @@
         }
       } catch (_) { /* ignore malformed frames */ }
     };
-    eventSource.onerror = () => setStatus("live connection lost, retrying…", true);
-    eventSource.onopen = () => setStatus("live");
+    eventSource.onerror = () => setConnection("Reconnecting", "error");
+    eventSource.onopen = () => {
+      setConnection("Live", "live");
+      if (statusEl && statusEl.classList.contains("pending")) {
+        setStatus("Controls are live.");
+      }
+    };
   }
 
   async function load() {
@@ -496,9 +641,9 @@
       if (container) {
         container.innerHTML = "";
         params.forEach((p) => container.appendChild(renderParam(p)));
-        setStatus(`${params.length} controls loaded`);
+        setStatus(`${params.length} controls loaded.`, false, true);
       } else {
-        setStatus("live");
+        setStatus("Maintenance controls loaded.", false, true);
       }
       renderCuratedSections(params);
       openEventStream();

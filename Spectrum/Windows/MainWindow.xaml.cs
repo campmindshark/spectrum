@@ -14,12 +14,23 @@ using Spectrum.Base;
 using System.ComponentModel;
 using System.Reflection;
 using System.Diagnostics;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 
 namespace Spectrum {
 
   using Timer = System.Windows.Forms.Timer;
 
   public partial class MainWindow : Window {
+
+    private sealed class WindowPlacementState {
+      public double Left { get; set; }
+      public double Top { get; set; }
+      public double Width { get; set; }
+      public double Height { get; set; }
+      public bool Maximized { get; set; }
+    }
 
     // One entry in the wand receiver-port combo. The display string is kept
     // separate from the value so picking an item shown as "COM7 (missing)" or
@@ -95,13 +106,18 @@ namespace Spectrum {
     private Web.WebServer webServer = null;
     private Web.ConfigEventStream webEventStream = null;
     private const int WebServerPort = 8080;
+    private const string WindowPlacementPath = "spectrum_window_state.json";
+    private string webServerError = null;
+    private System.Windows.Threading.DispatcherTimer readinessTimer;
 
     public MainWindow() {
       this.InitializeComponent();
+      this.RestoreWindowPlacement();
 
       this.LoadConfig();
       this.config.PropertyChanged += ConfigUpdated;
       this.StartWebServer();
+      this.InitializeReadinessDashboard();
     }
 
     private void StartWebServer() {
@@ -159,7 +175,16 @@ namespace Spectrum {
         controls, this.webEventStream, locks, calibration, wands,
         operatorControl, tempo, layers, scenes, palettes, domeSimulator,
         WebServerPort);
-      this.webServer.Start();
+      try {
+        this.webServer.Start();
+        this.webServerError = null;
+      } catch (Exception e) {
+        this.webServerError = e.Message;
+        Debug.WriteLine("Web controller failed to start: " + e);
+        this.webEventStream?.Dispose();
+        this.webEventStream = null;
+        this.webServer = null;
+      }
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
@@ -176,18 +201,91 @@ namespace Spectrum {
         this.Dispatcher.BeginInvoke(
           new Action(this.RepopulateWandSerialPorts));
       }
+      if (e.PropertyName == nameof(this.config.domeBeagleboneOPCAddress)) {
+        this.Dispatcher.BeginInvoke(new Action(() => {
+          if (!this.domeBeagleboneOPCHostAndPort.IsKeyboardFocusWithin &&
+              this.domeBeagleboneOPCHostAndPort.Text !=
+                this.config.domeBeagleboneOPCAddress) {
+            this.domeBeagleboneOPCHostAndPort.Text =
+              this.config.domeBeagleboneOPCAddress ?? "";
+          }
+        }));
+      }
+      this.Dispatcher.BeginInvoke(new Action(this.UpdateReadinessDashboard));
       if (!configPropertiesIgnored.Contains(e.PropertyName)) {
         this.EventuallySaveConfig();
       }
     }
 
     private void HandleClose(object sender, EventArgs e) {
+      this.op.EnabledChanged -= this.OperatorEnabledChanged;
       this.op.Enabled = false;
+      this.readinessTimer?.Stop();
+      this.wandReceiverStatusTimer?.Stop();
       // Fire-and-forget: Kestrel shuts down on background threads, and the
       // process is exiting anyway, so don't block the UI thread waiting on it.
       this.webServer?.StopAsync();
       this.webEventStream?.Dispose();
+      this.SaveWindowPlacement();
       this.SaveConfig();
+    }
+
+    private void RestoreWindowPlacement() {
+      try {
+        if (!File.Exists(WindowPlacementPath)) {
+          return;
+        }
+        var state = System.Text.Json.JsonSerializer.Deserialize<WindowPlacementState>(
+          File.ReadAllText(WindowPlacementPath));
+        if (state == null || state.Width < this.MinWidth ||
+            state.Height < this.MinHeight) {
+          return;
+        }
+        // Ignore a saved window that no longer intersects the virtual desktop
+        // (for example after disconnecting a show laptop's external monitor).
+        var saved = new Rect(state.Left, state.Top, state.Width, state.Height);
+        var desktop = new Rect(
+          SystemParameters.VirtualScreenLeft,
+          SystemParameters.VirtualScreenTop,
+          SystemParameters.VirtualScreenWidth,
+          SystemParameters.VirtualScreenHeight);
+        if (!saved.IntersectsWith(desktop)) {
+          return;
+        }
+        this.WindowStartupLocation = WindowStartupLocation.Manual;
+        this.Left = state.Left;
+        this.Top = state.Top;
+        this.Width = state.Width;
+        this.Height = state.Height;
+        if (state.Maximized) {
+          this.WindowState = WindowState.Maximized;
+        }
+      } catch (Exception e) {
+        Debug.WriteLine("Could not restore window placement: " + e.Message);
+      }
+    }
+
+    private void SaveWindowPlacement() {
+      try {
+        Rect bounds = this.WindowState == WindowState.Normal
+          ? new Rect(this.Left, this.Top, this.Width, this.Height)
+          : this.RestoreBounds;
+        var state = new WindowPlacementState {
+          Left = bounds.Left,
+          Top = bounds.Top,
+          Width = bounds.Width,
+          Height = bounds.Height,
+          Maximized = this.WindowState == WindowState.Maximized,
+        };
+        File.WriteAllText(
+          WindowPlacementPath,
+          System.Text.Json.JsonSerializer.Serialize(
+            state, new System.Text.Json.JsonSerializerOptions {
+            WriteIndented = true,
+          }));
+      } catch (Exception e) {
+        Debug.WriteLine("Could not save window placement: " + e.Message);
+      }
     }
 
     private void SaveConfig() {
@@ -281,17 +379,19 @@ namespace Spectrum {
       // RuntimeTelemetry (WPF marshals its background-thread notifications).
       this.Bind(nameof(this.op.Telemetry.OperatorFPS), this.operatorFPSLabel, Label.ContentProperty, BindingMode.OneWay, null, this.op.Telemetry);
       this.Bind(nameof(this.op.Telemetry.OperatorFPS), this.operatorFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter(), this.op.Telemetry);
-      this.Bind(nameof(this.config.domeBeagleboneOPCAddress), this.domeBeagleboneOPCHostAndPort, TextBox.TextProperty);
-      this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.domeBeagleboneOPCFPSLabel, Label.ContentProperty, BindingMode.OneWay, null, this.op.Telemetry);
-      this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.domeBeagleboneOPCFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter(), this.op.Telemetry);
-      this.Bind(nameof(this.config.domeOutputInSeparateThread), this.domeBeagleboneOPCFPSLabel, Label.VisibilityProperty, BindingMode.OneWay, new BooleanToVisibilityConverter());
-      this.Bind(nameof(this.config.domeOutputInSeparateThread), this.domeBeagleboneOPCHostAndPort, ComboBox.WidthProperty, BindingMode.OneWay, new SpecificValuesConverter<bool, int>(new Dictionary<bool, int> { [false] = 140, [true] = 115 }));
+      this.domeBeagleboneOPCHostAndPort.Text =
+        this.config.domeBeagleboneOPCAddress ?? "";
+      this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.domeBeagleboneOPCFPSLabel, TextBlock.TextProperty, BindingMode.OneWay, null, this.op.Telemetry);
+      this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.domeBeagleboneOPCFPSLabel, TextBlock.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter(), this.op.Telemetry);
+      this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.homeDomeFPSLabel, TextBlock.TextProperty, BindingMode.OneWay, null, this.op.Telemetry);
       this.Bind(nameof(this.config.domeEnabled), this.domeEnabled, CheckBox.IsCheckedProperty);
       this.Bind(nameof(this.config.domeSimulationEnabled), this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
       this.Bind(nameof(this.config.domeMaxBrightness), this.domeMaxBrightnessSlider, Slider.ValueProperty);
-      this.Bind(nameof(this.config.domeMaxBrightness), this.domeMaxBrightnessLabel, Label.ContentProperty);
+      this.Bind(nameof(this.config.domeMaxBrightness), this.domeMaxBrightnessLabel, Label.ContentProperty,
+        BindingMode.OneWay, new NormalizedPercentConverter());
       this.Bind(nameof(this.config.domeBrightness), this.domeBrightnessSlider, Slider.ValueProperty);
-      this.Bind(nameof(this.config.domeBrightness), this.domeBrightnessLabel, Label.ContentProperty);
+      this.Bind(nameof(this.config.domeBrightness), this.domeBrightnessLabel, Label.ContentProperty,
+        BindingMode.OneWay, new NormalizedPercentConverter());
       this.Bind(nameof(this.config.vjHUDEnabled), this.vjHUDEnabled, CheckBox.IsCheckedProperty);
 
       this.InitWandSerialUI();
@@ -316,6 +416,249 @@ namespace Spectrum {
       element.SetBinding(property, binding);
     }
 
+    private void InitializeReadinessDashboard() {
+      string host = null;
+      try {
+        host = Dns.GetHostEntry(Dns.GetHostName()).AddressList
+          .FirstOrDefault(address =>
+            address.AddressFamily == AddressFamily.InterNetwork &&
+            !IPAddress.IsLoopback(address))?.ToString();
+      } catch (SocketException e) {
+        Debug.WriteLine("Could not resolve the LAN address: " + e.Message);
+      }
+      if (string.IsNullOrWhiteSpace(host)) {
+        host = Dns.GetHostName();
+      }
+      this.webControllerAddress.Text = $"http://{host}:{WebServerPort}";
+
+      this.op.EnabledChanged += this.OperatorEnabledChanged;
+      this.readinessTimer = new System.Windows.Threading.DispatcherTimer {
+        Interval = TimeSpan.FromMilliseconds(500),
+      };
+      this.readinessTimer.Tick += (sender, e) =>
+        this.UpdateReadinessDashboard();
+      this.readinessTimer.Start();
+      this.UpdateReadinessDashboard();
+    }
+
+    private void OperatorEnabledChanged(bool enabled) {
+      this.Dispatcher.BeginInvoke(new Action(this.UpdateReadinessDashboard));
+    }
+
+    private void SetBadge(
+      Border badge,
+      TextBlock text,
+      string styleKey,
+      string content
+    ) {
+      badge.Style = (Style)this.FindResource(styleKey);
+      text.Text = content;
+    }
+
+    private bool TryNormalizeOpcAddress(
+      string value,
+      out string normalized,
+      out string error
+    ) {
+      try {
+        normalized = Web.SpectrumParameters.NormalizeOpcAddress(value);
+        error = null;
+        return true;
+      } catch (ArgumentException e) {
+        normalized = null;
+        error = e.Message;
+        return false;
+      }
+    }
+
+    private void UpdateReadinessDashboard() {
+      if (this.op == null || this.config == null) {
+        return;
+      }
+
+      bool running = this.op.Enabled;
+      this.powerButton.Content = running ? "Stop engine" : "Start engine";
+      this.powerButton.Style = (Style)this.FindResource(
+        running ? "DestructiveButton" : "PrimaryButton");
+      this.SetBadge(
+        this.engineStatusBadge,
+        this.engineStatusText,
+        running ? "ReadyBadge" : "DisabledBadge",
+        running ? "✓ Running" : "○ Stopped");
+      this.engineReadinessDetail.Text = running
+        ? "Running — live inputs and outputs are being updated."
+        : "Stopped — output is not being updated.";
+
+      bool hasSelectedAudio = this.audioDevices.SelectedItem is AudioDevice;
+      AudioDevice selectedAudio = hasSelectedAudio
+        ? (AudioDevice)this.audioDevices.SelectedItem
+        : default;
+      float signal = this.op.AudioInput.Volume;
+      this.audioSignalText.Text = $"Signal: {Math.Round(signal * 100):0}%";
+      bool audioReady = false;
+      if (!hasSelectedAudio) {
+        this.SetBadge(this.audioStatusBadge, this.audioStatusText,
+          "ErrorBadge", "! No input");
+        this.audioReadinessDetail.Text =
+          "Select an active capture device before starting the engine.";
+      } else if (!running) {
+        this.SetBadge(this.audioStatusBadge, this.audioStatusText,
+          "WarningBadge", "○ Configured");
+        this.audioReadinessDetail.Text = selectedAudio.name +
+          " — start the engine to check its signal.";
+        audioReady = true;
+      } else if (signal >= 0.005f) {
+        this.SetBadge(this.audioStatusBadge, this.audioStatusText,
+          "ReadyBadge", "✓ Signal ready");
+        this.audioReadinessDetail.Text = selectedAudio.name +
+          " — useful audio signal detected.";
+        audioReady = true;
+      } else {
+        this.SetBadge(this.audioStatusBadge, this.audioStatusText,
+          "WarningBadge", "⚠ No signal");
+        this.audioReadinessDetail.Text = selectedAudio.name +
+          " is selected, but the current signal is silent.";
+      }
+
+      int domeFps = this.op.Telemetry.DomeBeagleboneOPCFPS;
+      bool opcValid = this.TryNormalizeOpcAddress(
+        this.config.domeBeagleboneOPCAddress, out _, out string opcError);
+      bool domeReady = !this.config.domeEnabled;
+      if (!this.config.domeEnabled) {
+        this.SetBadge(this.domeStatusBadge, this.domeStatusText,
+          "DisabledBadge", "○ Off");
+        this.domeReadinessDetail.Text =
+          "Dome output is intentionally off.";
+      } else if (!opcValid) {
+        this.SetBadge(this.domeStatusBadge, this.domeStatusText,
+          "ErrorBadge", "! Invalid address");
+        this.domeReadinessDetail.Text = "OPC address: " + opcError + ".";
+      } else if (!running) {
+        this.SetBadge(this.domeStatusBadge, this.domeStatusText,
+          "WarningBadge", "○ Waiting");
+        this.domeReadinessDetail.Text =
+          "Dome output is enabled; start the engine to connect.";
+      } else if (domeFps > 0) {
+        this.SetBadge(this.domeStatusBadge, this.domeStatusText,
+          "ReadyBadge", "✓ Sending");
+        this.domeReadinessDetail.Text =
+          "Frames are reaching the configured OPC controller.";
+        domeReady = true;
+      } else {
+        this.SetBadge(this.domeStatusBadge, this.domeStatusText,
+          "WarningBadge", "⚠ No frames");
+        this.domeReadinessDetail.Text =
+          "No OPC frames have been confirmed. Check the address and network.";
+      }
+
+      int wandCount = this.op.OrientationInput.DevicesSnapshot().Count;
+      this.connectedWandCountText.Text = wandCount +
+        (wandCount == 1 ? " connected device" : " connected devices");
+      var receiver = this.op.OrientationInput.WandSerial.StatusSnapshot();
+      if (wandCount > 0) {
+        this.SetBadge(this.homeWandStatusBadge, this.homeWandStatusText,
+          "ReadyBadge", "✓ Ready");
+        this.homeWandReadinessDetail.Text =
+          wandCount + (wandCount == 1 ? " wand is" : " wands are") +
+          " sending orientation data.";
+      } else if (string.IsNullOrEmpty(this.config.wandSerialPort)) {
+        this.SetBadge(this.homeWandStatusBadge, this.homeWandStatusText,
+          "WarningBadge", "⚠ No wands");
+        this.homeWandReadinessDetail.Text =
+          "No wands detected; no serial receiver port is selected.";
+      } else if (receiver.LastError != null) {
+        this.SetBadge(this.homeWandStatusBadge, this.homeWandStatusText,
+          "ErrorBadge", "! Receiver error");
+        this.homeWandReadinessDetail.Text = receiver.LastError;
+      } else {
+        this.SetBadge(this.homeWandStatusBadge, this.homeWandStatusText,
+          "WarningBadge", "⚠ No wands");
+        this.homeWandReadinessDetail.Text =
+          "Receiver configured, but no wand data is arriving.";
+      }
+
+      if (this.webServerError == null) {
+        this.webControllerStatus.Text = "Ready — listening on port " +
+          WebServerPort + ".";
+        this.webControllerStatus.Foreground =
+          (Brush)this.FindResource("SuccessBrush");
+      } else {
+        this.webControllerStatus.Text =
+          "Error — web controller could not start: " + this.webServerError;
+        this.webControllerStatus.Foreground =
+          (Brush)this.FindResource("ErrorBrush");
+      }
+
+      if (!hasSelectedAudio ||
+          (this.config.domeEnabled && !opcValid) ||
+          this.webServerError != null) {
+        this.SetBadge(this.overallReadinessBadge, this.overallReadinessText,
+          "ErrorBadge", "! Action required");
+      } else if (running && audioReady && domeReady) {
+        this.SetBadge(this.overallReadinessBadge, this.overallReadinessText,
+          "ReadyBadge", "✓ Ready for show");
+      } else {
+        this.SetBadge(this.overallReadinessBadge, this.overallReadinessText,
+          "WarningBadge", "⚠ Check readiness");
+      }
+    }
+
+    private void ShowMidiSetup(object sender, RoutedEventArgs e) {
+      this.mainTabs.SelectedItem = this.midiTab;
+    }
+
+    private void ShowDomeSetup(object sender, RoutedEventArgs e) {
+      this.mainTabs.SelectedItem = this.domeTab;
+    }
+
+    private void CopyWebControllerAddress(object sender, RoutedEventArgs e) {
+      try {
+        Clipboard.SetText(this.webControllerAddress.Text);
+        this.webControllerStatus.Text = "Address copied to the clipboard.";
+        this.webControllerStatus.Foreground =
+          (Brush)this.FindResource("SuccessBrush");
+      } catch (Exception copyError) {
+        this.webControllerStatus.Text = "Could not copy address: " +
+          copyError.Message;
+        this.webControllerStatus.Foreground =
+          (Brush)this.FindResource("ErrorBrush");
+      }
+    }
+
+    private void DomeOpcAddressChanged(
+      object sender,
+      TextChangedEventArgs e
+    ) {
+      if (this.domeOPCValidationStatus == null) {
+        return;
+      }
+      if (this.TryNormalizeOpcAddress(
+          this.domeBeagleboneOPCHostAndPort.Text, out _, out string error)) {
+        this.domeOPCValidationStatus.Text =
+          "Valid host and port format.";
+        this.domeOPCValidationStatus.Foreground =
+          (Brush)this.FindResource("SuccessBrush");
+      } else {
+        this.domeOPCValidationStatus.Text = "Error: " + error + ".";
+        this.domeOPCValidationStatus.Foreground =
+          (Brush)this.FindResource("ErrorBrush");
+      }
+    }
+
+    private void DomeOpcAddressLostFocus(
+      object sender,
+      RoutedEventArgs e
+    ) {
+      if (!this.TryNormalizeOpcAddress(
+          this.domeBeagleboneOPCHostAndPort.Text,
+          out string normalized,
+          out _)) {
+        return;
+      }
+      this.domeBeagleboneOPCHostAndPort.Text = normalized;
+      this.config.domeBeagleboneOPCAddress = normalized;
+    }
+
     private void SliderStarted(object sender, DragStartedEventArgs e) {
       MainWindow.LoadingConfig = true;
     }
@@ -325,18 +668,12 @@ namespace Spectrum {
     }
 
     private void PowerButtonClicked(object sender, RoutedEventArgs e) {
-      if (this.op.Enabled) {
-        this.op.Enabled = false;
-        this.powerButton.Content = "Go";
-      } else {
-        this.op.Enabled = true;
-        this.powerButton.Content = "Stop";
-      }
+      this.op.Enabled = !this.op.Enabled;
+      this.UpdateReadinessDashboard();
     }
 
     private void RefreshAudioDevices(object sender, RoutedEventArgs e) {
       this.op.Enabled = false;
-      this.powerButton.Content = "Go";
 
       var audioDevices = AudioInput.AudioDevices;
 
@@ -348,6 +685,7 @@ namespace Spectrum {
       this.audioDevices.SelectedIndex = audioDevices.FindIndex(
         device => device.id == this.config.audioDeviceID
       );
+      this.UpdateReadinessDashboard();
     }
 
     private void AudioInputDeviceChanged(
@@ -536,8 +874,19 @@ namespace Spectrum {
 
     // Delete one of the active/created "devices"
     private void MidiDeleteDeviceClicked(object sender, RoutedEventArgs e) {
+      if (this.midiDeviceList.SelectedItem is not MidiDeviceEntry selected) {
+        return;
+      }
+      if (MessageBox.Show(
+          this,
+          $"Remove {selected.DeviceName} from Spectrum? The preset will be kept.",
+          "Remove MIDI device",
+          MessageBoxButton.YesNo,
+          MessageBoxImage.Warning) != MessageBoxResult.Yes) {
+        return;
+      }
       var newDevices = new Dictionary<int, int>(this.config.midiDevices);
-      MidiDeviceEntry item = (MidiDeviceEntry)this.midiDeviceList.SelectedItem;
+      MidiDeviceEntry item = selected;
       var presetIndex = newDevices[item.DeviceID];
       newDevices.Remove(item.DeviceID);
       this.config.midiDevices = newDevices;
@@ -593,6 +942,18 @@ namespace Spectrum {
     }
 
     private void MidiDeletePresetClicked(object sender, RoutedEventArgs e) {
+      if (this.midiPresetList.SelectedIndex < 0) {
+        return;
+      }
+      string name = this.midiPresetList.SelectedItem?.ToString() ?? "this preset";
+      if (MessageBox.Show(
+          this,
+          $"Delete {name}? This cannot be undone.",
+          "Delete MIDI preset",
+          MessageBoxButton.YesNo,
+          MessageBoxImage.Warning) != MessageBoxResult.Yes) {
+        return;
+      }
       var presetID = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
       var newPresets = new Dictionary<int, MidiPreset>(this.config.midiPresets);
       newPresets.Remove(presetID);
@@ -999,6 +1360,16 @@ namespace Spectrum {
       }
       var presetID = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
       if (this.midiBindingList.SelectedIndex == -1) {
+        return;
+      }
+      string name = (this.midiBindingList.SelectedItem as MidiBindingEntry)?.BindingName
+        ?? "this binding";
+      if (MessageBox.Show(
+          this,
+          $"Delete binding “{name}”?",
+          "Delete MIDI binding",
+          MessageBoxButton.YesNo,
+          MessageBoxImage.Warning) != MessageBoxResult.Yes) {
         return;
       }
       var bindingID = this.midiBindingList.SelectedIndex;

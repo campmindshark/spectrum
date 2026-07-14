@@ -47,10 +47,11 @@ namespace Spectrum {
     }
 
     // Classifies a datagram's header layout and reads the id/timestamp/deviceType
-    // (and, for the seq layout, the sequence number). Returns false only when the
-    // buffer is too short to inspect at all; every long-enough buffer yields a
-    // header (an unrecognized type falls through to the legacy interpretation,
-    // preserving the pre-existing placeholder-device behavior downstream).
+    // (and, for the seq layout, the sequence number). Returns false when the
+    // common header is incomplete, or when a seq-carrying type is missing its
+    // sequence byte. An unrecognized type falls through to the legacy
+    // interpretation, preserving the pre-existing placeholder-device behavior
+    // downstream.
     //
     // With the sequence byte moved AFTER the deviceType, id/timestamp/deviceType
     // occupy the same offsets in both layouts, so a single read of the deviceType
@@ -64,7 +65,10 @@ namespace Spectrum {
       }
       byte deviceType = buffer[5];
       int timestamp = BitConverter.ToInt32(buffer, 1);
-      if ((deviceType == 5 || deviceType == 6) && buffer.Length >= 7) {
+      if (deviceType == 5 || deviceType == 6) {
+        if (buffer.Length < 7) {
+          return false;
+        }
         header = new Header(
           buffer[0], timestamp, deviceType, buffer[6], 7);
         return true;
@@ -101,7 +105,8 @@ namespace Spectrum {
     }
 
     public static (OrientationDevice device, int actionFlag) parseDatagram(byte[] buffer) {
-      if (!TryReadHeader(buffer, out var header)) {
+      if (!TryReadHeader(buffer, out var header) ||
+          buffer.Length < RequiredLength(header.DeviceType)) {
         return (device: new OrientationDevice(-1, -1, new Quaternion(0, 0, 0, 0), new Quaternion(0, 0, 0, 0)), actionFlag: 0);
       }
       int timestamp = header.Timestamp;

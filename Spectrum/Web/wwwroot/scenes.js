@@ -102,6 +102,13 @@
     h.textContent = "Scenes";
     panel.appendChild(h);
 
+    if (names.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "empty-state";
+      empty.textContent = "No scenes saved yet. Name the current look below to make it available during the show.";
+      panel.appendChild(empty);
+    }
+
     const row = document.createElement("div");
     row.className = "scene-row";
 
@@ -129,7 +136,8 @@
     row.appendChild(load);
 
     const del = document.createElement("button");
-    del.textContent = "✕";
+    del.textContent = "Delete";
+    del.className = "action-danger";
     del.title = "Delete the selected scene";
     del.addEventListener("click", deleteScene);
     row.appendChild(del);

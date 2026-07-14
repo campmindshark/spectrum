@@ -607,7 +607,7 @@ namespace Spectrum.Base {
         new DomeLayerParam {
           Key = "speed", Label = "Spin Speed",
           Type = DomeLayerParamType.Double,
-          Min = -4, Max = 4, Step = 0.125, Default = 1,
+          Min = -1, Max = 1, Step = 0.125, Default = 1,
         },
         new DomeLayerParam {
           Key = "twist", Label = "Twist",

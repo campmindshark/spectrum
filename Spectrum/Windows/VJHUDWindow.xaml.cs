@@ -7,12 +7,15 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Threading;
 using Spectrum.Base;
 
 namespace Spectrum {
 
   public partial class VJHUDWindow : Window {
+
+    private GridLength expandedControlRailWidth = new GridLength(300);
 
     private readonly Configuration config;
     // The live tempo the tap button drives (owned by the Operator, not part of
@@ -41,6 +44,57 @@ namespace Spectrum {
       this.orientation = orientation;
       this.InitializeBindings();
       this.InitializeWandPanel();
+    }
+
+    private void ToggleControlRail(object sender, RoutedEventArgs e) {
+      if (this.controlRailColumn.Width.Value > 0) {
+        this.expandedControlRailWidth = this.controlRailColumn.Width;
+        this.controlRailColumn.Width = new GridLength(0);
+        this.controlRailSplitter.Visibility = Visibility.Collapsed;
+        this.toggleControlRailButton.Content = "Show setup controls";
+      } else {
+        this.controlRailColumn.Width =
+          this.expandedControlRailWidth.Value > 0
+            ? this.expandedControlRailWidth
+            : new GridLength(300);
+        this.controlRailSplitter.Visibility = Visibility.Visible;
+        this.toggleControlRailButton.Content = "Hide setup controls";
+      }
+    }
+
+    private void ToggleShortcutReference(object sender, RoutedEventArgs e) {
+      this.shortcutReference.Visibility =
+        this.shortcutReference.Visibility == Visibility.Visible
+          ? Visibility.Collapsed
+          : Visibility.Visible;
+    }
+
+    private void VJHUDKeyDown(object sender, KeyEventArgs e) {
+      if (e.Key == Key.F1) {
+        this.ToggleShortcutReference(sender, e);
+        e.Handled = true;
+        return;
+      }
+      // Text entry and native selectors keep every key they normally use.
+      if (Keyboard.FocusedElement is TextBox ||
+          Keyboard.FocusedElement is ComboBox) {
+        return;
+      }
+      switch (e.Key) {
+        case Key.T:
+          this.TapTempoButtonClicked(sender, e);
+          e.Handled = true;
+          break;
+        case Key.C:
+          this.ClearTempoButtonClicked(sender, e);
+          e.Handled = true;
+          break;
+        case Key.A:
+          this.domeAddLayerButton.RaiseEvent(
+            new RoutedEventArgs(ButtonBase.ClickEvent));
+          e.Handled = true;
+          break;
+      }
     }
 
     private void InitializeBindings() {

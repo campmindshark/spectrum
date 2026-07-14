@@ -80,6 +80,8 @@
   }
 
   async function putLayers() {
+    panel.setAttribute("aria-busy", "true");
+    setStatus("Applying layer changes…", false, true);
     try {
       const res = await fetch("/api/layers", {
         method: "PUT",
@@ -96,6 +98,8 @@
       setStatus(`layers updated (${state.layers.length})`);
     } catch (e) {
       setStatus(`layers: ${e}`, true);
+    } finally {
+      panel.removeAttribute("aria-busy");
     }
   }
 
@@ -143,6 +147,7 @@
     top.className = "top";
 
     const visSel = document.createElement("select");
+    visSel.setAttribute("aria-label", `Visualizer for layer ${idx + 1}`);
     state.visualizers.forEach((v) => {
       const o = document.createElement("option");
       o.value = v.key;
@@ -164,16 +169,23 @@
     const enabled = document.createElement("input");
     enabled.type = "checkbox";
     enabled.checked = layer.enabled;
-    enabled.title = "Enabled";
+    enabled.title = "Enable this layer";
+    enabled.setAttribute("aria-label", `Enable ${visSel.selectedOptions[0]?.textContent || "layer"}`);
     enabled.addEventListener("change", () => {
       state.layers[idx].enabled = enabled.checked;
       putLayers();
     });
-    top.appendChild(enabled);
+    const enabledWrap = document.createElement("label");
+    enabledWrap.className = "checkbox-target";
+    enabledWrap.appendChild(enabled);
+    enabledWrap.appendChild(document.createTextNode(" On"));
+    top.appendChild(enabledWrap);
 
     const remove = document.createElement("button");
-    remove.textContent = "✕";
+    remove.textContent = "Remove";
+    remove.className = "action-danger";
     remove.title = "Remove layer";
+    remove.setAttribute("aria-label", `Remove ${visSel.selectedOptions[0]?.textContent || "layer"}`);
     remove.addEventListener("click", () => {
       state.layers.splice(idx, 1);
       render();
@@ -186,6 +198,7 @@
     notes.type = "text";
     notes.className = "layer-notes";
     notes.placeholder = "Notes to yourself…";
+    notes.setAttribute("aria-label", `Notes for ${visSel.selectedOptions[0]?.textContent || "layer"}`);
     notes.value = layer.notes || "";
     notes.addEventListener("change", () => {
       state.layers[idx].notes = notes.value;
@@ -205,6 +218,7 @@
       blendSel.appendChild(o);
     });
     blendSel.title = "Blend mode";
+    blendSel.setAttribute("aria-label", `Blend mode for ${visSel.selectedOptions[0]?.textContent || "layer"}`);
     blendSel.addEventListener("change", () => {
       state.layers[idx].blendMode = blendSel.value;
       state.layers[idx].operationParams = seededParamsFor(
@@ -222,19 +236,26 @@
     opacity.step = 0.01;
     opacity.value = layer.opacity;
     opacity.title = "Opacity";
+    opacity.setAttribute("aria-label", `Opacity for ${visSel.selectedOptions[0]?.textContent || "layer"}`);
+    const opacityValue = document.createElement("span");
+    opacityValue.className = "param-value";
+    opacityValue.textContent = `${Math.round(layer.opacity * 100)}%`;
     opacity.addEventListener("input", () => {
       state.layers[idx].opacity = parseFloat(opacity.value);
+      opacityValue.textContent = `${Math.round(parseFloat(opacity.value) * 100)}%`;
     });
     opacity.addEventListener("change", () => {
       state.layers[idx].opacity = parseFloat(opacity.value);
       putLayers();
     });
     bottom.appendChild(opacity);
+    bottom.appendChild(opacityValue);
 
     // Front is the last stack entry, so "up" (toward front) means a higher idx.
     const up = document.createElement("button");
-    up.textContent = "▲";
+    up.textContent = "Front";
     up.title = "Move toward front";
+    up.setAttribute("aria-label", `Move ${visSel.selectedOptions[0]?.textContent || "layer"} toward front`);
     up.disabled = idx === state.layers.length - 1;
     up.addEventListener("click", () => {
       swap(idx, idx + 1);
@@ -242,8 +263,9 @@
     bottom.appendChild(up);
 
     const down = document.createElement("button");
-    down.textContent = "▼";
+    down.textContent = "Back";
     down.title = "Move toward back";
+    down.setAttribute("aria-label", `Move ${visSel.selectedOptions[0]?.textContent || "layer"} toward back`);
     down.disabled = idx === 0;
     down.addEventListener("click", () => {
       swap(idx, idx - 1);
@@ -254,8 +276,9 @@
     // (OneShot Wave/Metaball, Ripple/Stamp) fires once. Not a stack edit, so it
     // POSTs to a dedicated endpoint rather than PUTing the whole stack.
     const fire = document.createElement("button");
-    fire.textContent = "🔥";
+    fire.textContent = "Fire";
     fire.title = "Fire (manual trigger)";
+    fire.setAttribute("aria-label", `Fire ${visSel.selectedOptions[0]?.textContent || "layer"}`);
     fire.addEventListener("click", () => {
       fireLayer(layer.instanceId);
     });
@@ -263,8 +286,9 @@
 
     // Manual clear: drops the layer's live particles (see clearLayer).
     const clear = document.createElement("button");
-    clear.textContent = "🧹";
+    clear.textContent = "Clear";
     clear.title = "Clear (drop this layer's live particles)";
+    clear.setAttribute("aria-label", `Clear ${visSel.selectedOptions[0]?.textContent || "layer"}`);
     clear.addEventListener("click", () => {
       clearLayer(layer.instanceId);
     });
@@ -342,12 +366,19 @@
       input.max = p.max;
       input.step = p.step || 0.01;
       input.value = cur;
+      const value = document.createElement("span");
+      value.className = "param-value";
+      value.textContent = Number(cur).toFixed(2);
       input.addEventListener("input", () => {
         bagFor(state.layers[idx], p)[p.key] = parseFloat(input.value);
+        value.textContent = Number(input.value).toFixed(2);
       });
       input.addEventListener("change", () => {
         setParam(idx, p, parseFloat(input.value));
       });
+      wrap.appendChild(input);
+      wrap.appendChild(value);
+      return wrap;
     }
     wrap.appendChild(input);
     return wrap;
@@ -370,6 +401,13 @@
     hint.className = "hint";
     hint.textContent = "Top row is the front; layers blend bottom to top.";
     panel.appendChild(hint);
+
+    if (state.layers.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "empty-state";
+      empty.textContent = "No layers are active. Add a layer to create a dome look.";
+      panel.appendChild(empty);
+    }
 
     // Display front (last stack entry) first.
     for (let idx = state.layers.length - 1; idx >= 0; idx--) {

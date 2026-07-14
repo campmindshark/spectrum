@@ -1,22 +1,37 @@
-﻿<Window
+<Window
   x:Class="Spectrum.DomeSimulatorWindow"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  xmlns:local="clr-namespace:Spectrum"
-  mc:Ignorable="d"
   Title="Dome Simulator"
-  Height="750"
-  Width="725"
-  ResizeMode="CanMinimize"
+  Height="780"
+  Width="780"
+  MinHeight="460"
+  MinWidth="460"
+  ResizeMode="CanResize"
   Icon="pack://siteoforigin:,,,/Resources/s.PNG"
-  Loaded="WindowLoaded"
->
-  <Canvas x:Name="canvas">
-    <Image x:Name="image" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top" />
-    <Button x:Name="showKey" Content="Show Key" Canvas.Left="641" Canvas.Top="10" Width="68" Click="ShowKey" />
-    <Label x:Name="directionLabel" Content="First 3/4 LEDs on each strut are illuminated" FontSize="10" Foreground="White" Visibility="Hidden" />
-    <TextBox x:Name="previewBox" Height="20" Canvas.Left="589" TextWrapping="Wrap" Text="Click some struts..." Canvas.Top="35" Width="120" FontStyle="Italic" Foreground="Gray" LostFocus="PreviewBoxLostFocus" GotFocus="PreviewBoxGotFocus" TextChanged="PreviewBoxTextChanged" Visibility="Collapsed" />
-  </Canvas>
+  Loaded="WindowLoaded">
+  <Grid Margin="12">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+    <DockPanel Margin="0,0,0,10">
+      <Button x:Name="showKey" Content="Show key" DockPanel.Dock="Left" Click="ShowKey" />
+      <TextBlock x:Name="directionLabel" Margin="12,0" VerticalAlignment="Center"
+                 Text="First 3/4 LEDs on each strut are illuminated"
+                 Style="{StaticResource CaptionText}" Visibility="Hidden" />
+      <TextBox x:Name="previewBox" DockPanel.Dock="Right" Width="180"
+               Text="Click some struts..." FontStyle="Italic" Foreground="Gray"
+               LostFocus="PreviewBoxLostFocus" GotFocus="PreviewBoxGotFocus"
+               TextChanged="PreviewBoxTextChanged" Visibility="Collapsed" />
+    </DockPanel>
+    <Border Grid.Row="1" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+            CornerRadius="0" Background="Black" ClipToBounds="True">
+      <Viewbox Stretch="Uniform">
+        <Canvas x:Name="canvas" Width="750" Height="750" Background="Black">
+          <Image x:Name="image" Width="750" Height="750" Stretch="Fill" />
+        </Canvas>
+      </Viewbox>
+    </Border>
+  </Grid>
 </Window>

@@ -40,6 +40,9 @@ namespace Spectrum.Web {
     public string key { get; set; }
     public string type { get; set; }
     public string role { get; set; }
+    public string label { get; set; }
+    public string description { get; set; }
+    public string unit { get; set; }
     public object value { get; set; }
     public object min { get; set; }
     public object max { get; set; }
@@ -122,6 +125,9 @@ namespace Spectrum.Web {
       key = d.Key,
       type = d.Type,
       role = d.Role == ControlRole.User ? "user" : "maintenance",
+      label = d.Label,
+      description = d.Description,
+      unit = d.Unit,
       value = d.Get(this.config),
       min = d.Min,
       max = d.Max,

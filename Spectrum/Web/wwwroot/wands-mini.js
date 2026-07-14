@@ -180,8 +180,15 @@
       radio.type = "radio";
       radio.name = SPOTLIGHT_GROUP;
       radio.checked = row.isSpotlight;
+      radio.setAttribute("aria-label", `Spotlight wand ${row.deviceId}`);
       radio.addEventListener("change", () => setSpotlight(row.deviceId));
-      spotTd.appendChild(radio);
+      const radioLabel = document.createElement("label");
+      radioLabel.appendChild(radio);
+      const radioText = document.createElement("span");
+      radioText.className = "sr-only";
+      radioText.textContent = `Spotlight wand ${row.deviceId}`;
+      radioLabel.appendChild(radioText);
+      spotTd.appendChild(radioLabel);
       tr.appendChild(spotTd);
       tbodyEl.appendChild(tr);
     });

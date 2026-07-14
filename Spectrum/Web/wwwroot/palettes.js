@@ -103,6 +103,7 @@
       start.type = "color";
       start.value = slot.start;
       start.title = "Start color";
+      start.setAttribute("aria-label", `Palette slot ${i + 1} start color`);
       start.addEventListener("change", () => {
         slot.start = start.value;
         preview.style.background = swatchBackground(slot);
@@ -116,13 +117,19 @@
       grad.type = "checkbox";
       grad.checked = !!slot.end;
       grad.title = "Gradient (blend to an end color)";
+      grad.setAttribute("aria-label", `Use a gradient for palette slot ${i + 1}`);
       gradWrap.appendChild(grad);
+      const gradText = document.createElement("span");
+      gradText.className = "sr-only";
+      gradText.textContent = "Gradient";
+      gradWrap.appendChild(gradText);
       row.appendChild(gradWrap);
 
       const end = document.createElement("input");
       end.type = "color";
       end.value = slot.end || slot.start;
       end.title = "End color";
+      end.setAttribute("aria-label", `Palette slot ${i + 1} end color`);
       end.disabled = !slot.end;
       end.addEventListener("change", () => {
         slot.end = end.value;
@@ -228,7 +235,7 @@
     if (presets.length === 0) {
       const empty = document.createElement("div");
       empty.className = "palette-empty";
-      empty.textContent = "— no saved palettes —";
+      empty.textContent = "No palettes saved yet. Adjust the live colors, then name and save the bank below.";
       list.appendChild(empty);
     }
     presets.forEach((p) => {
@@ -265,8 +272,10 @@
       item.appendChild(apply);
 
       const del = document.createElement("button");
-      del.textContent = "✕";
+      del.textContent = "Delete";
+      del.className = "action-danger";
       del.title = "Delete this palette";
+      del.setAttribute("aria-label", `Delete palette ${p.name}`);
       del.addEventListener("click", (e) => {
         e.stopPropagation();
         deletePreset(p.name);

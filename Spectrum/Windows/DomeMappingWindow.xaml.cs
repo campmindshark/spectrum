@@ -384,7 +384,7 @@ namespace Spectrum {
 
     private void ShowError(string message) {
       this.statusLabel.Foreground =
-        new SolidColorBrush(WColor.FromRgb(0xFF, 0x6B, 0x6B));
+        new SolidColorBrush(WColor.FromRgb(0xB3, 0x26, 0x1E));
       this.statusLabel.Text = message;
     }
 
@@ -418,7 +418,7 @@ namespace Spectrum {
       }
       this.config.domeCableMapping = (int[])this.picks.Clone();
       this.statusLabel.Foreground =
-        new SolidColorBrush(WColor.FromRgb(0x88, 0xFF, 0x88));
+        new SolidColorBrush(WColor.FromRgb(0x16, 0x73, 0x3D));
       this.statusLabel.Text = "Mapping saved.";
     }
 

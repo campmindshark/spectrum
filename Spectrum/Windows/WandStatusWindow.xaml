@@ -9,7 +9,9 @@
   Title="Wand Status"
   Height="470"
   Width="1115"
-  Background="#FF1A1A1A"
+  MinHeight="360"
+  MinWidth="720"
+  ResizeMode="CanResize"
   Icon="pack://siteoforigin:,,,/Resources/s.PNG"
   Loaded="WindowLoaded"
   Closed="WindowClosed"
@@ -23,15 +25,15 @@
     </Grid.RowDefinitions>
 
     <TextBlock Grid.Row="0" Text="Wand Status" FontSize="18" FontWeight="Bold"
-      Foreground="White" />
+      Foreground="{StaticResource TextBrush}" />
 
     <TextBlock Grid.Row="1" x:Name="summaryLabel" Margin="0,6,0,8"
-      Foreground="#FFCCCCCC" Text="Listening for devices…" />
+      Foreground="{StaticResource MutedTextBrush}" Text="Listening for devices…" />
 
-    <Border Grid.Row="2" BorderBrush="#FF444444" BorderThickness="1"
-      CornerRadius="3">
+    <Border Grid.Row="2" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+      CornerRadius="0">
       <ListView x:Name="wandList" Background="Transparent" BorderThickness="0"
-        Foreground="#FFDDDDDD" FontFamily="Consolas" FontSize="13">
+        Foreground="{StaticResource TextBrush}" FontFamily="Consolas" FontSize="13">
         <ListView.ItemContainerStyle>
           <Style TargetType="ListViewItem">
             <!-- Whole-row color reflects connection quality (green/amber/red). -->
@@ -73,8 +75,8 @@
 
     <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,12,0,0">
       <Button x:Name="calibrateButton" Content="Calibrate All" Width="130"
-        Height="30" FontWeight="Bold" Click="CalibrateClicked" />
-      <Button x:Name="closeButton" Content="Close" Width="90" Height="30"
+        Height="25" FontWeight="Bold" Click="CalibrateClicked" />
+      <Button x:Name="closeButton" Content="Close" Width="90" Height="25"
         Margin="8,0,0,0" Click="CloseClicked" />
     </StackPanel>
   </Grid>

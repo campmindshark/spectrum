@@ -35,11 +35,27 @@ namespace Spectrum.Base {
     // A short type tag ("double", "int", "bool", "enum") used by clients to
     // pick an appropriate control and by the JSON layer to shape values.
     public string Type { get; }
+    // Operator-facing metadata shared by every client. Key remains the stable
+    // wire/config identifier; these values are the only strings a UI should
+    // present as the control name, help text, and unit.
+    public string Label { get; }
+    public string Description { get; }
+    public string Unit { get; }
 
-    protected ParameterDescriptor(string key, ControlRole role, string type) {
+    protected ParameterDescriptor(
+      string key,
+      ControlRole role,
+      string type,
+      string label = null,
+      string description = null,
+      string unit = null
+    ) {
       this.Key = key;
       this.Role = role;
       this.Type = type;
+      this.Label = string.IsNullOrWhiteSpace(label) ? key : label;
+      this.Description = description;
+      this.Unit = unit;
     }
 
     // Current value of this parameter, read from the given Configuration.
@@ -90,8 +106,11 @@ namespace Spectrum.Base {
       double min,
       double max,
       Func<Configuration, double> get,
-      Action<Configuration, double> set
-    ) : base(key, role, "double") {
+      Action<Configuration, double> set,
+      string label = null,
+      string description = null,
+      string unit = null
+    ) : base(key, role, "double", label, description, unit) {
       this.min = min;
       this.max = max;
       this.get = get;
@@ -128,8 +147,11 @@ namespace Spectrum.Base {
       int min,
       int max,
       Func<Configuration, int> get,
-      Action<Configuration, int> set
-    ) : base(key, role, "int") {
+      Action<Configuration, int> set,
+      string label = null,
+      string description = null,
+      string unit = null
+    ) : base(key, role, "int", label, description, unit) {
       this.min = min;
       this.max = max;
       this.get = get;
@@ -157,8 +179,11 @@ namespace Spectrum.Base {
       string key,
       ControlRole role,
       Func<Configuration, bool> get,
-      Action<Configuration, bool> set
-    ) : base(key, role, "bool") {
+      Action<Configuration, bool> set,
+      string label = null,
+      string description = null,
+      string unit = null
+    ) : base(key, role, "bool", label, description, unit) {
       this.get = get;
       this.set = set;
     }
@@ -184,17 +209,23 @@ namespace Spectrum.Base {
     private readonly Func<Configuration, string> get;
     private readonly Action<Configuration, string> set;
     private readonly int maxLength;
+    private readonly Func<string, string> normalize;
 
     public StringParameter(
       string key,
       ControlRole role,
       Func<Configuration, string> get,
       Action<Configuration, string> set,
-      int maxLength = 256
-    ) : base(key, role, "string") {
+      int maxLength = 256,
+      string label = null,
+      string description = null,
+      string unit = null,
+      Func<string, string> normalize = null
+    ) : base(key, role, "string", label, description, unit) {
       this.get = get;
       this.set = set;
       this.maxLength = maxLength;
+      this.normalize = normalize;
     }
 
     public override object Get(Configuration config) => this.get(config);
@@ -207,7 +238,7 @@ namespace Spectrum.Base {
       if (s.Length > this.maxLength) {
         throw new ArgumentException("value exceeds " + this.maxLength + " chars");
       }
-      return s;
+      return this.normalize != null ? this.normalize(s) : s;
     }
 
     public override void Set(Configuration config, object coerced) =>
@@ -233,8 +264,11 @@ namespace Spectrum.Base {
       ControlRole role,
       IReadOnlyList<string> options,
       Func<Configuration, int> get,
-      Action<Configuration, int> set
-    ) : base(key, role, "enum") {
+      Action<Configuration, int> set,
+      string label = null,
+      string description = null,
+      string unit = null
+    ) : base(key, role, "enum", label, description, unit) {
       this.options = options;
       this.get = get;
       this.set = set;
