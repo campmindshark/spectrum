@@ -271,10 +271,15 @@ input[type="color"] { width: 2.5rem; padding: .15rem; }
 .palette-name { flex: 1; min-width: 3rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .palette-saverow input { flex: 1; min-width: 5rem; }
 
-.dome-simulator canvas { display: block; width: 100%; max-width: 620px; aspect-ratio: 1; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #000; image-rendering: pixelated; }
+.dome-simulator canvas { display: block; box-sizing: content-box; width: 420px; height: auto; max-width: calc(100% - 2px); aspect-ratio: 1; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #000; image-rendering: pixelated; }
+.dome-simulator canvas[hidden] { display: none; }
 .dome-simulator-toolbar { margin-bottom: .6rem; }
 .dome-simulator-toolbar button { border-color: #2e7550; background: #16452e; }
 .dome-simulator-toolbar button.running { border-color: #79383f; background: #6f252b; }
+.simulator-main { width: min(760px, 100%); }
+.simulator-standalone { padding: var(--space-3); border: 1px solid var(--border); background: var(--surface); }
+.simulator-standalone h2 { margin: 0 0 .35rem; font-size: 1.1rem; }
+.simulator-standalone > p { margin: 0 0 var(--space-3); color: var(--muted); }
 
 .wand-table { display: block; width: 100%; overflow-x: auto; border-collapse: collapse; font-family: ui-monospace, "Cascadia Mono", monospace; font-size: .75rem; }
 .wand-table th { padding: .35rem .45rem; border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 600; text-align: left; white-space: nowrap; }
@@ -320,7 +325,6 @@ input[type="color"] { width: 2.5rem; padding: .15rem; }
   #layers { order: 3; }
   #palette { order: 4; }
   #wands { order: 5; }
-  #dome-simulator { order: 6; }
   button, select, input[type="text"], input[type="number"], input[type="color"] { min-height: 44px; }
   input[type="checkbox"], input[type="radio"] { width: 24px; height: 24px; }
   label:has(> input[type="checkbox"]),

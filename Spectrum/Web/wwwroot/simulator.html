@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#090b10" />
+  <title>Spectrum Dome Simulator</title>
+  <link rel="stylesheet" href="console.css?v=simulator-60" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to simulator</a>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">S</span>
+      <div>
+        <h1>Spectrum</h1>
+        <p>Dome simulator</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a class="header-link" href="/" aria-label="Return to operator controls"><span>Controller</span><b aria-hidden="true">↩</b></a>
+    </div>
+  </header>
+
+  <main class="simulator-main" id="main">
+    <section class="dome-simulator simulator-standalone" id="dome-simulator">
+      <h2>Live dome simulator</h2>
+      <p>This page streams the latest dome frame at up to 60 FPS. Close it when the preview is not needed.</p>
+      <div class="dome-simulator-toolbar">
+        <button type="button" id="dome-simulator-toggle">Loading preview…</button>
+        <span class="dome-simulator-state" id="dome-simulator-state" role="status" aria-live="polite">Connecting…</span>
+      </div>
+      <canvas id="dome-simulator-canvas" width="420" height="420" hidden aria-label="Live dome preview"></canvas>
+    </section>
+  </main>
+
+  <footer class="page-footer">Spectrum dome simulator · <a href="/">Return to controller</a></footer>
+  <script src="dome-simulator.js?v=60"></script>
+</body>
+</html>

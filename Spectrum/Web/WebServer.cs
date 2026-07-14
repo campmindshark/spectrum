@@ -164,6 +164,10 @@ namespace Spectrum.Web {
     }
 
     private void MapApi(WebApplication app) {
+      // Keep the high-rate preview out of the main control document entirely.
+      // Loading /simulator is the only navigation path that loads its client.
+      app.MapGet("/simulator", () => Results.Redirect("/simulator.html"));
+
       // The routes do not exist when the startup feature flag is false. Merely
       // loading the control page therefore cannot activate or poll a disabled
       // simulator component.

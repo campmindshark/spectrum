@@ -46,17 +46,47 @@ namespace Spectrum.Audio {
       }
     }
 
-    // Walks up from the running assembly's directory looking for the bundled
-    // Madmom virtualenv. Returns null if it can't be found, so callers can fail
-    // gracefully instead of throwing an opaque Win32Exception from Process.Start.
-    private static string FindMadmomScriptsDir() {
+    private sealed class MadmomRuntime {
+      public MadmomRuntime(string pythonPath, string scriptPath) {
+        this.PythonPath = pythonPath;
+        this.ScriptPath = scriptPath;
+      }
+
+      public string PythonPath { get; }
+      public string ScriptPath { get; }
+    }
+
+    // Walks up from the running assembly's directory looking first for the
+    // relocatable release runtime and then for the checkout's development
+    // virtualenv. Returning both paths lets ProcessStartInfo.ArgumentList avoid
+    // fragile command-line quoting.
+    private static MadmomRuntime FindMadmomRuntime() {
       var dir = new DirectoryInfo(
         Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
       );
       while (dir != null) {
-        var candidate = Path.Combine(dir.FullName, "Madmom", "env", "Scripts");
-        if (File.Exists(Path.Combine(candidate, "python.exe"))) {
-          return candidate;
+        var portableRoot = Path.Combine(dir.FullName, "Madmom", "runtime");
+        var portablePython = Path.Combine(portableRoot, "python.exe");
+        var portableScript = Path.Combine(
+          portableRoot, "Scripts", "DBNBeatTracker"
+        );
+        if (File.Exists(portablePython) && File.Exists(portableScript)) {
+          return new MadmomRuntime(portablePython, portableScript);
+        }
+
+        foreach (var environmentName in new[] { ".build-env", "env" }) {
+          var developmentScripts = Path.Combine(
+            dir.FullName, "Madmom", environmentName, "Scripts"
+          );
+          var developmentPython = Path.Combine(
+            developmentScripts, "python.exe"
+          );
+          var developmentScript = Path.Combine(
+            developmentScripts, "DBNBeatTracker"
+          );
+          if (File.Exists(developmentPython) && File.Exists(developmentScript)) {
+            return new MadmomRuntime(developmentPython, developmentScript);
+          }
         }
         dir = dir.Parent;
       }
@@ -78,22 +108,25 @@ namespace Spectrum.Audio {
         return;
       }
 
-      var envScriptPath = FindMadmomScriptsDir();
-      if (envScriptPath == null) {
+      var runtime = FindMadmomRuntime();
+      if (runtime == null) {
         Debug.WriteLine(
-          "MadmomHandler: could not locate Madmom/env/Scripts/python.exe; " +
+          "MadmomHandler: could not locate a portable Madmom runtime or " +
+          "a Madmom development environment; " +
           "beat detection disabled."
         );
         return;
       }
 
       ProcessStartInfo start = new ProcessStartInfo();
-      start.WorkingDirectory = envScriptPath;
-      start.FileName = Path.Combine(envScriptPath, "python.exe");
-      start.Arguments = string.Format(
-        "DBNBeatTracker --host_api --audio_input={0} online",
-        this.audio.CurrentAudioDeviceIndex
-      );
+      start.WorkingDirectory = Path.GetDirectoryName(runtime.ScriptPath);
+      start.FileName = runtime.PythonPath;
+      start.ArgumentList.Add(runtime.ScriptPath);
+      start.ArgumentList.Add("--host_api");
+      start.ArgumentList.Add(string.Format(
+        "--audio_input={0}", this.audio.CurrentAudioDeviceIndex
+      ));
+      start.ArgumentList.Add("online");
       start.UseShellExecute = false;
       start.RedirectStandardOutput = true;
       start.CreateNoWindow = true;

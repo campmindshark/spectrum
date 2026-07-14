@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -473,8 +474,10 @@ namespace Spectrum.LEDs {
     private volatile bool webSimulatorHasConsumer;
     private int[] latestWebSimulatorFrame;
     private bool webSimulatorFramePublishedSinceFlush;
-    private long nextWebSimulatorFrameAt;
-    private const int WebSimulatorFrameIntervalMs = 100;
+    private long nextWebSimulatorFrameTimestamp;
+    public const int WebSimulatorFramesPerSecond = 60;
+    private static readonly long WebSimulatorFrameIntervalTicks =
+      Stopwatch.Frequency / WebSimulatorFramesPerSecond;
 
     // True while the simulator window is open. Disabling the consumer also
     // atomically detaches and returns any pending pooled frame.
@@ -504,7 +507,7 @@ namespace Spectrum.LEDs {
           if (!value) {
             abandoned = this.latestWebSimulatorFrame;
             this.latestWebSimulatorFrame = null;
-            this.nextWebSimulatorFrameAt = 0;
+            this.nextWebSimulatorFrameTimestamp = 0;
           }
         }
         if (abandoned != null) {
@@ -525,18 +528,30 @@ namespace Spectrum.LEDs {
 
     private bool ShouldEnqueueWebDomeCommand => this.WebSimulatorHasConsumer;
 
-    // Normal browser frames are deliberately sampled at 10 FPS. The operator
-    // may run at 400 FPS; copying every one of those frames would be pure waste.
+    // The dedicated browser simulator is sampled at 60 FPS. The operator may
+    // run at 400 FPS; copying every one of those frames would be pure waste.
     private bool ShouldCaptureWebSimulatorFrame() {
       if (!this.ShouldEnqueueWebDomeCommand) {
         return false;
       }
-      long now = Environment.TickCount64;
+      long now = Stopwatch.GetTimestamp();
       lock (this.webSimulatorFrameGate) {
-        if (!this.webSimulatorHasConsumer || now < this.nextWebSimulatorFrameAt) {
+        if (!this.webSimulatorHasConsumer ||
+            now < this.nextWebSimulatorFrameTimestamp) {
           return false;
         }
-        this.nextWebSimulatorFrameAt = now + WebSimulatorFrameIntervalMs;
+        // Advance the target from its previous timestamp so the 400 Hz engine
+        // tick quantization does not turn 60 FPS into a steady ~57 FPS. If the
+        // producer fell a whole frame behind, reset instead of catch-up bursting.
+        if (this.nextWebSimulatorFrameTimestamp == 0 ||
+            now - this.nextWebSimulatorFrameTimestamp >=
+              WebSimulatorFrameIntervalTicks) {
+          this.nextWebSimulatorFrameTimestamp =
+            now + WebSimulatorFrameIntervalTicks;
+        } else {
+          this.nextWebSimulatorFrameTimestamp +=
+            WebSimulatorFrameIntervalTicks;
+        }
         return true;
       }
     }
@@ -801,7 +816,7 @@ namespace Spectrum.LEDs {
       // per-pixel lock in SetDevicePixel guarded nothing here.
       OPCAPI opcAPI = this.opcAPI;
       bool simulationEnabled = this.ShouldEnqueueDomeCommand;
-      // Even when this particular normal frame is skipped by the 10 FPS
+      // Even when this particular normal frame is skipped by the 60 FPS
       // sampler, Flush must not enqueue an empty diagnostic redraw command.
       // WriteBuffer itself establishes that this is the normal-buffer path.
       if (this.ShouldEnqueueWebDomeCommand) {

@@ -6,20 +6,39 @@ Spectrum is a Windows application written in C# intended for running lighting in
 
 Note that it is currently only possible to build and run Spectrum on a 64-bit Windows computer.
 
-1. Install [Visual Studio 2022 Community](https://visualstudio.microsoft.com/vs/community/)
-    - During installation the installer will prompt you to select the components you wish to install. Make sure you select "Python development", ".NET desktop development", and "Desktop development with C++".
-    - Note that if you have an existing VS2019 installation, you will likely still have to update it to the latest build using this installer. We've had people report issues when running on very recent (but not the latest) builds.
-    - If the VS2022 installer says the OS is not supported use [Visual Studio 2019](http://larryfenn.com/vs_Community.exe).
-2. Install Python 3.7 x64 for Windows
-    - Note that the default download on python.org is x86. You're looking for the "Windows x86-64 executable installer". The current latest version is [here](https://www.python.org/ftp/python/3.7.9/python-3.7.9-amd64.exe).
-    - Make sure to select the option at the end to edit your `PATH` to include Python!
-    - Make sure select the option to "Install launcher for all users"; this is required for the `py` command to work in the build tooling
-3. Install [Git for Windows](https://git-scm.com/download/win)
-    - Select the option to convert line breaks to Unix format
-    - Make sure you install git bash
-4. Recursively clone this repo: `git clone --recursive https://github.com/campmindshark/spectrum`
-5. Open the Spectrum solution in Visual Studio and run it!
-    - You will need Internet access for the first build, so if you're heading to TTITD, please compile beforehand, once for Release and once for Debug.
+1. Install [Visual Studio Community](https://visualstudio.microsoft.com/vs/community/)
+   with the **.NET desktop development** and **Desktop development with C++**
+   workloads.
+2. Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0),
+   [Git for Windows](https://git-scm.com/download/win), and
+   [uv](https://docs.astral.sh/uv/getting-started/installation/).
+3. Clone the repository. A recursive clone is preferred, but the build script
+   also initializes missing submodules:
+
+   ```powershell
+   git -c core.autocrlf=false clone --recursive https://github.com/campmindshark/spectrum
+   cd spectrum
+   ```
+
+4. Run the checkout-to-artifact build:
+
+   ```powershell
+   .\build.ps1
+   ```
+
+The first build needs Internet access. It provisions an isolated CPython 3.11
+environment under `Madmom/.build-env`, compiles the Cython extensions with MSVC, runs
+the Python and .NET verification suites, and writes these ignored artifacts:
+
+- `artifacts/wheels/`: the CPython 3.11 x64 Madmom wheel.
+- `artifacts/Spectrum/`: the self-contained .NET application and standalone
+  Python runtime.
+- `artifacts/Spectrum-win-x64.zip`: the portable release directory as an
+  archive.
+
+For a faster developer/CI build that omits the portable application, run
+`.\build.ps1 -SkipPortable`. To build only the Python component, run
+`.\Madmom\scripts\build.ps1`.
 
 ## Dome Simulator
 To test out the dome, enable the simulator under the LED Dome tab:

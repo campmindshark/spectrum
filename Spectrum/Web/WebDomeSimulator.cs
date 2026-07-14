@@ -11,7 +11,7 @@ namespace Spectrum.Web {
 
   /**
    * Low-bandwidth browser port of DomeSimulatorWindow. Geometry is static JSON;
-   * live frames are fixed-size binary RGB messages capped at 10 FPS by the dome
+   * live frames are fixed-size binary RGB messages capped at 60 FPS by the dome
    * producer. One immutable packed frame is shared by every connected client.
    */
   public sealed class WebDomeSimulator {
@@ -29,6 +29,8 @@ namespace Spectrum.Web {
     private byte[] packedFrame;
     private long sequence;
     private int clients;
+    private static readonly TimeSpan FrameInterval = TimeSpan.FromSeconds(
+      1.0 / LEDDomeOutput.WebSimulatorFramesPerSecond);
 
     public WebDomeSimulator(LEDDomeOutput dome) {
       this.dome = dome;
@@ -65,6 +67,7 @@ namespace Spectrum.Web {
       Task receiver = ReceiveUntilClosedAsync(socket, linked.Token);
       long seen = -1;
       try {
+        using var sendTimer = new PeriodicTimer(FrameInterval);
         while (socket.State == WebSocketState.Open && !receiver.IsCompleted) {
           byte[] frame = this.GetFrame(ref seen);
           if (frame != null) {
@@ -74,7 +77,9 @@ namespace Spectrum.Web {
               true,
               linked.Token);
           }
-          await Task.Delay(100, linked.Token);
+          if (!await sendTimer.WaitForNextTickAsync(linked.Token)) {
+            break;
+          }
         }
       } catch (OperationCanceledException) {
       } catch (WebSocketException) {
@@ -156,8 +161,8 @@ namespace Spectrum.Web {
         if (redraw) {
           // Publish an immutable buffer. Other clients may still be awaiting a
           // SendAsync on the previous frame, so mutating it in place can corrupt
-          // an in-flight WebSocket message. At 10 FPS these are small Gen-0
-          // allocations (roughly 13 KB for this dome), not an accumulating queue.
+          // an in-flight WebSocket message. These are short-lived Gen-0
+          // allocations (roughly 23 KB for this dome), not an accumulating queue.
           var packed = new byte[this.colors.Length * 3];
           for (int i = 0, p = 0; i < this.colors.Length; i++) {
             int color = this.colors[i];

@@ -1,6 +1,6 @@
-// Low-cost dome preview. Geometry is fetched once on demand; live frames are
-// fixed-size binary RGB (3 bytes/LED), capped server-side at 10 FPS. Keeping the
-// preview opt-in means ordinary control clients impose no simulation cost.
+// Dedicated dome preview. Geometry is fetched once on this page; live frames
+// are fixed-size binary RGB (3 bytes/LED), capped server-side at 60 FPS. The
+// main controller never loads this client, so ordinary clients cost nothing.
 (() => {
   "use strict";
 
@@ -16,6 +16,7 @@
   let socket = null;
   let running = false;
   let reconnectTimer = null;
+  const maxFps = 60;
   const image = ctx.createImageData(canvas.width, canvas.height);
 
   function setState(text) { state.textContent = text; }
@@ -26,6 +27,7 @@
     const response = await fetch("/api/dome-simulator/geometry");
     if (!response.ok) {
       setState(response.status === 404 ? "disabled on server" : `error ${response.status}`);
+      toggle.textContent = response.status === 404 ? "Preview disabled" : "Preview unavailable";
       toggle.disabled = true;
       return false;
     }
@@ -59,7 +61,7 @@
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
     socket = new WebSocket(`${protocol}//${location.host}/api/dome-simulator/frames`);
     socket.binaryType = "arraybuffer";
-    socket.onopen = () => setState("live · 10 FPS max");
+    socket.onopen = () => setState(`live · ${maxFps} FPS max`);
     socket.onmessage = (event) => drawFrame(new Uint8Array(event.data));
     socket.onerror = () => setState("connection error");
     socket.onclose = () => {
@@ -83,8 +85,8 @@
     setState("off");
   }
 
-  toggle.addEventListener("click", async () => {
-    if (running) { stop(); return; }
+  async function start() {
+    if (running) return;
     toggle.disabled = true;
     try {
       if (!await ensureGeometry()) return;
@@ -95,10 +97,18 @@
       connect();
     } catch (_) {
       setState("unavailable");
+      toggle.textContent = "Retry preview";
+      toggle.disabled = false;
     } finally {
-      if (!toggle.disabled || geometry) toggle.disabled = false;
+      if (geometry) toggle.disabled = false;
     }
+  }
+
+  toggle.addEventListener("click", () => {
+    if (running) { stop(); return; }
+    start();
   });
 
   window.addEventListener("pagehide", stop);
+  start();
 })();

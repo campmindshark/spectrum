@@ -19,6 +19,7 @@
     </div>
     <div class="header-actions">
       <span class="connection-badge pending" id="connection" role="status" aria-live="polite">Connecting</span>
+      <a class="header-link" href="/simulator" target="_blank" rel="noopener" aria-label="Open dome simulator in a new window"><span>Simulator</span><b aria-hidden="true">▣</b></a>
       <a class="header-link" href="/maintenance.html" aria-label="Open maintenance controls"><span>Maintenance</span><b aria-hidden="true">⚙</b></a>
     </div>
   </header>
@@ -42,25 +43,16 @@
       <div class="column column-right">
         <section class="scenes collapsible" id="scenes"></section>
         <section class="layers collapsible" id="layers"></section>
-        <section class="dome-simulator collapsible" id="dome-simulator" data-default-collapsed="true">
-          <h2>Dome preview</h2>
-          <div class="dome-simulator-toolbar">
-            <button type="button" id="dome-simulator-toggle">Start preview</button>
-            <span class="dome-simulator-state" id="dome-simulator-state">Off</span>
-          </div>
-          <canvas id="dome-simulator-canvas" width="420" height="420" hidden aria-label="Live dome preview"></canvas>
-        </section>
       </div>
     </div>
   </main>
 
-  <footer class="page-footer">Spectrum live controller · <a href="/maintenance.html">Open maintenance</a></footer>
+  <footer class="page-footer">Spectrum live controller · <a href="/maintenance.html">Open maintenance</a> · <a href="/simulator" target="_blank" rel="noopener">Open simulator</a></footer>
   <script src="app.js"></script>
   <script src="collapsible.js"></script>
   <script src="layers.js"></script>
   <script src="scenes.js"></script>
   <script src="palettes.js"></script>
   <script src="wands-mini.js"></script>
-  <script src="dome-simulator.js"></script>
 </body>
 </html>
