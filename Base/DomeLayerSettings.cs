@@ -267,6 +267,12 @@ namespace Spectrum.Base {
         Type = DomeLayerParamType.Double,
         Min = 50, Max = 4000, Step = 50, Default = 800,
       };
+    private static readonly DomeLayerParam StampTriggerIntervalParam =
+      new DomeLayerParam {
+        Key = "interval", Label = "Audio Interval (ms)",
+        Type = DomeLayerParamType.Double,
+        Min = 2000, Max = 8000, Step = 50, Default = 2000,
+      };
     // Options for the autonomous trigger-source selector: index matches the
     // `source` arg LayerTrigger.Fired takes. Manual = fire only via the Fire
     // button / bound wand button (no autonomous source).
@@ -306,7 +312,7 @@ namespace Spectrum.Base {
       },
       TriggerButtonParam,
       TriggerLevelParam,
-      TriggerIntervalParam,
+      StampTriggerIntervalParam,
     };
 
     // Metaball's own tuning. Contours default off.
