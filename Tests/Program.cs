@@ -50,6 +50,10 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("configuration with layers serializes", ConfigurationSerializes);
       Run("web layer contract exposes namespaced bags and operation descriptors",
         WebLayerContract);
+      StackValidatorTests.Register(Run);
+      WandProtocolTests.Register(Run);
+      PaletteServiceTests.Register(Run);
+      AdvisoryLockTests.Register(Run);
       OPCWireTests.Register(Run);
       if (failures != 0) {
         Environment.ExitCode = 1;
