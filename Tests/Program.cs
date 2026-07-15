@@ -29,6 +29,8 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("scratch copies only mutable channels", ScratchCopiesChannelsOnly);
       Run("frame operations require shared topology", FramesRequireTopology);
       Run("operator creates independent duplicate renderers", DuplicateRenderers);
+      Run("operator reboot notifications do not hold the renderer lock",
+        RebootNotificationsAreUnlocked);
       Run("layer renderers do not receive persisted configuration",
         LayerRenderersAvoidConfiguration);
       Run("vortex uses global fade for hue-bearing trails",
@@ -374,6 +376,30 @@ namespace Spectrum.LayerPipeline.Tests {
         }
       }
       Assert(count == 2, "expected two renderer instances, got " + count);
+    }
+
+    private static void RebootNotificationsAreUnlocked() {
+      var config = new global::Spectrum.SpectrumConfiguration();
+      var runtime = new global::Spectrum.Operator(config);
+      runtime.Enabled = true;
+      int notifications = 0;
+      Action<bool> handler = enabled => {
+        notifications++;
+        Task<bool> read = Task.Run(() => runtime.Enabled);
+        Assert(
+          read.Wait(TimeSpan.FromSeconds(1)),
+          "EnabledChanged fired while the renderer lock was held");
+      };
+      try {
+        runtime.EnabledChanged += handler;
+        runtime.Reboot();
+        runtime.EnabledChanged -= handler;
+        Assert(notifications == 2,
+          "reboot did not publish both enabled transitions");
+      } finally {
+        runtime.EnabledChanged -= handler;
+        runtime.Enabled = false;
+      }
     }
 
     private static void LayerRenderersAvoidConfiguration() {

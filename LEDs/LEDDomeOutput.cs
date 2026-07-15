@@ -982,8 +982,22 @@ namespace Spectrum.LEDs {
       int bank = 0
     ) {
       // Return a color evenly scaled between min index and max index, based on the pixel position.
-      if (pixelPos < 0 || pixelPos > 1) {
+      if (double.IsNaN(pixelPos) || double.IsInfinity(pixelPos) ||
+          pixelPos < 0 || pixelPos > 1) {
         throw new ArgumentException("Pixel Position out of range: " + pixelPos.ToString());
+      }
+      if (minIndex < 0) {
+        throw new ArgumentOutOfRangeException(
+          nameof(minIndex), "Minimum color index cannot be negative.");
+      }
+      if (maxIndex <= minIndex) {
+        throw new ArgumentException(
+          "Maximum color index must be greater than minimum color index.",
+          nameof(maxIndex));
+      }
+      if (bank < 0) {
+        throw new ArgumentOutOfRangeException(
+          nameof(bank), "Palette bank cannot be negative.");
       }
       this.EnsureFrameColorCache();
       if (this.frameFlashedOff) {

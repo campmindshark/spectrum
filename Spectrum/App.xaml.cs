@@ -1,11 +1,11 @@
 using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
-using System.Linq;
+using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace Spectrum {
   /// <summary>
@@ -21,6 +21,7 @@ namespace Spectrum {
     // explicitly for the lifetime of the app so the throttle holds close to its
     // rate cap regardless of window state. Paired with timeEndPeriod on exit.
     private const uint TimerResolutionMs = 1;
+    private static readonly object ErrorLogLock = new object();
 
     [DllImport("winmm.dll", ExactSpelling = true)]
     private static extern uint timeBeginPeriod(uint uMilliseconds);
@@ -29,13 +30,73 @@ namespace Spectrum {
     private static extern uint timeEndPeriod(uint uMilliseconds);
 
     protected override void OnStartup(StartupEventArgs e) {
+      this.DispatcherUnhandledException += OnDispatcherUnhandledException;
+      AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+      TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
       timeBeginPeriod(TimerResolutionMs);
       base.OnStartup(e);
     }
 
     protected override void OnExit(ExitEventArgs e) {
-      timeEndPeriod(TimerResolutionMs);
-      base.OnExit(e);
+      try {
+        base.OnExit(e);
+      } finally {
+        timeEndPeriod(TimerResolutionMs);
+        this.DispatcherUnhandledException -= OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException -= OnUnhandledException;
+        TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
+      }
+    }
+
+    private static void OnDispatcherUnhandledException(
+      object sender, DispatcherUnhandledExceptionEventArgs e
+    ) {
+      LogException("Unhandled WPF dispatcher exception", e.Exception);
+      // Logging is last-chance diagnostics, not a blanket recovery policy.
+      // Leave Handled false so an unknown exception cannot continue against
+      // potentially inconsistent live-show state.
+    }
+
+    private static void OnUnhandledException(
+      object sender, UnhandledExceptionEventArgs e
+    ) {
+      LogException(
+        "Unhandled application-domain exception",
+        e.ExceptionObject as Exception ??
+          new Exception(e.ExceptionObject?.ToString() ?? "Unknown exception")
+      );
+    }
+
+    private static void OnUnobservedTaskException(
+      object sender, UnobservedTaskExceptionEventArgs e
+    ) {
+      LogException("Unobserved task exception", e.Exception);
+    }
+
+    internal static void LogException(string context, Exception exception) {
+      string entry =
+        "[" + DateTimeOffset.Now.ToString("O") + "] " + context +
+        Environment.NewLine + exception + Environment.NewLine;
+      Debug.WriteLine(entry);
+
+      // Error reporting must never become another crash path. LocalAppData is
+      // writable even when the portable application directory is read-only.
+      try {
+        string directory = Path.Combine(
+          Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+          "Spectrum", "Logs"
+        );
+        Directory.CreateDirectory(directory);
+        lock (ErrorLogLock) {
+          File.AppendAllText(
+            Path.Combine(directory, "spectrum-errors.log"),
+            entry,
+            Encoding.UTF8
+          );
+        }
+      } catch {
+        // There is nowhere safer to report a failure of the failure logger.
+      }
     }
   }
 }

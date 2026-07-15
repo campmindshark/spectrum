@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Spectrum.Base;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
@@ -76,6 +77,7 @@ namespace Spectrum.Audio {
             device = audioDevice;
             break;
           }
+          audioDevice.Dispose();
         }
       }
       if (device == null) {
@@ -83,32 +85,67 @@ namespace Spectrum.Audio {
           "Configured audioDeviceID not found among active capture devices!"
         );
       }
-      this.recordingDevice = device;
-      var bitrate = device.AudioClient.MixFormat.BitsPerSample;
-      this.captureStream = new WasapiCapture(device, false, bitrate);
-      audioFormatSampleFrequency = device.AudioClient.MixFormat.SampleRate;
-      this.captureStream.WaveFormat = new WaveFormat(
-        audioFormatSampleFrequency,
-        bitrate,
-        device.AudioClient.MixFormat.Channels
-      );
-      this.captureStream.DataAvailable += Update;
-      this.captureStream.StartRecording();
+      WasapiCapture capture = null;
+      try {
+        var bitrate = device.AudioClient.MixFormat.BitsPerSample;
+        capture = new WasapiCapture(device, false, bitrate);
+        audioFormatSampleFrequency = device.AudioClient.MixFormat.SampleRate;
+        capture.WaveFormat = new WaveFormat(
+          audioFormatSampleFrequency,
+          bitrate,
+          device.AudioClient.MixFormat.Channels
+        );
+        capture.DataAvailable += Update;
+        capture.StartRecording();
+        this.recordingDevice = device;
+        this.captureStream = capture;
+      } catch {
+        if (capture != null) {
+          capture.DataAvailable -= Update;
+          try {
+            capture.Dispose();
+          } catch (Exception e) {
+            Debug.WriteLine(
+              "AudioInput: error rolling back failed capture: " + e);
+          }
+        }
+        try {
+          device.Dispose();
+        } catch (Exception e) {
+          Debug.WriteLine(
+            "AudioInput: error rolling back failed device: " + e);
+        }
+        throw;
+      }
     }
 
     private void TerminateAudio() {
-      if (this.captureStream != null) {
+      WasapiCapture capture = this.captureStream;
+      this.captureStream = null;
+      if (capture != null) {
         // Detach the handler before stopping: StopRecording can raise a final
         // DataAvailable, and we don't want it running against a device we're
         // about to dispose/null.
-        this.captureStream.DataAvailable -= Update;
-        this.captureStream.StopRecording();
-        this.captureStream.Dispose();
-        this.captureStream = null;
+        capture.DataAvailable -= Update;
+        try {
+          capture.StopRecording();
+        } catch (Exception e) {
+          Debug.WriteLine("AudioInput: error stopping capture: " + e);
+        }
+        try {
+          capture.Dispose();
+        } catch (Exception e) {
+          Debug.WriteLine("AudioInput: error disposing capture: " + e);
+        }
       }
-      if (this.recordingDevice != null) {
-        this.recordingDevice.Dispose();
-        this.recordingDevice = null;
+      MMDevice device = this.recordingDevice;
+      this.recordingDevice = null;
+      if (device != null) {
+        try {
+          device.Dispose();
+        } catch (Exception e) {
+          Debug.WriteLine("AudioInput: error disposing recording device: " + e);
+        }
       }
       // Don't leave a stale peak reading behind once capture has stopped.
       this.volume = 0.0f;
@@ -130,26 +167,30 @@ namespace Spectrum.Audio {
     public static List<AudioDevice> AudioDevices {
       get {
         var audioDeviceList = new List<AudioDevice>();
-        var iterator = new MMDeviceEnumerator().EnumerateAudioEndPoints(
-          // We avoid filtering in the call here so we can get the right device
-          // index, which we need in our call to madmom. madmom uses PyAudio,
-          // which in turn uses PortAudio, which doesn't support the use of the
-          // "Endpoint ID string" (audioDevice.ID) to identify an audio device.
-          DataFlow.All,
-          DeviceState.Active
-        );
-        int i = 0;
-        foreach (var audioDevice in iterator) {
-          int index = i;
-          i++;
-          if (audioDevice.DataFlow != DataFlow.Capture) {
-            continue;
+        using (var enumerator = new MMDeviceEnumerator()) {
+          var iterator = enumerator.EnumerateAudioEndPoints(
+            // We avoid filtering in the call here so we can get the right device
+            // index, which we need in our call to madmom. madmom uses PyAudio,
+            // which in turn uses PortAudio, which doesn't support the use of the
+            // "Endpoint ID string" (audioDevice.ID) to identify an audio device.
+            DataFlow.All,
+            DeviceState.Active
+          );
+          int i = 0;
+          foreach (var audioDevice in iterator) {
+            using (audioDevice) {
+              int index = i;
+              i++;
+              if (audioDevice.DataFlow != DataFlow.Capture) {
+                continue;
+              }
+              audioDeviceList.Add(new AudioDevice() {
+                id = audioDevice.ID,
+                name = audioDevice.FriendlyName,
+                index = index,
+              });
+            }
           }
-          audioDeviceList.Add(new AudioDevice() {
-            id = audioDevice.ID,
-            name = audioDevice.FriendlyName,
-            index = index,
-          });
         }
         return audioDeviceList;
       }

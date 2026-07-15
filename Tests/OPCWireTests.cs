@@ -40,6 +40,8 @@ namespace Spectrum.LayerPipeline.Tests {
       run("OPC emits one valid message per populated channel", MultiChannel);
       run("threaded OPC path sends the same wire bytes", ThreadedOutput);
       run("OPC rejects payloads that overflow its wire header", PayloadLimit);
+      run("dome gradients reject invalid palette ranges",
+        GradientRangeValidation);
       run("dome OPC frame matches deployed wire fixture", GoldenDomeFrame);
       run("Iterate Through Struts matches deployed OPC sequence",
         IterateThroughStruts);
@@ -158,6 +160,28 @@ namespace Spectrum.LayerPipeline.Tests {
         sink.CloseConnection();
         opc.Active = false;
       }
+    }
+
+    private static void GradientRangeValidation() {
+      var config = new global::Spectrum.SpectrumConfiguration();
+      var output = new LEDDomeOutput(
+        config, new RuntimeTelemetry(), new BeatBroadcaster(config));
+
+      AssertThrows<ArgumentException>(
+        () => output.GetGradientBetweenColors(3, 3, .5, 0, false),
+        "equal gradient endpoints");
+      AssertThrows<ArgumentException>(
+        () => output.GetGradientBetweenColors(4, 3, .5, 0, false),
+        "reversed gradient endpoints");
+      AssertThrows<ArgumentOutOfRangeException>(
+        () => output.GetGradientBetweenColors(-1, 3, .5, 0, false),
+        "negative gradient endpoint");
+      AssertThrows<ArgumentOutOfRangeException>(
+        () => output.GetGradientBetweenColors(3, 7, .5, 0, false, -1),
+        "negative palette bank");
+      AssertThrows<ArgumentException>(
+        () => output.GetGradientBetweenColors(3, 7, double.NaN, 0, false),
+        "non-finite gradient position");
     }
 
     private static void GoldenDomeFrame() {

@@ -5,10 +5,13 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 
 namespace Spectrum.Audio {
 
   public class MadmomHandler {
+
+    private static readonly TimeSpan RestartDelay = TimeSpan.FromSeconds(2);
 
     private readonly Configuration config;
     private readonly AudioInput audio;
@@ -16,7 +19,10 @@ namespace Spectrum.Audio {
     // Operator, not part of Configuration).
     private readonly BeatBroadcaster beat;
 
+    private readonly object lifecycleLock = new object();
     private Process process;
+    private Timer restartTimer;
+    private int restartGeneration;
 
     public MadmomHandler(Configuration config, AudioInput audio, BeatBroadcaster beat) {
       this.config = config;
@@ -35,14 +41,18 @@ namespace Spectrum.Audio {
     private bool active;
     public bool Active {
       get {
-        return this.active;
+        lock (this.lifecycleLock) {
+          return this.active;
+        }
       }
       set {
-        if (this.active == value) {
-          return;
+        lock (this.lifecycleLock) {
+          if (this.active == value) {
+            return;
+          }
+          this.active = value;
+          this.UpdateEnabledLocked();
         }
-        this.active = value;
-        this.UpdateEnabled();
       }
     }
 
@@ -94,17 +104,25 @@ namespace Spectrum.Audio {
     }
 
     private void UpdateEnabled() {
-      if (this.process != null) {
-        if (!process.HasExited) { this.process.Kill(); }
-        try {
-          this.process.Dispose();
-        } catch (Exception e) {
-          Debug.WriteLine("MadmomHandler: error disposing process: " + e);
-        }
-        this.process = null;
+      lock (this.lifecycleLock) {
+        this.UpdateEnabledLocked();
       }
+    }
 
-      if (!this.active || this.config.beatInput != 1) {
+    private void UpdateEnabledLocked() {
+      this.CancelRestartLocked();
+      this.StopProcessLocked();
+      if (this.ShouldRunLocked()) {
+        this.TryStartProcessLocked();
+      }
+    }
+
+    private bool ShouldRunLocked() {
+      return this.active && this.config.beatInput == 1;
+    }
+
+    private void TryStartProcessLocked() {
+      if (this.process != null || !this.ShouldRunLocked()) {
         return;
       }
 
@@ -118,21 +136,130 @@ namespace Spectrum.Audio {
         return;
       }
 
-      ProcessStartInfo start = new ProcessStartInfo();
-      start.WorkingDirectory = Path.GetDirectoryName(runtime.ScriptPath);
-      start.FileName = runtime.PythonPath;
-      start.ArgumentList.Add(runtime.ScriptPath);
-      start.ArgumentList.Add("--host_api");
-      start.ArgumentList.Add(string.Format(
-        "--audio_input={0}", this.audio.CurrentAudioDeviceIndex
-      ));
-      start.ArgumentList.Add("online");
-      start.UseShellExecute = false;
-      start.RedirectStandardOutput = true;
-      start.CreateNoWindow = true;
-      this.process = Process.Start(start);
-      this.process.OutputDataReceived += BeatDetected;
-      this.process.BeginOutputReadLine();
+      Process started = null;
+      try {
+        ProcessStartInfo start = new ProcessStartInfo();
+        start.WorkingDirectory = Path.GetDirectoryName(runtime.ScriptPath);
+        start.FileName = runtime.PythonPath;
+        start.ArgumentList.Add(runtime.ScriptPath);
+        start.ArgumentList.Add("--host_api");
+        start.ArgumentList.Add(string.Format(
+          "--audio_input={0}", this.audio.CurrentAudioDeviceIndex
+        ));
+        start.ArgumentList.Add("online");
+        start.UseShellExecute = false;
+        start.RedirectStandardOutput = true;
+        start.CreateNoWindow = true;
+
+        started = Process.Start(start) ?? throw new InvalidOperationException(
+          "Process.Start returned no Madmom process.");
+        started.OutputDataReceived += BeatDetected;
+        started.Exited += ProcessExited;
+        this.process = started;
+        started.BeginOutputReadLine();
+        // Enable exit notification only after stdout processing is ready. If
+        // the child already exited, setting this still raises Exited, without
+        // leaving a half-initialized process visible to the callback.
+        started.EnableRaisingEvents = true;
+      } catch (Exception e) {
+        if (ReferenceEquals(this.process, started)) {
+          this.process = null;
+        }
+        this.DisposeProcess(started, true);
+        Debug.WriteLine("MadmomHandler: could not start beat tracker: " + e);
+        if (this.ShouldRunLocked()) {
+          this.ScheduleRestartLocked();
+        }
+      }
+    }
+
+    private void ProcessExited(object sender, EventArgs e) {
+      var exited = sender as Process;
+      if (exited == null) {
+        return;
+      }
+      lock (this.lifecycleLock) {
+        if (!ReferenceEquals(this.process, exited)) {
+          return;
+        }
+        this.process = null;
+        string exitDescription = "unknown exit code";
+        try {
+          exitDescription = "exit code " + exited.ExitCode;
+        } catch (Exception exitError) {
+          Debug.WriteLine(
+            "MadmomHandler: could not read beat tracker exit code: " +
+            exitError);
+        }
+        Debug.WriteLine(
+          "MadmomHandler: beat tracker stopped unexpectedly (" +
+          exitDescription + ").");
+        this.DisposeProcess(exited, false);
+        if (this.ShouldRunLocked()) {
+          this.ScheduleRestartLocked();
+        }
+      }
+    }
+
+    private void StopProcessLocked() {
+      Process toStop = this.process;
+      this.process = null;
+      this.DisposeProcess(toStop, true);
+    }
+
+    private void DisposeProcess(Process target, bool terminate) {
+      if (target == null) {
+        return;
+      }
+      target.OutputDataReceived -= BeatDetected;
+      target.Exited -= ProcessExited;
+      if (terminate) {
+        try {
+          if (!target.HasExited) {
+            target.Kill();
+          }
+        } catch (Exception e) {
+          Debug.WriteLine("MadmomHandler: error stopping process: " + e);
+        }
+      }
+      try {
+        target.Dispose();
+      } catch (Exception e) {
+        Debug.WriteLine("MadmomHandler: error disposing process: " + e);
+      }
+    }
+
+    private void ScheduleRestartLocked() {
+      if (this.restartTimer != null) {
+        return;
+      }
+      int generation = ++this.restartGeneration;
+      this.restartTimer = new Timer(
+        RestartProcess,
+        generation,
+        RestartDelay,
+        Timeout.InfiniteTimeSpan
+      );
+    }
+
+    private void RestartProcess(object state) {
+      int generation = (int)state;
+      lock (this.lifecycleLock) {
+        if (generation != this.restartGeneration) {
+          return;
+        }
+        Timer completedTimer = this.restartTimer;
+        this.restartTimer = null;
+        completedTimer?.Dispose();
+        this.TryStartProcessLocked();
+      }
+    }
+
+    private void CancelRestartLocked() {
+      this.restartGeneration++;
+      Timer cancelledTimer = this.restartTimer;
+      this.restartTimer = null;
+      cancelledTimer?.Dispose();
     }
 
     private void BeatDetected(object sender, DataReceivedEventArgs e) {

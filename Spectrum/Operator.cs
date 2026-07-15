@@ -294,11 +294,12 @@ namespace Spectrum {
     }
 
     public void Reboot() {
-      lock (this.visualizers) {
-        if (this.Enabled) {
-          this.Enabled = false;
-          this.Enabled = true;
-        }
+      // Enabled raises EnabledChanged after releasing the visualizers lock.
+      // Do not wrap the two transitions in that same lock or the outer Monitor
+      // would silently break the event's locking contract.
+      if (this.Enabled) {
+        this.Enabled = false;
+        this.Enabled = true;
       }
     }
 

@@ -310,9 +310,15 @@ namespace Spectrum {
         } else {
           File.Move(tempPath, configPath);
         }
+      } catch (Exception e) {
+        App.LogException("Could not save Spectrum configuration", e);
       } finally {
-        if (File.Exists(tempPath)) {
-          File.Delete(tempPath);
+        try {
+          if (File.Exists(tempPath)) {
+            File.Delete(tempPath);
+          }
+        } catch (Exception e) {
+          App.LogException("Could not clean up temporary configuration", e);
         }
       }
     }
