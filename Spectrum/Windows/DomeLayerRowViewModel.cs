@@ -318,6 +318,22 @@ namespace Spectrum {
       get => this.notes;
       set => this.Set(ref this.notes, value, nameof(Notes));
     }
+
+    // Native-editor disclosure state. This is deliberately not persisted in
+    // DomeLayerSettings and does not raise Changed: collapsing a card is only a
+    // local UI preference, not a scene edit.
+    private bool isExpanded = true;
+    public bool IsExpanded {
+      get => this.isExpanded;
+      set {
+        if (this.isExpanded == value) {
+          return;
+        }
+        this.isExpanded = value;
+        this.PropertyChanged?.Invoke(
+          this, new PropertyChangedEventArgs(nameof(IsExpanded)));
+      }
+    }
   }
 
 }

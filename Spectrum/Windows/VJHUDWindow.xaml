@@ -408,41 +408,56 @@
                                         <DockPanel LastChildFill="True">
                                             <Button DockPanel.Dock="Right" Content="Remove" Command="{Binding RemoveCommand}" MinWidth="58" ToolTip="Remove layer" />
                                             <CheckBox DockPanel.Dock="Right" Content="On" IsChecked="{Binding LayerEnabled}" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Enable this layer" />
-                                            <ComboBox ItemsSource="{Binding VisualizerOptions}" SelectedValuePath="Key" DisplayMemberPath="Label" SelectedValue="{Binding VisualizerKey}" />
-                                        </DockPanel>
-                                        <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,0,0" FontSize="10" ToolTip="Notes to yourself about this layer" />
-                                        <DockPanel LastChildFill="True" Margin="0,2,0,0">
                                             <Button DockPanel.Dock="Right" Content="Clear" Command="{Binding ClearCommand}" MinWidth="50" ToolTip="Clear this layer's live particles" />
                                             <Button DockPanel.Dock="Right" Content="Fire" Command="{Binding FireCommand}" MinWidth="46" ToolTip="Fire manual trigger" />
                                             <Button DockPanel.Dock="Right" Content="Back" Command="{Binding MoveDownCommand}" MinWidth="46" ToolTip="Move toward back" />
                                             <Button DockPanel.Dock="Right" Content="Front" Command="{Binding MoveUpCommand}" MinWidth="48" ToolTip="Move toward front" />
-                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Opacity, StringFormat={}{0:P0}}"
-                                                       MinWidth="38" Margin="5,0" VerticalAlignment="Center"
-                                                       HorizontalAlignment="Right" FontFamily="Cascadia Mono, Consolas" />
-                                            <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding BlendModes}" DisplayMemberPath="Label" SelectedValuePath="Id" SelectedValue="{Binding BlendMode}" Width="96" ToolTip="Blend mode" />
-                                            <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}" VerticalAlignment="Center" Margin="4,0,4,0" ToolTip="Opacity" />
+                                            <ToggleButton DockPanel.Dock="Left" IsChecked="{Binding IsExpanded}" Width="24" Margin="0,0,4,0" ToolTip="Expand or collapse layer settings">
+                                                <ToggleButton.Style>
+                                                    <Style TargetType="ToggleButton">
+                                                        <Setter Property="Content" Value="+" />
+                                                        <Setter Property="FontSize" Value="15" />
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsChecked" Value="True">
+                                                                <Setter Property="Content" Value="&#x2212;" />
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ToggleButton.Style>
+                                            </ToggleButton>
+                                            <ComboBox ItemsSource="{Binding VisualizerOptions}" SelectedValuePath="Key" DisplayMemberPath="Label" SelectedValue="{Binding VisualizerKey}" />
                                         </DockPanel>
-                                        <ItemsControl ItemsSource="{Binding Params}" Margin="0,2,0,0">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Grid Margin="0,1,0,0">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="140" />
-                                                            <ColumnDefinition Width="*" />
-                                                            <ColumnDefinition Width="48" />
-                                                        </Grid.ColumnDefinitions>
-                                                        <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                                        <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}" VerticalAlignment="Center" Visibility="{Binding IsDouble, Converter={StaticResource boolToVis}}" />
-                                                        <TextBlock Grid.Column="2" Text="{Binding Value, StringFormat={}{0:F2}}" VerticalAlignment="Center"
-                                                                   HorizontalAlignment="Right" FontFamily="Cascadia Mono, Consolas"
-                                                                   Visibility="{Binding IsDouble, Converter={StaticResource boolToVis}}" />
-                                                        <CheckBox Grid.Column="1" Content="On" IsChecked="{Binding BoolValue}" VerticalAlignment="Center" HorizontalAlignment="Left" Visibility="{Binding IsBool, Converter={StaticResource boolToVis}}" />
-                                                        <ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedIndex="{Binding IntValue}" Visibility="{Binding IsEnum, Converter={StaticResource boolToVis}}" />
-                                                        <local:ColorPicker Grid.Column="1" SelectedColor="{Binding ColorValue}" HorizontalAlignment="Left" Width="34" Height="30" Visibility="{Binding IsColor, Converter={StaticResource boolToVis}}" />
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                        <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource boolToVis}}">
+                                            <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,0,0" FontSize="10" ToolTip="Notes to yourself about this layer" />
+                                            <DockPanel LastChildFill="True" Margin="0,2,0,0">
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Opacity, StringFormat={}{0:P0}}"
+                                                           MinWidth="38" Margin="5,0" VerticalAlignment="Center"
+                                                           HorizontalAlignment="Right" FontFamily="Cascadia Mono, Consolas" />
+                                                <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding BlendModes}" DisplayMemberPath="Label" SelectedValuePath="Id" SelectedValue="{Binding BlendMode}" Width="96" ToolTip="Blend mode" />
+                                                <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}" VerticalAlignment="Center" Margin="4,0,4,0" ToolTip="Opacity" />
+                                            </DockPanel>
+                                            <ItemsControl ItemsSource="{Binding Params}" Margin="0,2,0,0">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid Margin="0,1,0,0">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="140" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="48" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                            <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}" VerticalAlignment="Center" Visibility="{Binding IsDouble, Converter={StaticResource boolToVis}}" />
+                                                            <TextBlock Grid.Column="2" Text="{Binding Value, StringFormat={}{0:F2}}" VerticalAlignment="Center"
+                                                                       HorizontalAlignment="Right" FontFamily="Cascadia Mono, Consolas"
+                                                                       Visibility="{Binding IsDouble, Converter={StaticResource boolToVis}}" />
+                                                            <CheckBox Grid.Column="1" Content="On" IsChecked="{Binding BoolValue}" VerticalAlignment="Center" HorizontalAlignment="Left" Visibility="{Binding IsBool, Converter={StaticResource boolToVis}}" />
+                                                            <ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedIndex="{Binding IntValue}" Visibility="{Binding IsEnum, Converter={StaticResource boolToVis}}" />
+                                                            <local:ColorPicker Grid.Column="1" SelectedColor="{Binding ColorValue}" HorizontalAlignment="Left" Width="34" Height="30" Visibility="{Binding IsColor, Converter={StaticResource boolToVis}}" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>

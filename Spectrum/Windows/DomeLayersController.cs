@@ -30,6 +30,9 @@ namespace Spectrum {
     // The exact list instance this controller last wrote to config, used to
     // ignore the PropertyChanged echo of our own write.
     private List<DomeLayerSettings> lastPublished;
+    // UI-only disclosure state, retained when a web edit or scene load rebuilds
+    // the row view models. Stable layer IDs make the preference reorder-safe.
+    private readonly Dictionary<string, bool> expandedByInstanceId = new();
 
     public DomeLayersController(
       Configuration config, ItemsControl itemsControl, ButtonBase addButton
@@ -58,6 +61,11 @@ namespace Spectrum {
 
     private void RebuildRows() {
       this.rebuilding = true;
+      foreach (DomeLayerRowViewModel row in this.Rows) {
+        if (!string.IsNullOrWhiteSpace(row.InstanceId)) {
+          this.expandedByInstanceId[row.InstanceId] = row.IsExpanded;
+        }
+      }
       this.Rows.Clear();
       List<DomeLayerSettings> stack = this.config.domeLayerStack;
       if (stack != null) {
@@ -70,13 +78,16 @@ namespace Spectrum {
     }
 
     private DomeLayerRowViewModel MakeRow(DomeLayerSettings settings) {
+      string instanceId = settings.InstanceId ?? LayerInstanceId.NewId().Value;
       var vm = new DomeLayerRowViewModel {
-        InstanceId = settings.InstanceId ?? LayerInstanceId.NewId().Value,
+        InstanceId = instanceId,
         VisualizerKey = settings.VisualizerKey,
         BlendMode = settings.BlendMode,
         Opacity = settings.Opacity,
         LayerEnabled = settings.Enabled,
         Notes = settings.Notes,
+        IsExpanded = !this.expandedByInstanceId.TryGetValue(
+          instanceId, out bool isExpanded) || isExpanded,
       };
       // Seed param values from the saved bag (the setters above installed schema
       // defaults); do this before wiring Changed so it doesn't republish.
