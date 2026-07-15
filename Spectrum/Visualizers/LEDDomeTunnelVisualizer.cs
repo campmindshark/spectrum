@@ -200,13 +200,12 @@ namespace Spectrum.Visualizers {
     // each constant value is a plane/ring perpendicular to the selected axis.
     // Kept internal for a small geometry regression test.
     internal static double AngularDistance(Vector3 pixel, Vector3 axis) {
-      double dot = Math.Clamp(Vector3.Dot(pixel, axis), -1, 1);
-      return Math.Acos(dot);
+      return DomeSurfaceGeometry.AngularDistance(pixel, axis);
     }
 
     internal static double NormalizeAngularDistance(
       double angle, double maxAngle
-    ) => maxAngle <= 0 ? 0 : Math.Clamp(angle / maxAngle, 0, 1);
+    ) => DomeSurfaceGeometry.NormalizeAngularDistance(angle, maxAngle);
 
     private void RenderPixels(int ringCount, int tint, double[] radii) {
       for (int i = 0; i < this.buffer.pixels.Length; i++) {

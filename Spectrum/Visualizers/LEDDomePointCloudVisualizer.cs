@@ -11,7 +11,9 @@ namespace Spectrum.Visualizers {
   // the wands can shove around. Each spot lives on the unit sphere, springs
   // gently back toward a home position, and is pushed away (along the surface)
   // whenever a moving wand's aim point passes near it. Let go of the wands and
-  // the cloud settles back into its resting constellation.
+  // the cloud settles back into its resting constellation. The simulation is
+  // bounded to the physical dome's positive-Z hemisphere; spots reflect at the
+  // rim instead of disappearing onto an unrendered lower half.
   //
   // Unlike Metaball/Ripple, live interaction uses every moving wand's individual
   // aim point (so two people can each stir a different part of the cloud), not
@@ -88,21 +90,13 @@ namespace Spectrum.Visualizers {
         1, this.runtime.GetOptions<PointCloudLayerOptions>().Count);
     }
 
-    // Scatter the cloud roughly evenly over the sphere with a Fibonacci-sphere
-    // lattice, so the resting constellation looks deliberate rather than clumpy.
+    // Scatter the cloud roughly evenly over the visible dome with an equal-area
+    // Fibonacci-hemisphere lattice, so every home has LEDs on which to render.
     // Hue runs around the color wheel with the index.
     private void Reseed(int count) {
       var result = new Spot[count];
-      double golden = Math.PI * (3 - Math.Sqrt(5)); // ~2.399963 rad
       for (int i = 0; i < count; i++) {
-        double y = 1 - (i + 0.5) / count * 2; // 1 .. -1
-        double r = Math.Sqrt(Math.Max(0, 1 - y * y));
-        double theta = golden * i;
-        var p = Vector3.Normalize(new Vector3(
-          (float)(Math.Cos(theta) * r),
-          (float)y,
-          (float)(Math.Sin(theta) * r)
-        ));
+        Vector3 p = FibonacciHemispherePoint(i, count);
         result[i] = new Spot {
           pos = p,
           home = p,
@@ -112,6 +106,20 @@ namespace Spectrum.Visualizers {
       }
       this.spots = result;
       this.spotCount = count;
+    }
+
+    internal static Vector3 FibonacciHemispherePoint(int index, int count) {
+      if (count <= 0 || index < 0 || index >= count) {
+        throw new ArgumentOutOfRangeException(nameof(index));
+      }
+      double golden = Math.PI * (3 - Math.Sqrt(5)); // ~2.399963 rad
+      double z = 1 - (index + 0.5) / count; // equal-area bands, crown to rim
+      double r = Math.Sqrt(Math.Max(0, 1 - z * z));
+      double theta = golden * index;
+      return Vector3.Normalize(new Vector3(
+        (float)(Math.Cos(theta) * r),
+        (float)(Math.Sin(theta) * r),
+        (float)z));
     }
 
     public int Priority => 2;
@@ -150,15 +158,16 @@ namespace Spectrum.Visualizers {
       Render(frameScale, spotSize);
     }
 
-    // Each moving wand's aim point on the dome: its rest pole pulled back
-    // through the inverse of the device's current rotation. When the shared
-    // center is idle (including the operator's force-idle mode), use its
-    // wandering virtual aim instead of physical devices.
+    // Each moving wand's aim axis on the dome: its rest pole pulled back
+    // through the inverse of the device's current rotation, then folded to the
+    // endpoint on the visible hemisphere. When the shared center is idle
+    // (including the operator's force-idle mode), use its wandering virtual aim
+    // instead of physical devices.
     private void CollectAimPoints() {
       this.aimPoints.Clear();
       if (this.center.Idle) {
-        this.aimPoints.Add(Vector3.Transform(
-          AimPole, Quaternion.Conjugate(this.center.CurrentCenter)));
+        this.aimPoints.Add(FoldAxisToUpperHemisphere(Vector3.Transform(
+          AimPole, Quaternion.Conjugate(this.center.CurrentCenter))));
         return;
       }
 
@@ -169,8 +178,14 @@ namespace Spectrum.Visualizers {
           continue;
         }
         Quaternion inv = Quaternion.Inverse(kvp.Value.currentRotation());
-        this.aimPoints.Add(Vector3.Transform(AimPole, inv));
+        this.aimPoints.Add(FoldAxisToUpperHemisphere(
+          Vector3.Transform(AimPole, inv)));
       }
+    }
+
+    internal static Vector3 FoldAxisToUpperHemisphere(Vector3 axis) {
+      axis = Vector3.Normalize(axis);
+      return axis.Z < 0 ? -axis : axis;
     }
 
     // Integrate every spot one frame: wand repulsion + home spring, projected
@@ -213,7 +228,18 @@ namespace Spectrum.Visualizers {
         // surface and re-normalize so the spot never leaves the sphere.
         spot.vel = Tangent(spot.pos, spot.vel + force * (float)frameScale);
         spot.vel *= (float)Math.Pow(damping, frameScale);
-        spot.pos = Vector3.Normalize(spot.pos + spot.vel * (float)frameScale);
+        Vector3 next =
+          Vector3.Normalize(spot.pos + spot.vel * (float)frameScale);
+        if (next.Z < 0) {
+          // Reflect both position and velocity across the rim plane. Folding
+          // the entire vector antipodally would jump the spot to the opposite
+          // side of the dome; reflecting Z gives the hemisphere a local,
+          // continuous boundary instead.
+          next = ReflectAcrossRim(next);
+          spot.vel = ReflectAcrossRim(spot.vel);
+        }
+        spot.pos = next;
+        spot.vel = Tangent(spot.pos, spot.vel);
 
         this.spots[s] = spot;
       }
@@ -224,6 +250,10 @@ namespace Spectrum.Visualizers {
     // that want a magnitude — the velocity integrator — keep it.
     private static Vector3 Tangent(Vector3 p, Vector3 v) {
       return v - p * Vector3.Dot(v, p);
+    }
+
+    internal static Vector3 ReflectAcrossRim(Vector3 value) {
+      return new Vector3(value.X, value.Y, -value.Z);
     }
 
     // Draw the cloud: short trails via a fade, then each pixel takes the

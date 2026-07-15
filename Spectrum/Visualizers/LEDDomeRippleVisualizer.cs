@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Numerics;
-using static Spectrum.MathUtil;
 
 namespace Spectrum.Visualizers {
 
@@ -141,17 +140,16 @@ namespace Spectrum.Visualizers {
         return;
       }
 
-      double rippleRadius = this.rippleCounter / 300d;
+      AngularRingBand rippleBand =
+        OrientationRingGeometry.RippleBand(this.rippleCounter);
       double rippleSaturation = Math.Clamp(1 - this.rippleCounter / 600d, 0, 1);
       double rippleValue = Math.Clamp(1 - this.rippleCounter / 800d, 0, 1);
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         Vector3 pixelPoint = this.pixelPositions[i];
-        double distance = Vector3.Distance(
-          Vector3.Transform(pixelPoint, this.rippleCenter),
-          OrientationCenter.Spot
-        );
-        if (CloseTo(distance, rippleRadius, .01)) {
+        Vector3 centeredPoint =
+          Vector3.Transform(pixelPoint, this.rippleCenter);
+        if (rippleBand.Contains(centeredPoint, OrientationCenter.Spot)) {
           // The ring's *position* may be frozen (pinned) or tracking
           // (following) via rippleCenter above; its *color* always samples
           // the live orientation-derived field at this pixel — the same two

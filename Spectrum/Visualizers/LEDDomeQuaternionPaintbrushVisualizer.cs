@@ -228,14 +228,17 @@ namespace Spectrum.Visualizers {
       double twinkleDensity = twinkle * frameScale;
 
       // Per-frame ripple geometry (constant across pixels).
-      double rippleRadius = rippleCounter / 300d;
+      AngularRingBand rippleBand =
+        OrientationRingGeometry.RippleBand(rippleCounter);
       double rippleSaturation = Math.Clamp(1 - rippleCounter / 600d, 0, 1);
       double rippleValue = Math.Clamp(1 - rippleCounter / 800d, 0, 1);
 
       // Per-frame stamp geometry.
       double stampHue = (1 + stampCenter.W) / 2;
-      double ringDistance = 2.4 - Math.Clamp(1.8d / (4 - (cooldown / 2d)), 0, 2.4);
-      double ringHalfWidth = .003 * cooldown * cooldown;
+      double ringDistance =
+        1.2 - Math.Clamp(.9d / (4 - (cooldown / 2d)), 0, 1.2);
+      AngularRingBand stampBand =
+        OrientationRingGeometry.StampBand(ringDistance, cooldown);
 
       for (int i = 0; i < buffer.pixels.Length; i++) {
         Vector3 pixelPoint = pixelPositions[i];
@@ -268,7 +271,8 @@ namespace Spectrum.Visualizers {
         }
 
         // Ripple - a color wave that follows (or sits at) a center.
-        if (CloseTo(Vector3.Distance(Vector3.Transform(pixelPoint, rippleCenter), spot), rippleRadius, .01)) {
+        Vector3 ripplePoint = Vector3.Transform(pixelPoint, rippleCenter);
+        if (rippleBand.Contains(ripplePoint, spot)) {
           drawn = true;
           if (rippleValue > bestValue) {
             best = new Color(metaballHue, rippleSaturation, rippleValue).ToInt();
@@ -279,17 +283,19 @@ namespace Spectrum.Visualizers {
         // Stamps - shapes that appear based on the wand facing. These overwrite
         // rather than blend.
         if (stampFired) {
-          double stampDistance = Vector3.Distance(Vector3.Transform(pixelPoint, stampCenter), spot);
+          Vector3 stampPoint = Vector3.Transform(pixelPoint, stampCenter);
+          double stampDot =
+            DomeSurfaceGeometry.UnitSphereDot(stampPoint, spot);
           if (stampEffect == 1) {
-            // Evenly spaced grid of rings.
-            if (stampDistance % .4 < .05) {
+            // Evenly spaced grid of rings in surface angle.
+            if (OrientationRingGeometry.StampGridContains(stampDot)) {
               best = new Color(stampHue, .2, 1).ToInt();
               bestValue = 1;
               drawn = true;
             }
           } else if (stampEffect == 2) {
             // Time-delayed band that contracts to the beat.
-            if (Between(stampDistance, ringDistance - ringHalfWidth, ringDistance + ringHalfWidth)) {
+            if (stampBand.ContainsDot(stampDot)) {
               best = new Color(stampHue, .2, 1).ToInt();
               bestValue = 1;
               drawn = true;

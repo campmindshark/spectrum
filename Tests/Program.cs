@@ -18,6 +18,10 @@ namespace Spectrum.LayerPipeline.Tests {
     private static void Main() {
       Run("catalog metadata is unique", CatalogIsUnique);
       Run("tunnel parameters compile and clamp", TunnelParametersCompile);
+      Run("Ripple and Stamp rings use angular surface distance",
+        OrientationRingsUseAngularDistance);
+      Run("Point Cloud stays on the visible dome hemisphere",
+        PointCloudUsesVisibleHemisphere);
       Run("Quaternion Test is a modal dome diagnostic",
         QuaternionTestIsDiagnostic);
       Run("duplicate renderer kinds get stable instance IDs", DuplicateKinds);
@@ -172,6 +176,87 @@ namespace Spectrum.LayerPipeline.Tests {
         LEDDomeTunnelVisualizer.NormalizeAngularDistance(
           Math.PI / 4, Math.PI / 2),
         "Tunnel oriented radius is not linear in surface angle");
+    }
+
+    private static void OrientationRingsUseAngularDistance() {
+      AssertClose(
+        .5,
+        DomeSurfaceGeometry.NormalizedAngularDistance(
+          Vector3.UnitZ, Vector3.UnitX),
+        "normalized angular distance does not map a quarter turn to .5");
+
+      AngularRingBand midRipple =
+        OrientationRingGeometry.RippleBand(300);
+      Assert(midRipple.Contains(Vector3.UnitZ, Vector3.UnitX),
+        "Ripple did not reach a quarter turn halfway to the antipode");
+      Vector3 sixtyDegrees = new Vector3(
+        (float)Math.Sin(Math.PI / 3), 0,
+        (float)Math.Cos(Math.PI / 3));
+      Assert(!midRipple.Contains(Vector3.UnitZ, sixtyDegrees),
+        "Ripple retained its nonlinear chord-distance radius");
+      Assert(!OrientationRingGeometry.RippleBand(700).Contains(
+          Vector3.UnitZ, -Vector3.UnitZ),
+        "Ripple remained visible after passing the antipode");
+
+      for (int ring = 0; ring < 5; ring++) {
+        double ringCenter = ring * .2 + .0125;
+        Vector3 onRing = new Vector3(
+          (float)Math.Sin(ringCenter * Math.PI), 0,
+          (float)Math.Cos(ringCenter * Math.PI));
+        Assert(OrientationRingGeometry.StampGridContains(
+            DomeSurfaceGeometry.UnitSphereDot(Vector3.UnitZ, onRing)),
+          "Stamp grid lost angular ring " + ring);
+
+        double gapCenter = ring * .2 + .1;
+        Vector3 betweenRings = new Vector3(
+          (float)Math.Sin(gapCenter * Math.PI), 0,
+          (float)Math.Cos(gapCenter * Math.PI));
+        Assert(!OrientationRingGeometry.StampGridContains(
+            DomeSurfaceGeometry.UnitSphereDot(
+              Vector3.UnitZ, betweenRings)),
+          "Stamp grid spacing is not angular at gap " + ring);
+      }
+    }
+
+    private static void PointCloudUsesVisibleHemisphere() {
+      const int count = 320;
+      double previousZ = double.PositiveInfinity;
+      for (int i = 0; i < count; i++) {
+        Vector3 point =
+          LEDDomePointCloudVisualizer.FibonacciHemispherePoint(i, count);
+        Assert(point.Z > 0 && point.Z <= 1,
+          "Point Cloud seeded a home outside the visible hemisphere");
+        Assert(Math.Abs(point.Length() - 1) < .000001,
+          "Point Cloud seeded a non-unit home");
+        if (i > 0) {
+          Assert(Math.Abs((previousZ - point.Z) - 1d / count) < .000001,
+            "Point Cloud hemisphere bands are not equal-area");
+        }
+        previousZ = point.Z;
+      }
+      Assert(
+        LEDDomePointCloudVisualizer.FibonacciHemispherePoint(0, count).Z > .99f &&
+        LEDDomePointCloudVisualizer.FibonacciHemispherePoint(count - 1, count).Z < .01f,
+        "Point Cloud homes do not span crown to rim");
+
+      Vector3 lowerAxis = Vector3.Normalize(new Vector3(1, 2, -3));
+      Vector3 folded =
+        LEDDomePointCloudVisualizer.FoldAxisToUpperHemisphere(lowerAxis);
+      Assert(folded.Z > 0 && Vector3.Distance(folded, -lowerAxis) < .000001,
+        "Point Cloud did not fold a lower-hemisphere aim axis");
+      Vector3 upperAxis = Vector3.Normalize(new Vector3(-2, 1, 3));
+      Assert(Vector3.Distance(
+          LEDDomePointCloudVisualizer.FoldAxisToUpperHemisphere(upperAxis),
+          upperAxis) < .000001,
+        "Point Cloud changed an already-visible aim axis");
+
+      Vector3 crossing = Vector3.Normalize(new Vector3(.4f, .2f, -.1f));
+      Vector3 reflected =
+        LEDDomePointCloudVisualizer.ReflectAcrossRim(crossing);
+      Assert(reflected.Z > 0 && Math.Abs(reflected.Length() - 1) < .000001,
+        "Point Cloud rim reflection left the visible hemisphere");
+      Assert(reflected.X == crossing.X && reflected.Y == crossing.Y,
+        "Point Cloud rim reflection jumped across the dome");
     }
 
     private static void QuaternionTestIsDiagnostic() {

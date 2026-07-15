@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Numerics;
-using static Spectrum.MathUtil;
 
 namespace Spectrum.Visualizers {
 
@@ -157,24 +156,26 @@ namespace Spectrum.Visualizers {
       // nears the edge. Quadratic in the cooldown normalized to RHYTHM_COOLDOWN,
       // so it opens at the facing on its first frame (cooldown == RHYTHM_COOLDOWN)
       // and never divides by zero; the [1, RHYTHM_COOLDOWN] cooldown keeps it
-      // inside the [0, 2] distance range without a clamp.
+      // inside the [0, 1] normalized angular-distance range without a clamp.
       double ringDistance =
-        2.0 * (1 - Math.Pow(this.cooldown / (double)RHYTHM_COOLDOWN, 2));
-      double ringHalfWidth = .003 * this.cooldown * this.cooldown;
+        1 - Math.Pow(this.cooldown / (double)RHYTHM_COOLDOWN, 2);
+      AngularRingBand rhythmBand =
+        OrientationRingGeometry.StampBand(ringDistance, this.cooldown);
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         Vector3 pixelPoint = this.pixelPositions[i];
-        double stampDistance = Vector3.Distance(
-          Vector3.Transform(pixelPoint, this.stampCenter), OrientationCenter.Spot
-        );
+        Vector3 centeredPoint =
+          Vector3.Transform(pixelPoint, this.stampCenter);
+        double stampDot = DomeSurfaceGeometry.UnitSphereDot(
+          centeredPoint, OrientationCenter.Spot);
         if (this.stampEffect == 1) {
-          // Evenly spaced grid of rings.
-          if (stampDistance % .4 < .05) {
+          // Evenly spaced grid of rings in surface angle.
+          if (OrientationRingGeometry.StampGridContains(stampDot)) {
             this.buffer.pixels[i].color = new Color(stampHue, .2, 1).ToInt();
           }
         } else if (this.stampEffect == 2) {
           // Band that expands from the facing to the rim, sharpening as it goes.
-          if (Between(stampDistance, ringDistance - ringHalfWidth, ringDistance + ringHalfWidth)) {
+          if (rhythmBand.ContainsDot(stampDot)) {
             this.buffer.pixels[i].color = new Color(stampHue, .2, 1).ToInt();
           }
         }
