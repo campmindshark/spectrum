@@ -118,12 +118,8 @@ namespace Spectrum {
         OrientationCenter.Spot,
         Quaternion.Conjugate(this.center.CurrentCenter)
       );
-      // The orientation represents an axis. Of its two antipodal endpoints,
-      // launch from the one on the dome's positive-Z (top) hemisphere.
-      if (aimSphere.Z < 0) {
-        aimSphere = -aimSphere;
-      }
-      return new Vector2(aimSphere.X, -aimSphere.Y);
+      return StrutLayoutFactory.ProjectSphereToStrip(
+        aimSphere, foldAxisToUpperHemisphere: true);
     }
 
     private bool ClearRequested() {

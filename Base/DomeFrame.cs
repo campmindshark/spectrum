@@ -256,8 +256,21 @@ namespace Spectrum.Base {
   }
 
   public readonly record struct DomeTopologyPixel(
-    int StrutIndex, int LedIndex, double X, double Y
-  );
+    int StrutIndex, int LedIndex,
+    double StripX, double StripY,
+    double TopDownX, double TopDownY
+  ) {
+    // Preserve the established planar-renderer contract while making the
+    // projection explicit for new code.
+    public double X => this.StripX;
+    public double Y => this.StripY;
+
+    // Small synthetic topologies historically supplied only planar positions.
+    // Using those positions for both projections preserves their behavior.
+    public DomeTopologyPixel(
+      int strutIndex, int ledIndex, double x, double y
+    ) : this(strutIndex, ledIndex, x, y, x, y) { }
+  }
 
   // Immutable logical pixel geometry shared by every frame. The neighbor and
   // unit-sphere tables are lazy implementation caches; Lazy publishes each
@@ -312,11 +325,17 @@ namespace Spectrum.Base {
         this.pixels.Length);
       for (int i = 0; i < this.pixels.Length; i++) {
         DomeTopologyPixel point = this.pixels[i];
-        float x = (float)(2 * point.X - 1);
-        float y = (float)(1 - 2 * point.Y);
-        float z = (x * x + y * y) > 1
-          ? 0 : (float)Math.Sqrt(1 - x * x - y * y);
-        positions.Add(new Vector3(x, y, z));
+        double x = 2 * point.TopDownX - 1;
+        double y = 1 - 2 * point.TopDownY;
+        double radius = Math.Sqrt(x * x + y * y);
+        if (radius > 1) {
+          x /= radius;
+          y /= radius;
+          radius = 1;
+        }
+        double z = Math.Sqrt(Math.Max(0, 1 - radius * radius));
+        positions.Add(Vector3.Normalize(new Vector3(
+          (float)x, (float)y, (float)z)));
       }
       return positions.MoveToImmutable();
     }

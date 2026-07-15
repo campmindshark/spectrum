@@ -810,9 +810,14 @@ namespace Spectrum.LEDs {
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
         var leds = LEDDomeOutput.GetNumLEDs(i);
         for (int j = 0; j < leds; j++) {
-          var point = StrutLayoutFactory.GetProjectedLEDPoint(i, j);
+          var stripPoint = StrutLayoutFactory.GetProjectedLEDPoint(
+            i, j, DomeProjection.StripExtents);
+          var topDownPoint = StrutLayoutFactory.GetProjectedLEDPoint(
+            i, j, DomeProjection.TopDown);
           pixels.Add(new DomeTopologyPixel(
-            i, j, point.Item1, point.Item2));
+            i, j,
+            stripPoint.Item1, stripPoint.Item2,
+            topDownPoint.Item1, topDownPoint.Item2));
         }
       }
 

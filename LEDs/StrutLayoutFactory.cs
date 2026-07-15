@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -183,6 +184,35 @@ namespace Spectrum.LEDs {
       var y = (p2.Item2 - p1.Item2) * d + p1.Item2;
 
       return new Tuple<double, double>(x, y);
+    }
+
+    // Project a unit-sphere direction into the centered [-1, 1]
+    // azimuthal-equidistant strip map used by planar visualizers.
+    public static Vector2 ProjectSphereToStrip(
+      Vector3 direction, bool foldAxisToUpperHemisphere = false
+    ) {
+      float lengthSquared = direction.LengthSquared();
+      if (!float.IsFinite(lengthSquared) || lengthSquared <= 0) {
+        throw new ArgumentException(
+          "Sphere direction must be finite and non-zero.",
+          nameof(direction));
+      }
+
+      Vector3 point = Vector3.Normalize(direction);
+      if (foldAxisToUpperHemisphere && point.Z < 0) {
+        point = -point;
+      }
+
+      double theta = Math.Acos(Math.Clamp((double)point.Z, 0, 1));
+      double stripRadius = 2 * theta / Math.PI;
+      double horizontal = Math.Sqrt(
+        point.X * point.X + point.Y * point.Y);
+      if (horizontal <= 0.0000001) {
+        return Vector2.Zero;
+      }
+      return new Vector2(
+        (float)(stripRadius * point.X / horizontal),
+        (float)(-stripRadius * point.Y / horizontal));
     }
 
     // gets x, y coordinates of a given LED on a given strut

@@ -34,6 +34,10 @@ namespace Spectrum.LayerPipeline.Tests {
         AstronomyOptionsAndHeading);
       Run("simulator real view foreshortens the dome from above",
         SimulatorTopDownProjection);
+      Run("dome topology stores both projections and unit normals",
+        DomeTopologyUsesTopDownNormals);
+      Run("sphere directions project into strip-extents coordinates",
+        SphereDirectionsProjectToStripExtents);
       Run("compiled plan freezes renderer inputs", PlanFreezesRendererInputs);
       Run("configuration publishes immutable layer snapshots",
         ConfigurationPublishesSnapshot);
@@ -163,6 +167,11 @@ namespace Spectrum.LayerPipeline.Tests {
         LEDDomeTunnelVisualizer.AngularDistance(
           -Vector3.UnitX, Vector3.UnitX),
         "Tunnel antipodal ring geometry changed");
+      AssertClose(
+        .5,
+        LEDDomeTunnelVisualizer.NormalizeAngularDistance(
+          Math.PI / 4, Math.PI / 2),
+        "Tunnel oriented radius is not linear in surface angle");
     }
 
     private static void QuaternionTestIsDiagnostic() {
@@ -312,6 +321,121 @@ namespace Spectrum.LayerPipeline.Tests {
         led.Item1, "the top-down LED left its physical strut (x)");
       AssertClose(endpoint0.Item2 + (endpoint1.Item2 - endpoint0.Item2) * d,
         led.Item2, "the top-down LED left its physical strut (y)");
+
+      double expectedTheta = Math.Min(stripRadius * 2, 1) * Math.PI / 2;
+      double projectedTheta = Math.Asin(Math.Min(topDownRadius * 2, 1));
+      AssertClose(expectedTheta, projectedTheta,
+        "the top-down projection changed the physical polar angle");
+    }
+
+    private static void DomeTopologyUsesTopDownNormals() {
+      var config = new global::Spectrum.SpectrumConfiguration();
+      var output = new LEDDomeOutput(
+        config, new RuntimeTelemetry(), new BeatBroadcaster(config));
+      DomeFrame frame = output.MakeDomeFrame();
+
+      Assert(frame.Topology.PixelCount == frame.pixels.Length,
+        "the topology and frame pixel counts differ");
+      for (int i = 0; i < frame.Topology.PixelCount; i++) {
+        DomeTopologyPixel pixel = frame.Topology.PixelAt(i);
+        Tuple<double, double> strip =
+          StrutLayoutFactory.GetProjectedLEDPoint(
+            pixel.StrutIndex, pixel.LedIndex, DomeProjection.StripExtents);
+        Tuple<double, double> topDown =
+          StrutLayoutFactory.GetProjectedLEDPoint(
+            pixel.StrutIndex, pixel.LedIndex, DomeProjection.TopDown);
+        AssertClose(strip.Item1, pixel.StripX,
+          "topology strip x differs at pixel " + i);
+        AssertClose(strip.Item2, pixel.StripY,
+          "topology strip y differs at pixel " + i);
+        Assert(pixel.X == pixel.StripX && pixel.Y == pixel.StripY,
+          "the planar compatibility coordinates changed at pixel " + i);
+        AssertClose(topDown.Item1, pixel.TopDownX,
+          "topology top-down x differs at pixel " + i);
+        AssertClose(topDown.Item2, pixel.TopDownY,
+          "topology top-down y differs at pixel " + i);
+
+        double x = 2 * pixel.TopDownX - 1;
+        double y = 1 - 2 * pixel.TopDownY;
+        Assert(x * x + y * y <= 1.000000001,
+          "top-down pixel escaped the dome silhouette at pixel " + i);
+
+        Vector3 normal = frame.Normals[i];
+        Assert(float.IsFinite(normal.X) && float.IsFinite(normal.Y) &&
+          float.IsFinite(normal.Z),
+          "topology normal is not finite at pixel " + i);
+        Assert(normal.Z >= 0,
+          "topology normal points below the rim at pixel " + i);
+        Assert(Math.Abs(normal.Length() - 1) < .000001,
+          "topology normal is not unit length at pixel " + i);
+      }
+
+      var explicitProjections = new DomeTopology(new[] {
+        new DomeTopologyPixel(0, 0, .5, .5, .75, .5),
+        new DomeTopologyPixel(1, 0, .5, .5, 1.1, .5),
+      });
+      Vector3 midDome = explicitProjections.Normals[0];
+      Assert(Math.Abs(midDome.X - .5) < .000001 &&
+        Math.Abs(midDome.Z - Math.Sqrt(.75)) < .000001,
+        "normal construction used strip coordinates instead of top-down");
+      Vector3 clampedRim = explicitProjections.Normals[1];
+      Assert(Math.Abs(clampedRim.X - 1) < .000001 &&
+        Math.Abs(clampedRim.Z) < .000001 &&
+        Math.Abs(clampedRim.Length() - 1) < .000001,
+        "top-down overshoot was not clamped to a unit rim normal");
+    }
+
+    private static void SphereDirectionsProjectToStripExtents() {
+      Vector2 crown = StrutLayoutFactory.ProjectSphereToStrip(Vector3.UnitZ);
+      Assert(crown.Length() < .000001,
+        "the crown did not project to the strip origin");
+
+      double theta = Math.PI / 4;
+      double azimuth = Math.PI / 6;
+      var direction = new Vector3(
+        (float)(Math.Sin(theta) * Math.Cos(azimuth)),
+        (float)(Math.Sin(theta) * Math.Sin(azimuth)),
+        (float)Math.Cos(theta));
+      Vector2 midDome = StrutLayoutFactory.ProjectSphereToStrip(
+        direction * 3);
+      Assert(Math.Abs(midDome.Length() - .5) < .000001,
+        "mid-dome direction has the wrong strip radius");
+      Assert(Math.Abs(midDome.X - .5 * Math.Cos(azimuth)) < .000001 &&
+        Math.Abs(midDome.Y + .5 * Math.Sin(azimuth)) < .000001,
+        "mid-dome direction changed azimuth");
+
+      Vector2 rim = StrutLayoutFactory.ProjectSphereToStrip(Vector3.UnitY);
+      Assert(Math.Abs(rim.X) < .000001 && Math.Abs(rim.Y + 1) < .000001,
+        "rim direction did not reach the strip silhouette");
+      Vector2 foldedAxis = StrutLayoutFactory.ProjectSphereToStrip(
+        new Vector3(1, 0, -1), foldAxisToUpperHemisphere: true);
+      Assert(Math.Abs(foldedAxis.X + .5) < .000001 &&
+        Math.Abs(foldedAxis.Y) < .000001,
+        "axis projection did not select the upper-hemisphere endpoint");
+
+      foreach (Vector3 expected in new[] {
+        Vector3.UnitZ, direction, Vector3.UnitY,
+      }) {
+        Vector2 strip = StrutLayoutFactory.ProjectSphereToStrip(expected);
+        double radius = strip.Length();
+        double roundTripTheta = radius * Math.PI / 2;
+        Vector3 actual = radius < .0000001
+          ? Vector3.UnitZ
+          : Vector3.Normalize(new Vector3(
+              (float)(Math.Sin(roundTripTheta) * strip.X / radius),
+              (float)(-Math.Sin(roundTripTheta) * strip.Y / radius),
+              (float)Math.Cos(roundTripTheta)));
+        Assert(Vector3.Distance(expected, actual) < .000001,
+          "sphere-to-strip round trip changed a canonical direction");
+      }
+
+      bool rejectedZero = false;
+      try {
+        StrutLayoutFactory.ProjectSphereToStrip(Vector3.Zero);
+      } catch (ArgumentException) {
+        rejectedZero = true;
+      }
+      Assert(rejectedZero, "sphere-to-strip accepted a zero direction");
     }
 
     private static void RuntimeOptionsSwap() {

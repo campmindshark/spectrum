@@ -202,10 +202,12 @@ namespace Spectrum.Visualizers {
             OrientationCenter.Spot,
             Quaternion.Conjugate(device.currentRotation())
           );
+          Vector2 stripAim = StrutLayoutFactory.ProjectSphereToStrip(
+            aim, foldAxisToUpperHemisphere: true);
           this.TankMoveObject(
             kvp.Key,
-            Math.Clamp((aim.X + 1) / 2, 0, 1),
-            Math.Clamp((1 - aim.Y) / 2, 0, 1),
+            Math.Clamp((stripAim.X + 1) / 2, 0, 1),
+            Math.Clamp((stripAim.Y + 1) / 2, 0, 1),
             device.MotionSpeedRadPerSecond,
             elapsed);
         }
@@ -220,10 +222,12 @@ namespace Spectrum.Visualizers {
           OrientationCenter.Spot,
           Quaternion.Conjugate(this.center.CurrentCenter)
         );
+        Vector2 idleStripAim = StrutLayoutFactory.ProjectSphereToStrip(
+          idleAim, foldAxisToUpperHemisphere: true);
         this.TankMoveObject(
           TankIdleObjectId,
-          Math.Clamp((idleAim.X + 1) / 2, 0, 1),
-          Math.Clamp((1 - idleAim.Y) / 2, 0, 1),
+          Math.Clamp((idleStripAim.X + 1) / 2, 0, 1),
+          Math.Clamp((idleStripAim.Y + 1) / 2, 0, 1),
           0,
           elapsed);
       }

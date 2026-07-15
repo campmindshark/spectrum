@@ -184,16 +184,15 @@ namespace Spectrum.Visualizers {
 
       // Normalize against the farthest physical LED so a ring completes its
       // full crown-to-rim trip at every axis angle, including near the edge.
-      // The sine projection makes a crown-pointing bound axis reproduce the
-      // fixed mode's projected radius exactly instead of changing its pacing.
+      // Tunnel's fixed mode uses the azimuthal-equidistant strip radius, whose
+      // radius is linear in surface angle. Keep that same pacing here instead
+      // of applying an additional orthographic sine projection.
       if (maxAngle <= 1e-9) {
         maxAngle = 1;
       }
       for (int i = 0; i < this.orientedPixelRadii.Length; i++) {
-        double normalizedAngle = this.orientedPixelRadii[i] / maxAngle;
-        this.orientedPixelRadii[i] = Math.Sin(
-          normalizedAngle * Math.PI / 2
-        );
+        this.orientedPixelRadii[i] = NormalizeAngularDistance(
+          this.orientedPixelRadii[i], maxAngle);
       }
     }
 
@@ -204,6 +203,10 @@ namespace Spectrum.Visualizers {
       double dot = Math.Clamp(Vector3.Dot(pixel, axis), -1, 1);
       return Math.Acos(dot);
     }
+
+    internal static double NormalizeAngularDistance(
+      double angle, double maxAngle
+    ) => maxAngle <= 0 ? 0 : Math.Clamp(angle / maxAngle, 0, 1);
 
     private void RenderPixels(int ringCount, int tint, double[] radii) {
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
