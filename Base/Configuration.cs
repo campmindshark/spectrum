@@ -38,7 +38,8 @@ namespace Spectrum.Base {
     bool webDomeSimulatorEnabled { get; set; }
     double domeMaxBrightness { get; set; }
     double domeBrightness { get; set; }
-    // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts, 3 - Strip test
+    // 0 - None, 1 - Flash colors by strut, 2 - Iterate through struts,
+    // 3 - Strip test, 4 - Full color flash, 5 - Quaternion test
     int domeTestPattern { get; set; }
 
     // The dome's compositing stack, index 0 = background (bottom), last = front.

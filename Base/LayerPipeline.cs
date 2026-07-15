@@ -244,9 +244,6 @@ namespace Spectrum.Base {
         "splat", "Splat Effect", LayerParameterSchemas.SplatParams,
         LayerRendererOptionsCompiler.Palette),
       BuiltIn(
-        "quaternion-test", "Quaternion Test",
-        LayerParameterSchemas.NoParams, LayerRendererOptionsCompiler.Empty),
-      BuiltIn(
         "quaternion-paintbrush", "Quaternion Paintbrush",
         LayerParameterSchemas.PaintbrushParams,
         LayerRendererOptionsCompiler.Paintbrush),
@@ -277,6 +274,9 @@ namespace Spectrum.Base {
       BuiltIn(
         "stamp", "Stamp", LayerParameterSchemas.StampParams,
         LayerRendererOptionsCompiler.Stamp),
+      BuiltIn(
+        "tunnel", "Tunnel", LayerParameterSchemas.TunnelParams,
+        LayerRendererOptionsCompiler.Tunnel),
       BuiltIn(
         "metaball", "Metaball", LayerParameterSchemas.MetaballParams,
         LayerRendererOptionsCompiler.Metaball),

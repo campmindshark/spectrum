@@ -152,6 +152,11 @@ namespace Spectrum {
         this.config,
         dome
       ));
+      this.visualizers.Add(new LEDDomeQuaternionTestVisualizer(
+        this.config,
+        orientation,
+        dome
+      ));
       this.layerCatalog = DomeLayerCatalog.Create(
         layerEnvironment, audio, midi, orientation, orientationCenter,
         this.BeatBroadcaster, dome);

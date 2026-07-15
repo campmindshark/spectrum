@@ -392,6 +392,9 @@ namespace Spectrum {
       this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.homeDomeFPSLabel, TextBlock.TextProperty, BindingMode.OneWay, null, this.op.Telemetry);
       this.Bind(nameof(this.config.domeEnabled), this.domeEnabled, CheckBox.IsCheckedProperty);
       this.Bind(nameof(this.config.domeSimulationEnabled), this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
+      this.domeTestPatternSelector.ItemsSource = DomeTestPatterns.Names;
+      this.Bind(nameof(this.config.domeTestPattern), this.domeTestPatternSelector,
+        Selector.SelectedIndexProperty);
       this.Bind(nameof(this.config.domeMaxBrightness), this.domeMaxBrightnessSlider, Slider.ValueProperty);
       this.Bind(nameof(this.config.domeMaxBrightness), this.domeMaxBrightnessLabel, Label.ContentProperty,
         BindingMode.OneWay, new NormalizedPercentConverter());

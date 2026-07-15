@@ -29,8 +29,6 @@ namespace Spectrum {
         environment, runtime, audio, beats, dome),
       ["splat"] = runtime => new LEDDomeSplatVisualizer(
         runtime, audio, beats, dome),
-      ["quaternion-test"] = runtime => new LEDDomeQuaternionTestVisualizer(
-        environment, orientation, dome),
       ["quaternion-paintbrush"] = runtime =>
         new LEDDomeQuaternionPaintbrushVisualizer(
           environment, runtime, audio, orientation, orientationCenter,
@@ -68,12 +66,14 @@ namespace Spectrum {
       ["stamp"] = runtime => new LEDDomeStampVisualizer(
         environment, runtime, audio, orientation, orientationCenter,
         beats, dome),
+      ["tunnel"] = runtime => new LEDDomeTunnelVisualizer(
+        environment, runtime, orientation, orientationCenter, dome),
       ["metaball"] = runtime => new LEDDomeMetaballVisualizer(
         environment, runtime, audio, orientation, orientationCenter, dome),
       ["magnetic-field"] = runtime => new LEDDomeMagneticFieldVisualizer(
         runtime, orientation, orientationCenter, dome),
       ["point-cloud"] = runtime => new LEDDomePointCloudVisualizer(
-        environment, runtime, orientation, dome),
+        environment, runtime, orientation, orientationCenter, dome),
       ["shooting-star"] = runtime => new LEDDomeShootingStarVisualizer(
         environment, runtime, audio, orientation, orientationCenter,
         beats, dome),

@@ -13,18 +13,19 @@ namespace Spectrum.Visualizers {
   // whenever a moving wand's aim point passes near it. Let go of the wands and
   // the cloud settles back into its resting constellation.
   //
-  // Unlike Metaball/Ripple this layer does NOT go through OrientationCenter: it
-  // wants every moving wand's individual aim point (so two people can each stir
-  // a different part of the cloud), not the single resolved CurrentCenter. It
-  // reads the device snapshot directly, the way OrientationCenter itself does.
-  // A consequence is that this layer has no idle screen-saver drift — at rest
-  // the cloud simply settles and holds; only a moving wand disturbs it.
+  // Unlike Metaball/Ripple, live interaction uses every moving wand's individual
+  // aim point (so two people can each stir a different part of the cloud), not
+  // the single resolved CurrentCenter. When no wand is moving, the shared
+  // OrientationCenter supplies its idle screen-saver aim point so the resting
+  // cloud continues to drift and react with the rest of the orientation layers.
   //
   // Tunables come from the point-cloud definition in LayerCatalog
   // and are read fresh every frame. `count` reseeds the lattice when it changes;
   // the rest tune the physics and the drawn spot size. Render is O(pixels *
-  // spots) — fine for the schema's max of 160 spots; revisit if that grows.
+  // spots) — fine for the schema's max of 320 spots; revisit if that grows.
   class LEDDomePointCloudVisualizer : DomeLayerVisualizer {
+
+    private const double IDLE_LEVEL = 0.4;
 
     // The direction a wand at calibrated rest "aims" at, in dome space. Matches
     // OrientationCenter.Spot: at identity rotation Transform(p, id) == p, so the
@@ -36,6 +37,7 @@ namespace Spectrum.Visualizers {
     private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly OrientationInput orientationInput;
+    private readonly OrientationCenter center;
     private readonly LEDDomeOutput dome;
     private readonly DomeFrame buffer;
 
@@ -66,11 +68,13 @@ namespace Spectrum.Visualizers {
       DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       OrientationInput orientationInput,
+      OrientationCenter center,
       LEDDomeOutput dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
       this.orientationInput = orientationInput;
+      this.center = center;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
@@ -137,6 +141,9 @@ namespace Spectrum.Visualizers {
       double springStrength = options.SpringStrength;
       double damping = options.Damping;
 
+      // Advance the shared center even when Point Cloud is the only active
+      // orientation layer. The fixed level affects only idle wander.
+      this.center.Update(IDLE_LEVEL);
       CollectAimPoints();
       StepPhysics(
         frameScale, pushRadius, pushStrength, springStrength, damping);
@@ -144,10 +151,17 @@ namespace Spectrum.Visualizers {
     }
 
     // Each moving wand's aim point on the dome: its rest pole pulled back
-    // through the inverse of the device's current rotation. A wand sitting
-    // still (not isMoving) contributes nothing, so a cloud at rest only settles.
+    // through the inverse of the device's current rotation. When the shared
+    // center is idle (including the operator's force-idle mode), use its
+    // wandering virtual aim instead of physical devices.
     private void CollectAimPoints() {
       this.aimPoints.Clear();
+      if (this.center.Idle) {
+        this.aimPoints.Add(Vector3.Transform(
+          AimPole, Quaternion.Conjugate(this.center.CurrentCenter)));
+        return;
+      }
+
       IReadOnlyDictionary<int, OrientationDevice> devices =
         this.orientationInput.OperatorFrameDevices;
       foreach (var kvp in devices) {

@@ -40,11 +40,6 @@ namespace Spectrum.Web {
       return value;
     }
 
-    // Dome test patterns (domeTestPattern index).
-    private static readonly IReadOnlyList<string> DomeTestPatternNames = new[] {
-      "None", "Flash Colors By Strut", "Iterate Through Struts",
-      "Strip Test", "Full Color Flash",
-    };
     // BPM source selection (beatInput index) — mirrors the Tempo radio group in
     // the VJ HUD (VJHUDWindow: tempoSelectorHuman/Madmom/Link).
     private static readonly IReadOnlyList<string> BeatInputNames = new[] {
@@ -150,7 +145,7 @@ namespace Spectrum.Web {
           description: "Advanced: restarts the engine when changed."),
 
         // Test patterns (modal — will get advisory locks in step 5)
-        new EnumIntParameter("domeTestPattern", maint, DomeTestPatternNames,
+        new EnumIntParameter("domeTestPattern", maint, DomeTestPatterns.Names,
           c => c.domeTestPattern, (c, v) => c.domeTestPattern = v,
           label: "Dome test pattern",
           description: "Overrides the live look while a diagnostic pattern is active."),

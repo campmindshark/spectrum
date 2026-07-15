@@ -17,6 +17,9 @@ namespace Spectrum.LayerPipeline.Tests {
 
     private static void Main() {
       Run("catalog metadata is unique", CatalogIsUnique);
+      Run("tunnel parameters compile and clamp", TunnelParametersCompile);
+      Run("Quaternion Test is a modal dome diagnostic",
+        QuaternionTestIsDiagnostic);
       Run("duplicate renderer kinds get stable instance IDs", DuplicateKinds);
       Run("parameters compile into separate namespaces", ParameterNamespaces);
       Run("compiled renderer runtime updates in place", RuntimeUpdatesInPlace);
@@ -104,6 +107,91 @@ namespace Spectrum.LayerPipeline.Tests {
           snapshot.Layers[0].RendererParameters);
         Assert(options != null, "null options for " + definition.Id);
       }
+    }
+
+    private static void TunnelParametersCompile() {
+      LayerDefinition definition = LayerCatalog.Default.Get("tunnel");
+      Assert(definition != null && definition.DisplayName == "Tunnel",
+        "Tunnel is missing from the layer catalog");
+
+      TunnelLayerOptions defaults = BuiltInOptions<TunnelLayerOptions>(
+        Layer("tunnel", "tunnel-defaults"));
+      Assert(defaults.RingCount == 12, "unexpected Tunnel ring count");
+      Assert(Math.Abs(defaults.Speed - 0.18) < 1e-9,
+        "unexpected Tunnel speed");
+      Assert(Math.Abs(defaults.Thickness - 0.025) < 1e-9,
+        "unexpected Tunnel thickness");
+      Assert(defaults.Brightness == 1 && defaults.Variation == 0.8,
+        "unexpected Tunnel brightness or variation");
+      Assert(!defaults.BindToOrientation,
+        "Tunnel unexpectedly binds orientation by default");
+      Assert(defaults.Color == 0xFFFFFF, "unexpected Tunnel color");
+
+      var configured = Layer("tunnel", "tunnel-clamped");
+      configured.RendererParams = new Dictionary<string, double> {
+        ["count"] = 100,
+        ["speed"] = -1,
+        ["thickness"] = 1,
+        ["brightness"] = 2,
+        ["variation"] = -1,
+        ["bindOrientation"] = 1,
+        ["color"] = 0x123456,
+      };
+      TunnelLayerOptions clamped =
+        BuiltInOptions<TunnelLayerOptions>(configured);
+      Assert(clamped.RingCount == 24 && clamped.Speed == 0,
+        "Tunnel count or speed did not clamp");
+      Assert(clamped.Thickness == 0.12 && clamped.Brightness == 1 &&
+          clamped.Variation == 0,
+        "Tunnel shape controls did not clamp");
+      Assert(clamped.BindToOrientation,
+        "Tunnel orientation binding did not compile");
+      Assert(clamped.Color == 0x123456, "Tunnel color did not compile");
+
+      AssertClose(
+        0,
+        LEDDomeTunnelVisualizer.AngularDistance(
+          Vector3.UnitX, Vector3.UnitX),
+        "Tunnel axis center is not radius zero");
+      AssertClose(
+        Math.PI / 2,
+        LEDDomeTunnelVisualizer.AngularDistance(
+          Vector3.UnitY, Vector3.UnitX),
+        "Tunnel perpendicular ring geometry changed");
+      AssertClose(
+        Math.PI,
+        LEDDomeTunnelVisualizer.AngularDistance(
+          -Vector3.UnitX, Vector3.UnitX),
+        "Tunnel antipodal ring geometry changed");
+    }
+
+    private static void QuaternionTestIsDiagnostic() {
+      Assert(LayerCatalog.Default.Get("quaternion-test") == null,
+        "Quaternion Test is still exposed as a layer renderer");
+
+      ParameterRegistry registry =
+        global::Spectrum.Web.SpectrumParameters.BuildRegistry();
+      Assert(registry.TryGet(
+          "domeTestPattern", out ParameterDescriptor testPattern) &&
+        testPattern.Options.Count == 6 &&
+        testPattern.Options[5] == "Quaternion Test",
+        "Quaternion Test is missing from the dome test-pattern selector");
+
+      var config = new global::Spectrum.SpectrumConfiguration();
+      var runtime = new global::Spectrum.Operator(config);
+      Visualizer diagnostic = runtime.DomeOutput.GetVisualizers()
+        .FirstOrDefault(v => v is LEDDomeQuaternionTestVisualizer);
+      Assert(diagnostic != null && diagnostic is not DomeLayerVisualizer,
+        "Quaternion Test was not registered as a diagnostic visualizer");
+      Assert(diagnostic.GetInputs().Length == 1 && ReferenceEquals(
+          diagnostic.GetInputs()[0], runtime.OrientationInput),
+        "Quaternion Test is not bound to the orientation input");
+      config.domeTestPattern = 5;
+      Assert(diagnostic.Priority == 1000,
+        "Quaternion Test does not override the active layer stack");
+      config.domeTestPattern = 0;
+      Assert(diagnostic.Priority == 0,
+        "Quaternion Test remains active after clearing the test pattern");
     }
 
     private static void DuplicateKinds() {

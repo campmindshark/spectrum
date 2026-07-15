@@ -414,6 +414,48 @@ namespace Spectrum.Base {
       StampTriggerIntervalParam,
     };
 
+    // An autonomous stack of concentric rings centered on the dome's vertical
+    // axis. Rings travel from the crown toward the rim continuously; the
+    // renderer gives each one a stable variation in speed, thickness, and
+    // brightness, with `variation` controlling how far those traits spread
+    // from their base values.
+    internal static readonly DomeLayerParam[] TunnelParams = new DomeLayerParam[] {
+      new DomeLayerParam {
+        Key = "count", Label = "Ring Count",
+        Type = DomeLayerParamType.Double,
+        Min = 3, Max = 24, Step = 1, Default = 12,
+      },
+      new DomeLayerParam {
+        Key = "speed", Label = "Travel Speed",
+        Type = DomeLayerParamType.Double,
+        Min = 0, Max = 1.5, Step = 0.025, Default = 0.18,
+      },
+      new DomeLayerParam {
+        Key = "thickness", Label = "Ring Thickness",
+        Type = DomeLayerParamType.Double,
+        Min = 0.005, Max = 0.12, Step = 0.005, Default = 0.025,
+      },
+      new DomeLayerParam {
+        Key = "brightness", Label = "Brightness",
+        Type = DomeLayerParamType.Double,
+        Min = 0, Max = 1, Step = 0.05, Default = 1,
+      },
+      new DomeLayerParam {
+        Key = "variation", Label = "Ring Variation",
+        Type = DomeLayerParamType.Double,
+        Min = 0, Max = 1, Step = 0.05, Default = 0.8,
+      },
+      new DomeLayerParam {
+        Key = "bindOrientation", Label = "Bind to Orientation",
+        Type = DomeLayerParamType.Bool, Default = 0,
+      },
+      new DomeLayerParam {
+        Key = "color", Label = "Color",
+        Type = DomeLayerParamType.Color,
+        Min = 0, Max = 0xFFFFFF, Default = 0xFFFFFF,
+      },
+    };
+
     // Metaball's own tuning. Contours default off.
     internal static readonly DomeLayerParam[] MetaballParams = new DomeLayerParam[] {
       new DomeLayerParam {
@@ -612,7 +654,7 @@ namespace Spectrum.Base {
         new DomeLayerParam {
           Key = "count", Label = "Spot Count",
           Type = DomeLayerParamType.Double,
-          Min = 4, Max = 160, Step = 1, Default = 48,
+          Min = 4, Max = 320, Step = 1, Default = 48,
         },
         new DomeLayerParam {
           Key = "spotSize", Label = "Spot Size",

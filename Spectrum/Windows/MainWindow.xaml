@@ -410,6 +410,18 @@
                           Margin="0,10,0,0" Click="OpenDomeMapping" />
                 </StackPanel>
               </Border>
+
+              <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                  <TextBlock Text="Diagnostics" Style="{StaticResource SectionHeadingText}" />
+                  <TextBlock Text="Dome test pattern" Style="{StaticResource CaptionText}" />
+                  <ComboBox x:Name="domeTestPatternSelector" Margin="0,4,0,0"
+                            AutomationProperties.Name="Dome test pattern" />
+                  <TextBlock Text="A test pattern temporarily overrides the live dome look. Choose None to resume normal output."
+                             Style="{StaticResource CaptionText}" Margin="0,6,0,0"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
             </StackPanel>
 
             <StackPanel Grid.Column="1">

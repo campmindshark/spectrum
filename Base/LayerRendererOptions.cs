@@ -44,6 +44,11 @@ namespace Spectrum.Base {
     int Trigger, int Button, double Level, double Interval
   ) : ILayerRendererOptions;
 
+  public sealed record TunnelLayerOptions(
+    int RingCount, double Speed, double Thickness, double Brightness,
+    double Variation, bool BindToOrientation, int Color
+  ) : ILayerRendererOptions;
+
   public sealed record MetaballLayerOptions(
     double Size, bool ShowContours, int Button
   ) : ILayerRendererOptions;
@@ -190,6 +195,14 @@ namespace Spectrum.Base {
     ) => new StampLayerOptions(
       Integer(v, "trigger"), Integer(v, "button"), Double(v, "level"),
       Double(v, "interval"));
+
+    internal static ILayerRendererOptions Tunnel(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new TunnelLayerOptions(
+      TruncatedInteger(v, "count"), Double(v, "speed"),
+      Double(v, "thickness"), Double(v, "brightness"),
+      Double(v, "variation"), Boolean(v, "bindOrientation"),
+      Integer(v, "color"));
 
     internal static ILayerRendererOptions Metaball(
       ImmutableDictionary<string, ParameterValue> v
