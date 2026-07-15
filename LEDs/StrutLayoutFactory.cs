@@ -199,8 +199,14 @@ namespace Spectrum.LEDs {
       }
 
       Vector3 point = Vector3.Normalize(direction);
-      if (foldAxisToUpperHemisphere && point.Z < 0) {
-        point = -point;
+      if (point.Z < 0) {
+        if (foldAxisToUpperHemisphere) {
+          point = -point;
+        } else {
+          throw new ArgumentOutOfRangeException(
+            nameof(direction),
+            "Dome strip projection requires an upper-hemisphere direction.");
+        }
       }
 
       double theta = Math.Acos(Math.Clamp((double)point.Z, 0, 1));

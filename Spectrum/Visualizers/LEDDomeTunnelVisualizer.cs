@@ -9,9 +9,9 @@ namespace Spectrum.Visualizers {
   // Concentric rings fly from the dome's crown toward its rim, creating the
   // expanding-circle optic flow of driving through a tunnel. Every ring has a
   // deterministic speed, width, and brightness so the motion stays varied
-  // without flickering or allocating particle state. The projected radius is
-  // eased quadratically: distant rings emerge slowly at the crown and rush
-  // outward as they approach the viewer.
+  // without flickering or allocating particle state. The normalized angular
+  // radius is eased quadratically: distant rings emerge slowly at the crown
+  // and rush outward as they approach the viewer.
   class LEDDomeTunnelVisualizer : DomeLayerVisualizer {
 
     private const int MaxRingCount = 24;
@@ -68,17 +68,11 @@ namespace Spectrum.Visualizers {
       this.buffer = this.dome.MakeDomeFrame();
       this.pixelPositions = this.buffer.BakePixelPositions();
 
-      // The legacy projection is already centered and normalized to roughly a
-      // unit disc. Clamp the few hand-drawn rim points that land just outside
-      // it so the last ring reaches the entire silhouette at once.
-      this.fixedPixelRadii = new double[this.buffer.pixels.Length];
+      // Fixed mode is the same sphere-native angular field as oriented mode,
+      // with the crown selected as its axis. Keeping one construction path
+      // prevents a mode toggle from shifting every ring radially.
+      this.fixedPixelRadii = BuildFixedRadii(this.pixelPositions);
       this.orientedPixelRadii = new double[this.buffer.pixels.Length];
-      for (int i = 0; i < this.buffer.pixels.Length; i++) {
-        DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
-        double x = point.X * 2 - 1;
-        double y = 1 - point.Y * 2;
-        this.fixedPixelRadii[i] = Math.Min(1, Math.Sqrt(x * x + y * y));
-      }
 
       uint seed = InstanceSeed(runtime.InstanceId.Value);
       for (int i = 0; i < this.traits.Length; i++) {
@@ -172,27 +166,57 @@ namespace Spectrum.Visualizers {
         axis = -axis;
       }
       axis = Vector3.Normalize(axis);
+      BuildNormalizedAngularRadii(
+        this.pixelPositions, axis, this.orientedPixelRadii);
+    }
+
+    internal static double[] BuildFixedRadii(
+      ImmutableArray<Vector3> pixelPositions
+    ) {
+      var radii = new double[pixelPositions.Length];
+      BuildNormalizedAngularRadii(pixelPositions, Vector3.UnitZ, radii);
+      return radii;
+    }
+
+    internal static void BuildNormalizedAngularRadii(
+      ImmutableArray<Vector3> pixelPositions,
+      Vector3 axis,
+      double[] destination
+    ) {
+      if (pixelPositions.IsDefault) {
+        throw new ArgumentException(
+          "Tunnel pixel positions must be initialized.",
+          nameof(pixelPositions));
+      }
+      if (destination == null || destination.Length != pixelPositions.Length) {
+        throw new ArgumentException(
+          "Tunnel radius output must match the pixel count.",
+          nameof(destination));
+      }
+      float axisLengthSquared = axis.LengthSquared();
+      if (!float.IsFinite(axisLengthSquared) || axisLengthSquared <= 0) {
+        throw new ArgumentException(
+          "Tunnel axis must be finite and non-zero.", nameof(axis));
+      }
+      axis = Vector3.Normalize(axis);
 
       double maxAngle = 0;
-      for (int i = 0; i < this.pixelPositions.Length; i++) {
-        double angle = AngularDistance(this.pixelPositions[i], axis);
-        this.orientedPixelRadii[i] = angle;
+      for (int i = 0; i < pixelPositions.Length; i++) {
+        double angle = AngularDistance(pixelPositions[i], axis);
+        destination[i] = angle;
         if (angle > maxAngle) {
           maxAngle = angle;
         }
       }
 
-      // Normalize against the farthest physical LED so a ring completes its
-      // full crown-to-rim trip at every axis angle, including near the edge.
-      // Tunnel's fixed mode uses the azimuthal-equidistant strip radius, whose
-      // radius is linear in surface angle. Keep that same pacing here instead
-      // of applying an additional orthographic sine projection.
+      // Normalize against the farthest physical LED so the moving rings span
+      // the full rendered topology for any selected axis.
       if (maxAngle <= 1e-9) {
         maxAngle = 1;
       }
-      for (int i = 0; i < this.orientedPixelRadii.Length; i++) {
-        this.orientedPixelRadii[i] = NormalizeAngularDistance(
-          this.orientedPixelRadii[i], maxAngle);
+      for (int i = 0; i < destination.Length; i++) {
+        destination[i] = NormalizeAngularDistance(
+          destination[i], maxAngle);
       }
     }
 

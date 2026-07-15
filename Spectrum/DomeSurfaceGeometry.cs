@@ -1,4 +1,6 @@
+using Spectrum.LEDs;
 using System;
+using System.Collections.Immutable;
 using System.Numerics;
 
 namespace Spectrum {
@@ -6,6 +8,25 @@ namespace Spectrum {
   // Unit-sphere geometry shared by dome effects. Callers supply normalized
   // vectors; clamping the dot product absorbs normal floating-point drift.
   static class DomeSurfaceGeometry {
+
+    // Build the centered azimuthal-equidistant coordinates used by planar
+    // effects whose targets originate in sphere space. These coordinates are
+    // intentionally derived from the same normals as the targets rather than
+    // from the legacy straight-line strip layout, so both sides of a distance
+    // calculation use one invertible projection.
+    public static ImmutableArray<Vector2> ProjectNormalsToStrip(
+      ImmutableArray<Vector3> normals
+    ) {
+      if (normals.IsDefault) {
+        throw new ArgumentException(
+          "Sphere normals must be initialized.", nameof(normals));
+      }
+      var projected = ImmutableArray.CreateBuilder<Vector2>(normals.Length);
+      for (int i = 0; i < normals.Length; i++) {
+        projected.Add(StrutLayoutFactory.ProjectSphereToStrip(normals[i]));
+      }
+      return projected.MoveToImmutable();
+    }
 
     // Intrinsic great-circle distance in radians.
     public static double AngularDistance(Vector3 first, Vector3 second) {

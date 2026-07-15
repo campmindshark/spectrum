@@ -2,6 +2,7 @@ using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Numerics;
 
 namespace Spectrum.Visualizers {
@@ -324,10 +325,12 @@ namespace Spectrum.Visualizers {
       this.tankCell = new int[n];
       this.tankWeightX = new double[n];
       this.tankWeightY = new double[n];
+      ImmutableArray<Vector2> projectedPixels =
+        DomeSurfaceGeometry.ProjectNormalsToStrip(this.buffer.Normals);
       for (int i = 0; i < n; i++) {
-        DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
-        double gx = Math.Clamp(point.X, 0, 1) * (TankSize - 1);
-        double gy = Math.Clamp(point.Y, 0, 1) * (TankSize - 1);
+        Vector2 point = projectedPixels[i];
+        double gx = Math.Clamp((point.X + 1) / 2, 0, 1) * (TankSize - 1);
+        double gy = Math.Clamp((point.Y + 1) / 2, 0, 1) * (TankSize - 1);
         int ix = Math.Min((int)gx, TankSize - 2);
         int iy = Math.Min((int)gy, TankSize - 2);
         this.tankCell[i] = iy * TankSize + ix;

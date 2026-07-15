@@ -4,6 +4,7 @@ using Spectrum.LEDs;
 using Spectrum.Visualizers;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Numerics;
 
 namespace Spectrum {
@@ -33,6 +34,7 @@ namespace Spectrum {
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
     private readonly DomeFrame buffer;
+    private readonly ImmutableArray<Vector2> projectedPixels;
     private readonly OrientationCenter center;
     private readonly LayerTrigger trigger;
     private readonly FrameClock frameClock = new FrameClock();
@@ -58,6 +60,8 @@ namespace Spectrum {
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
+      this.projectedPixels =
+        DomeSurfaceGeometry.ProjectNormalsToStrip(this.buffer.Normals);
       this.trigger = new LayerTrigger(
         environment, orientationInput, runtime.InstanceId, beat, audio);
     }
@@ -181,9 +185,9 @@ namespace Spectrum {
       }
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         ref var pixel = ref this.buffer.pixels[i];
-        DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
-        double u = 2 * point.X - 1;
-        double v = 2 * point.Y - 1;
+        Vector2 point = this.projectedPixels[i];
+        double u = point.X;
+        double v = point.Y;
         double bestValue = 0;
         int bestColor = 0;
         for (int j = 0; j < this.particles.Count; j++) {

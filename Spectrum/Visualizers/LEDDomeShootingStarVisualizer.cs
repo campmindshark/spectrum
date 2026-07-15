@@ -4,6 +4,7 @@ using Spectrum.LEDs;
 using Spectrum.Visualizers;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Numerics;
 
 namespace Spectrum {
@@ -16,13 +17,12 @@ namespace Spectrum {
   // When a dot reaches the aim point it's counted as a "hit" and despawned
   // (a burst on arrival is a natural extension — see the arrival block).
   //
-  // Everything runs in a *centered screen frame* (u, v):
-  //     u = 2 * topology.X - 1,  v = 2 * topology.Y - 1
-  // so the dome disc is u² + v² <= ~1 and "off the dome" is simply radius > 1.
-  // That's the same projected disc Splat/Wave draw in; it is NOT the unit-sphere
-  // frame BakePixelPositions returns. The only place the sphere frame appears is
-  // resolving the wand's aim point, which we immediately project back to (u, v)
-  // via AimPoint() below.
+  // Everything runs in a centered azimuthal-equidistant frame (u, v), derived
+  // by projecting each topology normal through ProjectSphereToStrip. The dome
+  // disc is u² + v² <= 1 and "off the dome" is simply radius > 1. Unlike the
+  // legacy straight-line strip coordinates used by Splat/Wave, this effect map
+  // is the exact inverse of the sphere projection used for the wand target, so
+  // a target and the corresponding physical pixel cannot drift apart.
   //
   // Orientation plumbing (OrientationInput + the shared OrientationCenter) is
   // wired exactly like Metaball/Ripple: the shared center gives us a valid aim
@@ -57,6 +57,7 @@ namespace Spectrum {
     private readonly OrientationInput orientationInput;
     private readonly LEDDomeOutput dome;
     private readonly DomeFrame buffer;
+    private readonly ImmutableArray<Vector2> projectedPixels;
     private readonly OrientationCenter center;
     private readonly LayerTrigger trigger;
 
@@ -92,6 +93,8 @@ namespace Spectrum {
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
+      this.projectedPixels =
+        DomeSurfaceGeometry.ProjectNormalsToStrip(this.buffer.Normals);
       // Beat + Audio passed so all four trigger sources are live, like Ripple.
       this.trigger = new LayerTrigger(
         environment, orientationInput, runtime.InstanceId, beat, audio);
@@ -286,9 +289,9 @@ namespace Spectrum {
       double sizeSq = size * size;
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         ref var pixel = ref this.buffer.pixels[i];
-        DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
-        double u = 2 * point.X - 1;
-        double v = 2 * point.Y - 1;
+        Vector2 point = this.projectedPixels[i];
+        double u = point.X;
+        double v = point.Y;
 
         double bestValue = 0;
         int bestColor = 0;

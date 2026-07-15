@@ -42,6 +42,10 @@ namespace Spectrum.LayerPipeline.Tests {
         DomeTopologyUsesTopDownNormals);
       Run("sphere directions project into strip-extents coordinates",
         SphereDirectionsProjectToStripExtents);
+      Run("targeted planar coordinates round-trip real dome normals",
+        TargetedPlanarCoordinatesRoundTripNormals);
+      Run("Tunnel fixed mode matches a crown-bound angular field",
+        TunnelFixedModeMatchesCrownAxis);
       Run("compiled plan freezes renderer inputs", PlanFreezesRendererInputs);
       Run("configuration publishes immutable layer snapshots",
         ConfigurationPublishesSnapshot);
@@ -521,6 +525,72 @@ namespace Spectrum.LayerPipeline.Tests {
         rejectedZero = true;
       }
       Assert(rejectedZero, "sphere-to-strip accepted a zero direction");
+
+      bool rejectedLowerHemisphere = false;
+      try {
+        StrutLayoutFactory.ProjectSphereToStrip(
+          new Vector3(1, 0, -1));
+      } catch (ArgumentOutOfRangeException) {
+        rejectedLowerHemisphere = true;
+      }
+      Assert(rejectedLowerHemisphere,
+        "sphere-to-strip silently flattened a lower-hemisphere direction");
+    }
+
+    private static void TargetedPlanarCoordinatesRoundTripNormals() {
+      var config = new global::Spectrum.SpectrumConfiguration();
+      var output = new LEDDomeOutput(
+        config, new RuntimeTelemetry(), new BeatBroadcaster(config));
+      DomeFrame frame = output.MakeDomeFrame();
+      ImmutableArray<Vector2> projected =
+        DomeSurfaceGeometry.ProjectNormalsToStrip(frame.Normals);
+
+      Assert(projected.Length == frame.Topology.PixelCount,
+        "targeted planar projection changed the pixel count");
+      double maximumRoundTripError = 0;
+      for (int i = 0; i < projected.Length; i++) {
+        Vector2 strip = projected[i];
+        double radius = strip.Length();
+        Assert(float.IsFinite(strip.X) && float.IsFinite(strip.Y) &&
+          radius <= 1.000001,
+          "targeted planar coordinate left the dome at pixel " + i);
+
+        double theta = radius * Math.PI / 2;
+        Vector3 roundTrip = radius < .0000001
+          ? Vector3.UnitZ
+          : Vector3.Normalize(new Vector3(
+              (float)(Math.Sin(theta) * strip.X / radius),
+              (float)(-Math.Sin(theta) * strip.Y / radius),
+              (float)Math.Cos(theta)));
+        double roundTripError = Vector3.Distance(frame.Normals[i], roundTrip);
+        maximumRoundTripError = Math.Max(
+          maximumRoundTripError, roundTripError);
+      }
+      Assert(maximumRoundTripError < .00005,
+        "targeted planar round trip exceeded float tolerance: " +
+        maximumRoundTripError);
+    }
+
+    private static void TunnelFixedModeMatchesCrownAxis() {
+      var config = new global::Spectrum.SpectrumConfiguration();
+      var output = new LEDDomeOutput(
+        config, new RuntimeTelemetry(), new BeatBroadcaster(config));
+      ImmutableArray<Vector3> positions =
+        output.MakeDomeFrame().BakePixelPositions();
+      double[] fixedRadii =
+        LEDDomeTunnelVisualizer.BuildFixedRadii(positions);
+      var crownRadii = new double[positions.Length];
+      LEDDomeTunnelVisualizer.BuildNormalizedAngularRadii(
+        positions, Vector3.UnitZ, crownRadii);
+
+      Assert(fixedRadii.Length == positions.Length,
+        "Tunnel fixed radius count differs from the topology");
+      for (int i = 0; i < positions.Length; i++) {
+        AssertClose(fixedRadii[i], crownRadii[i],
+          "Tunnel fixed and crown-bound radii differ at pixel " + i);
+      }
+      AssertClose(1, fixedRadii.Max(),
+        "Tunnel fixed field does not reach the farthest LED");
     }
 
     private static void RuntimeOptionsSwap() {
