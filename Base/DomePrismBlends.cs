@@ -175,9 +175,9 @@ namespace Spectrum.Base {
   // a displacement *field* through its side channels (direction in `hue`,
   // 0..1 = 0..2π; magnitude in alpha, which doubles as the mask), and each
   // masked pixel lerps toward the snapshot sample displaced along that
-  // vector. Caustics is the field publisher today (its analytic-surface
-  // gradient), but the contract is just "hue + alpha", so any layer that
-  // fills both can drive it. strength = max displacement in projected-plane
+  // vector. Caustics and Ripple Tank are the field publishers today, but the
+  // contract is just "hue + alpha", so any layer that fills both can drive it.
+  // strength = max displacement in projected-plane
   // units; the neighbor table caps the reach at 4 × 0.02 = 0.08 (~6 LED
   // pitches) — plenty for shimmer.
   internal sealed class RefractBlend : DomeBlend {

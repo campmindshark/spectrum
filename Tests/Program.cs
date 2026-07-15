@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Spectrum.Base;
 using Spectrum.LEDs;
+using Spectrum.Visualizers;
 using XSerializer;
 
 namespace Spectrum.LayerPipeline.Tests {
@@ -33,6 +34,8 @@ namespace Spectrum.LayerPipeline.Tests {
         RebootNotificationsAreUnlocked);
       Run("layer renderers do not receive persisted configuration",
         LayerRenderersAvoidConfiguration);
+      Run("Ripple Tank is a standalone orientation-speed layer",
+        RippleTankIsOrientationOnly);
       Run("vortex uses global fade for hue-bearing trails",
         VortexUsesGlobalFade);
       Run("compiled plan schedules enabled instances", PlanSchedulesInstances);
@@ -420,6 +423,87 @@ namespace Spectrum.LayerPipeline.Tests {
           }
         }
       }
+    }
+
+    private static void RippleTankIsOrientationOnly() {
+      LayerDefinition caustics = LayerCatalog.Default.Get("caustics");
+      LayerDefinition rippleTank = LayerCatalog.Default.Get("ripple-tank");
+      Assert(caustics != null && rippleTank != null,
+        "standalone Ripple Tank was not registered");
+      foreach (DomeLayerParam parameter in caustics.Parameters) {
+        Assert(parameter.Key != "wakeSize" &&
+          parameter.Key != "wakeStrength" && parameter.Key != "trigger",
+          "Caustics retained Ripple Tank parameter " + parameter.Key);
+      }
+      DomeLayerParam speed = null;
+      DomeLayerParam damping = null;
+      foreach (DomeLayerParam parameter in rippleTank.Parameters) {
+        if (parameter.Key == "speed") {
+          speed = parameter;
+        }
+        if (parameter.Key == "damping") {
+          damping = parameter;
+        }
+        Assert(parameter.Key != "wakeSize" &&
+          parameter.Key != "wakeStrength" && parameter.Key != "trigger",
+          "Ripple Tank exposes removable wake tuning or a trigger control");
+      }
+      Assert(speed != null && speed.Max == 3,
+        "Ripple Tank wave-speed slider does not cap at 3");
+      Assert(damping != null && damping.Min == 0.02 &&
+        damping.Max == 0.05 && damping.Step == 0.01 &&
+        damping.Default == 0.02,
+        "Ripple Tank damping slider is missing or malformed");
+
+      DomeLayerSettings dampingLayer = Layer(
+        "ripple-tank", "tank-damping-options");
+      dampingLayer.RendererParams = new Dictionary<string, double> {
+        ["damping"] = 0.04,
+      };
+      AssertClose(0.04,
+        BuiltInOptions<RippleTankLayerOptions>(dampingLayer).Damping,
+        "Ripple Tank damping did not compile into renderer options");
+
+      double baseline =
+        LEDDomeRippleTankVisualizer.WakeStrengthForAngularSpeed(0);
+      double slow =
+        LEDDomeRippleTankVisualizer.WakeStrengthForAngularSpeed(1);
+      double fast =
+        LEDDomeRippleTankVisualizer.WakeStrengthForAngularSpeed(2);
+      Assert(baseline > 0,
+        "slow tank motion does not have a visible wake baseline");
+      Assert(slow > baseline && fast > slow,
+        "wake height does not increase with sensor angular speed");
+      AssertClose(1,
+        LEDDomeRippleTankVisualizer.WakeStrengthForAngularSpeed(99),
+        "wake strength does not cap at the stable maximum");
+
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> {
+          Layer("caustics", "caustics-inputs"),
+          Layer("ripple-tank", "tank-inputs"),
+        },
+      };
+      var runtime = new global::Spectrum.Operator(config);
+      DomeLayerVisualizer causticsRenderer = null;
+      DomeLayerVisualizer tankRenderer = null;
+      foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
+        if (visualizer is not DomeLayerVisualizer layer) {
+          continue;
+        }
+        if (layer.LayerKey == "caustics") {
+          causticsRenderer = layer;
+        } else if (layer.LayerKey == "ripple-tank") {
+          tankRenderer = layer;
+        }
+      }
+      Assert(causticsRenderer != null &&
+        causticsRenderer.GetInputs().Length == 0,
+        "Caustics still activates an input");
+      Assert(tankRenderer != null && tankRenderer.GetInputs().Length == 1 &&
+        ReferenceEquals(
+          tankRenderer.GetInputs()[0], runtime.OrientationInput),
+        "Ripple Tank is not bound exclusively to OrientationInput");
     }
 
     private static void VortexUsesGlobalFade() {

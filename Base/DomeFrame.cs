@@ -50,9 +50,9 @@ namespace Spectrum.Base {
 
     // Publish coverage independently of color, clamped to 0..1. The color
     // setter forces _a = 1 (drawing means opaque), so a layer that rides a
-    // per-pixel field magnitude in its alpha — Caustics publishing its
-    // refraction gradient for the Refract blend (docs/caustics.md) — calls
-    // this after setting color.
+    // per-pixel field magnitude in its alpha — Caustics and Ripple Tank publish
+    // their refraction gradients for the Refract blend — calls this after
+    // setting color.
     public void SetAlpha(double a) {
       _a = a < 0 ? 0 : (a > 1 ? 1 : a);
     }

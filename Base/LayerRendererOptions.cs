@@ -91,8 +91,12 @@ namespace Spectrum.Base {
 
   public sealed record CausticsLayerOptions(
     int Method, double Scale, double Speed, double Sharpness,
-    double Brightness, int Color, double WakeSize, double WakeStrength,
-    int Trigger, int Button, double Level, double Interval
+    double Brightness, int Color
+  ) : ILayerRendererOptions;
+
+  public sealed record RippleTankLayerOptions(
+    double Speed, double Damping, double Sharpness, double Brightness,
+    int Color
   ) : ILayerRendererOptions;
 
   internal static class LayerRendererOptionsCompiler {
@@ -242,9 +246,12 @@ namespace Spectrum.Base {
       ImmutableDictionary<string, ParameterValue> v
     ) => new CausticsLayerOptions(
       Integer(v, "method"), Double(v, "scale"), Double(v, "speed"),
-      Double(v, "sharpness"), Double(v, "brightness"), Integer(v, "color"),
-      Double(v, "wakeSize"), Double(v, "wakeStrength"),
-      Integer(v, "trigger"), Integer(v, "button"), Double(v, "level"),
-      Double(v, "interval"));
+      Double(v, "sharpness"), Double(v, "brightness"), Integer(v, "color"));
+
+    internal static ILayerRendererOptions RippleTank(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new RippleTankLayerOptions(
+      Double(v, "speed"), Double(v, "damping"), Double(v, "sharpness"),
+      Double(v, "brightness"), Integer(v, "color"));
   }
 }

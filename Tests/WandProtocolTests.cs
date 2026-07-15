@@ -115,6 +115,8 @@ namespace Spectrum.LayerPipeline.Tests {
 
       device.RecordMotion(quarterTurn, 100, 5000);
       Assert(device.isMoving, "deliberate rotation did not wake the wand");
+      Assert(device.MotionSpeedRadPerSecond > 0,
+        "orientation angular speed was not exposed to renderers");
       device.RefreshMoving(8000);
       Assert(device.isMoving, "wand became idle inside the pause grace period");
       device.RefreshMoving(8001);

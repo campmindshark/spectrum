@@ -226,8 +226,7 @@ namespace Spectrum.Base {
     ) => new LayerDefinition(
       id, label, null, parameters, compileOptions);
 
-    // Stable ordering is part of both picker contracts. The eight legacy IDs
-    // stay first so retired domeActiveVis values retain their old meaning.
+    // Stable ordering is part of both picker contracts.
     public static LayerCatalog Default { get; } = new LayerCatalog(new[] {
       BuiltIn(
         "volume", "Volume (OG)", LayerParameterSchemas.VolumeParams,
@@ -242,6 +241,9 @@ namespace Spectrum.Base {
         "snakes", "Snakes", LayerParameterSchemas.SnakesParams,
         LayerRendererOptionsCompiler.Palette),
       BuiltIn(
+        "splat", "Splat Effect", LayerParameterSchemas.SplatParams,
+        LayerRendererOptionsCompiler.Palette),
+      BuiltIn(
         "quaternion-test", "Quaternion Test",
         LayerParameterSchemas.NoParams, LayerRendererOptionsCompiler.Empty),
       BuiltIn(
@@ -249,14 +251,17 @@ namespace Spectrum.Base {
         LayerParameterSchemas.PaintbrushParams,
         LayerRendererOptionsCompiler.Paintbrush),
       BuiltIn(
-        "splat", "Splat Effect", LayerParameterSchemas.SplatParams,
-        LayerRendererOptionsCompiler.Palette),
-      BuiltIn(
         "tv-static", "TV Static", LayerParameterSchemas.NoParams,
         LayerRendererOptionsCompiler.Empty),
       BuiltIn(
         "twinkle", "Twinkle", LayerParameterSchemas.TwinkleParams,
         LayerRendererOptionsCompiler.Twinkle),
+      BuiltIn(
+        "flash", "Flash", LayerParameterSchemas.FlashParams,
+        LayerRendererOptionsCompiler.Flash),
+      BuiltIn(
+        "background", "Background", LayerParameterSchemas.BackgroundParams,
+        LayerRendererOptionsCompiler.Background),
       BuiltIn(
         "wave", "Wave", LayerParameterSchemas.WaveParams,
         LayerRendererOptionsCompiler.Wave),
@@ -270,12 +275,6 @@ namespace Spectrum.Base {
         "metaball", "Metaball", LayerParameterSchemas.MetaballParams,
         LayerRendererOptionsCompiler.Metaball),
       BuiltIn(
-        "background", "Background", LayerParameterSchemas.BackgroundParams,
-        LayerRendererOptionsCompiler.Background),
-      BuiltIn(
-        "flash", "Flash", LayerParameterSchemas.FlashParams,
-        LayerRendererOptionsCompiler.Flash),
-      BuiltIn(
         "point-cloud", "Point Cloud", LayerParameterSchemas.PointCloudParams,
         LayerRendererOptionsCompiler.PointCloud),
       BuiltIn(
@@ -286,14 +285,17 @@ namespace Spectrum.Base {
         LayerParameterSchemas.ShootingStarParams,
         LayerRendererOptionsCompiler.ShootingStar),
       BuiltIn(
+        "sparkler", "Sparkler", LayerParameterSchemas.SparklerParams,
+        LayerRendererOptionsCompiler.Sparkler),
+      BuiltIn(
         "noise-cloud", "Noise Cloud", LayerParameterSchemas.NoiseCloudParams,
         LayerRendererOptionsCompiler.NoiseCloud),
       BuiltIn(
         "caustics", "Caustics", LayerParameterSchemas.CausticsParams,
         LayerRendererOptionsCompiler.Caustics),
       BuiltIn(
-        "sparkler", "Sparkler", LayerParameterSchemas.SparklerParams,
-        LayerRendererOptionsCompiler.Sparkler),
+        "ripple-tank", "Ripple Tank", LayerParameterSchemas.RippleTankParams,
+        LayerRendererOptionsCompiler.RippleTank),
       BuiltIn(
         "vortex", "Vortex", LayerParameterSchemas.VortexParams,
         LayerRendererOptionsCompiler.Vortex),

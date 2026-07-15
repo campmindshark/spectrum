@@ -652,25 +652,17 @@ namespace Spectrum.Base {
         },
       };
 
-    // Caustics' tuning, all visualizer-consumed (read in Visualize()). See
-    // docs/caustics.md. `method` is the fidelity ladder — three
-    // analytic rungs plus the interactive Ripple Tank simulation; a GPU tier
-    // would append to Options later without shifting these indices. `scale` is
-    // the feature size (wavenumber multiplier; the tank maps it inversely to
-    // droplet size), `speed` the churn/advance rate (the tank maps it to sim
-    // step rate), `sharpness` the filament thinness (pow exponent — its Max is
-    // deliberately modest because filaments thinner than the LED pitch render
-    // as sparkle rather than lines), `brightness` the output gain, and `color`
-    // the tint (default pale cyan-white: sun through water). The trigger
-    // cluster (docs/triggers.md) drives the tank's droplets and only bites in
-    // that tier — the analytic tiers have nothing to fire.
+    // Caustics' analytic tuning, all visualizer-consumed (read in Visualize()).
+    // `method` is the fidelity ladder; `scale` is the feature-size multiplier,
+    // `speed` the churn rate, `sharpness` the filament-thinness exponent,
+    // `brightness` the output gain, and `color` the tint. Ripple Tank is a
+    // separate orientation-only layer below.
     internal static readonly DomeLayerParam[] CausticsParams =
       new DomeLayerParam[] {
         new DomeLayerParam {
           Key = "method", Label = "Method",
           Type = DomeLayerParamType.Enum,
-          Options =
-            new string[] { "Shimmer", "Interference", "Lens", "Ripple Tank" },
+          Options = new string[] { "Shimmer", "Interference", "Lens" },
           Default = 1, // Interference — the authentic caustic look
         },
         new DomeLayerParam {
@@ -698,24 +690,39 @@ namespace Spectrum.Base {
           Type = DomeLayerParamType.Color,
           Min = 0, Max = 0xFFFFFF, Default = 0xCCF7FF, // pale cyan-white
         },
+      };
+
+    // Ripple Tank is driven exclusively by live orientation devices. Its
+    // contact patch is fixed at a small renderer-defined size; wake strength
+    // deliberately has no parameter because the renderer derives it from
+    // sensor angular velocity.
+    internal static readonly DomeLayerParam[] RippleTankParams =
+      new DomeLayerParam[] {
         new DomeLayerParam {
-          Key = "wakeSize", Label = "Object Size",
+          Key = "speed", Label = "Wave Speed",
           Type = DomeLayerParamType.Double,
-          Min = 0.02, Max = 0.15, Step = 0.005, Default = 0.055,
+          Min = 0, Max = 3, Step = 0.125, Default = 1,
         },
         new DomeLayerParam {
-          Key = "wakeStrength", Label = "Wake Strength",
+          Key = "damping", Label = "Damping",
           Type = DomeLayerParamType.Double,
-          Min = 0, Max = 1, Step = 0.05, Default = 0.35,
+          Min = 0.02, Max = 0.05, Step = 0.01, Default = 0.02,
         },
         new DomeLayerParam {
-          Key = "trigger", Label = "Trigger",
-          Type = DomeLayerParamType.Enum,
-          Options = TriggerSourceOptions, Default = 1, // Beat
+          Key = "sharpness", Label = "Sharpness",
+          Type = DomeLayerParamType.Double,
+          Min = 1, Max = 12, Step = 0.5, Default = 5,
         },
-        TriggerButtonParam,
-        TriggerLevelParam,
-        TriggerIntervalParam,
+        new DomeLayerParam {
+          Key = "brightness", Label = "Brightness",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 2, Step = 0.05, Default = 1,
+        },
+        new DomeLayerParam {
+          Key = "color", Label = "Color",
+          Type = DomeLayerParamType.Color,
+          Min = 0, Max = 0xFFFFFF, Default = 0xCCF7FF,
+        },
       };
 
   }

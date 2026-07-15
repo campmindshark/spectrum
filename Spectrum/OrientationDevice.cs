@@ -31,6 +31,11 @@ namespace Spectrum {
     private long lastMotionMs;
     private double motionSpeedEwma;
 
+    // Smoothed angular velocity of the orientation sensor in radians/second.
+    // Exposed on frame snapshots so motion-reactive renderers can scale their
+    // response from the physical sensor rather than estimating it per frame.
+    public double MotionSpeedRadPerSecond => this.motionSpeedEwma;
+
     // Device types 1, 3, 4 - wands, wristbands
     public OrientationDevice(int timestamp, int deviceType, Quaternion calibrationOrigin, Quaternion currentOrientation) {
       this.timestamp = timestamp;

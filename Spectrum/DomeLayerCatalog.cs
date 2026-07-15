@@ -49,8 +49,9 @@ namespace Spectrum {
       ["vortex"] = runtime => new LEDDomeVortexVisualizer(
         environment, runtime, dome),
       ["caustics"] = runtime => new LEDDomeCausticsVisualizer(
-        environment, runtime, audio, orientation, orientationCenter,
-        beats, dome),
+        runtime, dome),
+      ["ripple-tank"] = runtime => new LEDDomeRippleTankVisualizer(
+        environment, runtime, orientation, orientationCenter, dome),
       ["flash"] = runtime => new LEDDomeFlashVisualizer(
         environment, runtime, audio, orientation, beats, dome),
       ["wave"] = runtime => new LEDDomeWaveVisualizer(
