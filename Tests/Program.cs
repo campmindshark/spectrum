@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
+using System.Numerics;
 using System.Threading.Tasks;
 using Spectrum.Base;
 using Spectrum.LEDs;
@@ -23,6 +25,12 @@ namespace Spectrum.LayerPipeline.Tests {
         RendererStoreLifecycle);
       Run("typed renderer options preserve numeric casts",
         TypedOptionsPreserveNumericCasts);
+      Run("Earth texture follows spotlight poles and spins",
+        EarthTextureFollowsSpotlight);
+      Run("astronomy options and north heading are deterministic",
+        AstronomyOptionsAndHeading);
+      Run("simulator real view foreshortens the dome from above",
+        SimulatorTopDownProjection);
       Run("compiled plan freezes renderer inputs", PlanFreezesRendererInputs);
       Run("configuration publishes immutable layer snapshots",
         ConfigurationPublishesSnapshot);
@@ -34,6 +42,8 @@ namespace Spectrum.LayerPipeline.Tests {
         RebootNotificationsAreUnlocked);
       Run("layer renderers do not receive persisted configuration",
         LayerRenderersAvoidConfiguration);
+      Run("Magnetic Field models signed orientation charges",
+        MagneticFieldUsesSignedCharges);
       Run("Ripple Tank is a standalone orientation-speed layer",
         RippleTankIsOrientationOnly);
       Run("vortex uses global fade for hue-bearing trails",
@@ -169,6 +179,53 @@ namespace Spectrum.LayerPipeline.Tests {
         "renderer runtime kept stale parameters");
     }
 
+    private static void SimulatorTopDownProjection() {
+      const int strut = 65;
+      Tuple<double, double> stripPoint =
+        StrutLayoutFactory.GetProjectedPoint(strut, 0);
+      Tuple<double, double> explicitStripPoint =
+        StrutLayoutFactory.GetProjectedPoint(
+          strut, 0, DomeProjection.StripExtents);
+      Tuple<double, double> topDownPoint =
+        StrutLayoutFactory.GetProjectedPoint(
+          strut, 0, DomeProjection.TopDown);
+
+      AssertClose(stripPoint.Item1, explicitStripPoint.Item1,
+        "the default simulator projection changed x");
+      AssertClose(stripPoint.Item2, explicitStripPoint.Item2,
+        "the default simulator projection changed y");
+
+      double stripX = stripPoint.Item1 - .5;
+      double stripY = stripPoint.Item2 - .5;
+      double topDownX = topDownPoint.Item1 - .5;
+      double topDownY = topDownPoint.Item2 - .5;
+      double stripRadius = Math.Sqrt(stripX * stripX + stripY * stripY);
+      double topDownRadius = Math.Sqrt(
+        topDownX * topDownX + topDownY * topDownY);
+      Assert(topDownRadius > stripRadius,
+        "the top-down projection did not spread the dome crown");
+      Assert(topDownRadius <= .5000000001,
+        "the top-down projection escaped the dome silhouette");
+      AssertClose(0, stripX * topDownY - stripY * topDownX,
+        "the top-down projection changed azimuth");
+
+      int ledIndex = 3;
+      Tuple<double, double> endpoint0 =
+        StrutLayoutFactory.GetProjectedPoint(
+          strut, 0, DomeProjection.TopDown);
+      Tuple<double, double> endpoint1 =
+        StrutLayoutFactory.GetProjectedPoint(
+          strut, 1, DomeProjection.TopDown);
+      Tuple<double, double> led = StrutLayoutFactory.GetProjectedLEDPoint(
+        strut, ledIndex, DomeProjection.TopDown);
+      double d = (ledIndex + 1.0) /
+        (LEDDomeOutput.GetNumLEDs(strut) + 2.0);
+      AssertClose(endpoint0.Item1 + (endpoint1.Item1 - endpoint0.Item1) * d,
+        led.Item1, "the top-down LED left its physical strut (x)");
+      AssertClose(endpoint0.Item2 + (endpoint1.Item2 - endpoint0.Item2) * d,
+        led.Item2, "the top-down LED left its physical strut (y)");
+    }
+
     private static void RuntimeOptionsSwap() {
       DomeLayerSettings first = Layer("wave", "runtime-wave");
       first.RendererParams = new Dictionary<string, double> { ["speed"] = .25 };
@@ -254,6 +311,180 @@ namespace Spectrum.LayerPipeline.Tests {
       noise.RendererParams = new Dictionary<string, double> { ["octaves"] = 2.75 };
       Assert(BuiltInOptions<NoiseCloudLayerOptions>(noise).Octaves == 2,
         "noise octave count no longer truncates");
+
+      DomeLayerSettings sparkler = Layer("sparkler", "typed-sparkler");
+      sparkler.RendererParams = new Dictionary<string, double> {
+        ["emissionRate"] = 12.5,
+      };
+      AssertClose(
+        12.5, BuiltInOptions<SparklerLayerOptions>(sparkler).EmissionRate,
+        "sparkler emission rate did not compile into renderer options");
+    }
+
+    private static void EarthTextureFollowsSpotlight() {
+      LayerDefinition definition = LayerCatalog.Default.Get("earth");
+      Assert(definition != null && definition.DisplayName == "Earth",
+        "Earth was not registered");
+
+      DomeLayerSettings layer = Layer("earth", "typed-earth");
+      layer.RendererParams = new Dictionary<string, double> {
+        ["spinSpeed"] = -0.125,
+      };
+      EarthLayerOptions options = BuiltInOptions<EarthLayerOptions>(layer);
+      AssertClose(-0.125, options.SpinSpeed,
+        "Earth spin speed did not compile into renderer options");
+
+      LEDDomeEarthVisualizer.TextureCoordinates(
+        OrientationCenter.Spot, Quaternion.Identity, 0,
+        out _, out double northV);
+      LEDDomeEarthVisualizer.TextureCoordinates(
+        OrientationCenter.NegSpot, Quaternion.Identity, 0,
+        out _, out double southV);
+      AssertClose(0, northV, "Spot did not map to the north texture pole");
+      AssertClose(1, southV,
+        "NegSpot did not map to the south texture pole");
+
+      LEDDomeEarthVisualizer.TextureCoordinates(
+        Vector3.UnitZ, Quaternion.Identity, 0,
+        out double zeroU, out double equatorV);
+      LEDDomeEarthVisualizer.TextureCoordinates(
+        Vector3.UnitZ, Quaternion.Identity, 0.25,
+        out double spunU, out double spunV);
+      AssertClose(0.5, zeroU, "the zero meridian was not centered");
+      AssertClose(0.5, equatorV, "the zero meridian left the equator");
+      AssertClose(0.25, spunU,
+        "a quarter spin did not advance longitude by a quarter turn");
+      AssertClose(equatorV, spunV, "spinning changed latitude");
+
+      Quaternion orientation = Quaternion.CreateFromAxisAngle(
+        Vector3.UnitZ, (float)(Math.PI / 2));
+      Vector3 aimedNorth = Vector3.Transform(
+        OrientationCenter.Spot, Quaternion.Conjugate(orientation));
+      LEDDomeEarthVisualizer.TextureCoordinates(
+        aimedNorth, orientation, 0, out _, out double aimedV);
+      Assert(aimedV < 0.001,
+        "the orientation aim did not move the globe's north pole");
+
+      using Stream texture = typeof(LEDDomeEarthVisualizer).Assembly
+        .GetManifestResourceStream(
+          LEDDomeEarthVisualizer.TextureResourceName);
+      Assert(texture != null && texture.Length > 0,
+        "the Earth texture was not embedded in the application");
+
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> { layer },
+      };
+      var runtime = new global::Spectrum.Operator(config);
+      DomeLayerVisualizer earth = null;
+      foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
+        if (visualizer is DomeLayerVisualizer candidate &&
+            candidate.LayerKey == "earth") {
+          earth = candidate;
+          break;
+        }
+      }
+      Assert(earth != null && earth.GetInputs().Length == 1 &&
+        ReferenceEquals(earth.GetInputs()[0], runtime.OrientationInput),
+        "Earth is not bound exclusively to OrientationInput");
+      ((Visualizer)earth).Visualize();
+      Assert(earth.LayerBuffer.pixels[0].a == 1,
+        "Earth did not paint its upper-hemisphere texture");
+    }
+
+    private static void AstronomyOptionsAndHeading() {
+      DomeLayerSettings layer = Layer("astronomy", "typed-astronomy");
+      layer.RendererParams = new Dictionary<string, double> {
+        ["northHeading"] = 999,
+        ["startDate"] = 20260715,
+        ["timeOffsetHours"] = 999,
+        ["playbackSpeed"] = 999,
+        ["loop"] = 1,
+      };
+      AstronomyLayerOptions options =
+        BuiltInOptions<AstronomyLayerOptions>(layer);
+      Assert(options.NorthHeading == 359 &&
+        options.StartDate == 20260715 && options.TimeOffsetHours == 168 &&
+        options.PlaybackSpeed == 8 && options.Loop,
+        "astronomy controls were not clamped by their schema");
+      AstronomyLayerOptions defaultOptions =
+        BuiltInOptions<AstronomyLayerOptions>(
+          Layer("astronomy", "default-astronomy"));
+      Assert(defaultOptions.PlaybackSpeed == 1,
+        "astronomy playback speed did not default to 1x");
+      Assert(DomeLayerDate.TryDecode(defaultOptions.StartDate, out _),
+        "astronomy start date did not default to a valid local date");
+      Assert(DomeLayerDate.TryParse("2026-07-15", out double encodedDate) &&
+          encodedDate == 20260715 &&
+          !DomeLayerDate.TryParse("2026-02-30", out _),
+        "astronomy date text parsing accepted an invalid date");
+
+      DateTime referenceUtc = new DateTime(
+        2026, 7, 15, 12, 0, 0, DateTimeKind.Utc);
+      DateTime baseTime = AstronomySky.StartDateUtc(
+        options.StartDate, referenceUtc);
+      Assert(baseTime == new DateTime(
+          2026, 7, 15, 7, 0, 0, DateTimeKind.Utc),
+        "Black Rock City summer midnight did not convert from PDT");
+      DateTime winterMidnight = AstronomySky.StartDateUtc(
+        20260115, referenceUtc);
+      Assert(winterMidnight == new DateTime(
+          2026, 1, 15, 8, 0, 0, DateTimeKind.Utc),
+        "Black Rock City winter midnight did not convert from PST");
+      double baseJulianDay = AstronomySky.JulianDay(baseTime);
+      double endJulianDay = AstronomySky.JulianDay(
+        baseTime.AddHours(options.TimeOffsetHours));
+      Assert(Math.Abs(endJulianDay - baseJulianDay - 7) < 1e-9,
+        "astronomy time slider did not span one week");
+
+      double stopped = LEDDomeAstronomyVisualizer.PlaybackOffset(
+        167, 2, 1, false, out bool completed);
+      Assert(completed && stopped == 168,
+        "non-looping astronomy playback did not stop at one week");
+      double wrapped = LEDDomeAstronomyVisualizer.PlaybackOffset(
+        167, 2, 1, true, out completed);
+      Assert(!completed && wrapped == 1,
+        "looping astronomy playback did not wrap to the start");
+      double halfSpeed = LEDDomeAstronomyVisualizer.PlaybackOffset(
+        0, 2, 0.5, false, out completed);
+      double tripleSpeed = LEDDomeAstronomyVisualizer.PlaybackOffset(
+        0, 2, 3, false, out completed);
+      Assert(halfSpeed == 1 && tripleSpeed == 6,
+        "astronomy playback speed did not scale elapsed time");
+      Assert(!LEDDomeAstronomyVisualizer.UsesPlaybackInterpolation(1) &&
+        LEDDomeAstronomyVisualizer.UsesPlaybackInterpolation(1.1),
+        "astronomy interpolation threshold did not start above 1x");
+      Assert(LEDDomeAstronomyVisualizer.InterpolationFramesPerSecond(1) == 10 &&
+        LEDDomeAstronomyVisualizer.InterpolationFramesPerSecond(8) == 60,
+        "astronomy interpolation did not ramp from 10 to 60 FPS");
+      Assert(LEDDomeAstronomyVisualizer.InterpolateColor(
+          0x000000, 0xFFFFFF, 0.5) == 0x7F7F7F,
+        "astronomy playback did not linearly interpolate keyframes");
+
+      Vector3 northAtZero = AstronomySky.ToDome(Vector3.UnitY, 0);
+      Vector3 eastAtZero = AstronomySky.ToDome(Vector3.UnitX, 0);
+      Vector3 northAtNinety = AstronomySky.ToDome(Vector3.UnitY, 90);
+      Assert(Vector3.Distance(northAtZero, Vector3.UnitY) < 1e-6f,
+        "zero heading did not put north on projected +Y");
+      Assert(Vector3.Distance(eastAtZero, Vector3.UnitX) < 1e-6f,
+        "zero heading did not put east on projected +X");
+      Assert(Vector3.Distance(northAtNinety, Vector3.UnitX) < 1e-6f,
+        "clockwise north heading did not rotate toward projected +X");
+
+      double julianDay = AstronomySky.JulianDay(baseTime);
+      AstronomyBody[] bodies = AstronomySky.Bodies(julianDay);
+      Assert(bodies.Length == 5 &&
+        bodies[0].Name == "Sun" && bodies[1].Name == "Moon" &&
+        bodies[2].Name == "Mercury" && bodies[3].Name == "Venus" &&
+        bodies[4].Name == "Mars",
+        "astronomy body set changed");
+      foreach (AstronomyBody body in bodies) {
+        Assert(float.IsFinite(body.Equatorial.X) &&
+          float.IsFinite(body.Equatorial.Y) &&
+          float.IsFinite(body.Equatorial.Z),
+          body.Name + " produced a non-finite position");
+        Assert(Math.Abs(body.Equatorial.Length() - 1) < 1e-5,
+          body.Name + " position was not normalized");
+      }
     }
 
     private static void PlanFreezesRendererInputs() {
@@ -423,6 +654,64 @@ namespace Spectrum.LayerPipeline.Tests {
           }
         }
       }
+    }
+
+    private static void MagneticFieldUsesSignedCharges() {
+      LayerDefinition definition = LayerCatalog.Default.Get("magnetic-field");
+      Assert(definition != null && definition.DisplayName == "Magnetic Field",
+        "Magnetic Field was not registered");
+
+      double positive = OrientationCenter.SignedUnitChargePotential(
+        new System.Numerics.Vector3(-0.8f, 0.6f, 0));
+      double negative = OrientationCenter.SignedUnitChargePotential(
+        new System.Numerics.Vector3(0.8f, -0.6f, 0));
+      double neutral = OrientationCenter.SignedUnitChargePotential(
+        System.Numerics.Vector3.UnitY);
+      Assert(positive > 0, "the +1 pole did not produce positive potential");
+      Assert(negative < 0, "the -1 pole did not produce negative potential");
+      AssertClose(0, neutral, "the equidistant plane did not cancel");
+      AssertClose(positive, -negative,
+        "the two charges are not antipodally symmetric");
+
+      const int LINE_COUNT = 8;
+      const double LINE_WIDTH = 0.05;
+      AssertClose(1, OrientationCenter.UnitFieldLineStrength(
+        System.Numerics.Vector3.UnitY, LINE_COUNT, LINE_WIDTH),
+        "a field-line meridian was not fully lit");
+      AssertClose(1, OrientationCenter.UnitFieldLineStrength(
+        OrientationCenter.Spot, LINE_COUNT, LINE_WIDTH),
+        "field lines did not converge at the +1 pole");
+      AssertClose(1, OrientationCenter.UnitFieldLineStrength(
+        OrientationCenter.NegSpot, LINE_COUNT, LINE_WIDTH),
+        "field lines did not converge at the -1 pole");
+      var betweenLines = new System.Numerics.Vector3(
+        0,
+        (float)Math.Cos(Math.PI / LINE_COUNT),
+        (float)Math.Sin(Math.PI / LINE_COUNT));
+      AssertClose(0, OrientationCenter.UnitFieldLineStrength(
+        betweenLines, LINE_COUNT, LINE_WIDTH),
+        "the space between field lines was painted");
+
+      DomeLayerSettings layer = Layer(
+        "magnetic-field", "magnetic-field-options");
+      layer.RendererParams = new Dictionary<string, double> {
+        ["strength"] = 2.25,
+        ["positiveColor"] = 0x112233,
+        ["negativeColor"] = 0x445566,
+        ["lineCount"] = 10.9,
+        ["lineWidth"] = 0.045,
+      };
+      MagneticFieldLayerOptions options =
+        BuiltInOptions<MagneticFieldLayerOptions>(layer);
+      AssertClose(2.25, options.Strength,
+        "field strength did not compile into renderer options");
+      Assert(options.PositiveColor == 0x112233 &&
+        options.NegativeColor == 0x445566,
+        "charge colors did not compile into renderer options");
+      Assert(options.LineCount == 10,
+        "field-line count did not preserve integer truncation");
+      AssertClose(0.045, options.LineWidth,
+        "field-line width did not compile into renderer options");
     }
 
     private static void RippleTankIsOrientationOnly() {
@@ -1166,6 +1455,13 @@ namespace Spectrum.LayerPipeline.Tests {
         operation.label == DomeBlend.ChromaticFringe.DisplayName &&
         operation.@params.Count > 0,
         "web operation descriptor is incomplete");
+      global::Spectrum.Web.LayersController.VisualizerOptionDto astronomy =
+        state.visualizers.FirstOrDefault(v => v.key == "astronomy");
+      global::Spectrum.Web.LayersController.ParamDto startDate =
+        astronomy?.@params.FirstOrDefault(p => p.key == "startDate");
+      Assert(startDate != null && startDate.type == "Date" &&
+          DomeLayerDate.TryDecode(startDate.@default, out _),
+        "web astronomy start-date descriptor is incomplete");
     }
 
     private static CompiledLayer Compiled(

@@ -116,8 +116,8 @@ namespace Spectrum {
       this.inputs.Add(orientation);
       this.OrientationInput = orientation;
       // Shared by every orientation-driven dome layer (Paintbrush, Ripple,
-      // Stamp, Metaball) so they idle-drift around the same wandering point
-      // instead of each running its own independent random walk.
+      // Stamp, Metaball, Magnetic Field) so they idle-drift around the same
+      // wandering point instead of each running its own independent random walk.
       var orientationCenter = new OrientationCenter(config, orientation);
       var layerEnvironment = new ConfigurationDomeLayerEnvironment(config);
 

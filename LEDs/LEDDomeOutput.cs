@@ -187,6 +187,7 @@ namespace Spectrum.LEDs {
     // physical dome endpoint; see GetDeviceIndexes and config.domeCableMapping.
     private const int StrandsPerCable = 4;
     public const int NumCables = 10;
+    public const int NumPortsPerBox = 8;
     // Struts carried by cable A (strands 0-3) of every box, and the total per
     // box (38). Computed from controlBoxStrutOrder so the A/B boundary stays in
     // sync if the strand layout ever changes.
@@ -199,9 +200,13 @@ namespace Spectrum.LEDs {
     // records, per controller cable, the endpoint that lit during calibration).
     // Identity by default, so an uncalibrated dome behaves exactly as before.
     private readonly int[] controllerForEndpoint = new int[NumCables];
+    // portForPath[p] is the physical output port that the legacy hard-coded
+    // strip path p is plugged into. It is the inverse of config.domePortMapping,
+    // whose operator-friendly direction is physical port -> legacy path.
+    private readonly int[] portForPath = new int[NumPortsPerBox];
     private DomeOutputMapping outputMapping;
-    // Touched only by the operator thread. Comparing mapping snapshots makes a
-    // cable-map transition clear OPC's persistent next frame exactly when the
+    // Touched only by the operator thread. Comparing mapping snapshots makes an
+    // output-map transition clear OPC's persistent next frame exactly when the
     // first frame using that new projection is written.
     private DomeOutputMapping lastWireMapping;
     private DomeTopology topology;
@@ -247,32 +252,50 @@ namespace Spectrum.LEDs {
       this.visualizers = new List<Visualizer>();
       this.compositor = new DomeCompositor(
         this.MakeDomeFrame, orientationAngle);
-      this.RebuildCableMapping();
+      this.RebuildOutputMapping();
       this.config.PropertyChanged += ConfigUpdated;
     }
 
-    // Rebuilds controllerForEndpoint and atomically replaces the immutable
-    // logical-to-device mapping, so no renderer/compositor frame is mutated.
-    // Falls back to the identity mapping
-    // if the config value is missing or not a valid permutation of 0..9, so a
-    // corrupt or short config can never scramble or crash output.
-    private void RebuildCableMapping() {
-      int[] mapping = this.config.domeCableMapping;
-      bool valid = mapping != null && mapping.Length == NumCables;
-      if (valid) {
-        var seen = new bool[NumCables];
-        foreach (int endpoint in mapping) {
-          if (endpoint < 0 || endpoint >= NumCables || seen[endpoint]) {
-            valid = false;
-            break;
-          }
-          seen[endpoint] = true;
-        }
+    private static bool IsValidPermutation(int[] mapping, int count) {
+      if (mapping == null || mapping.Length != count) {
+        return false;
       }
+      var seen = new bool[count];
+      foreach (int value in mapping) {
+        if (value < 0 || value >= count || seen[value]) {
+          return false;
+        }
+        seen[value] = true;
+      }
+      return true;
+    }
+
+    public static bool IsValidPortMapping(int[] mapping) =>
+      IsValidPermutation(mapping, NumPortsPerBox);
+
+    // Rebuilds both wiring permutations and atomically replaces the immutable
+    // logical-to-device mapping, so no renderer/compositor frame is mutated.
+    // Missing, short, duplicated, or out-of-range permutations fall back to
+    // identity independently, so a bad port setting cannot scramble cables (or
+    // vice versa).
+    private void RebuildOutputMapping() {
+      int[] cableMapping = this.config.domeCableMapping;
+      bool cableMappingValid =
+        IsValidPermutation(cableMapping, NumCables);
       for (int controller = 0; controller < NumCables; controller++) {
-        int endpoint = valid ? mapping[controller] : controller;
+        int endpoint = cableMappingValid
+          ? cableMapping[controller]
+          : controller;
         this.controllerForEndpoint[endpoint] = controller;
       }
+
+      int[] portMapping = this.config.domePortMapping;
+      bool portMappingValid = IsValidPortMapping(portMapping);
+      for (int port = 0; port < NumPortsPerBox; port++) {
+        int path = portMappingValid ? portMapping[port] : port;
+        this.portForPath[path] = port;
+      }
+
       var boxes = new List<int>();
       var pixels = new List<int>();
       for (int strut = 0; strut < GetNumStruts(); strut++) {
@@ -307,8 +330,11 @@ namespace Spectrum.LEDs {
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (e.PropertyName == nameof(this.config.domeCableMapping)) {
-        this.RebuildCableMapping();
+      if (
+        e.PropertyName == nameof(this.config.domeCableMapping) ||
+        e.PropertyName == nameof(this.config.domePortMapping)
+      ) {
+        this.RebuildOutputMapping();
         return;
       }
       if (
@@ -679,7 +705,8 @@ namespace Spectrum.LEDs {
     private void SetDevicePixel(int controlBoxIndex, int pixelIndex, int color) {
       lock (this.visualizers) {
         if (this.opcAPI != null) {
-          int totalPixelIndex = controlBoxIndex * (maxStripLength * 8) + pixelIndex;
+          int totalPixelIndex =
+            controlBoxIndex * (maxStripLength * NumPortsPerBox) + pixelIndex;
           this.opcAPI.SetPixel(totalPixelIndex, color);
         }
       }
@@ -687,7 +714,7 @@ namespace Spectrum.LEDs {
 
     // Raw (identity) device address: which control box and pixel-within-box a
     // strut's LED occupies under the hard-coded strutPositions wiring, ignoring
-    // any calibrated cable permutation. This is the canonical "what the program
+    // both configured permutations. This is the canonical "what the program
     // believes it is lighting" used by the dome-mapping calibration.
     private Tuple<int, int> GetDeviceIndexesRaw(int strutIndex, int ledIndex) {
       int pixelIndex = ledIndex;
@@ -705,20 +732,20 @@ namespace Spectrum.LEDs {
       return Tuple.Create(strutPosition.Item1, pixelIndex);
     }
 
-    // Mapped device address: the raw address re-routed through the calibrated
-    // cable permutation. Each LED lives on a physical endpoint (box*2 + half);
-    // controllerForEndpoint tells us which controller cable actually feeds that
-    // endpoint, so we relocate the LED onto that cable, preserving its
-    // strand-within-cable and offset-within-strand (every cable is the same
-    // 4-strand x maxStripLength shape in the OPC stream, so only box/half
-    // change). Identity mapping reproduces GetDeviceIndexesRaw exactly.
+    // Mapped device address. First relocate the legacy strip path onto the
+    // configured physical port within its dome box. Then use the calibrated
+    // cable permutation to find the controller cable feeding that port's four-
+    // strand endpoint. This order lets an arbitrary eight-port permutation
+    // compose with cable swaps, including ports moved between halves A and B.
+    // Identity mappings reproduce GetDeviceIndexesRaw exactly.
     private Tuple<int, int> GetDeviceIndexes(int strutIndex, int ledIndex) {
       Tuple<int, int> raw = this.GetDeviceIndexesRaw(strutIndex, ledIndex);
       int box = raw.Item1;
-      int strandSlot = raw.Item2 / maxStripLength;
-      int offsetWithinStrand = raw.Item2 - strandSlot * maxStripLength;
-      int half = strandSlot < StrandsPerCable ? 0 : 1;
-      int strandWithinCable = strandSlot - half * StrandsPerCable;
+      int legacyPath = raw.Item2 / maxStripLength;
+      int offsetWithinStrand = raw.Item2 - legacyPath * maxStripLength;
+      int physicalPort = this.portForPath[legacyPath];
+      int half = physicalPort / StrandsPerCable;
+      int strandWithinCable = physicalPort % StrandsPerCable;
       int endpoint = box * 2 + half;
       int controller = this.controllerForEndpoint[endpoint];
       int newBox = controller / 2;
@@ -751,8 +778,8 @@ namespace Spectrum.LEDs {
     }
 
     // Like SetPixel but writes to the raw (unpermuted) control-box address, so
-    // the dome-mapping calibration can light exactly one physical controller
-    // cable regardless of the current (possibly wrong or identity) calibration.
+    // the dome-mapping calibration can light exactly one controller cable
+    // regardless of either current (possibly wrong or identity) permutation.
     public void SetPixelRaw(int strutIndex, int ledIndex, int color) {
       Tuple<int, int> deviceIndexes =
         this.GetDeviceIndexesRaw(strutIndex, ledIndex);
@@ -795,8 +822,8 @@ namespace Spectrum.LEDs {
 
     // The strut indices physically carried by one controller cable
     // (boxIndex, half; half 0 = ethernet A = strands 0-3, 1 = B = strands 4-7),
-    // under the raw hard-coded wiring. Used by the dome-mapping calibration both
-    // to light a single cable and to draw the clickable per-endpoint regions.
+    // under the raw hard-coded wiring. Used by the dome-mapping calibration to
+    // write exactly one unpermuted controller block.
     public static List<int> GetControllerCableStruts(int boxIndex, int half) {
       int start = half == 0 ? 0 : cableAStrutCount;
       int end = half == 0 ? cableAStrutCount : domeStrutsPerBox;
@@ -805,6 +832,34 @@ namespace Spectrum.LEDs {
         int strutIndex = FindStrutIndex(boxIndex, localIndex);
         if (strutIndex != -1) {
           struts.Add(strutIndex);
+        }
+      }
+      return struts;
+    }
+
+    // The struts physically present at one dome cable endpoint after applying
+    // the shared per-box port mapping. Calibration diagrams use this so their
+    // A/B regions still match the installed paths even when a path crosses the
+    // four-port boundary. Invalid mappings render the legacy identity layout.
+    public static List<int> GetPhysicalCableStruts(
+      int boxIndex, int half, int[] portMapping
+    ) {
+      bool valid = IsValidPortMapping(portMapping);
+      var struts = new List<int>();
+      int firstPort = half * StrandsPerCable;
+      int endPort = firstPort + StrandsPerCable;
+      for (int port = firstPort; port < endPort; port++) {
+        int path = valid ? portMapping[port] : port;
+        int start = 0;
+        for (int priorPath = 0; priorPath < path; priorPath++) {
+          start += controlBoxStrutOrder[priorPath].Length;
+        }
+        int end = start + controlBoxStrutOrder[path].Length;
+        for (int localIndex = start; localIndex < end; localIndex++) {
+          int strutIndex = FindStrutIndex(boxIndex, localIndex);
+          if (strutIndex != -1) {
+            struts.Add(strutIndex);
+          }
         }
       }
       return struts;

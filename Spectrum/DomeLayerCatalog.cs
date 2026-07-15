@@ -44,6 +44,10 @@ namespace Spectrum {
         environment, runtime, dome),
       ["background"] = runtime => new LEDDomeBackgroundVisualizer(
         runtime, dome),
+      ["earth"] = runtime => new LEDDomeEarthVisualizer(
+        runtime, orientation, orientationCenter, dome),
+      ["astronomy"] = runtime => new LEDDomeAstronomyVisualizer(
+        environment, runtime, dome),
       ["noise-cloud"] = runtime => new LEDDomeNoiseCloudVisualizer(
         runtime, dome),
       ["vortex"] = runtime => new LEDDomeVortexVisualizer(
@@ -66,6 +70,8 @@ namespace Spectrum {
         beats, dome),
       ["metaball"] = runtime => new LEDDomeMetaballVisualizer(
         environment, runtime, audio, orientation, orientationCenter, dome),
+      ["magnetic-field"] = runtime => new LEDDomeMagneticFieldVisualizer(
+        runtime, orientation, orientationCenter, dome),
       ["point-cloud"] = runtime => new LEDDomePointCloudVisualizer(
         environment, runtime, orientation, dome),
       ["shooting-star"] = runtime => new LEDDomeShootingStarVisualizer(

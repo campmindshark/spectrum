@@ -31,8 +31,10 @@ namespace Spectrum.LayerPipeline.Tests {
     private const int StrandsPerCable = 4;
     private const int CablePixels =
       KnownGoodMaxStripLength * StrandsPerCable;
+    private const int PortPixels = KnownGoodMaxStripLength;
+    private const int PortsPerController = LEDDomeOutput.NumPortsPerBox;
     private const int ControllerPixels =
-      KnownGoodMaxStripLength * 8 * 5;
+      PortPixels * PortsPerController * 5;
 
     public static void Register(Action<string, Action> run) {
       run("OPC bytes use the deployed header and RGB layout", HeaderAndRgb);
@@ -46,6 +48,11 @@ namespace Spectrum.LayerPipeline.Tests {
       run("Iterate Through Struts matches deployed OPC sequence",
         IterateThroughStruts);
       run("dome cable calibration permutes OPC cable blocks", CableMapping);
+      run("dome port permutation composes with cable mapping", PortMapping);
+      run("dome default config exposes identity port mapping",
+        DefaultPortMappingConfig);
+      run("dome port mapping web editor validates and saves atomically",
+        PortMappingEditorContract);
     }
 
     private static void HeaderAndRgb() {
@@ -256,6 +263,125 @@ namespace Spectrum.LayerPipeline.Tests {
       } finally {
         sink.CloseConnection();
         output.Active = false;
+      }
+    }
+
+    private static void PortMapping() {
+      using var sink = new LoopbackSink();
+      global::Spectrum.SpectrumConfiguration config;
+      int[] identityCables = Enumerable.Range(
+        0, LEDDomeOutput.NumCables).ToArray();
+      LEDDomeOutput output = ConnectDome(sink, identityCables, out config);
+      try {
+        DomeFrame frame = GoldenFrame(output);
+        int[] identity = PayloadPixels(Capture(output, sink, frame));
+
+        // Cable entries are controller cable -> physical endpoint; port entries
+        // are physical port -> legacy path. Rotate the cable endpoints and use
+        // an arbitrary cross-half port permutation so the assertion covers
+        // their composition, not just adjacent swaps.
+        int[] cableMapping = Enumerable.Range(
+          0, LEDDomeOutput.NumCables).Select(
+            cable => (cable + 3) % LEDDomeOutput.NumCables).ToArray();
+        int[] portMapping = { 7, 0, 5, 2, 6, 1, 3, 4 };
+        config.domeCableMapping = cableMapping;
+        config.domePortMapping = portMapping;
+        int[] mapped = PayloadPixels(Capture(output, sink, frame));
+
+        for (int controllerCable = 0;
+            controllerCable < LEDDomeOutput.NumCables; controllerCable++) {
+          int physicalEndpoint = cableMapping[controllerCable];
+          int physicalBox = physicalEndpoint / 2;
+          int physicalHalf = physicalEndpoint % 2;
+          int controllerBox = controllerCable / 2;
+          int controllerHalf = controllerCable % 2;
+          for (int portWithinCable = 0;
+              portWithinCable < StrandsPerCable; portWithinCable++) {
+            int controllerPort =
+              controllerHalf * StrandsPerCable + portWithinCable;
+            int physicalPort =
+              physicalHalf * StrandsPerCable + portWithinCable;
+            int legacyPath = portMapping[physicalPort];
+            int expectedStart =
+              (physicalBox * PortsPerController + legacyPath) * PortPixels;
+            int actualStart =
+              (controllerBox * PortsPerController + controllerPort) * PortPixels;
+            for (int offset = 0; offset < PortPixels; offset++) {
+              Assert(mapped[actualStart + offset] == identity[expectedStart + offset],
+                "port mapping mismatch at controller box " + controllerBox +
+                ", port " + controllerPort + ", pixel " + offset);
+            }
+          }
+        }
+
+        // Bad settings fail closed to the legacy order, independently of the
+        // cable mapping, and a live replacement rebuilds the cached wire map.
+        config.domeCableMapping = identityCables;
+        config.domePortMapping = new[] { 0, 0, 2, 3, 4, 5, 6, 7 };
+        int[] invalidFallback = PayloadPixels(Capture(output, sink, frame));
+        Assert(invalidFallback.SequenceEqual(identity),
+          "invalid port mapping did not fall back to identity");
+      } finally {
+        sink.CloseConnection();
+        output.Active = false;
+      }
+    }
+
+    private static void DefaultPortMappingConfig() {
+      string path = Path.Combine(
+        AppContext.BaseDirectory, "spectrum_default_config.xml");
+      using FileStream stream = File.OpenRead(path);
+      var config =
+        new XSerializer.XmlSerializer<global::Spectrum.SpectrumConfiguration>(
+        ).Deserialize(stream);
+      Assert(config.domePortMapping != null &&
+          config.domePortMapping.SequenceEqual(
+            Enumerable.Range(0, PortsPerController)),
+        "default config port mapping is missing or not identity");
+    }
+
+    private static void PortMappingEditorContract() {
+      var config = new global::Spectrum.SpectrumConfiguration();
+      var controller = new global::Spectrum.Web.DomeCalibrationController(
+        new ImmediateGateway(), config,
+        new global::Spectrum.DomeCalibrationState(), LEDDomeOutput.NumCables);
+
+      global::Spectrum.Web.DomeCalibrationController.CalibrationState initial =
+        controller.State();
+      Assert(initial.numPorts == PortsPerController &&
+          initial.portMapping.SequenceEqual(
+            Enumerable.Range(0, PortsPerController)),
+        "web editor did not expose identity for missing configuration");
+
+      bool rejected = false;
+      try {
+        controller.SavePortMappingAsync(
+          new[] { 0, 0, 2, 3, 4, 5, 6, 7 }).GetAwaiter().GetResult();
+      } catch (ArgumentException) {
+        rejected = true;
+      }
+      Assert(rejected && config.domePortMapping == null,
+        "web editor accepted or persisted a duplicate cable/path");
+
+      global::Spectrum.Web.DomeCalibrationController.DiagramGeometry before =
+        controller.Geometry();
+      int[] mapping = { 7, 0, 5, 2, 6, 1, 3, 4 };
+      global::Spectrum.Web.DomeCalibrationController.CalibrationState saved =
+        controller.SavePortMappingAsync(mapping).GetAwaiter().GetResult();
+      mapping[0] = 0;
+      Assert(config.domePortMapping.SequenceEqual(
+          new[] { 7, 0, 5, 2, 6, 1, 3, 4 }) &&
+          saved.portMapping.SequenceEqual(config.domePortMapping),
+        "web editor did not atomically own and publish the saved mapping");
+      Assert(!ReferenceEquals(before, controller.Geometry()),
+        "web editor did not invalidate port-dependent diagram geometry");
+    }
+
+    private sealed class ImmediateGateway : ControlGateway {
+      public void Post(Action mutation) => mutation();
+      public Task InvokeAsync(Action mutation) {
+        mutation();
+        return Task.CompletedTask;
       }
     }
 

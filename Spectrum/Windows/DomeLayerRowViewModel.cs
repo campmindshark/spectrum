@@ -36,10 +36,10 @@ namespace Spectrum {
 
   // View-model wrapping one DomeLayerParam descriptor plus its current value for
   // the generic per-layer param editors. The row DataTemplate binds the control
-  // matching Type (Slider / CheckBox / ComboBox / ColorPicker) via the
-  // IsDouble/IsBool/IsEnum/IsColor flags; editing any of the value facets raises
-  // Changed so the owning row republishes. Values are always stored as double
-  // (Bool 0/1, Enum index, Color a packed 0xRRGGBB int).
+  // matching Type (Slider / CheckBox / ComboBox / ColorPicker / date TextBox)
+  // via the Is* flags; editing any of the value facets raises Changed so the
+  // owning row republishes. Values are always stored as double (Bool 0/1, Enum
+  // index, Color a packed 0xRRGGBB int, Date as yyyyMMdd).
   public class LayerParamViewModel : INotifyPropertyChanged {
     public event PropertyChangedEventHandler PropertyChanged;
     public event Action Changed;
@@ -66,6 +66,7 @@ namespace Spectrum {
     public bool IsBool => this.descriptor.Type == DomeLayerParamType.Bool;
     public bool IsEnum => this.descriptor.Type == DomeLayerParamType.Enum;
     public bool IsColor => this.descriptor.Type == DomeLayerParamType.Color;
+    public bool IsDate => this.descriptor.Type == DomeLayerParamType.Date;
 
     // The canonical stored value. The typed facets below are views onto it.
     private double value;
@@ -80,6 +81,7 @@ namespace Spectrum {
         this.Raise(nameof(BoolValue));
         this.Raise(nameof(IntValue));
         this.Raise(nameof(ColorValue));
+        this.Raise(nameof(DateText));
         this.Changed?.Invoke();
       }
     }
@@ -109,6 +111,18 @@ namespace Spectrum {
       set {
         MediaColor c = value ?? default;
         this.Value = (c.R << 16) | (c.G << 8) | c.B;
+      }
+    }
+
+    // TextBox facet for Date params. Invalid input leaves the stored value
+    // untouched and surfaces through WPF's exception validation.
+    public string DateText {
+      get => DomeLayerDate.Format(this.value);
+      set {
+        if (!DomeLayerDate.TryParse(value, out double encoded)) {
+          throw new FormatException("Use YYYY-MM-DD.");
+        }
+        this.Value = encoded;
       }
     }
 
@@ -204,12 +218,25 @@ namespace Spectrum {
         this.visualizerKey = value;
         this.PropertyChanged?.Invoke(
           this, new PropertyChangedEventArgs(nameof(VisualizerKey)));
+        this.PropertyChanged?.Invoke(
+          this, new PropertyChangedEventArgs(nameof(FireLabel)));
+        this.PropertyChanged?.Invoke(
+          this, new PropertyChangedEventArgs(nameof(FireToolTip)));
         // The visualizer's param schema changed: rebuild to defaults, dropping
         // keys not in the new schema.
         this.RebuildParams(null, this.CurrentParamValues(true));
         this.Changed?.Invoke();
       }
     }
+
+    // Astronomy uses the existing per-instance fire command as its dedicated
+    // playback start edge. The command transport stays generic; only the row's
+    // user-facing action changes from Fire to Play.
+    public string FireLabel =>
+      this.visualizerKey == "astronomy" ? "Play" : "Fire";
+    public string FireToolTip => this.visualizerKey == "astronomy"
+      ? "Play the one-week astronomy timeline"
+      : "Fire manual trigger";
 
     private string blendMode = DomeBlend.Default.Id;
     public string BlendMode {
@@ -259,7 +286,7 @@ namespace Spectrum {
       bool isOperationParameter
     ) {
       foreach (DomeLayerParam descriptor in schema) {
-        double value = descriptor.Default;
+        double value = DomeLayerDate.ResolveDefault(descriptor);
         if (seed != null && seed.TryGetValue(descriptor.Key, out double v)) {
           value = v;
         }

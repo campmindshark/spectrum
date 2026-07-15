@@ -55,6 +55,13 @@ namespace Spectrum.Base {
     // Dome Mapping" calibration window.
     int[] domeCableMapping { get; set; }
 
+    // Per-box output-port mapping. The same permutation is applied to all five
+    // control boxes: domePortMapping[p] is the legacy strip path (0..7) plugged
+    // into physical output port p (also 0..7). Identity {0..7}, null, or an
+    // invalid value preserves the legacy hard-coded order. Writers replace the
+    // whole array so PropertyChanged fires and the live output map is rebuilt.
+    int[] domePortMapping { get; set; }
+
     // Cross-layer visual state: every stack layer applies the same fade /
     // hue-rotate speed to its own buffer. Per-visualizer tuning does NOT belong
     // here — it lives in each layer's renderer parameter bag (see LayerCatalog
@@ -79,7 +86,8 @@ namespace Spectrum.Base {
     // Named snapshots of the dome look (layer stack + the two globals above),
     // saved/recalled by the VJ. See DomeScene and SceneService. Null by default,
     // following the same null-by-default XSerializer rule as domeLayerStack /
-    // domeCableMapping: a non-null initializer double-adds entries on deserialize.
+    // domeCableMapping / domePortMapping: a non-null initializer double-adds
+    // entries on deserialize.
     // Old config files load with domeScenes == null, treated as empty — no
     // migration needed.
     List<DomeScene> domeScenes { get; set; }

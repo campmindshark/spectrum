@@ -263,6 +263,12 @@ namespace Spectrum.Base {
         "background", "Background", LayerParameterSchemas.BackgroundParams,
         LayerRendererOptionsCompiler.Background),
       BuiltIn(
+        "earth", "Earth", LayerParameterSchemas.EarthParams,
+        LayerRendererOptionsCompiler.Earth),
+      BuiltIn(
+        "astronomy", "Astronomy", LayerParameterSchemas.AstronomyParams,
+        LayerRendererOptionsCompiler.Astronomy),
+      BuiltIn(
         "wave", "Wave", LayerParameterSchemas.WaveParams,
         LayerRendererOptionsCompiler.Wave),
       BuiltIn(
@@ -274,6 +280,10 @@ namespace Spectrum.Base {
       BuiltIn(
         "metaball", "Metaball", LayerParameterSchemas.MetaballParams,
         LayerRendererOptionsCompiler.Metaball),
+      BuiltIn(
+        "magnetic-field", "Magnetic Field",
+        LayerParameterSchemas.MagneticFieldParams,
+        LayerRendererOptionsCompiler.MagneticField),
       BuiltIn(
         "point-cloud", "Point Cloud", LayerParameterSchemas.PointCloudParams,
         LayerRendererOptionsCompiler.PointCloud),
@@ -393,7 +403,7 @@ namespace Spectrum.Base {
       var result = ImmutableDictionary.CreateBuilder<string, ParameterValue>(
         StringComparer.Ordinal);
       foreach (DomeLayerParam parameter in schema) {
-        double raw = parameter.Default;
+        double raw = DomeLayerDate.ResolveDefault(parameter);
         if (values != null && values.TryGetValue(parameter.Key, out double v)) {
           raw = v;
         }

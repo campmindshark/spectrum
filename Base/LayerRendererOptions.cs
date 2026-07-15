@@ -48,8 +48,21 @@ namespace Spectrum.Base {
     double Size, bool ShowContours, int Button
   ) : ILayerRendererOptions;
 
+  public sealed record MagneticFieldLayerOptions(
+    double Strength, int PositiveColor, int NegativeColor,
+    int LineCount, double LineWidth
+  ) : ILayerRendererOptions;
+
   public sealed record BackgroundLayerOptions(int Color)
     : ILayerRendererOptions;
+
+  public sealed record EarthLayerOptions(double SpinSpeed)
+    : ILayerRendererOptions;
+
+  public sealed record AstronomyLayerOptions(
+    double NorthHeading, int StartDate, double TimeOffsetHours,
+    double PlaybackSpeed, bool Loop
+  ) : ILayerRendererOptions;
 
   public sealed record FlashLayerOptions(
     int Color, int Trigger, int Button, double Level, double Interval
@@ -72,8 +85,8 @@ namespace Spectrum.Base {
   ) : ILayerRendererOptions;
 
   public sealed record SparklerLayerOptions(
-    double Speed, double Size, int Trigger, int Button, double Level,
-    double Interval, int Palette
+    double EmissionRate, double Speed, double Size, int Trigger, int Button,
+    double Level, double Interval, int Palette
   ) : ILayerRendererOptions;
 
   public sealed record GyroscopeLayerOptions(
@@ -183,9 +196,27 @@ namespace Spectrum.Base {
     ) => new MetaballLayerOptions(
       Double(v, "size"), Boolean(v, "contours"), Integer(v, "button"));
 
+    internal static ILayerRendererOptions MagneticField(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new MagneticFieldLayerOptions(
+      Double(v, "strength"), Integer(v, "positiveColor"),
+      Integer(v, "negativeColor"), TruncatedInteger(v, "lineCount"),
+      Double(v, "lineWidth"));
+
     internal static ILayerRendererOptions Background(
       ImmutableDictionary<string, ParameterValue> v
     ) => new BackgroundLayerOptions(Integer(v, "color"));
+
+    internal static ILayerRendererOptions Earth(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new EarthLayerOptions(Double(v, "spinSpeed"));
+
+    internal static ILayerRendererOptions Astronomy(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new AstronomyLayerOptions(
+      Double(v, "northHeading"), Integer(v, "startDate"),
+      Double(v, "timeOffsetHours"),
+      Double(v, "playbackSpeed"), Boolean(v, "loop"));
 
     internal static ILayerRendererOptions Flash(
       ImmutableDictionary<string, ParameterValue> v
@@ -218,9 +249,9 @@ namespace Spectrum.Base {
     internal static ILayerRendererOptions Sparkler(
       ImmutableDictionary<string, ParameterValue> v
     ) => new SparklerLayerOptions(
-      Double(v, "speed"), Double(v, "size"), Integer(v, "trigger"),
-      Integer(v, "button"), Double(v, "level"), Double(v, "interval"),
-      Integer(v, "palette"));
+      Double(v, "emissionRate"), Double(v, "speed"), Double(v, "size"),
+      Integer(v, "trigger"), Integer(v, "button"), Double(v, "level"),
+      Double(v, "interval"), Integer(v, "palette"));
 
     internal static ILayerRendererOptions Gyroscope(
       ImmutableDictionary<string, ParameterValue> v

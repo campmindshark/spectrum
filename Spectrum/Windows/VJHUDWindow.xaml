@@ -409,7 +409,7 @@
                                             <Button DockPanel.Dock="Right" Content="Remove" Command="{Binding RemoveCommand}" MinWidth="58" ToolTip="Remove layer" />
                                             <CheckBox DockPanel.Dock="Right" Content="On" IsChecked="{Binding LayerEnabled}" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Enable this layer" />
                                             <Button DockPanel.Dock="Right" Content="Clear" Command="{Binding ClearCommand}" MinWidth="50" ToolTip="Clear this layer's live particles" />
-                                            <Button DockPanel.Dock="Right" Content="Fire" Command="{Binding FireCommand}" MinWidth="46" ToolTip="Fire manual trigger" />
+                                            <Button DockPanel.Dock="Right" Content="{Binding FireLabel}" Command="{Binding FireCommand}" MinWidth="46" ToolTip="{Binding FireToolTip}" />
                                             <Button DockPanel.Dock="Right" Content="Back" Command="{Binding MoveDownCommand}" MinWidth="46" ToolTip="Move toward back" />
                                             <Button DockPanel.Dock="Right" Content="Front" Command="{Binding MoveUpCommand}" MinWidth="48" ToolTip="Move toward front" />
                                             <ToggleButton DockPanel.Dock="Left" IsChecked="{Binding IsExpanded}" Width="24" Margin="0,0,4,0" ToolTip="Expand or collapse layer settings">
@@ -453,6 +453,7 @@
                                                             <CheckBox Grid.Column="1" Content="On" IsChecked="{Binding BoolValue}" VerticalAlignment="Center" HorizontalAlignment="Left" Visibility="{Binding IsBool, Converter={StaticResource boolToVis}}" />
                                                             <ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedIndex="{Binding IntValue}" Visibility="{Binding IsEnum, Converter={StaticResource boolToVis}}" />
                                                             <local:ColorPicker Grid.Column="1" SelectedColor="{Binding ColorValue}" HorizontalAlignment="Left" Width="34" Height="30" Visibility="{Binding IsColor, Converter={StaticResource boolToVis}}" />
+                                                            <TextBox Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding DateText, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}" ToolTip="YYYY-MM-DD" Visibility="{Binding IsDate, Converter={StaticResource boolToVis}}" />
                                                         </Grid>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>

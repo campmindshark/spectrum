@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace Spectrum.Base {
 
   // The value type of a per-layer parameter. Values live in the bag as double
   // regardless: Bool is 0/1, Enum is the index into DomeLayerParam.Options,
-  // Color is a packed 0xRRGGBB int reinterpreted as a double.
-  public enum DomeLayerParamType { Double, Bool, Enum, Color }
+  // Color is a packed 0xRRGGBB int and Date is yyyyMMdd, both reinterpreted as
+  // doubles so existing serializer-facing parameter bags stay compatible.
+  public enum DomeLayerParamType { Double, Bool, Enum, Color, Date }
 
   // Static schema for one tunable on a layer (or on a blend mode). The bag on a
   // DomeLayerSettings stores only values keyed by DomeLayerParam.Key; everything
@@ -23,9 +25,106 @@ namespace Spectrum.Base {
     public double Step { get; set; }
     public string[] Options { get; set; }        // Enum labels (index == value)
     public double Default { get; set; }
+    // Date params may use Default = 0 to mean today's date in this zone. The
+    // dynamic value is resolved before it reaches either UI or the renderer.
+    public string TimeZoneId { get; set; }
     // true => read by the compositor (CompositeBlend) once per frame, never by
     // the visualizer. false => read by the visualizer in Visualize().
     public bool CompositorConsumed { get; set; }
+  }
+
+  public static class DomeLayerDate {
+    public const string PacificTimeZoneId = "Pacific Standard Time";
+    private const string PacificIanaTimeZoneId = "America/Los_Angeles";
+
+    public static double ResolveDefault(
+      DomeLayerParam descriptor, DateTime? utcNow = null
+    ) {
+      if (descriptor.Type != DomeLayerParamType.Date ||
+          descriptor.Default != 0) {
+        return descriptor.Default;
+      }
+      return CurrentDate(
+        utcNow ?? DateTime.UtcNow, descriptor.TimeZoneId);
+    }
+
+    public static int CurrentDate(DateTime utc, string timeZoneId) {
+      DateTime normalizedUtc = utc.Kind == DateTimeKind.Utc
+        ? utc : utc.ToUniversalTime();
+      DateTime local = TimeZoneInfo.ConvertTimeFromUtc(
+        normalizedUtc, FindTimeZone(timeZoneId));
+      return Encode(local);
+    }
+
+    public static int Encode(DateTime date) =>
+      date.Year * 10000 + date.Month * 100 + date.Day;
+
+    public static bool TryDecode(double value, out DateTime date) {
+      date = default;
+      if (double.IsNaN(value) || double.IsInfinity(value)) {
+        return false;
+      }
+      double rounded = Math.Round(value);
+      if (Math.Abs(value - rounded) > 1e-9 ||
+          rounded < 10101 || rounded > 99991231) {
+        return false;
+      }
+      int encoded = (int)rounded;
+      int year = encoded / 10000;
+      int month = encoded / 100 % 100;
+      int day = encoded % 100;
+      try {
+        date = new DateTime(year, month, day, 0, 0, 0,
+          DateTimeKind.Unspecified);
+        return Encode(date) == encoded;
+      } catch (ArgumentOutOfRangeException) {
+        return false;
+      }
+    }
+
+    public static bool TryParse(string text, out double value) {
+      value = 0;
+      if (!DateTime.TryParseExact(
+          text, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+          DateTimeStyles.None, out DateTime date)) {
+        return false;
+      }
+      value = Encode(date);
+      return true;
+    }
+
+    public static string Format(double value) =>
+      TryDecode(value, out DateTime date)
+        ? date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+        : string.Empty;
+
+    public static DateTime MidnightUtc(double value, string timeZoneId) {
+      if (!TryDecode(value, out DateTime date)) {
+        throw new ArgumentOutOfRangeException(
+          nameof(value), "Date values must use yyyyMMdd encoding.");
+      }
+      return TimeZoneInfo.ConvertTimeToUtc(
+        DateTime.SpecifyKind(date, DateTimeKind.Unspecified),
+        FindTimeZone(timeZoneId));
+    }
+
+    private static TimeZoneInfo FindTimeZone(string timeZoneId) {
+      string requested = string.IsNullOrWhiteSpace(timeZoneId)
+        ? TimeZoneInfo.Utc.Id : timeZoneId;
+      try {
+        return TimeZoneInfo.FindSystemTimeZoneById(requested);
+      } catch (TimeZoneNotFoundException) {
+        string fallback = requested == PacificTimeZoneId
+          ? PacificIanaTimeZoneId
+          : requested == PacificIanaTimeZoneId
+            ? PacificTimeZoneId
+            : null;
+        if (fallback == null) {
+          throw;
+        }
+        return TimeZoneInfo.FindSystemTimeZoneById(fallback);
+      }
+    }
   }
 
   // One layer in the dome's compositing stack: which visualizer produces it,
@@ -339,6 +438,42 @@ namespace Spectrum.Base {
       },
     };
 
+    // A signed counterpart to Metaball: each orientation contributes a +1
+    // point charge at Spot and a -1 charge at NegSpot. Strength controls the
+    // exponential display compression, while the two colors make the sign of
+    // the superposed potential explicit. The field's zero/cancellation line is
+    // transparent, so it composes naturally over lower layers. The line
+    // controls trace equally spaced streamlines from each positive pole to its
+    // negative antipode; zero lines leaves only the signed potential shading.
+    internal static readonly DomeLayerParam[] MagneticFieldParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "strength", Label = "Field Strength",
+          Type = DomeLayerParamType.Double,
+          Min = 0.1, Max = 4, Step = 0.05, Default = 1,
+        },
+        new DomeLayerParam {
+          Key = "positiveColor", Label = "+1 Color",
+          Type = DomeLayerParamType.Color,
+          Min = 0, Max = 0xFFFFFF, Default = 0xFF3B30,
+        },
+        new DomeLayerParam {
+          Key = "negativeColor", Label = "-1 Color",
+          Type = DomeLayerParamType.Color,
+          Min = 0, Max = 0xFFFFFF, Default = 0x3478F6,
+        },
+        new DomeLayerParam {
+          Key = "lineCount", Label = "Field Lines",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 24, Step = 2, Default = 12,
+        },
+        new DomeLayerParam {
+          Key = "lineWidth", Label = "Line Width",
+          Type = DomeLayerParamType.Double,
+          Min = 0.01, Max = 0.15, Step = 0.005, Default = 0.035,
+        },
+      };
+
     // Background's only tunable: the flat color it paints every pixel.
     internal static readonly DomeLayerParam[] BackgroundParams =
       new DomeLayerParam[] {
@@ -346,6 +481,54 @@ namespace Spectrum.Base {
           Key = "color", Label = "Color",
           Type = DomeLayerParamType.Color,
           Min = 0, Max = 0xFFFFFF, Default = 0xFFFFFF,
+        },
+      };
+
+    // Earth is a literal equirectangular texture wrapped around the dome's
+    // baked unit hemisphere. Its pole axis follows the shared orientation
+    // spotlight/idle center; the only independent motion is longitude advancing
+    // around that axis. Speed is measured in revolutions per second and may be
+    // negative to reverse the spin.
+    internal static readonly DomeLayerParam[] EarthParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "spinSpeed", Label = "Spin Speed (rev/s)",
+          Type = DomeLayerParamType.Double,
+          Min = -0.25, Max = 0.25, Step = 0.005, Default = 0.02,
+        },
+      };
+
+    // Astronomy paints a clock-driven Black Rock City sky onto the dome. North
+    // Heading rotates true north around the physical dome (0 = projected +Y,
+    // increasing clockwise); Time scrubs one week forward from midnight on the
+    // selected Black Rock City date.
+    internal static readonly DomeLayerParam[] AstronomyParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "northHeading", Label = "North Heading (deg clockwise)",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 359, Step = 1, Default = 0,
+        },
+        new DomeLayerParam {
+          Key = "startDate", Label = "Start Date",
+          Type = DomeLayerParamType.Date,
+          Default = 0,
+          TimeZoneId = DomeLayerDate.PacificTimeZoneId,
+        },
+        new DomeLayerParam {
+          Key = "timeOffsetHours", Label = "Time (hours from start)",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 168, Step = 1, Default = 0,
+        },
+        new DomeLayerParam {
+          Key = "playbackSpeed", Label = "Playback Speed (x)",
+          Type = DomeLayerParamType.Double,
+          Min = 0.5, Max = 8, Step = 0.1, Default = 1,
+        },
+        new DomeLayerParam {
+          Key = "loop", Label = "Loop",
+          Type = DomeLayerParamType.Bool,
+          Default = 0,
         },
       };
 
@@ -507,11 +690,17 @@ namespace Spectrum.Base {
         PaletteBankParam,
       };
 
-    // Sparkler is Shooting Star in reverse: every trigger births one particle
-    // at the current wand/idle aim point and sends it in a random direction at
-    // constant speed. The buffer's normal global fade supplies its trail.
+    // Sparkler is Shooting Star in reverse: particles are emitted continuously
+    // from the current wand/idle aim point and sent in random directions at
+    // constant speed. Every trigger births one extra particle on top of the
+    // emission rate. The buffer's normal global fade supplies their trails.
     internal static readonly DomeLayerParam[] SparklerParams =
       new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "emissionRate", Label = "Emission Rate",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 30, Step = 1, Default = 8,
+        },
         new DomeLayerParam {
           Key = "speed", Label = "Speed",
           Type = DomeLayerParamType.Double,

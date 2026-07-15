@@ -50,6 +50,10 @@ namespace Spectrum.Web {
       public int[] picks { get; set; }
       public IReadOnlyList<string> cableLabels { get; set; }
       public IReadOnlyList<string> endpointLabels { get; set; }
+      // Effective physical port -> legacy cable/path mapping. Missing or invalid
+      // persisted values are reported as identity so the editor is always usable.
+      public int numPorts { get; set; }
+      public int[] portMapping { get; set; }
     }
 
     // The static, click-target geometry the client draws the dome diagram from —
@@ -99,8 +103,8 @@ namespace Spectrum.Web {
     // the same time as active.
     private bool reviewing;
 
-    // The diagram geometry is derived from the hard-coded dome layout and never
-    // changes; build it once on first request and hand out the same instance.
+    // The diagram geometry is derived from the dome layout and current port
+    // mapping. Cache it until SavePortMappingAsync invalidates it.
     private DiagramGeometry geometry;
 
     public DomeCalibrationController(
@@ -120,6 +124,13 @@ namespace Spectrum.Web {
         this.cableLabels[i] = ControllerLabel(i);
         this.endpointLabels[i] = EndpointLabel(i);
       }
+      this.config.PropertyChanged += (sender, e) => {
+        if (e.PropertyName == nameof(this.config.domePortMapping)) {
+          lock (this.gate) {
+            this.geometry = null;
+          }
+        }
+      };
       lock (this.gate) {
         this.ResetPicksLocked();
       }
@@ -150,7 +161,8 @@ namespace Spectrum.Web {
           double sumX = 0, sumY = 0;
           int pointCount = 0;
           foreach (int strutIndex in
-              LEDDomeOutput.GetControllerCableStruts(box, half)) {
+              LEDDomeOutput.GetPhysicalCableStruts(
+                box, half, this.config.domePortMapping)) {
             Tuple<double, double> p0 =
               StrutLayoutFactory.GetProjectedPoint(strutIndex, 0);
             Tuple<double, double> p1 =
@@ -271,6 +283,34 @@ namespace Spectrum.Web {
         seen[endpoint] = true;
       }
       return true;
+    }
+
+    private int[] EffectivePortMapping() {
+      int[] configured = this.config.domePortMapping;
+      if (LEDDomeOutput.IsValidPortMapping(configured)) {
+        return (int[])configured.Clone();
+      }
+      var identity = new int[LEDDomeOutput.NumPortsPerBox];
+      for (int port = 0; port < identity.Length; port++) {
+        identity[port] = port;
+      }
+      return identity;
+    }
+
+    // Persist the shared eight-port plug order. The web editor uses one-based
+    // labels, but sends the same zero-based physical-port -> legacy-path array
+    // stored by the native window and consumed by LEDDomeOutput.
+    public async Task<CalibrationState> SavePortMappingAsync(int[] mapping) {
+      if (!LEDDomeOutput.IsValidPortMapping(mapping)) {
+        throw new ArgumentException(
+          "port mapping must use every cable/path 1 through 8 exactly once");
+      }
+      int[] stored = (int[])mapping.Clone();
+      await this.gateway.InvokeAsync(() => this.config.domePortMapping = stored);
+      lock (this.gate) {
+        this.geometry = null;
+      }
+      return this.Snapshot();
     }
 
     // Record the endpoint the operator saw light for the current cable, then
@@ -428,6 +468,8 @@ namespace Spectrum.Web {
       picks = (int[])this.picks.Clone(),
       cableLabels = this.cableLabels,
       endpointLabels = this.endpointLabels,
+      numPorts = LEDDomeOutput.NumPortsPerBox,
+      portMapping = this.EffectivePortMapping(),
     };
   }
 }

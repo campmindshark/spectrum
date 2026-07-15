@@ -19,6 +19,7 @@ namespace Spectrum.Web {
     public sealed class GeometryView {
       public int pixelCount { get; set; }
       public IReadOnlyList<double[]> points { get; set; }
+      public IReadOnlyList<double[]> topDownPoints { get; set; }
     }
 
     private readonly LEDDomeOutput dome;
@@ -37,18 +38,25 @@ namespace Spectrum.Web {
       int numStruts = LEDDomeOutput.GetNumStruts();
       this.strutOffsets = new int[numStruts];
       var points = new List<double[]>();
+      var topDownPoints = new List<double[]>();
       for (int strut = 0; strut < numStruts; strut++) {
         this.strutOffsets[strut] = points.Count;
         int count = LEDDomeOutput.GetNumLEDs(strut);
         for (int led = 0; led < count; led++) {
           var point = StrutLayoutFactory.GetProjectedLEDPoint(strut, led);
           points.Add(new[] { point.Item1, point.Item2 });
+          var topDownPoint = StrutLayoutFactory.GetProjectedLEDPoint(
+            strut, led, DomeProjection.TopDown);
+          topDownPoints.Add(new[] {
+            topDownPoint.Item1, topDownPoint.Item2,
+          });
         }
       }
       this.colors = new int[points.Count];
       this.geometry = new GeometryView {
         pixelCount = points.Count,
         points = points,
+        topDownPoints = topDownPoints,
       };
     }
 

@@ -421,6 +421,11 @@ namespace Spectrum.Web {
         ([FromHeader(Name = LockTokenHeader)] string token, SwapBody body) =>
           this.RunCalibration(token, c => c.SwapAsync(body?.a ?? -1, body?.b ?? -1)));
 
+      app.MapPost("/api/maintenance/calibration/ports",
+        ([FromHeader(Name = LockTokenHeader)] string token, PortMappingBody body) =>
+          this.RunCalibration(
+            token, c => c.SavePortMappingAsync(body?.mapping)));
+
       app.MapPost("/api/maintenance/calibration/cancel",
         ([FromHeader(Name = LockTokenHeader)] string token) =>
           this.RunCalibration(token, c => c.CancelAsync()));
@@ -618,6 +623,10 @@ namespace Spectrum.Web {
     private sealed class SwapBody {
       public int a { get; set; }
       public int b { get; set; }
+    }
+
+    private sealed class PortMappingBody {
+      public int[] mapping { get; set; }
     }
 
     private sealed class LayersBody {

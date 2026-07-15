@@ -34,6 +34,8 @@ namespace Spectrum {
     private readonly Configuration config;
     private readonly DomeCalibrationState calibration;
     private readonly int[] picks = new int[LEDDomeOutput.NumCables];
+    private readonly ComboBox[] portMappingCombos =
+      new ComboBox[LEDDomeOutput.NumPortsPerBox];
     // Which controller cable we are currently lighting; equals NumCables once
     // every cable has been answered.
     private int currentStep = 0;
@@ -55,8 +57,88 @@ namespace Spectrum {
       this.InitializeComponent();
       this.config = config;
       this.calibration = calibration;
+      this.BuildPortMappingEditor();
       this.BuildDiagram();
       this.PopulateSwapCombos();
+    }
+
+    private void BuildPortMappingEditor() {
+      int[] configured = this.config.domePortMapping;
+      bool valid = LEDDomeOutput.IsValidPortMapping(configured);
+      for (int port = 0; port < LEDDomeOutput.NumPortsPerBox; port++) {
+        var row = new Grid() { Margin = new Thickness(0, 0, 0, 4) };
+        row.ColumnDefinitions.Add(
+          new ColumnDefinition() { Width = new GridLength(72) });
+        row.ColumnDefinitions.Add(
+          new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Star) });
+
+        var label = new TextBlock() {
+          Text = "Port " + (port + 1),
+          VerticalAlignment = VerticalAlignment.Center,
+          Foreground = (Brush)this.FindResource("MutedTextBrush"),
+        };
+        row.Children.Add(label);
+
+        var combo = new ComboBox() { MinWidth = 150 };
+        for (int path = 0; path < LEDDomeOutput.NumPortsPerBox; path++) {
+          combo.Items.Add("Cable/path " + (path + 1));
+        }
+        combo.SelectedIndex = valid ? configured[port] : port;
+        combo.SelectionChanged += PortMappingSelectionChanged;
+        Grid.SetColumn(combo, 1);
+        row.Children.Add(combo);
+        this.portMappingCombos[port] = combo;
+        this.portMappingRows.Children.Add(row);
+      }
+      this.RefreshPortMappingValidation();
+    }
+
+    private int[] ReadPortMappingEditor() {
+      var mapping = new int[LEDDomeOutput.NumPortsPerBox];
+      for (int port = 0; port < mapping.Length; port++) {
+        mapping[port] = this.portMappingCombos[port]?.SelectedIndex ?? -1;
+      }
+      return mapping;
+    }
+
+    private void PortMappingSelectionChanged(
+      object sender, SelectionChangedEventArgs e
+    ) {
+      this.RefreshPortMappingValidation();
+    }
+
+    private void RefreshPortMappingValidation() {
+      int[] mapping = this.ReadPortMappingEditor();
+      bool valid = LEDDomeOutput.IsValidPortMapping(mapping);
+      this.savePortMappingButton.IsEnabled = valid;
+      if (!valid) {
+        this.portMappingStatusLabel.Foreground =
+          new SolidColorBrush(WColor.FromRgb(0xB3, 0x26, 0x1E));
+        this.portMappingStatusLabel.Text =
+          "Each cable/path must be selected exactly once.";
+      } else if (
+        this.portMappingStatusLabel.Text ==
+        "Each cable/path must be selected exactly once."
+      ) {
+        this.portMappingStatusLabel.Text = "";
+      }
+    }
+
+    private void SavePortMappingClicked(object sender, RoutedEventArgs e) {
+      int[] mapping = this.ReadPortMappingEditor();
+      if (!LEDDomeOutput.IsValidPortMapping(mapping)) {
+        this.RefreshPortMappingValidation();
+        return;
+      }
+      this.config.domePortMapping = mapping;
+      // The endpoint regions depend on which paths occupy ports 1-4 vs. 5-8.
+      // Rebuild them immediately so the calibration diagram follows the save.
+      this.canvas.Children.Clear();
+      this.BuildDiagram();
+      this.RefreshDiagram();
+      this.portMappingStatusLabel.Foreground =
+        new SolidColorBrush(WColor.FromRgb(0x16, 0x73, 0x3D));
+      this.portMappingStatusLabel.Text = "Plug order saved.";
     }
 
     // Both swap dropdowns list every controller cable in order, so a combo's
@@ -96,7 +178,8 @@ namespace Spectrum {
         double sumY = 0;
         int pointCount = 0;
         foreach (int strutIndex in
-            LEDDomeOutput.GetControllerCableStruts(box, half)) {
+            LEDDomeOutput.GetPhysicalCableStruts(
+              box, half, this.config.domePortMapping)) {
           Point p0 = Project(StrutLayoutFactory.GetProjectedPoint(strutIndex, 0));
           Point p1 = Project(StrutLayoutFactory.GetProjectedPoint(strutIndex, 1));
           var line = new Line() {

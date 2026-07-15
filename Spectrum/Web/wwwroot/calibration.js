@@ -76,6 +76,46 @@
   // so repeated swaps don't reset the selection.
   let swapA = 0, swapB = 1;
 
+  function validPortMapping(mapping, count) {
+    return Array.isArray(mapping)
+      && mapping.length === count
+      && mapping.every((value) => Number.isInteger(value)
+        && value >= 0 && value < count)
+      && new Set(mapping).size === count;
+  }
+
+  async function savePortMapping(mapping, keepLock) {
+    const alreadyHeld = !!token();
+    const t = await window.spectrumLocks.ensureLock(RESOURCE);
+    if (!t) return;
+    try {
+      const res = await fetch("/api/maintenance/calibration/ports", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Spectrum-Lock-Token": t,
+        },
+        body: JSON.stringify({ mapping }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        status(`plug order: ${payload.error || res.status}`, true);
+        if (payload.state) render(payload.state);
+        return;
+      }
+      // Port halves determine the colored endpoint regions, so refetch the
+      // server geometry after a successful save.
+      geometry = null;
+      await loadGeometry();
+      render(payload);
+      status("Dome plug order saved.");
+    } finally {
+      if (!alreadyHeld && !keepLock) {
+        await window.spectrumLocks.releaseLock(RESOURCE);
+      }
+    }
+  }
+
   async function save() {
     const state = await call("save");
     if (state) { render(state); if (state.complete) status("Dome mapping saved."); }
@@ -93,6 +133,63 @@
     b.disabled = enabled === false;
     b.addEventListener("click", handler);
     return b;
+  }
+
+  function buildPortMappingEditor(state, engaged) {
+    const count = state.numPorts || 8;
+    const initial = validPortMapping(state.portMapping, count)
+      ? state.portMapping
+      : Array.from({ length: count }, (_, port) => port);
+    const wrap = document.createElement("div");
+    wrap.className = "calib-port-map";
+
+    const title = document.createElement("h3");
+    title.textContent = "LED strip plugs";
+    wrap.appendChild(title);
+    const help = document.createElement("p");
+    help.textContent = "For each physical output port, choose the numbered "
+      + "strip cable/path plugged into it. Use each once; this applies to all five boxes.";
+    wrap.appendChild(help);
+
+    const grid = document.createElement("div");
+    grid.className = "calib-port-grid";
+    const selects = [];
+    for (let port = 0; port < count; port++) {
+      const label = document.createElement("label");
+      label.textContent = `Port ${port + 1}`;
+      const select = document.createElement("select");
+      for (let path = 0; path < count; path++) {
+        select.appendChild(new Option(`Cable/path ${path + 1}`, path));
+      }
+      select.value = String(initial[port]);
+      label.appendChild(select);
+      grid.appendChild(label);
+      selects.push(select);
+    }
+    wrap.appendChild(grid);
+
+    const actions = document.createElement("div");
+    actions.className = "calib-port-actions";
+    const feedback = document.createElement("span");
+    feedback.className = "calib-port-feedback";
+    const saveBtn = button("Save plug order", () => {
+      const mapping = selects.map((select) => +select.value);
+      savePortMapping(mapping, engaged);
+    });
+    const refresh = () => {
+      const mapping = selects.map((select) => +select.value);
+      const valid = validPortMapping(mapping, count);
+      saveBtn.disabled = !valid;
+      feedback.textContent = valid
+        ? ""
+        : "Each cable/path must be selected exactly once.";
+    };
+    selects.forEach((select) => select.addEventListener("change", refresh));
+    refresh();
+    actions.appendChild(saveBtn);
+    actions.appendChild(feedback);
+    wrap.appendChild(actions);
+    return wrap;
   }
 
   // Builds the clickable dome diagram from the cached geometry, styled to the
@@ -178,6 +275,7 @@
     // "Engaged" = there are picks to show/edit, whether actively lighting cables
     // (active) or reviewing the loaded saved mapping (reviewing).
     const engaged = state.active || state.reviewing;
+    container.appendChild(buildPortMappingEditor(state, engaged));
 
     const line = document.createElement("div");
     line.className = "calib-status";

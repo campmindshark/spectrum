@@ -21,6 +21,7 @@
     <None Include="Resources\s.PNG">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <EmbeddedResource Include="Resources\EarthTexture.png" />
   </ItemGroup>
 
   <ItemGroup>

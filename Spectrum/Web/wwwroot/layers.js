@@ -79,6 +79,28 @@
     putLayers();
   }
 
+  function formatDateParam(value) {
+    const encoded = String(Math.round(Number(value))).padStart(8, "0");
+    return encoded.length === 8
+      ? `${encoded.slice(0, 4)}-${encoded.slice(4, 6)}-${encoded.slice(6, 8)}`
+      : "";
+  }
+
+  function parseDateParam(text) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text.trim());
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const candidate = new Date(Date.UTC(year, month - 1, day));
+    if (candidate.getUTCFullYear() !== year ||
+        candidate.getUTCMonth() !== month - 1 ||
+        candidate.getUTCDate() !== day) {
+      return null;
+    }
+    return year * 10000 + month * 100 + day;
+  }
+
   async function putLayers() {
     panel.setAttribute("aria-busy", "true");
     setStatus("Applying layer changes…", false, true);
@@ -105,18 +127,18 @@
 
   // Fire one layer's manual trigger. POSTs to the instance-addressed endpoint
   // rather than PUTing the stack — firing bumps a counter, not the stack.
-  async function fireLayer(key) {
+  async function fireLayer(key, action = "fire") {
     try {
       const res = await fetch(
         `/api/layers/${encodeURIComponent(key)}/fire`, { method: "POST" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setStatus(`fire: ${body.error || res.status}`, true);
+        setStatus(`${action}: ${body.error || res.status}`, true);
         return;
       }
-      setStatus(`fired ${key}`);
+      setStatus(`${action === "play" ? "playing" : "fired"} ${key}`);
     } catch (e) {
-      setStatus(`fire: ${e}`, true);
+      setStatus(`${action}: ${e}`, true);
     }
   }
 
@@ -276,11 +298,14 @@
     // (OneShot Wave/Metaball, Ripple/Stamp) fires once. Not a stack edit, so it
     // POSTs to a dedicated endpoint rather than PUTing the whole stack.
     const fire = document.createElement("button");
-    fire.textContent = "Fire";
-    fire.title = "Fire (manual trigger)";
-    fire.setAttribute("aria-label", `Fire ${visSel.selectedOptions[0]?.textContent || "layer"}`);
+    const isAstronomy = layer.visualizerKey === "astronomy";
+    fire.textContent = isAstronomy ? "Play" : "Fire";
+    fire.title = isAstronomy
+      ? "Play the one-week astronomy timeline"
+      : "Fire (manual trigger)";
+    fire.setAttribute("aria-label", `${isAstronomy ? "Play" : "Fire"} ${visSel.selectedOptions[0]?.textContent || "layer"}`);
     fire.addEventListener("click", () => {
-      fireLayer(layer.instanceId);
+      fireLayer(layer.instanceId, isAstronomy ? "play" : "fire");
     });
     bottom.appendChild(fire);
 
@@ -317,9 +342,8 @@
     return row;
   }
 
-  // One param editor: a labeled Slider (Double), CheckBox (Bool), or ComboBox
-  // (Enum), matching the descriptor type. The committed change (change event)
-  // PUTs the whole stack; the range's live input event updates local state only.
+  // One generic param editor matching the descriptor type. The committed
+  // change PUTs the whole stack; a range's live input updates local state only.
   function renderParam(layer, idx, p) {
     const wrap = document.createElement("label");
     wrap.className = "param";
@@ -358,6 +382,22 @@
       });
       input.addEventListener("change", () => {
         setParam(idx, p, parseInt(input.value, 10));
+      });
+    } else if (p.type === "Date") {
+      input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = "YYYY-MM-DD";
+      input.value = formatDateParam(cur);
+      input.addEventListener("input", () => input.setCustomValidity(""));
+      input.addEventListener("change", () => {
+        const encoded = parseDateParam(input.value);
+        if (encoded == null) {
+          input.setCustomValidity("Use a valid date in YYYY-MM-DD format.");
+          input.reportValidity();
+          return;
+        }
+        input.setCustomValidity("");
+        setParam(idx, p, encoded);
       });
     } else {
       input = document.createElement("input");

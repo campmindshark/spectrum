@@ -147,7 +147,7 @@ namespace Spectrum.Web {
         max = p.Max,
         step = p.Step,
         options = p.Options,
-        @default = p.Default,
+        @default = DomeLayerDate.ResolveDefault(p),
         compositorConsumed = p.CompositorConsumed,
       }).ToList();
     }

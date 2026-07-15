@@ -21,13 +21,48 @@ namespace Spectrum {
 
   public partial class DomeSimulatorWindow : Window {
 
-    private static Tuple<int, int> GetPoint(int strutIndex, int point) {
-      var p = StrutLayoutFactory.GetProjectedPoint(strutIndex, point);
-      int index = StrutLayoutFactory.lines[strutIndex, point];
+    private static Tuple<int, int> GetPoint(
+      int strutIndex, int point, DomeProjection projection
+    ) {
+      var p = StrutLayoutFactory.GetProjectedPoint(
+        strutIndex, point, projection);
       return new Tuple<int, int>(
         (int)(p.Item1 * 690) + 10,
         (int)(p.Item2 * 690) + 10
       );
+    }
+
+    private sealed class ProjectionGeometry {
+      public readonly int[] X0;
+      public readonly int[] Y0;
+      public readonly double[] DeltaX;
+      public readonly double[] DeltaY;
+      public readonly int[] NumLEDs;
+      public readonly double[] LabelX;
+      public readonly double[] LabelY;
+
+      public ProjectionGeometry(DomeProjection projection) {
+        int numStruts = LEDDomeOutput.GetNumStruts();
+        this.X0 = new int[numStruts];
+        this.Y0 = new int[numStruts];
+        this.DeltaX = new double[numStruts];
+        this.DeltaY = new double[numStruts];
+        this.NumLEDs = new int[numStruts];
+        this.LabelX = new double[numStruts];
+        this.LabelY = new double[numStruts];
+        for (int i = 0; i < numStruts; i++) {
+          var pt1 = GetPoint(i, 0, projection);
+          var pt2 = GetPoint(i, 1, projection);
+          int numLEDs = LEDDomeOutput.GetNumLEDs(i);
+          this.X0[i] = pt1.Item1;
+          this.Y0[i] = pt1.Item2;
+          this.DeltaX[i] = (pt1.Item1 - pt2.Item1) / (numLEDs + 2.0);
+          this.DeltaY[i] = (pt1.Item2 - pt2.Item2) / (numLEDs + 2.0);
+          this.NumLEDs[i] = numLEDs;
+          this.LabelX[i] = (pt1.Item1 + pt2.Item1) / 2.0;
+          this.LabelY[i] = (pt1.Item2 + pt2.Item2) / 2.0;
+        }
+      }
     }
 
     private readonly Configuration config;
@@ -35,20 +70,15 @@ namespace Spectrum {
     private readonly WriteableBitmap bitmap;
     private Int32Rect rect;
     private readonly byte[] pixels;
+    private readonly int[][] ledColors;
     private bool keyMode;
     private readonly Label[] strutLabels;
 
-    // Per-strut screen geometry, precomputed once since the dome projection is
-    // static. The screen position of led j on strut s is
-    //   (strutX0[s] - strutDeltaX[s] * (j + 1),
-    //    strutY0[s] - strutDeltaY[s] * (j + 1)).
-    // Caching this keeps the per-frame command loop from re-running GetPoint
-    // (x2) + GetNumLEDs + the divisions for every pixel it draws.
-    private readonly int[] strutX0;
-    private readonly int[] strutY0;
-    private readonly double[] strutDeltaX;
-    private readonly double[] strutDeltaY;
-    private readonly int[] strutNumLEDs;
+    // Both projections are static and cached. Switching views only swaps this
+    // reference and reprojects the retained logical LED colors.
+    private readonly ProjectionGeometry stripExtentsGeometry;
+    private readonly ProjectionGeometry topDownGeometry;
+    private ProjectionGeometry geometry;
 
     private DispatcherTimer timer;
 
@@ -72,11 +102,7 @@ namespace Spectrum {
         null
       );
       this.pixels = new byte[this.rect.Width * this.rect.Height * 4];
-      for (int x = 0; x < this.rect.Width; x++) {
-        for (int y = 0; y < this.rect.Height; y++) {
-          this.SetPixelColor(this.pixels, x, y, (uint)0xFF000000);
-        }
-      }
+      this.ClearPixels(this.pixels);
       RenderOptions.SetBitmapScalingMode(
         this.image,
         BitmapScalingMode.NearestNeighbor
@@ -87,37 +113,26 @@ namespace Spectrum {
       );
 
       int numStruts = LEDDomeOutput.GetNumStruts();
-      this.strutX0 = new int[numStruts];
-      this.strutY0 = new int[numStruts];
-      this.strutDeltaX = new double[numStruts];
-      this.strutDeltaY = new double[numStruts];
-      this.strutNumLEDs = new int[numStruts];
+      this.stripExtentsGeometry = new ProjectionGeometry(
+        DomeProjection.StripExtents);
+      this.topDownGeometry = new ProjectionGeometry(DomeProjection.TopDown);
+      this.geometry = this.stripExtentsGeometry;
+      this.ledColors = new int[numStruts][];
       for (int i = 0; i < numStruts; i++) {
-        var pt1 = GetPoint(i, 0);
-        var pt2 = GetPoint(i, 1);
-        int numLEDs = LEDDomeOutput.GetNumLEDs(i);
-        this.strutX0[i] = pt1.Item1;
-        this.strutY0[i] = pt1.Item2;
-        this.strutDeltaX[i] = (pt1.Item1 - pt2.Item1) / (numLEDs + 2.0);
-        this.strutDeltaY[i] = (pt1.Item2 - pt2.Item2) / (numLEDs + 2.0);
-        this.strutNumLEDs[i] = numLEDs;
+        this.ledColors[i] = new int[this.geometry.NumLEDs[i]];
       }
 
       this.strutLabels = new Label[numStruts];
       var brush = new SolidColorBrush(Colors.White);
       for (int i = 0; i < numStruts; i++) {
-        var pt1 = GetPoint(i, 0);
-        var pt2 = GetPoint(i, 1);
-        var centerX = (pt1.Item1 + pt2.Item1) / 2;
-        var centerY = (pt1.Item2 + pt2.Item2) / 2;
         Label label = new Label();
         label.Content = i;
         label.FontSize = 12;
         label.Visibility = Visibility.Collapsed;
         label.Foreground = brush;
         label.Margin = new Thickness(
-          centerX - 10,
-          centerY - 10,
+          this.geometry.LabelX[i] - 10,
+          this.geometry.LabelY[i] - 10,
           0,
           0
         );
@@ -153,18 +168,23 @@ namespace Spectrum {
     }
 
     private void Draw() {
-      uint color = (uint)SimulatorUtils.GetComputerColor(0x000000)
-        | (uint)0xFF000000;
-      for (int i = 0; i < this.strutNumLEDs.Length; i++) {
-        int numLEDs = this.strutNumLEDs[i];
+      this.ClearPixels(this.pixels);
+      for (int i = 0; i < this.geometry.NumLEDs.Length; i++) {
+        int numLEDs = this.geometry.NumLEDs[i];
         for (int j = 0; j < numLEDs; j++) {
-          int x = this.strutX0[i] - (int)(this.strutDeltaX[i] * (j + 1));
-          int y = this.strutY0[i] - (int)(this.strutDeltaY[i] * (j + 1));
-          this.SetPixelColor(this.pixels, x, y, color);
+          this.PaintLED(i, j, this.ledColors[i][j]);
         }
       }
       this.bitmap.WritePixels(this.rect, this.pixels, this.rect.Width * 4, 0);
       this.image.Source = this.bitmap;
+    }
+
+    private void ClearPixels(byte[] target) {
+      for (int x = 0; x < this.rect.Width; x++) {
+        for (int y = 0; y < this.rect.Height; y++) {
+          this.SetPixelColor(target, x, y, (uint)0xFF000000);
+        }
+      }
     }
 
     private void SetPixelColor(byte[] pixels, int x, int y, uint color) {
@@ -178,10 +198,15 @@ namespace Spectrum {
     // Paints a single dome LED into the pixel buffer using the precomputed
     // per-strut screen geometry.
     private void SetLEDColor(int strutIndex, int ledIndex, int ledColor) {
-      int x = this.strutX0[strutIndex]
-        - (int)(this.strutDeltaX[strutIndex] * (ledIndex + 1));
-      int y = this.strutY0[strutIndex]
-        - (int)(this.strutDeltaY[strutIndex] * (ledIndex + 1));
+      this.ledColors[strutIndex][ledIndex] = ledColor;
+      this.PaintLED(strutIndex, ledIndex, ledColor);
+    }
+
+    private void PaintLED(int strutIndex, int ledIndex, int ledColor) {
+      int x = this.geometry.X0[strutIndex]
+        - (int)(this.geometry.DeltaX[strutIndex] * (ledIndex + 1));
+      int y = this.geometry.Y0[strutIndex]
+        - (int)(this.geometry.DeltaY[strutIndex] * (ledIndex + 1));
       uint color =
         (uint)SimulatorUtils.GetComputerColor(ledColor) | (uint)0xFF000000;
       this.SetPixelColor(this.pixels, x, y, color);
@@ -192,8 +217,8 @@ namespace Spectrum {
     // we walk struts/leds in that order and index frame in lockstep.
     private void DrawFrame(int[] frame) {
       int idx = 0;
-      for (int s = 0; s < this.strutNumLEDs.Length && idx < frame.Length; s++) {
-        int numLEDs = this.strutNumLEDs[s];
+      for (int s = 0; s < this.geometry.NumLEDs.Length && idx < frame.Length; s++) {
+        int numLEDs = this.geometry.NumLEDs[s];
         for (int j = 0; j < numLEDs && idx < frame.Length; j++) {
           this.SetLEDColor(s, j, frame[idx++]);
         }
@@ -248,6 +273,31 @@ namespace Spectrum {
       //Debug.WriteLine("DomeSimulator took " + stopwatch.ElapsedMilliseconds + "ms to update");
     }
 
+    private void ProjectionChanged(object sender, RoutedEventArgs e) {
+      bool topDown = this.projectionToggle.IsChecked == true;
+      this.geometry = topDown
+        ? this.topDownGeometry
+        : this.stripExtentsGeometry;
+      this.projectionToggle.Content = topDown
+        ? "View: Real top-down"
+        : "View: Strip extents";
+      this.projectionToggle.ToolTip = topDown
+        ? "Show the full LED strip extents"
+        : "Foreshorten the dome as it appears from directly above";
+      for (int i = 0; i < this.strutLabels.Length; i++) {
+        this.strutLabels[i].Margin = new Thickness(
+          this.geometry.LabelX[i] - 10,
+          this.geometry.LabelY[i] - 10,
+          0,
+          0
+        );
+      }
+      this.Draw();
+      if (this.keyMode) {
+        this.DrawKey();
+      }
+    }
+
     private void ShowKey(object sender, RoutedEventArgs e) {
       this.keyMode = !this.keyMode;
       foreach (Label strutLabel in this.strutLabels) {
@@ -270,24 +320,22 @@ namespace Spectrum {
         return;
       }
 
+      this.DrawKey();
+    }
+
+    private void DrawKey() {
       var strutPixels = new byte[rect.Width * rect.Height * 4];
-      for (int x = 0; x < rect.Width; x++) {
-        for (int y = 0; y < rect.Height; y++) {
-          this.SetPixelColor(strutPixels, x, y, (uint)0xFF000000);
-        }
-      }
+      this.ClearPixels(strutPixels);
 
       uint color = (uint)SimulatorUtils.GetComputerColor(0xFFFFFF)
         | (uint)0xFF000000;
       for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-        var pt1 = GetPoint(i, 0);
-        var pt2 = GetPoint(i, 1);
-        int numLEDs = LEDDomeOutput.GetNumLEDs(i);
-        double deltaX = (pt1.Item1 - pt2.Item1) / (numLEDs + 2.0);
-        double deltaY = (pt1.Item2 - pt2.Item2) / (numLEDs + 2.0);
+        int numLEDs = this.geometry.NumLEDs[i];
         for (int j = 0; j < numLEDs * 3 / 4; j++) {
-          int x = pt1.Item1 - (int)(deltaX * (j + 1));
-          int y = pt1.Item2 - (int)(deltaY * (j + 1));
+          int x = this.geometry.X0[i]
+            - (int)(this.geometry.DeltaX[i] * (j + 1));
+          int y = this.geometry.Y0[i]
+            - (int)(this.geometry.DeltaY[i] * (j + 1));
           this.SetPixelColor(strutPixels, x, y, color);
         }
       }

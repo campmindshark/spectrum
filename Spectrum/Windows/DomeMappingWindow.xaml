@@ -37,6 +37,23 @@
       <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
         Margin="0,14,0,0" Padding="10">
         <StackPanel>
+          <TextBlock Text="LED strip plugs" FontSize="14" FontWeight="Bold"
+            Foreground="{StaticResource TextBrush}" />
+          <TextBlock TextWrapping="Wrap" Margin="0,4,0,8"
+            Foreground="{StaticResource MutedTextBrush}"
+            Text="For each physical output port, choose the numbered strip cable/path plugged into it. Use every cable/path exactly once; this order applies to all five boxes." />
+          <StackPanel x:Name="portMappingRows" />
+          <Button x:Name="savePortMappingButton" Content="Save Plug Order"
+            Width="130" Height="26" HorizontalAlignment="Left" Margin="0,6,0,0"
+            FontWeight="Bold" Click="SavePortMappingClicked" />
+          <TextBlock x:Name="portMappingStatusLabel" TextWrapping="Wrap"
+            Margin="0,8,0,0" Foreground="{StaticResource ErrorBrush}" />
+        </StackPanel>
+      </Border>
+
+      <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
+        Margin="0,14,0,0" Padding="10">
+        <StackPanel>
           <TextBlock Text="Now lighting" Foreground="{StaticResource MutedTextBrush}" FontSize="11" />
           <TextBlock x:Name="currentCableLabel" Text="-" FontSize="22"
             FontWeight="Bold" Foreground="{StaticResource WarningBrush}" />

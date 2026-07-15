@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#090b10" />
   <title>Spectrum Dome Simulator</title>
-  <link rel="stylesheet" href="console.css?v=simulator-60" />
+  <link rel="stylesheet" href="console.css?v=simulator-61" />
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to simulator</a>
@@ -28,6 +28,8 @@
       <p>This page streams the latest dome frame at up to 60 FPS. Close it when the preview is not needed.</p>
       <div class="dome-simulator-toolbar">
         <button type="button" id="dome-simulator-toggle">Loading preview…</button>
+        <button type="button" id="dome-simulator-projection" disabled
+                aria-pressed="false">View: Strip extents</button>
         <span class="dome-simulator-state" id="dome-simulator-state" role="status" aria-live="polite">Connecting…</span>
       </div>
       <canvas id="dome-simulator-canvas" width="420" height="420" hidden aria-label="Live dome preview"></canvas>
@@ -35,6 +37,6 @@
   </main>
 
   <footer class="page-footer">Spectrum dome simulator · <a href="/">Return to controller</a></footer>
-  <script src="dome-simulator.js?v=60"></script>
+  <script src="dome-simulator.js?v=61"></script>
 </body>
 </html>

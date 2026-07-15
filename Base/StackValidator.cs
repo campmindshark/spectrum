@@ -112,9 +112,13 @@ namespace Spectrum.Base {
             packed = 0xFFFFFF;
           }
           return packed;
+        case DomeLayerParamType.Date:
+          return DomeLayerDate.TryDecode(v, out _)
+            ? Math.Round(v)
+            : DomeLayerDate.ResolveDefault(p);
         default: // Double
           if (double.IsNaN(v)) {
-            return p.Default;
+            return DomeLayerDate.ResolveDefault(p);
           }
           if (v < p.Min) {
             return p.Min;

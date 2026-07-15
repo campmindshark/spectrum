@@ -6,13 +6,18 @@
 
   const root = document.getElementById("dome-simulator");
   const toggle = document.getElementById("dome-simulator-toggle");
+  const projectionToggle = document.getElementById("dome-simulator-projection");
   const state = document.getElementById("dome-simulator-state");
   const canvas = document.getElementById("dome-simulator-canvas");
-  if (!root || !toggle || !state || !canvas) return;
+  if (!root || !toggle || !projectionToggle || !state || !canvas) return;
 
   const ctx = canvas.getContext("2d", { alpha: false });
   let geometry = null;
   let pixelPositions = null;
+  let stripExtentsPositions = null;
+  let topDownPositions = null;
+  let latestFrame = null;
+  let topDown = false;
   let socket = null;
   let running = false;
   let reconnectTimer = null;
@@ -20,6 +25,15 @@
   const image = ctx.createImageData(canvas.width, canvas.height);
 
   function setState(text) { state.textContent = text; }
+
+  function positionsFor(points) {
+    const positions = new Int32Array(geometry.pixelCount * 2);
+    points.forEach((point, i) => {
+      positions[i * 2] = Math.round(point[0] * (canvas.width - 5)) + 2;
+      positions[i * 2 + 1] = Math.round(point[1] * (canvas.height - 5)) + 2;
+    });
+    return positions;
+  }
 
   async function ensureGeometry() {
     if (geometry) return true;
@@ -32,17 +46,18 @@
       return false;
     }
     geometry = await response.json();
-    pixelPositions = new Int32Array(geometry.pixelCount * 2);
-    geometry.points.forEach((point, i) => {
-      pixelPositions[i * 2] = Math.round(point[0] * (canvas.width - 5)) + 2;
-      pixelPositions[i * 2 + 1] = Math.round(point[1] * (canvas.height - 5)) + 2;
-    });
+    stripExtentsPositions = positionsFor(geometry.points);
+    topDownPositions = positionsFor(geometry.topDownPoints);
+    pixelPositions = stripExtentsPositions;
     geometry.points = null;
+    geometry.topDownPoints = null;
+    projectionToggle.disabled = false;
     return true;
   }
 
   function drawFrame(bytes) {
     if (!geometry || bytes.length !== geometry.pixelCount * 3) return;
+    latestFrame = bytes;
     image.data.fill(0);
     for (let i = 0, p = 0; i < geometry.pixelCount; i++, p += 3) {
       const x = pixelPositions[i * 2];
@@ -54,6 +69,16 @@
       image.data[out + 3] = 255;
     }
     ctx.putImageData(image, 0, 0);
+  }
+
+  function setProjection(useTopDown) {
+    topDown = useTopDown;
+    pixelPositions = topDown ? topDownPositions : stripExtentsPositions;
+    projectionToggle.textContent = topDown
+      ? "View: Real top-down"
+      : "View: Strip extents";
+    projectionToggle.setAttribute("aria-pressed", String(topDown));
+    if (latestFrame) drawFrame(latestFrame);
   }
 
   function connect() {
@@ -108,6 +133,7 @@
     if (running) { stop(); return; }
     start();
   });
+  projectionToggle.addEventListener("click", () => setProjection(!topDown));
 
   window.addEventListener("pagehide", stop);
   start();

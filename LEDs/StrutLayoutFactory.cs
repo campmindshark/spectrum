@@ -9,6 +9,11 @@ namespace Spectrum.LEDs {
   // pt1 => pt2 => (strut, reversed)
   using EdgeDictionary = Dictionary<int, Dictionary<int, Tuple<int, bool>>>;
 
+  public enum DomeProjection {
+    StripExtents,
+    TopDown,
+  }
+
   public class StrutLayoutFactory {
 
     // these are all the struts, and their start and end points
@@ -104,10 +109,52 @@ namespace Spectrum.LEDs {
       int strutIndex,
       int point
     ) {
+      return GetProjectedPoint(
+        strutIndex, point, DomeProjection.StripExtents);
+    }
+
+    // The hand-drawn layout is an azimuthal-equidistant map: distance from the
+    // center is proportional to angular distance down the dome. That keeps the
+    // full length of radial struts legible. A straight-down orthographic view
+    // instead has screen radius sin(theta), which spreads the top of the dome
+    // and foreshortens its sides. Both projections retain the same azimuth and
+    // circular footprint.
+    public static Tuple<double, double> GetProjectedPoint(
+      int strutIndex,
+      int point,
+      DomeProjection projection
+    ) {
       int index = StrutLayoutFactory.lines[strutIndex, point];
-      return new Tuple<double, double>(
+      var projected = new Tuple<double, double>(
         points[index, 0], points[index, 1]
-       );
+      );
+      return projection == DomeProjection.TopDown
+        ? ToTopDown(projected)
+        : projected;
+    }
+
+    private static Tuple<double, double> ToTopDown(
+      Tuple<double, double> projected
+    ) {
+      const double center = 0.5;
+      const double radius = 0.5;
+      double x = projected.Item1 - center;
+      double y = projected.Item2 - center;
+      double distance = Math.Sqrt(x * x + y * y);
+      if (distance == 0) {
+        return projected;
+      }
+
+      // The source radius reaches radius at the equator, so theta ranges from
+      // 0 at the crown to PI/2 at the dome rim. A few hand-drawn rim vertices
+      // land just outside the ideal circle; clamp them onto the silhouette.
+      double theta = Math.Min(distance / radius, 1) * Math.PI / 2;
+      double topDownDistance = radius * Math.Sin(theta);
+      double scale = topDownDistance / distance;
+      return new Tuple<double, double>(
+        center + x * scale,
+        center + y * scale
+      );
     }
 
     // gets x, y coordinates of a given LED on a given strut
@@ -116,8 +163,17 @@ namespace Spectrum.LEDs {
       int strutIndex,
       int ledIndex
     ) {
-      var p1 = GetProjectedPoint(strutIndex, 0);
-      var p2 = GetProjectedPoint(strutIndex, 1);
+      return GetProjectedLEDPoint(
+        strutIndex, ledIndex, DomeProjection.StripExtents);
+    }
+
+    public static Tuple<double, double> GetProjectedLEDPoint(
+      int strutIndex,
+      int ledIndex,
+      DomeProjection projection
+    ) {
+      var p1 = GetProjectedPoint(strutIndex, 0, projection);
+      var p2 = GetProjectedPoint(strutIndex, 1, projection);
       var leds = LEDDomeOutput.GetNumLEDs(strutIndex);
 
       // we treat the endpoints of the strut as "invisible" LEDS,

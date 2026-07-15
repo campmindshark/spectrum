@@ -58,6 +58,10 @@ namespace Spectrum.Visualizers {
     // spotlight blowup anywhere short of exact alignment.
     private const double MIN_POLE_PRODUCT = 1e-9;
 
+    // The signed field treats the two metaball poles as individual +1/-1 point
+    // charges, so each reciprocal distance needs its own singularity guard.
+    private const double MIN_POLE_DISTANCE = 1e-6;
+
     // One wand's contribution for this frame, with its rotation and scaling
     // factors resolved once so the per-pixel field sample does no per-device
     // bookkeeping.
@@ -301,6 +305,102 @@ namespace Spectrum.Visualizers {
       }
       colorCenter = Quaternion.Normalize(cc);
       return potential / this.activeDevices.Count;
+    }
+
+    // Signed version of the orientation metaball field. PotentialAt identifies
+    // both ends of a wand by multiplying their distances; this keeps them
+    // deliberately interchangeable. Magnetic Field completes the dipole
+    // metaphor instead: Spot is a +1 point charge, NegSpot is -1, and their
+    // electrostatic potentials superpose as +1/rPositive - 1/rNegative.
+    // Multiple moving devices are averaged exactly like PotentialAt; a poi's
+    // distance-derived gain scales the whole dipole so its zero-potential plane
+    // stays neutral rather than acquiring the unsigned field's additive floor.
+    public double SignedPotentialAt(Vector3 pixelPoint) {
+      if (this.idle) {
+        return SignedUnitChargePotential(
+          Vector3.Transform(pixelPoint, this.currentOrientation));
+      }
+
+      double potential = 0;
+      for (int d = 0; d < this.activeDevices.Count; d++) {
+        DeviceFrame dev = this.activeDevices[d];
+        Vector3 transformed = Vector3.Transform(pixelPoint, dev.rotation);
+        double contribution = SignedUnitChargePotential(transformed);
+        if (dev.isPoi) {
+          contribution *= dev.poiK + POI_MIN_SCALE;
+        }
+        potential += contribution;
+      }
+      return potential / this.activeDevices.Count;
+    }
+
+    // Exposed internally so the dipole's sign, cancellation plane, and
+    // antipodal symmetry can be regression-tested independently of live wand
+    // input. transformedPoint is already in the orientation's local frame.
+    internal static double SignedUnitChargePotential(Vector3 transformedPoint) {
+      double positiveDistance = Math.Max(
+        Vector3.Distance(transformedPoint, Spot), MIN_POLE_DISTANCE);
+      double negativeDistance = Math.Max(
+        Vector3.Distance(transformedPoint, NegSpot), MIN_POLE_DISTANCE);
+      return 1 / positiveDistance - 1 / negativeDistance;
+    }
+
+    // Strength of the nearest displayed field line at a dome point. A single
+    // dipole's tangential field on the unit sphere follows meridians between
+    // Spot and NegSpot, so equally spaced constant-azimuth paths are its exact
+    // surface streamlines. For multiple wands, draw the strongest/nearest line
+    // from any dipole while the signed potential itself continues to superpose.
+    public double FieldLineStrengthAt(
+      Vector3 pixelPoint, int lineCount, double lineWidth
+    ) {
+      if (lineCount <= 0 || lineWidth <= 0) {
+        return 0;
+      }
+      if (this.idle) {
+        return UnitFieldLineStrength(
+          Vector3.Transform(pixelPoint, this.currentOrientation),
+          lineCount, lineWidth);
+      }
+
+      double strongest = 0;
+      for (int d = 0; d < this.activeDevices.Count; d++) {
+        double strength = UnitFieldLineStrength(
+          Vector3.Transform(pixelPoint, this.activeDevices[d].rotation),
+          lineCount, lineWidth);
+        if (strength > strongest) {
+          strongest = strength;
+        }
+      }
+      return strongest;
+    }
+
+    // transformedPoint is in one dipole's local frame, whose pole axis is X.
+    // The azimuth around X selects one of the equally spaced meridians. Convert
+    // the azimuthal separation to an actual great-circle distance so the lines
+    // have a stable width across the dome and naturally merge at both poles.
+    internal static double UnitFieldLineStrength(
+      Vector3 transformedPoint, int lineCount, double lineWidth
+    ) {
+      if (lineCount <= 0 || lineWidth <= 0) {
+        return 0;
+      }
+      double azimuth = Math.Atan2(transformedPoint.Z, transformedPoint.Y);
+      double phase = lineCount * azimuth;
+      double phaseDistance = Math.Abs(Math.Atan2(
+        Math.Sin(phase), Math.Cos(phase)));
+      double azimuthDistance = phaseDistance / lineCount;
+      double radial = Math.Sqrt(
+        transformedPoint.Y * transformedPoint.Y +
+        transformedPoint.Z * transformedPoint.Z);
+      double distance = Math.Asin(Math.Clamp(
+        radial * Math.Sin(azimuthDistance), -1, 1));
+      if (distance >= lineWidth) {
+        return 0;
+      }
+      double strength = 1 - distance / lineWidth;
+      // Smooth the band edge so sparse physical LEDs do not make a moving line
+      // flicker between fully on and fully off as a wand rotates.
+      return strength * strength * (3 - 2 * strength);
     }
 
     // Just the orientation-derived color at a pixel, for effects (like
