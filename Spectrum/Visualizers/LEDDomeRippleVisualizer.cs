@@ -90,6 +90,7 @@ namespace Spectrum.Visualizers {
       RippleLayerOptions options =
         this.runtime.GetOptions<RippleLayerOptions>();
       double rippleStep = options.RippleSpeed;
+      double desaturation = options.Desaturation;
       int triggerSource = options.Trigger;
       int button = options.Button;
       double levelThreshold = options.Level;
@@ -105,7 +106,7 @@ namespace Spectrum.Visualizers {
 
       this.center.Update(level);
       UpdateRipple(fired, rippleStep, frameScale);
-      RenderPixels();
+      RenderPixels(desaturation);
     }
 
     // Ripple playhead: a fire (from LayerTrigger) starts one expansion,
@@ -135,14 +136,15 @@ namespace Spectrum.Visualizers {
       }
     }
 
-    private void RenderPixels() {
+    private void RenderPixels(double desaturation) {
       if (!this.rippleFiring) {
         return;
       }
 
       AngularRingBand rippleBand =
         OrientationRingGeometry.RippleBand(this.rippleCounter);
-      double rippleSaturation = Math.Clamp(1 - this.rippleCounter / 600d, 0, 1);
+      double rippleSaturation =
+        SaturationFor(this.rippleCounter, desaturation);
       double rippleValue = Math.Clamp(1 - this.rippleCounter / 800d, 0, 1);
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
@@ -162,5 +164,10 @@ namespace Spectrum.Visualizers {
         }
       }
     }
+
+    internal static double SaturationFor(
+      double rippleCounter, double desaturation
+    ) => Math.Clamp(1 - rippleCounter / 600d, 0, 1) *
+      (1 - Math.Clamp(desaturation, 0, 1));
   }
 }

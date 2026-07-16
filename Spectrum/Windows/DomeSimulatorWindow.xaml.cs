@@ -38,8 +38,6 @@ namespace Spectrum {
       public readonly double[] DeltaX;
       public readonly double[] DeltaY;
       public readonly int[] NumLEDs;
-      public readonly double[] LabelX;
-      public readonly double[] LabelY;
 
       public ProjectionGeometry(DomeProjection projection) {
         int numStruts = LEDDomeOutput.GetNumStruts();
@@ -48,8 +46,6 @@ namespace Spectrum {
         this.DeltaX = new double[numStruts];
         this.DeltaY = new double[numStruts];
         this.NumLEDs = new int[numStruts];
-        this.LabelX = new double[numStruts];
-        this.LabelY = new double[numStruts];
         for (int i = 0; i < numStruts; i++) {
           var pt1 = GetPoint(i, 0, projection);
           var pt2 = GetPoint(i, 1, projection);
@@ -59,8 +55,6 @@ namespace Spectrum {
           this.DeltaX[i] = (pt1.Item1 - pt2.Item1) / (numLEDs + 2.0);
           this.DeltaY[i] = (pt1.Item2 - pt2.Item2) / (numLEDs + 2.0);
           this.NumLEDs[i] = numLEDs;
-          this.LabelX[i] = (pt1.Item1 + pt2.Item1) / 2.0;
-          this.LabelY[i] = (pt1.Item2 + pt2.Item2) / 2.0;
         }
       }
     }
@@ -71,8 +65,6 @@ namespace Spectrum {
     private Int32Rect rect;
     private readonly byte[] pixels;
     private readonly int[][] ledColors;
-    private bool keyMode;
-    private readonly Label[] strutLabels;
 
     // Both projections are static and cached. Switching views only swaps this
     // reference and reprojects the retained logical LED colors.
@@ -120,25 +112,6 @@ namespace Spectrum {
       this.ledColors = new int[numStruts][];
       for (int i = 0; i < numStruts; i++) {
         this.ledColors[i] = new int[this.geometry.NumLEDs[i]];
-      }
-
-      this.strutLabels = new Label[numStruts];
-      var brush = new SolidColorBrush(Colors.White);
-      for (int i = 0; i < numStruts; i++) {
-        Label label = new Label();
-        label.Content = i;
-        label.FontSize = 12;
-        label.Visibility = Visibility.Collapsed;
-        label.Foreground = brush;
-        label.Margin = new Thickness(
-          this.geometry.LabelX[i] - 10,
-          this.geometry.LabelY[i] - 10,
-          0,
-          0
-        );
-        label.MouseDown += StrutLabelClicked;
-        this.strutLabels[i] = label;
-        this.canvas.Children.Add(label);
       }
     }
 
@@ -266,7 +239,7 @@ namespace Spectrum {
         this.SetLEDColor(command.strutIndex, command.ledIndex, command.color);
       }
 
-      if (shouldRedraw && !this.keyMode) {
+      if (shouldRedraw) {
         this.bitmap.WritePixels(this.rect, this.pixels, this.rect.Width * 4, 0);
       }
 
@@ -284,112 +257,7 @@ namespace Spectrum {
       this.projectionToggle.ToolTip = topDown
         ? "Show the full LED strip extents"
         : "Foreshorten the dome as it appears from directly above";
-      for (int i = 0; i < this.strutLabels.Length; i++) {
-        this.strutLabels[i].Margin = new Thickness(
-          this.geometry.LabelX[i] - 10,
-          this.geometry.LabelY[i] - 10,
-          0,
-          0
-        );
-      }
       this.Draw();
-      if (this.keyMode) {
-        this.DrawKey();
-      }
-    }
-
-    private void ShowKey(object sender, RoutedEventArgs e) {
-      this.keyMode = !this.keyMode;
-      foreach (Label strutLabel in this.strutLabels) {
-        strutLabel.Visibility = this.keyMode
-          ? Visibility.Visible
-          : Visibility.Collapsed;
-      }
-      this.showKey.Content = this.keyMode
-        ? "Hide Key"
-        : "Show Key";
-      this.directionLabel.Visibility = this.keyMode
-        ? Visibility.Visible
-        : Visibility.Collapsed;
-      this.previewBox.Visibility = this.keyMode
-        ? Visibility.Visible
-        : Visibility.Collapsed;
-
-      if (!this.keyMode) {
-        this.bitmap.WritePixels(this.rect, this.pixels, this.rect.Width * 4, 0);
-        return;
-      }
-
-      this.DrawKey();
-    }
-
-    private void DrawKey() {
-      var strutPixels = new byte[rect.Width * rect.Height * 4];
-      this.ClearPixels(strutPixels);
-
-      uint color = (uint)SimulatorUtils.GetComputerColor(0xFFFFFF)
-        | (uint)0xFF000000;
-      for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-        int numLEDs = this.geometry.NumLEDs[i];
-        for (int j = 0; j < numLEDs * 3 / 4; j++) {
-          int x = this.geometry.X0[i]
-            - (int)(this.geometry.DeltaX[i] * (j + 1));
-          int y = this.geometry.Y0[i]
-            - (int)(this.geometry.DeltaY[i] * (j + 1));
-          this.SetPixelColor(strutPixels, x, y, color);
-        }
-      }
-
-      this.bitmap.WritePixels(this.rect, strutPixels, this.rect.Width * 4, 0);
-    }
-
-    private void PreviewBoxLostFocus(object sender, RoutedEventArgs e) {
-      if (String.IsNullOrEmpty(this.previewBox.Text)) {
-        this.previewBox.Text = "Click some struts...";
-        this.previewBox.Foreground = new SolidColorBrush(Colors.Gray);
-        this.previewBox.FontStyle = FontStyles.Italic;
-      }
-    }
-
-    private void PreviewBoxGotFocus(object sender, RoutedEventArgs e) {
-      if (String.Equals(this.previewBox.Text, "Click some struts...")) {
-        this.previewBox.Text = "";
-        this.previewBox.Foreground = new SolidColorBrush(Colors.Black);
-        this.previewBox.FontStyle = FontStyles.Normal;
-      }
-    }
-
-    private void PreviewBoxTextChanged(object sender, TextChangedEventArgs e) {
-      if (this.previewBox.IsFocused) {
-        return;
-      }
-      if (String.IsNullOrEmpty(this.previewBox.Text)) {
-        this.previewBox.Text = "Click some struts...";
-        this.previewBox.Foreground = new SolidColorBrush(Colors.Gray);
-        this.previewBox.FontStyle = FontStyles.Italic;
-      } else if (!String.Equals(this.previewBox.Text, "Click some struts...")) {
-        this.previewBox.Foreground = new SolidColorBrush(Colors.Black);
-        this.previewBox.FontStyle = FontStyles.Normal;
-      }
-    }
-
-    private void StrutLabelClicked(object sender, MouseButtonEventArgs e) {
-      string[] listedStruts;
-      if (
-        String.IsNullOrEmpty(this.previewBox.Text) ||
-        String.Equals(this.previewBox.Text, "Click some struts...")
-      ) {
-        listedStruts = new string[0];
-      } else {
-        listedStruts = this.previewBox.Text.Split(',');
-      }
-      string[] newListedStruts = new string[listedStruts.Length + 1];
-      Array.Copy(listedStruts, newListedStruts, listedStruts.Length);
-      newListedStruts[listedStruts.Length] =
-        ((Label)e.Source).Content.ToString();
-      this.previewBox.Text = String.Join(",", newListedStruts);
-      this.previewBox.Focus();
-      this.previewBox.Select(this.previewBox.Text.Length, 0);
     }
 
   }

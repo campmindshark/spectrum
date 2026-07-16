@@ -49,7 +49,7 @@ namespace Spectrum {
       ["noise-cloud"] = runtime => new LEDDomeNoiseCloudVisualizer(
         runtime, dome),
       ["vortex"] = runtime => new LEDDomeVortexVisualizer(
-        environment, runtime, dome),
+        environment, runtime, audio, beats, dome),
       ["caustics"] = runtime => new LEDDomeCausticsVisualizer(
         runtime, dome),
       ["ripple-tank"] = runtime => new LEDDomeRippleTankVisualizer(

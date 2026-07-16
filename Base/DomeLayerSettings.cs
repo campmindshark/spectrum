@@ -391,6 +391,11 @@ namespace Spectrum.Base {
         Min = 0, Max = 4, Step = 0.1, Default = 1,
       },
       new DomeLayerParam {
+        Key = "desaturation", Label = "Desaturation",
+        Type = DomeLayerParamType.Double,
+        Min = 0, Max = 1, Step = 0.05, Default = 0,
+      },
+      new DomeLayerParam {
         Key = "trigger", Label = "Trigger",
         Type = DomeLayerParamType.Enum,
         Options = TriggerSourceOptions, Default = 1, // Beat
@@ -845,6 +850,14 @@ namespace Spectrum.Base {
           Key = "speed", Label = "Spin Speed",
           Type = DomeLayerParamType.Double,
           Min = -1, Max = 1, Step = 0.125, Default = 1,
+        },
+        new DomeLayerParam {
+          Key = "audioBrightness", Label = "Audio Brightness",
+          Type = DomeLayerParamType.Bool, Default = 0,
+        },
+        new DomeLayerParam {
+          Key = "audioSpeed", Label = "Beat Speed",
+          Type = DomeLayerParamType.Bool, Default = 0,
         },
         new DomeLayerParam {
           Key = "twist", Label = "Twist",

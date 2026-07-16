@@ -37,7 +37,8 @@ namespace Spectrum.Base {
   ) : ILayerRendererOptions;
 
   public sealed record RippleLayerOptions(
-    double RippleSpeed, int Trigger, int Button, double Level, double Interval
+    double RippleSpeed, double Desaturation, int Trigger, int Button,
+    double Level, double Interval
   ) : ILayerRendererOptions;
 
   public sealed record StampLayerOptions(
@@ -103,8 +104,9 @@ namespace Spectrum.Base {
   ) : ILayerRendererOptions;
 
   public sealed record VortexLayerOptions(
-    int Style, double Speed, double Twist, double Scale, double Density,
-    double CoreSize, double Inflow, double Turbulence, int Color
+    int Style, double Speed, bool AudioBrightness, bool BeatSpeed,
+    double Twist, double Scale, double Density, double CoreSize,
+    double Inflow, double Turbulence, int Color
   ) : ILayerRendererOptions;
 
   public sealed record CausticsLayerOptions(
@@ -187,8 +189,9 @@ namespace Spectrum.Base {
     internal static ILayerRendererOptions Ripple(
       ImmutableDictionary<string, ParameterValue> v
     ) => new RippleLayerOptions(
-      Double(v, "rippleStep"), Integer(v, "trigger"), Integer(v, "button"),
-      Double(v, "level"), Double(v, "interval"));
+      Double(v, "rippleStep"), Double(v, "desaturation"),
+      Integer(v, "trigger"), Integer(v, "button"), Double(v, "level"),
+      Double(v, "interval"));
 
     internal static ILayerRendererOptions Stamp(
       ImmutableDictionary<string, ParameterValue> v
@@ -282,9 +285,11 @@ namespace Spectrum.Base {
     internal static ILayerRendererOptions Vortex(
       ImmutableDictionary<string, ParameterValue> v
     ) => new VortexLayerOptions(
-      Integer(v, "style"), Double(v, "speed"), Double(v, "twist"),
-      Double(v, "scale"), Double(v, "density"), Double(v, "coreSize"),
-      Double(v, "inflow"), Double(v, "turbulence"), Integer(v, "color"));
+      Integer(v, "style"), Double(v, "speed"),
+      Boolean(v, "audioBrightness"), Boolean(v, "audioSpeed"),
+      Double(v, "twist"), Double(v, "scale"), Double(v, "density"),
+      Double(v, "coreSize"), Double(v, "inflow"),
+      Double(v, "turbulence"), Integer(v, "color"));
 
     internal static ILayerRendererOptions Caustics(
       ImmutableDictionary<string, ParameterValue> v

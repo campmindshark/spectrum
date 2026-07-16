@@ -16,18 +16,10 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
     <DockPanel Margin="0,0,0,10">
-      <Button x:Name="showKey" Content="Show key" DockPanel.Dock="Left" Click="ShowKey" />
       <ToggleButton x:Name="projectionToggle" Content="View: Strip extents"
-                    DockPanel.Dock="Left" Margin="8,0,0,0"
+                    DockPanel.Dock="Left"
                     ToolTip="Foreshorten the dome as it appears from directly above"
                     Click="ProjectionChanged" />
-      <TextBlock x:Name="directionLabel" Margin="12,0" VerticalAlignment="Center"
-                 Text="First 3/4 LEDs on each strut are illuminated"
-                 Style="{StaticResource CaptionText}" Visibility="Hidden" />
-      <TextBox x:Name="previewBox" DockPanel.Dock="Right" Width="180"
-               Text="Click some struts..." FontStyle="Italic" Foreground="Gray"
-               LostFocus="PreviewBoxLostFocus" GotFocus="PreviewBoxGotFocus"
-               TextChanged="PreviewBoxTextChanged" Visibility="Collapsed" />
     </DockPanel>
     <Border Grid.Row="1" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
             CornerRadius="0" Background="Black" ClipToBounds="True">

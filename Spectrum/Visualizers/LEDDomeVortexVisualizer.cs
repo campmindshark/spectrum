@@ -1,3 +1,4 @@
+using Spectrum.Audio;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
@@ -14,6 +15,8 @@ namespace Spectrum.Visualizers {
 
     private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
+    private readonly AudioInput audio;
+    private readonly BeatBroadcaster beats;
     private readonly LEDDomeOutput dome;
     private readonly DomeFrame buffer;
 
@@ -25,15 +28,27 @@ namespace Spectrum.Visualizers {
     private readonly FrameClock frameClock = new FrameClock();
 
     private double time;
+    private double lastBeatProgress = -1;
     private int previousStyle = -1;
+    private double appliedBrightness = 1;
+
+    // Never flatten the persistent field all the way to zero: keeping a tiny
+    // double-precision scale lets the next frame restore the field before it
+    // fades and repaints it. The packed wire color is still black at this
+    // level, so silence remains visually silent.
+    private const double MinimumBrightnessScale = 1e-6;
 
     public LEDDomeVortexVisualizer(
       DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
+      AudioInput audio,
+      BeatBroadcaster beats,
       LEDDomeOutput dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
+      this.audio = audio;
+      this.beats = beats;
       this.dome = dome;
       this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
@@ -59,14 +74,22 @@ namespace Spectrum.Visualizers {
 
     private Input[] inputs;
     public Input[] GetInputs() {
-      return this.inputs ?? (this.inputs = new Input[] { });
+      return this.inputs ?? (this.inputs = new Input[] { this.audio });
     }
 
     public void Visualize() {
+      // Audio brightness is applied to this same persistent layer buffer after
+      // rendering. Undo the previous frame's scale first so Fade and the field
+      // strength comparison continue to operate on the unmodulated trail. This
+      // also preserves any global post-frame hue rotation applied in between.
+      RestoreFieldBrightness();
+
       VortexLayerOptions options =
         this.runtime.GetOptions<VortexLayerOptions>();
       int style = options.Style;
       double speed = options.Speed;
+      bool audioBrightness = options.AudioBrightness;
+      bool beatSpeed = options.BeatSpeed;
       double twist = options.Twist;
       double scale = options.Scale;
       double density = options.Density;
@@ -74,9 +97,18 @@ namespace Spectrum.Visualizers {
       double inflow = options.Inflow;
       double turbulence = options.Turbulence;
       int tint = options.Color;
+      double audioLevel = AudioResponseLevel(this.audio.Volume);
 
       double frameScale = this.frameClock.Tick();
       this.time += frameScale / FrameClock.NominalFps;
+
+      // ProgressThroughMeasure wraps from nearly 1 back to 0 at each beat.
+      // Advance the shared field clock by one short impulse on that edge so
+      // spin, radial inflow, and fine-grain drift all pulse forward together.
+      double beatProgress = this.beats.ProgressThroughMeasure;
+      this.time += BeatPulseAdvance(
+        this.lastBeatProgress, beatProgress, beatSpeed);
+      this.lastBeatProgress = beatProgress;
 
       // Retain the previous field according to the global Fade speed. At zero
       // retention this clears the previous frame; increasing Fade speed keeps
@@ -168,6 +200,48 @@ namespace Spectrum.Visualizers {
         // Coverage follows density, so Over reveals lower layers between wisps
         // instead of treating dim/black field samples as opaque paint.
         pixel.SetAlpha(value);
+      }
+
+      if (audioBrightness) {
+        ApplyFieldBrightness(Math.Max(
+          MinimumBrightnessScale, audioLevel));
+      }
+    }
+
+    // Expand the quieter half of the peak meter so both audio modes remain
+    // expressive at ordinary listening levels while retaining 0..1 bounds.
+    internal static double AudioResponseLevel(double level) =>
+      Math.Sqrt(Math.Clamp(level, 0, 1));
+
+    // One pulse advances the field by ten nominal frames. The first sample only
+    // establishes a baseline, preventing a newly created/enabled layer from
+    // jumping before an actual beat boundary passes.
+    internal static double BeatPulseAdvance(
+      double previousProgress, double currentProgress, bool enabled
+    ) => enabled && previousProgress >= 0 &&
+      currentProgress < previousProgress
+        ? 10 / FrameClock.NominalFps
+        : 0;
+
+    private void RestoreFieldBrightness() {
+      if (this.appliedBrightness == 1) {
+        return;
+      }
+      ScaleBuffer(1 / this.appliedBrightness);
+      this.appliedBrightness = 1;
+    }
+
+    private void ApplyFieldBrightness(double scale) {
+      ScaleBuffer(scale);
+      this.appliedBrightness = scale;
+    }
+
+    private void ScaleBuffer(double scale) {
+      for (int i = 0; i < this.buffer.pixels.Length; i++) {
+        ref LEDDomeOutputPixel pixel = ref this.buffer.pixels[i];
+        pixel.SetRGB(
+          pixel.r * scale, pixel.g * scale, pixel.b * scale);
+        pixel.SetAlpha(pixel.a * scale);
       }
     }
 

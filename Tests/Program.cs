@@ -20,6 +20,8 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("tunnel parameters compile and clamp", TunnelParametersCompile);
       Run("Ripple and Stamp rings use angular surface distance",
         OrientationRingsUseAngularDistance);
+      Run("Ripple desaturation reduces its color saturation",
+        RippleDesaturationReducesSaturation);
       Run("Point Cloud stays on the visible dome hemisphere",
         PointCloudUsesVisibleHemisphere);
       Run("Quaternion Test is a modal dome diagnostic",
@@ -220,6 +222,32 @@ namespace Spectrum.LayerPipeline.Tests {
               Vector3.UnitZ, betweenRings)),
           "Stamp grid spacing is not angular at gap " + ring);
       }
+    }
+
+    private static void RippleDesaturationReducesSaturation() {
+      LayerDefinition ripple = LayerCatalog.Default.Get("ripple");
+      DomeLayerParam desaturation = ripple.Parameters.FirstOrDefault(
+        parameter => parameter.Key == "desaturation");
+      Assert(desaturation != null && desaturation.Min == 0 &&
+        desaturation.Max == 1 && desaturation.Step == 0.05 &&
+        desaturation.Default == 0,
+        "Ripple desaturation slider is missing or malformed");
+
+      DomeLayerSettings layer = Layer("ripple", "ripple-desaturation-options");
+      layer.RendererParams = new Dictionary<string, double> {
+        ["desaturation"] = 0.4,
+      };
+      AssertClose(0.4, BuiltInOptions<RippleLayerOptions>(layer).Desaturation,
+        "Ripple desaturation did not compile into renderer options");
+
+      AssertClose(1, LEDDomeRippleVisualizer.SaturationFor(0, 0),
+        "default Ripple saturation changed");
+      AssertClose(0.6, LEDDomeRippleVisualizer.SaturationFor(0, 0.4),
+        "Ripple desaturation did not reduce saturation");
+      AssertClose(0.3, LEDDomeRippleVisualizer.SaturationFor(300, 0.4),
+        "Ripple desaturation did not preserve the lifetime fade");
+      AssertClose(0, LEDDomeRippleVisualizer.SaturationFor(0, 1),
+        "full Ripple desaturation was not grayscale");
     }
 
     private static void PointCloudUsesVisibleHemisphere() {
@@ -686,6 +714,16 @@ namespace Spectrum.LayerPipeline.Tests {
       AssertClose(
         12.5, BuiltInOptions<SparklerLayerOptions>(sparkler).EmissionRate,
         "sparkler emission rate did not compile into renderer options");
+
+      DomeLayerSettings vortex = Layer("vortex", "typed-vortex");
+      vortex.RendererParams = new Dictionary<string, double> {
+        ["audioBrightness"] = 1,
+        ["audioSpeed"] = 1,
+      };
+      VortexLayerOptions vortexOptions =
+        BuiltInOptions<VortexLayerOptions>(vortex);
+      Assert(vortexOptions.AudioBrightness && vortexOptions.BeatSpeed,
+        "vortex audio/beat hooks did not compile into renderer options");
     }
 
     private static void EarthTextureFollowsSpotlight() {
@@ -1182,6 +1220,24 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(vortex != null, "vortex renderer was not created");
 
       Visualizer renderer = (Visualizer)vortex;
+      Assert(renderer.GetInputs().Length == 1 &&
+          ReferenceEquals(renderer.GetInputs()[0], runtime.AudioInput),
+        "vortex did not declare its audio input");
+      AssertClose(0, LEDDomeVortexVisualizer.AudioResponseLevel(-1),
+        "vortex audio response did not clamp negative levels");
+      AssertClose(.5, LEDDomeVortexVisualizer.AudioResponseLevel(.25),
+        "vortex audio response did not expand quiet levels");
+      AssertClose(1, LEDDomeVortexVisualizer.AudioResponseLevel(2),
+        "vortex audio response did not clamp hot levels");
+      AssertClose(0, LEDDomeVortexVisualizer.BeatPulseAdvance(.9, .1, false),
+        "disabled Vortex beat speed advanced the field");
+      AssertClose(0, LEDDomeVortexVisualizer.BeatPulseAdvance(-1, .1, true),
+        "Vortex beat speed fired before establishing a baseline");
+      AssertClose(0, LEDDomeVortexVisualizer.BeatPulseAdvance(.1, .9, true),
+        "Vortex beat speed fired without a beat wrap");
+      AssertClose(10 / FrameClock.NominalFps,
+        LEDDomeVortexVisualizer.BeatPulseAdvance(.9, .1, true),
+        "Vortex beat speed did not apply its forward pulse");
       renderer.Visualize();
 
       // Use the weakest field sample and give its history a distinctive hue,
