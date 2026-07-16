@@ -289,29 +289,34 @@ input[type="color"] { width: 2.5rem; padding: .15rem; }
 .locks-title { color: var(--warning); font-size: .8rem; font-weight: 800; }
 .lock-row { margin-top: .35rem; font-size: .8rem; }
 .lock-tag { color: var(--warning); }
-.calib-status { margin: .5rem 0; }
-.calib-port-map { margin: .75rem 0 1rem; padding: .75rem; border: 1px solid var(--border); background: #0e121b; }
-.calib-port-map h3 { margin: 0 0 .25rem; font-size: .95rem; }
-.calib-port-map p { margin: 0 0 .65rem; color: var(--muted); font-size: .76rem; }
-.calib-port-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem .75rem; }
-.calib-port-grid label { display: grid; grid-template-columns: 4.25rem minmax(0, 1fr); align-items: center; gap: .4rem; color: var(--muted); font-size: .78rem; }
-.calib-port-grid select { min-width: 0; width: 100%; }
-.calib-port-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; margin-top: .7rem; }
-.calib-port-feedback { color: var(--error); font-size: .76rem; }
-.calib-diagram { display: block; width: 100%; max-width: 520px; height: auto; margin: .5rem 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #080a0f; touch-action: manipulation; }
-.calib-line { stroke-width: 5; stroke-linecap: round; pointer-events: none; }
-.calib-ep.assigned .calib-line { opacity: .33; }
-.calib-label-btn { pointer-events: none; }
-.calib-label-btn.pickable { pointer-events: auto; cursor: pointer; }
-.calib-label-bg { fill: #1a2030; stroke: #4c5870; stroke-width: 1.5; }
-.calib-label-btn.pickable:hover .calib-label-bg { fill: #243047; stroke: var(--accent); }
-.calib-label { font: bold 14px system-ui, sans-serif; fill: var(--accent); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
-.calib-ep.assigned .calib-label-bg { fill: #173622; stroke: #32794a; }
-.calib-ep.assigned .calib-label { fill: var(--success); }
-.calib-picks { white-space: pre; color: var(--muted); font-family: ui-monospace, monospace; font-size: .75rem; }
+.calib-status { margin: .65rem 0; color: var(--muted); }
+.calib-lock-warning { padding: .65rem .75rem; border: 1px solid #765f2c; background: #2a2415; color: var(--warning); }
+.calib-frame-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; margin: .75rem 0; }
+.calib-frame { padding: .65rem .75rem; border: 1px solid var(--border); background: #0e121b; font-size: .8rem; }
+.calib-frame.hardware { border-left: 4px solid var(--warning); }
+.calib-frame.simulator { border-left: 4px solid var(--accent); }
+.calib-preview { max-width: 620px; margin: .75rem 0; padding: .75rem; border: 1px solid var(--border); background: #0e121b; }
+.calib-preview h3 { margin: 0 0 .25rem; font-size: .95rem; }
+.calib-preview > p { margin: 0 0 .65rem; color: var(--muted); font-size: .76rem; }
+.calib-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0 1rem; }
+.calib-controls .primary, #calibration > .primary { border-color: #2e7550; background: #16452e; color: #fff; }
+.calib-controls .copy-action { border-color: #5a4a88; background: #282044; color: #e4dcff; }
+.calib-box-selector { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .45rem; margin: .8rem 0; }
+.calib-box-selector button { min-width: 0; padding-inline: .45rem; font-size: .74rem; }
+.calib-box-selector button.selected { border-color: var(--accent); background: #243047; color: var(--accent); }
+.calib-readouts { display: grid; grid-template-columns: minmax(17rem, .65fr) minmax(30rem, 1.35fr); gap: .75rem; margin-top: 1rem; }
+.calib-readouts > div { min-width: 0; padding: .7rem; border: 1px solid var(--border); background: #080a0f; }
+.calib-readouts h3 { margin: 0 0 .5rem; color: var(--muted); font-size: .78rem; }
+.calib-readouts pre { overflow-x: auto; margin: 0; color: #d9e3f4; font-family: ui-monospace, "Cascadia Mono", monospace; font-size: .75rem; line-height: 1.55; user-select: text; }
+
+@media (max-width: 840px) {
+  .calib-box-selector { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .calib-readouts { grid-template-columns: 1fr; }
+}
 
 @media (max-width: 560px) {
-  .calib-port-grid { grid-template-columns: 1fr; }
+  .calib-frame-summary { grid-template-columns: 1fr; }
+  .calib-box-selector { grid-template-columns: 1fr; }
 }
 
 .maintenance-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }

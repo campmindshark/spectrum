@@ -1,92 +1,53 @@
 using System;
-using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Spectrum.Base;
 using Spectrum.LEDs;
 
 namespace Spectrum.Web {
 
-  /**
-   * The server-side dome-mapping calibration flow for the web
-   * (docs/web_architecture.md — the modal op the native DomeMappingWindow drives
-   * in-process). It is the exact same state machine: light one controller cable
-   * at a time via the shared DomeCalibrationState (rendered by
-   * LEDDomeMappingCalibrationVisualizer, which takes over the dome while
-   * Active is true), let the operator report which physical endpoint lit, and
-   * on completion write the discovered permutation to config.domeCableMapping.
-   *
-   * This holds the transient picks/step state server-side (the dome mapping is a
-   * compound int[] write, kept maintenance-only and off the field-level
-   * last-write-wins path). It is a modal resource: every mutating call requires
-   * the caller to hold the "domeCalibration" advisory lease, so two operators
-   * can't drive the flow into each other. The domeCableMapping write goes
-   * through the ControlGateway (it's persisted config with PropertyChanged
-   * subscribers); the calibration selection is plain shared state the
-   * visualizer polls, written directly.
-   *
-   * Cable and endpoint are both identified by box*2 + half (half 0 = ethernet A,
-   * 1 = B), matching DomeMappingWindow and LEDDomeOutput.
-   */
+  // Authoritative server-side draft for the two-stage dome calibration. Every
+  // action is an operator intent; clients render returned snapshots and never
+  // own the only copy of a confirmation or candidate.
   public sealed class DomeCalibrationController {
+    private const string IdleStage = "idle";
+    private const string CableStage = "cables";
+    private const string StripStage = "strips";
+    private const string ReviewStage = "review";
 
-    // A JSON-friendly snapshot of the flow, returned by every endpoint so the
-    // client always re-renders from server truth.
     public sealed class CalibrationState {
+      public string stage { get; set; }
       public bool active { get; set; }
       public int currentStep { get; set; }
       public int numCables { get; set; }
-      // active and every cable answered — ready to review/save.
-      public bool done { get; set; }
-      // picks form a full permutation of 0..numCables-1 (saveable).
+      public bool cablesComplete { get; set; }
       public bool complete { get; set; }
-      // Editing the previously-saved mapping (loaded for review) rather than
-      // actively lighting cables — picks are shown/swappable/saveable but the
-      // dome is not seized. Mutually exclusive with active.
-      public bool reviewing { get; set; }
-      // A valid saved mapping exists in config, so it can be loaded for review
-      // (the client offers "Edit saved mapping" when idle).
+      public bool saveable { get; set; }
       public bool hasSavedMapping { get; set; }
-      // The endpoint recorded for each controller cable; -1 = unset/skipped.
+      public int currentCandidate { get; set; }
       public int[] picks { get; set; }
-      public IReadOnlyList<string> cableLabels { get; set; }
-      public IReadOnlyList<string> endpointLabels { get; set; }
-      // Effective physical port -> legacy cable/path mapping. Missing or invalid
-      // persisted values are reported as identity so the editor is always usable.
-      public int numPorts { get; set; }
-      public int[] portMapping { get; set; }
+      public bool[] cableConfirmed { get; set; }
+      public string[] cableLabels { get; set; }
+      public string[] endpointLabels { get; set; }
+      public int selectedBox { get; set; }
+      public int[] stripSteps { get; set; }
+      public int[][] stripMappings { get; set; }
+      public bool[][] stripConfirmed { get; set; }
+      public bool[] copiedFromBoxOne { get; set; }
+      public string[] boxStatuses { get; set; }
+      public bool canApplyBoxOne { get; set; }
+      public int[] savedCableMapping { get; set; }
+      public int[][] savedPortMappings { get; set; }
+      public int rawControllerCable { get; set; }
+      public int rawControllerBox { get; set; }
+      public int rawControllerPort { get; set; }
+      public int simulatorEndpoint { get; set; }
+      public int simulatorBox { get; set; }
+      public int simulatorPath { get; set; }
+      public string cableReadout { get; set; }
+      public string stripReadout { get; set; }
     }
-
-    // The static, click-target geometry the client draws the dome diagram from —
-    // the web port of the WPF DomeMappingWindow's canvas. Each endpoint's line
-    // segments are the physical struts on that controller cable, projected the
-    // same way the native window projects them (normalized 0..1 point × Scale +
-    // Offset), plus a centroid to anchor the label and the per-endpoint color.
-    // This never changes, so the client fetches it once.
-    public sealed class DiagramGeometry {
-      // The projection the native window uses (Canvas is ViewSize square).
-      public double scale { get; set; }
-      public double offset { get; set; }
-      public double viewSize { get; set; }
-      public IReadOnlyList<EndpointGeometry> endpoints { get; set; }
-    }
-
-    public sealed class EndpointGeometry {
-      public int endpoint { get; set; }
-      public string label { get; set; }
-      // "#rrggbb", matching DomeMappingWindow.ColorForEndpoint.
-      public string color { get; set; }
-      // Centroid of the endpoint's segment points, where the label sits.
-      public double cx { get; set; }
-      public double cy { get; set; }
-      // One [x1, y1, x2, y2] per strut, already projected into view space.
-      public IReadOnlyList<double[]> segments { get; set; }
-    }
-
-    // Must match DomeMappingWindow's DomeScale/DomeOffset and the 740-square
-    // Canvas, so the web diagram is laid out identically to the native one.
-    private const double DomeScale = 700;
-    private const double DomeOffset = 20;
-    private const double ViewSize = 740;
 
     private readonly ControlGateway gateway;
     private readonly Configuration config;
@@ -94,18 +55,21 @@ namespace Spectrum.Web {
     private readonly int numCables;
     private readonly string[] cableLabels;
     private readonly string[] endpointLabels;
-
     private readonly object gate = new object();
-    private readonly int[] picks;
-    private int currentStep;
-    private bool active;
-    // Loaded the saved mapping for review/edit (dome not seized). Never true at
-    // the same time as active.
-    private bool reviewing;
 
-    // The diagram geometry is derived from the dome layout and current port
-    // mapping. Cache it until SavePortMappingAsync invalidates it.
-    private DiagramGeometry geometry;
+    private string stage = IdleStage;
+    private readonly int[] cableDraft;
+    private readonly bool[] cableConfirmed;
+    private int cableStep;
+    private int currentCandidate = -1;
+    private int[] savedCableMapping;
+
+    private readonly int[][] stripDraft;
+    private readonly bool[][] stripConfirmed;
+    private readonly int[] stripSteps;
+    private readonly bool[] copiedFromBoxOne;
+    private int[][] savedPortMappings;
+    private int selectedBox;
 
     public DomeCalibrationController(
       ControlGateway gateway,
@@ -113,363 +77,639 @@ namespace Spectrum.Web {
       DomeCalibrationState calibration,
       int numCables
     ) {
+      if (numCables != LEDDomeOutput.NumCables) {
+        throw new ArgumentException(
+          "dome calibration requires " + LEDDomeOutput.NumCables +
+          " controller cables");
+      }
       this.gateway = gateway;
       this.config = config;
       this.calibration = calibration;
       this.numCables = numCables;
-      this.picks = new int[numCables];
-      this.cableLabels = new string[numCables];
-      this.endpointLabels = new string[numCables];
-      for (int i = 0; i < numCables; i++) {
-        this.cableLabels[i] = ControllerLabel(i);
-        this.endpointLabels[i] = EndpointLabel(i);
-      }
-      this.config.PropertyChanged += (sender, e) => {
-        if (e.PropertyName == nameof(this.config.domePortMapping)) {
-          lock (this.gate) {
-            this.geometry = null;
-          }
-        }
-      };
+      this.cableDraft = new int[numCables];
+      this.cableConfirmed = new bool[numCables];
+      this.cableLabels = Enumerable.Range(0, numCables)
+        .Select(ControllerLabel).ToArray();
+      this.endpointLabels = Enumerable.Range(0, numCables)
+        .Select(EndpointLabel).ToArray();
+
+      this.stripDraft = NewIntMatrix(
+        LEDDomeOutput.NumDomeBoxes, LEDDomeOutput.NumPortsPerBox);
+      this.stripConfirmed = NewBoolMatrix(
+        LEDDomeOutput.NumDomeBoxes, LEDDomeOutput.NumPortsPerBox);
+      this.stripSteps = new int[LEDDomeOutput.NumDomeBoxes];
+      this.copiedFromBoxOne = new bool[LEDDomeOutput.NumDomeBoxes];
+
       lock (this.gate) {
-        this.ResetPicksLocked();
+        this.LoadSavedGuessesLocked();
+        this.ResetDraftLocked();
+        this.calibration.Deactivate();
       }
     }
+
+    private static int[][] NewIntMatrix(int rows, int columns) =>
+      Enumerable.Range(0, rows).Select(_ => new int[columns]).ToArray();
+
+    private static bool[][] NewBoolMatrix(int rows, int columns) =>
+      Enumerable.Range(0, rows).Select(_ => new bool[columns]).ToArray();
 
     private static string HalfName(int half) => half == 0 ? "A" : "B";
 
     private static string ControllerLabel(int cable) =>
-      "Box " + (cable / 2 + 1) + " · Cable " + HalfName(cable % 2);
+      "Box " + (cable / 2 + 1) + " Cable " + HalfName(cable % 2);
+
+    private static string ControllerShortLabel(int cable) =>
+      "B" + (cable / 2 + 1) + HalfName(cable % 2);
 
     private static string EndpointLabel(int endpoint) =>
-      "S" + (endpoint / 2 + 1) + HalfName(endpoint % 2);
+      (endpoint / 2 + 1) + HalfName(endpoint % 2);
 
-    // The click-target geometry for the dome diagram (built once, then cached).
-    // Mirrors DomeMappingWindow.BuildDiagram: for each endpoint (box*2 + half),
-    // project every strut on that controller cable into the shared view space
-    // and record the segment endpoints, their centroid, and the endpoint color.
-    public DiagramGeometry Geometry() {
-      lock (this.gate) {
-        if (this.geometry != null) {
-          return this.geometry;
+    public Task<CalibrationState> StartAsync() => this.UpdateLocked(() => {
+      this.LoadSavedGuessesLocked();
+      this.ResetDraftLocked();
+      this.stage = CableStage;
+      this.InitializeCableCandidateLocked();
+    });
+
+    public Task<CalibrationState> NavigateAsync(int direction) =>
+      this.UpdateLocked(() => {
+        if (direction != -1 && direction != 1) {
+          throw new ArgumentException("direction must be -1 or 1");
         }
-        var endpoints = new List<EndpointGeometry>(this.numCables);
-        for (int endpoint = 0; endpoint < this.numCables; endpoint++) {
-          int box = endpoint / 2;
-          int half = endpoint % 2;
-          var segments = new List<double[]>();
-          double sumX = 0, sumY = 0;
-          int pointCount = 0;
-          foreach (int strutIndex in
-              LEDDomeOutput.GetPhysicalCableStruts(
-                box, half, this.config.domePortMapping)) {
-            Tuple<double, double> p0 =
-              StrutLayoutFactory.GetProjectedPoint(strutIndex, 0);
-            Tuple<double, double> p1 =
-              StrutLayoutFactory.GetProjectedPoint(strutIndex, 1);
-            double x0 = p0.Item1 * DomeScale + DomeOffset;
-            double y0 = p0.Item2 * DomeScale + DomeOffset;
-            double x1 = p1.Item1 * DomeScale + DomeOffset;
-            double y1 = p1.Item2 * DomeScale + DomeOffset;
-            segments.Add(new[] { x0, y0, x1, y1 });
-            sumX += x0 + x1;
-            sumY += y0 + y1;
-            pointCount += 2;
-          }
-          endpoints.Add(new EndpointGeometry {
-            endpoint = endpoint,
-            label = this.endpointLabels[endpoint],
-            color = ColorForEndpoint(endpoint),
-            cx = pointCount > 0 ? sumX / pointCount : 0,
-            cy = pointCount > 0 ? sumY / pointCount : 0,
-            segments = segments,
-          });
+        if (this.stage == CableStage && this.cableStep < this.numCables) {
+          this.currentCandidate = CycleCandidate(
+            this.currentCandidate,
+            this.cableConfirmed,
+            this.cableDraft,
+            direction);
+          return;
         }
-        this.geometry = new DiagramGeometry {
-          scale = DomeScale,
-          offset = DomeOffset,
-          viewSize = ViewSize,
-          endpoints = endpoints,
-        };
-        return this.geometry;
+        if (this.stage == StripStage &&
+            this.stripSteps[this.selectedBox] < LEDDomeOutput.NumPortsPerBox) {
+          this.currentCandidate = CycleCandidate(
+            this.currentCandidate,
+            this.stripConfirmed[this.selectedBox],
+            this.stripDraft[this.selectedBox],
+            direction);
+          return;
+        }
+        throw new ArgumentException("there is no active candidate to navigate");
+      });
+
+    public Task<CalibrationState> ConfirmAsync() => this.UpdateLocked(() => {
+      if (this.stage == CableStage) {
+        if (this.cableStep >= this.numCables) {
+          this.BeginStripStageLocked();
+          return;
+        }
+        this.ConfirmCableLocked();
+        return;
       }
-    }
-
-    // One hue per sector, cable A brighter than B, matching the native window so
-    // the two diagrams color endpoints identically.
-    private static string ColorForEndpoint(int endpoint) {
-      int sector = endpoint / 2;
-      int half = endpoint % 2;
-      double hue = sector / 5.0 * 360.0;
-      double value = half == 0 ? 1.0 : 0.6;
-      return ColorFromHSV(hue, 0.85, value);
-    }
-
-    private static string ColorFromHSV(double hue, double saturation, double value) {
-      int hi = ((int)Math.Floor(hue / 60)) % 6;
-      double f = hue / 60 - Math.Floor(hue / 60);
-      double v = value * 255;
-      byte vb = (byte)v;
-      byte p = (byte)(v * (1 - saturation));
-      byte q = (byte)(v * (1 - f * saturation));
-      byte t = (byte)(v * (1 - (1 - f) * saturation));
-      byte r, g, b;
-      switch (hi) {
-        case 0: r = vb; g = t; b = p; break;
-        case 1: r = q; g = vb; b = p; break;
-        case 2: r = p; g = vb; b = t; break;
-        case 3: r = p; g = q; b = vb; break;
-        case 4: r = t; g = p; b = vb; break;
-        default: r = vb; g = p; b = q; break;
+      if (this.stage != StripStage) {
+        throw new ArgumentException("there is no active match to confirm");
       }
-      return $"#{r:X2}{g:X2}{b:X2}";
-    }
-
-    private void ResetPicksLocked() {
-      for (int i = 0; i < this.picks.Length; i++) {
-        this.picks[i] = -1;
-      }
-    }
-
-    // Which controller cable the dome should light right now: the current step
-    // while running, or -1 (all off) when idle or past the last cable.
-    private int CableIndexLocked() =>
-      (this.active && this.currentStep < this.numCables) ? this.currentStep : -1;
-
-    // Begin (or restart) the flow: clear picks, light the first cable.
-    public Task<CalibrationState> StartAsync() {
-      lock (this.gate) {
-        this.ResetPicksLocked();
-        this.currentStep = 0;
-        this.active = true;
-        this.reviewing = false;
-      }
-      return this.DriveAndSnapshot();
-    }
-
-    // Load the saved mapping (config.domeCableMapping) for review/edit without
-    // lighting the dome — the web equivalent of DomeMappingWindow opening onto an
-    // existing mapping. All cables count as assigned so the mapping can be
-    // swapped and re-saved. If no valid mapping is on file, stays idle.
-    public Task<CalibrationState> LoadAsync() {
-      lock (this.gate) {
-        int[] mapping = this.config.domeCableMapping;
-        if (IsValidMapping(mapping, this.numCables)) {
-          Array.Copy(mapping, this.picks, this.numCables);
-          this.currentStep = this.numCables;
-          this.active = false;
-          this.reviewing = true;
+      if (this.stripSteps[this.selectedBox] >=
+          LEDDomeOutput.NumPortsPerBox) {
+        int next = this.NextUnfinishedBoxLocked(this.selectedBox + 1);
+        if (next < 0) {
+          this.stage = ReviewStage;
+          this.currentCandidate = -1;
         } else {
-          this.ResetPicksLocked();
-          this.currentStep = 0;
-          this.active = false;
-          this.reviewing = false;
+          this.SelectBoxLocked(next);
         }
+        return;
       }
-      return this.DriveAndSnapshot();
-    }
+      this.ConfirmStripLocked();
+    });
 
-    // Whether mapping is a full permutation of 0..count-1 (the validity test
-    // LEDDomeOutput applies before using a mapping).
-    private static bool IsValidMapping(int[] mapping, int count) {
-      if (mapping == null || mapping.Length != count) {
-        return false;
-      }
-      var seen = new bool[count];
-      foreach (int endpoint in mapping) {
-        if (endpoint < 0 || endpoint >= count || seen[endpoint]) {
-          return false;
+    public Task<CalibrationState> BackAsync() => this.UpdateLocked(() => {
+      if (this.stage == CableStage) {
+        if (this.cableStep <= 0) {
+          throw new ArgumentException("already at the first controller cable");
         }
-        seen[endpoint] = true;
+        this.cableStep--;
+        this.cableConfirmed[this.cableStep] = false;
+        this.InitializeCableCandidateLocked();
+        return;
       }
-      return true;
-    }
+      if (this.stage == ReviewStage) {
+        this.stage = StripStage;
+      }
+      if (this.stage != StripStage || this.stripSteps[this.selectedBox] <= 0) {
+        throw new ArgumentException("already at the first port for this box");
+      }
+      this.copiedFromBoxOne[this.selectedBox] = false;
+      this.stripSteps[this.selectedBox]--;
+      this.stripConfirmed[this.selectedBox][
+        this.stripSteps[this.selectedBox]] = false;
+      this.InitializeStripCandidateLocked();
+    });
 
-    private int[] EffectivePortMapping() {
-      int[] configured = this.config.domePortMapping;
-      if (LEDDomeOutput.IsValidPortMapping(configured)) {
-        return (int[])configured.Clone();
-      }
-      var identity = new int[LEDDomeOutput.NumPortsPerBox];
-      for (int port = 0; port < identity.Length; port++) {
-        identity[port] = port;
-      }
-      return identity;
-    }
-
-    // Persist the shared eight-port plug order. The web editor uses one-based
-    // labels, but sends the same zero-based physical-port -> legacy-path array
-    // stored by the native window and consumed by LEDDomeOutput.
-    public async Task<CalibrationState> SavePortMappingAsync(int[] mapping) {
-      if (!LEDDomeOutput.IsValidPortMapping(mapping)) {
-        throw new ArgumentException(
-          "port mapping must use every cable/path 1 through 8 exactly once");
-      }
-      int[] stored = (int[])mapping.Clone();
-      await this.gateway.InvokeAsync(() => this.config.domePortMapping = stored);
-      lock (this.gate) {
-        this.geometry = null;
-      }
-      return this.Snapshot();
-    }
-
-    // Record the endpoint the operator saw light for the current cable, then
-    // advance to the next cable.
-    public Task<CalibrationState> PickAsync(int endpoint) {
-      if (endpoint < 0 || endpoint >= this.numCables) {
-        throw new ArgumentException(
-          "endpoint out of range 0.." + (this.numCables - 1));
-      }
-      lock (this.gate) {
-        if (this.active && this.currentStep < this.numCables) {
-          // The mapping is a bijection: each endpoint backs exactly one cable,
-          // so reject an endpoint already assigned to an earlier cable rather
-          // than silently creating a many-to-one mapping. (The UI also hides
-          // taken endpoints; this guards direct/stale callers.)
-          for (int cable = 0; cable < this.currentStep; cable++) {
-            if (this.picks[cable] == endpoint) {
-              throw new ArgumentException(
-                "endpoint already assigned to another cable");
-            }
-          }
-          this.picks[this.currentStep] = endpoint;
-          this.currentStep++;
-        }
-      }
-      return this.DriveAndSnapshot();
-    }
-
-    // Advance past the current cable without recording an endpoint.
-    public Task<CalibrationState> SkipAsync() {
-      lock (this.gate) {
-        if (this.active && this.currentStep < this.numCables) {
-          this.picks[this.currentStep] = -1;
-          this.currentStep++;
-        }
-      }
-      return this.DriveAndSnapshot();
-    }
-
-    // Step back one cable, clearing its recorded pick so it can be redone.
-    public Task<CalibrationState> BackAsync() {
-      lock (this.gate) {
-        if (this.active && this.currentStep > 0) {
-          this.currentStep--;
-          this.picks[this.currentStep] = -1;
-        }
-      }
-      return this.DriveAndSnapshot();
-    }
-
-    // Clear all picks and return to the first cable without leaving the flow.
-    public Task<CalibrationState> RestartAsync() {
-      lock (this.gate) {
-        this.ResetPicksLocked();
-        this.currentStep = 0;
-        this.active = true;
-        this.reviewing = false;
-      }
-      return this.DriveAndSnapshot();
-    }
-
-    // Exchange the endpoints recorded for two controller cables — for fixing a
-    // pair the operator knows is swapped without redoing the whole flow (the
-    // native DomeMappingWindow's Swap control). Both cables must already be
-    // assigned (index < currentStep) and distinct.
-    public Task<CalibrationState> SwapAsync(int a, int b) {
-      lock (this.gate) {
-        if (a < 0 || b < 0 || a >= this.numCables || b >= this.numCables
-            || a == b) {
-          throw new ArgumentException("pick two different cables to swap");
-        }
-        if (a >= this.currentStep || b >= this.currentStep) {
+    public Task<CalibrationState> SelectBoxAsync(int box) =>
+      this.UpdateLocked(() => {
+        if (this.stage != StripStage && this.stage != ReviewStage) {
           throw new ArgumentException(
-            "both cables must be assigned before they can be swapped");
+            "a dome box can only be selected during strip calibration");
         }
-        int tmp = this.picks[a];
-        this.picks[a] = this.picks[b];
-        this.picks[b] = tmp;
-      }
-      return this.DriveAndSnapshot();
-    }
+        ValidateBox(box);
+        this.SelectBoxLocked(box);
+      });
 
-    // Persist the discovered permutation to config.domeCableMapping. Fails
-    // (without writing) unless every cable maps to a distinct endpoint.
-    public async Task<(bool ok, string error, CalibrationState state)> SaveAsync() {
-      int[] mapping;
+    public Task<CalibrationState> ApplyBoxOneAsync() =>
+      this.UpdateLocked(() => {
+        if (!this.CanApplyBoxOneLocked()) {
+          throw new ArgumentException(
+            "Box 1 must be matched and Boxes 2-5 must have no progress");
+        }
+        for (int box = 1; box < LEDDomeOutput.NumDomeBoxes; box++) {
+          Array.Copy(
+            this.stripDraft[0], this.stripDraft[box],
+            LEDDomeOutput.NumPortsPerBox);
+          Array.Fill(this.stripConfirmed[box], true);
+          this.stripSteps[box] = LEDDomeOutput.NumPortsPerBox;
+          this.copiedFromBoxOne[box] = true;
+        }
+        this.stage = ReviewStage;
+        this.currentCandidate = -1;
+      });
+
+    public Task<CalibrationState> RecalibrateBoxAsync(int box) =>
+      this.UpdateLocked(() => {
+        if (this.stage != StripStage && this.stage != ReviewStage) {
+          throw new ArgumentException(
+            "a dome box can only be recalibrated after cable calibration");
+        }
+        ValidateBox(box);
+        Array.Clear(
+          this.stripConfirmed[box], 0, this.stripConfirmed[box].Length);
+        this.stripSteps[box] = 0;
+        this.copiedFromBoxOne[box] = false;
+        this.stage = StripStage;
+        this.selectedBox = box;
+        this.InitializeStripCandidateLocked();
+      });
+
+    public async Task<(bool ok, string error, CalibrationState state)>
+      SaveAsync() {
+      int[] cables;
+      int[][] ports;
       lock (this.gate) {
-        if (!this.IsCompleteLocked(out string error)) {
+        if (!this.IsSaveableLocked(out string error)) {
           return (false, error, this.SnapshotLocked());
         }
-        mapping = (int[])this.picks.Clone();
+        cables = (int[])this.cableDraft.Clone();
+        ports = CloneMatrix(this.stripDraft);
       }
-      await this.gateway.InvokeAsync(() => this.config.domeCableMapping = mapping);
-      return (true, null, this.Snapshot());
-    }
 
-    // Leave the flow: blank the dome and hand control back to the normal
-    // visualizers. The advisory lease is released separately by the client.
-    public Task<CalibrationState> CancelAsync() {
+      var mappings = ports.Select(p => new DomePortMapping(p)).ToArray();
+      await this.gateway.InvokeAsync(() => {
+        // One dispatcher action makes the cable permutation and all five strip
+        // permutations visible as one committed calibration.
+        this.config.domeCableMapping = cables;
+        this.config.domePortMappings = mappings;
+      });
+
       lock (this.gate) {
-        this.active = false;
-        this.reviewing = false;
+        this.LoadSavedGuessesLocked();
+        this.ResetDraftLocked();
+        this.stage = IdleStage;
+        this.calibration.Deactivate();
+        return (true, null, this.SnapshotLocked());
       }
-      return this.DriveAndSnapshot();
     }
 
-    public CalibrationState State() => this.Snapshot();
+    public Task<CalibrationState> CancelAsync() => this.UpdateLocked(() => {
+      this.LoadSavedGuessesLocked();
+      this.ResetDraftLocked();
+      this.stage = IdleStage;
+    });
 
-    // Push the current active/cable-index selection to the shared calibration
-    // state, then return a fresh snapshot. The fields are volatile and the only
-    // reader (the calibration visualizer) polls, so no thread marshalling is
-    // needed — unlike persisted config writes, which still go via the gateway.
-    private Task<CalibrationState> DriveAndSnapshot() {
-      lock (this.gate) {
-        this.calibration.Active = this.active;
-        this.calibration.CableIndex = this.CableIndexLocked();
-      }
-      return Task.FromResult(this.Snapshot());
-    }
-
-    private bool IsCompleteLocked(out string error) {
-      var seen = new bool[this.numCables];
-      for (int cable = 0; cable < this.numCables; cable++) {
-        int endpoint = this.picks[cable];
-        if (endpoint < 0) {
-          error = "every cable must be assigned before saving ("
-            + this.cableLabels[cable] + " is unset)";
-          return false;
-        }
-        if (seen[endpoint]) {
-          error = "two cables map to " + this.endpointLabels[endpoint]
-            + " — each endpoint can only be picked once";
-          return false;
-        }
-        seen[endpoint] = true;
-      }
-      error = null;
-      return true;
-    }
-
-    private CalibrationState Snapshot() {
+    public CalibrationState State() {
       lock (this.gate) {
         return this.SnapshotLocked();
       }
     }
 
-    private CalibrationState SnapshotLocked() => new CalibrationState {
-      active = this.active,
-      currentStep = this.currentStep,
-      numCables = this.numCables,
-      done = this.active && this.currentStep >= this.numCables,
-      complete = this.IsCompleteLocked(out _),
-      reviewing = this.reviewing,
-      hasSavedMapping = IsValidMapping(this.config.domeCableMapping, this.numCables),
-      picks = (int[])this.picks.Clone(),
-      cableLabels = this.cableLabels,
-      endpointLabels = this.endpointLabels,
-      numPorts = LEDDomeOutput.NumPortsPerBox,
-      portMapping = this.EffectivePortMapping(),
-    };
+    private Task<CalibrationState> UpdateLocked(Action mutation) {
+      lock (this.gate) {
+        mutation();
+        this.DriveSelectionLocked();
+        return Task.FromResult(this.SnapshotLocked());
+      }
+    }
+
+    private void ConfirmCableLocked() {
+      if (!CandidateAvailable(
+            this.currentCandidate,
+            this.cableConfirmed,
+            this.cableDraft)) {
+        throw new ArgumentException(
+          "the simulator endpoint is already assigned");
+      }
+      this.cableDraft[this.cableStep] = this.currentCandidate;
+      this.cableConfirmed[this.cableStep] = true;
+      this.cableStep++;
+      if (this.cableStep < this.numCables) {
+        this.InitializeCableCandidateLocked();
+      } else {
+        this.currentCandidate = -1;
+      }
+    }
+
+    private void ConfirmStripLocked() {
+      int box = this.selectedBox;
+      if (!CandidateAvailable(
+            this.currentCandidate,
+            this.stripConfirmed[box],
+            this.stripDraft[box])) {
+        throw new ArgumentException(
+          "the simulator strip path is already assigned in this box");
+      }
+      int port = this.stripSteps[box];
+      this.stripDraft[box][port] = this.currentCandidate;
+      this.stripConfirmed[box][port] = true;
+      this.stripSteps[box]++;
+      this.copiedFromBoxOne[box] = false;
+      if (this.AllBoxesCompleteLocked()) {
+        this.stage = ReviewStage;
+        this.currentCandidate = -1;
+      } else if (this.stripSteps[box] < LEDDomeOutput.NumPortsPerBox) {
+        this.InitializeStripCandidateLocked();
+      } else {
+        this.currentCandidate = -1;
+      }
+    }
+
+    private void BeginStripStageLocked() {
+      if (!this.CablesCompleteLocked()) {
+        throw new ArgumentException(
+          "all controller cables must be matched before strip calibration");
+      }
+      this.stage = StripStage;
+      int unfinished = this.NextUnfinishedBoxLocked(0);
+      this.SelectBoxLocked(unfinished < 0 ? 0 : unfinished);
+    }
+
+    private void SelectBoxLocked(int box) {
+      this.selectedBox = box;
+      if (this.stage == ReviewStage) {
+        this.currentCandidate = -1;
+      } else if (this.stripSteps[box] < LEDDomeOutput.NumPortsPerBox) {
+        this.InitializeStripCandidateLocked();
+      } else {
+        this.currentCandidate = -1;
+      }
+    }
+
+    private void InitializeCableCandidateLocked() {
+      this.currentCandidate = InitialCandidate(
+        this.cableDraft[this.cableStep],
+        this.cableConfirmed,
+        this.cableDraft);
+    }
+
+    private void InitializeStripCandidateLocked() {
+      int box = this.selectedBox;
+      int port = this.stripSteps[box];
+      this.currentCandidate = InitialCandidate(
+        this.stripDraft[box][port],
+        this.stripConfirmed[box],
+        this.stripDraft[box]);
+    }
+
+    private static int InitialCandidate(
+      int guess, bool[] confirmed, int[] values
+    ) {
+      if (guess >= 0 && guess < values.Length &&
+          CandidateAvailable(guess, confirmed, values)) {
+        return guess;
+      }
+      for (int value = 0; value < values.Length; value++) {
+        if (CandidateAvailable(value, confirmed, values)) {
+          return value;
+        }
+      }
+      return -1;
+    }
+
+    private static int CycleCandidate(
+      int current, bool[] confirmed, int[] values, int direction
+    ) {
+      for (int offset = 1; offset <= values.Length; offset++) {
+        int candidate =
+          (current + direction * offset + values.Length * 2) % values.Length;
+        if (CandidateAvailable(candidate, confirmed, values)) {
+          return candidate;
+        }
+      }
+      return current;
+    }
+
+    private static bool CandidateAvailable(
+      int candidate, bool[] confirmed, int[] values
+    ) {
+      if (candidate < 0 || candidate >= values.Length) {
+        return false;
+      }
+      for (int i = 0; i < values.Length; i++) {
+        if (confirmed[i] && values[i] == candidate) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    private void DriveSelectionLocked() {
+      if (this.stage == IdleStage) {
+        this.calibration.Deactivate();
+        return;
+      }
+      if (this.stage == CableStage && this.cableStep < this.numCables) {
+        this.calibration.ShowCable(this.cableStep, this.currentCandidate);
+        return;
+      }
+      if (this.stage == StripStage &&
+          this.stripSteps[this.selectedBox] < LEDDomeOutput.NumPortsPerBox) {
+        int port = this.stripSteps[this.selectedBox];
+        int endpoint = this.selectedBox * 2 + port / 4;
+        int controllerCable = Array.IndexOf(this.cableDraft, endpoint);
+        if (controllerCable < 0) {
+          throw new InvalidOperationException(
+            "draft cable mapping does not contain dome endpoint " + endpoint);
+        }
+        int rawPort = (controllerCable % 2) * 4 + port % 4;
+        this.calibration.ShowPort(
+          controllerCable,
+          controllerCable / 2,
+          rawPort,
+          this.selectedBox,
+          this.currentCandidate);
+        return;
+      }
+      this.calibration.ShowBlank();
+    }
+
+    private void LoadSavedGuessesLocked() {
+      int[] configuredCables = this.config.domeCableMapping;
+      this.savedCableMapping = IsPermutation(
+        configuredCables, this.numCables)
+          ? (int[])configuredCables.Clone()
+          : Identity(this.numCables);
+
+      DomePortMapping[] configuredPorts = this.config.domePortMappings;
+      bool validPerBox = configuredPorts?.Length ==
+        LEDDomeOutput.NumDomeBoxes && configuredPorts.All(mapping =>
+          IsPermutation(mapping?.ports?.ToArray(),
+            LEDDomeOutput.NumPortsPerBox));
+      if (validPerBox) {
+        this.savedPortMappings = configuredPorts
+          .Select(mapping => mapping.ports.ToArray()).ToArray();
+        return;
+      }
+      int[] source = Identity(LEDDomeOutput.NumPortsPerBox);
+      this.savedPortMappings = Enumerable.Range(
+        0, LEDDomeOutput.NumDomeBoxes)
+        .Select(_ => (int[])source.Clone()).ToArray();
+    }
+
+    private void ResetDraftLocked() {
+      Array.Copy(
+        this.savedCableMapping, this.cableDraft, this.numCables);
+      Array.Clear(this.cableConfirmed, 0, this.cableConfirmed.Length);
+      this.cableStep = 0;
+      this.currentCandidate = -1;
+      this.selectedBox = 0;
+      for (int box = 0; box < LEDDomeOutput.NumDomeBoxes; box++) {
+        Array.Copy(
+          this.savedPortMappings[box], this.stripDraft[box],
+          LEDDomeOutput.NumPortsPerBox);
+        Array.Clear(
+          this.stripConfirmed[box], 0, this.stripConfirmed[box].Length);
+        this.stripSteps[box] = 0;
+        this.copiedFromBoxOne[box] = false;
+      }
+    }
+
+    private static bool IsPermutation(int[] values, int count) {
+      if (values == null || values.Length != count) {
+        return false;
+      }
+      var seen = new bool[count];
+      foreach (int value in values) {
+        if (value < 0 || value >= count || seen[value]) {
+          return false;
+        }
+        seen[value] = true;
+      }
+      return true;
+    }
+
+    private static int[] Identity(int count) =>
+      Enumerable.Range(0, count).ToArray();
+
+    private bool CablesCompleteLocked() =>
+      this.cableConfirmed.All(value => value) &&
+      IsPermutation(this.cableDraft, this.numCables);
+
+    private bool AllBoxesCompleteLocked() {
+      for (int box = 0; box < LEDDomeOutput.NumDomeBoxes; box++) {
+        if (!this.stripConfirmed[box].All(value => value) ||
+            !IsPermutation(
+              this.stripDraft[box], LEDDomeOutput.NumPortsPerBox)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    private bool IsSaveableLocked(out string error) {
+      if (!this.CablesCompleteLocked()) {
+        error = "all ten controller cables must be confirmed before saving";
+        return false;
+      }
+      for (int box = 0; box < LEDDomeOutput.NumDomeBoxes; box++) {
+        if (!this.stripConfirmed[box].All(value => value)) {
+          error = "Box " + (box + 1) +
+            " must have all eight ports confirmed before saving";
+          return false;
+        }
+        if (!IsPermutation(
+              this.stripDraft[box], LEDDomeOutput.NumPortsPerBox)) {
+          error = "Box " + (box + 1) +
+            " must use every strip path exactly once";
+          return false;
+        }
+      }
+      error = null;
+      return true;
+    }
+
+    private bool CanApplyBoxOneLocked() {
+      if (this.stage != StripStage ||
+          this.stripSteps[0] != LEDDomeOutput.NumPortsPerBox ||
+          !IsPermutation(this.stripDraft[0], LEDDomeOutput.NumPortsPerBox)) {
+        return false;
+      }
+      for (int box = 1; box < LEDDomeOutput.NumDomeBoxes; box++) {
+        if (this.stripSteps[box] != 0 ||
+            this.stripConfirmed[box].Any(value => value)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    private int NextUnfinishedBoxLocked(int start) {
+      for (int offset = 0; offset < LEDDomeOutput.NumDomeBoxes; offset++) {
+        int box = (start + offset) % LEDDomeOutput.NumDomeBoxes;
+        if (this.stripSteps[box] < LEDDomeOutput.NumPortsPerBox) {
+          return box;
+        }
+      }
+      return -1;
+    }
+
+    private static void ValidateBox(int box) {
+      if (box < 0 || box >= LEDDomeOutput.NumDomeBoxes) {
+        throw new ArgumentException(
+          "box out of range 0.." + (LEDDomeOutput.NumDomeBoxes - 1));
+      }
+    }
+
+    private CalibrationState SnapshotLocked() {
+      bool saveable = this.IsSaveableLocked(out _);
+      DomeCalibrationSelection output = this.calibration.Snapshot();
+      return new CalibrationState {
+        stage = this.stage,
+        active = this.stage != IdleStage,
+        currentStep = this.cableStep,
+        numCables = this.numCables,
+        cablesComplete = this.CablesCompleteLocked(),
+        complete = saveable,
+        saveable = saveable,
+        hasSavedMapping = this.HasSavedMappingLocked(),
+        currentCandidate = this.currentCandidate,
+        picks = (int[])this.cableDraft.Clone(),
+        cableConfirmed = (bool[])this.cableConfirmed.Clone(),
+        cableLabels = (string[])this.cableLabels.Clone(),
+        endpointLabels = (string[])this.endpointLabels.Clone(),
+        selectedBox = this.selectedBox,
+        stripSteps = (int[])this.stripSteps.Clone(),
+        stripMappings = CloneMatrix(this.stripDraft),
+        stripConfirmed = CloneMatrix(this.stripConfirmed),
+        copiedFromBoxOne = (bool[])this.copiedFromBoxOne.Clone(),
+        boxStatuses = this.BoxStatusesLocked(),
+        canApplyBoxOne = this.CanApplyBoxOneLocked(),
+        savedCableMapping = (int[])this.savedCableMapping.Clone(),
+        savedPortMappings = CloneMatrix(this.savedPortMappings),
+        rawControllerCable = output.RawControllerCable,
+        rawControllerBox = output.RawControllerBox,
+        rawControllerPort = output.RawControllerPort,
+        simulatorEndpoint = output.SimulatorEndpoint,
+        simulatorBox = output.SimulatorBox,
+        simulatorPath = output.SimulatorPath,
+        cableReadout = this.CableReadoutLocked(),
+        stripReadout = this.StripReadoutLocked(),
+      };
+    }
+
+    private bool HasSavedMappingLocked() {
+      if (!IsPermutation(this.config.domeCableMapping, this.numCables)) {
+        return false;
+      }
+      DomePortMapping[] mappings = this.config.domePortMappings;
+      return mappings?.Length == LEDDomeOutput.NumDomeBoxes &&
+        mappings.All(mapping => IsPermutation(
+          mapping?.ports?.ToArray(), LEDDomeOutput.NumPortsPerBox));
+    }
+
+    private string[] BoxStatusesLocked() {
+      var statuses = new string[LEDDomeOutput.NumDomeBoxes];
+      for (int box = 0; box < statuses.Length; box++) {
+        statuses[box] = this.copiedFromBoxOne[box]
+          ? "Copied"
+          : this.stripSteps[box] == 0
+            ? "Not started"
+            : this.stripSteps[box] == LEDDomeOutput.NumPortsPerBox
+              ? "Matched"
+              : this.stripSteps[box] + "/" +
+                LEDDomeOutput.NumPortsPerBox;
+      }
+      return statuses;
+    }
+
+    private string CableReadoutLocked() {
+      var text = new StringBuilder();
+      for (int box = 0; box < this.numCables / 2; box++) {
+        if (box > 0) {
+          text.AppendLine();
+        }
+        for (int half = 0; half < 2; half++) {
+          if (half > 0) {
+            text.Append("    ");
+          }
+          int cable = box * 2 + half;
+          text.Append(ControllerShortLabel(cable));
+          text.Append(" -> ");
+          text.Append(this.FormatCableValueLocked(cable));
+        }
+      }
+      return text.ToString();
+    }
+
+    private string FormatCableValueLocked(int cable) {
+      if (this.stage == CableStage && cable == this.cableStep &&
+          this.currentCandidate >= 0) {
+        return "[" + this.endpointLabels[this.currentCandidate] + "?]";
+      }
+      int endpoint = this.cableDraft[cable];
+      string label = endpoint >= 0 && endpoint < this.endpointLabels.Length
+        ? this.endpointLabels[endpoint] : "?";
+      return this.cableConfirmed[cable] ? label : label + "~";
+    }
+
+    private string StripReadoutLocked() {
+      var text = new StringBuilder();
+      for (int box = 0; box < LEDDomeOutput.NumDomeBoxes; box++) {
+        if (box > 0) {
+          text.AppendLine();
+        }
+        for (int port = 0; port < LEDDomeOutput.NumPortsPerBox; port++) {
+          if (port == 0) {
+            text.Append("Box ");
+            text.Append(box + 1);
+            text.Append("  ");
+          } else if (port == 4) {
+            text.AppendLine();
+            text.Append("       ");
+          } else {
+            text.Append("  ");
+          }
+          text.Append('P');
+          text.Append(port + 1);
+          text.Append("->");
+          text.Append(this.FormatStripValueLocked(box, port));
+        }
+        if (this.copiedFromBoxOne[box]) {
+          text.Append("  (copied from Box 1)");
+        }
+      }
+      return text.ToString();
+    }
+
+    private string FormatStripValueLocked(int box, int port) {
+      if (this.stage == StripStage && box == this.selectedBox &&
+          port == this.stripSteps[box] && this.currentCandidate >= 0) {
+        return "[S" + (this.currentCandidate + 1) + "?]";
+      }
+      string label = "S" + (this.stripDraft[box][port] + 1);
+      return this.stripConfirmed[box][port] ? label : label + "~";
+    }
+
+    private static int[][] CloneMatrix(int[][] values) =>
+      values.Select(row => (int[])row.Clone()).ToArray();
+
+    private static bool[][] CloneMatrix(bool[][] values) =>
+      values.Select(row => (bool[])row.Clone()).ToArray();
   }
 }

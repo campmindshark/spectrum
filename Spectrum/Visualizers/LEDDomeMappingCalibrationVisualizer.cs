@@ -1,30 +1,22 @@
+using System;
+using System.Linq;
 using Spectrum.Base;
 using Spectrum.LEDs;
 
 namespace Spectrum {
 
-  /**
-   * Drives the dome during "Set Dome Mapping" calibration. It lights exactly one
-   * physical controller cable at a time (raw, ignoring the saved permutation) so
-   * the user can see which sector/cable that controller output actually reaches
-   * and record it. It is controlled through the shared DomeCalibrationState
-   * (written by both calibration UIs):
-   *   - Active gates it; while true it returns a very high priority so it
-   *     overrides every other dome visualizer (exclusive control).
-   *   - CableIndex selects which controller cable to light, encoded as
-   *     box*2 + half (half 0 = ethernet A, 1 = B), or -1 for all-off.
-   * It only repaints when that selection changes, so the lit cable simply holds
-   * between user clicks.
-   */
+  // Drives the two independent calibration diagnostics. Raw controller cable
+  // or port selections are written only to unpermuted OPC addresses. Logical
+  // endpoint/path candidates are written only to the native/web simulator
+  // queues. Comparing those halves separately guarantees Previous/Next can
+  // repaint the candidate without disturbing the physical output.
   class LEDDomeMappingCalibrationVisualizer : Visualizer {
-
     private readonly Configuration config;
     private readonly DomeCalibrationState calibration;
     private readonly LEDDomeOutput dome;
-    // Last rendered selection; -2 is a sentinel that never equals a real cable
-    // index or -1, so the first Visualize() always paints.
-    private int lastCableIndex = -2;
-    private bool lastActive = false;
+    private DomeCalibrationSelection lastSelection;
+    private bool lastNativeSimulatorConsumer;
+    private bool lastWebSimulatorConsumer;
 
     public LEDDomeMappingCalibrationVisualizer(
       Configuration config,
@@ -37,67 +29,136 @@ namespace Spectrum {
       this.dome.RegisterVisualizer(this);
     }
 
-    public int Priority {
-      get {
-        return this.calibration.Active ? 10000 : 0;
-      }
-    }
+    public int Priority => this.calibration.ShouldOverride ? 10000 : 0;
 
-    private bool enabled = false;
+    private bool enabled;
     public bool Enabled {
-      get {
-        return this.enabled;
-      }
-      set {
-        if (value == this.enabled) {
-          return;
-        }
-        this.enabled = value;
-      }
+      get => this.enabled;
+      set => this.enabled = value;
     }
 
-    public Input[] GetInputs() {
-      return System.Array.Empty<Input>();
-    }
+    public Input[] GetInputs() => Array.Empty<Input>();
 
     public void Visualize() {
-      int cableIndex = this.calibration.CableIndex;
-      bool active = this.calibration.Active;
-      if (active == this.lastActive && cableIndex == this.lastCableIndex) {
+      DomeCalibrationSelection next = this.calibration.Snapshot();
+      bool simulatorConsumerChanged =
+        this.dome.SimulatorHasConsumer != this.lastNativeSimulatorConsumer ||
+        this.dome.WebSimulatorHasConsumer != this.lastWebSimulatorConsumer;
+      if (ReferenceEquals(next, this.lastSelection) &&
+          !simulatorConsumerChanged) {
         return;
       }
-      this.lastActive = active;
-      this.lastCableIndex = cableIndex;
 
-      // Blank the whole dome so only the selected cable remains lit.
-      for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-        int leds = LEDDomeOutput.GetNumLEDs(i);
-        for (int j = 0; j < leds; j++) {
-          this.dome.SetPixelRaw(i, j, 0x000000);
-        }
+      bool hardwareChanged = this.lastSelection == null ||
+        next.Active != this.lastSelection.Active ||
+        next.RawControllerCable != this.lastSelection.RawControllerCable ||
+        next.RawControllerBox != this.lastSelection.RawControllerBox ||
+        next.RawControllerPort != this.lastSelection.RawControllerPort;
+      bool simulatorChanged = this.lastSelection == null ||
+        next.Active != this.lastSelection.Active ||
+        next.SimulatorEndpoint != this.lastSelection.SimulatorEndpoint ||
+        next.SimulatorBox != this.lastSelection.SimulatorBox ||
+        next.SimulatorPath != this.lastSelection.SimulatorPath ||
+        simulatorConsumerChanged;
+
+      if (hardwareChanged) {
+        this.RenderHardware(next);
       }
-
-      if (cableIndex >= 0 && cableIndex < LEDDomeOutput.NumCables) {
-        int box = cableIndex / 2;
-        int half = cableIndex % 2;
-        // Bright white, capped only by the max-brightness safety limit so the
-        // lit cable is easy to spot on the physical dome during setup.
-        byte brightnessByte = (byte)(0xFF * this.config.domeMaxBrightness);
-        int color = brightnessByte << 16
-          | brightnessByte << 8
-          | brightnessByte;
-        foreach (int strutIndex in
-            LEDDomeOutput.GetControllerCableStruts(box, half)) {
-          int leds = LEDDomeOutput.GetNumLEDs(strutIndex);
-          for (int j = 0; j < leds; j++) {
-            this.dome.SetPixelRaw(strutIndex, j, color);
-          }
-        }
+      if (simulatorChanged) {
+        this.RenderSimulator(next);
       }
-
-      this.dome.Flush();
+      this.lastSelection = next;
+      this.lastNativeSimulatorConsumer = this.dome.SimulatorHasConsumer;
+      this.lastWebSimulatorConsumer = this.dome.WebSimulatorHasConsumer;
+      this.calibration.AcknowledgeRelease(next);
     }
 
-  }
+    private void RenderHardware(DomeCalibrationSelection selection) {
+      this.ClearHardware();
+      if (selection.Active) {
+        if (selection.RawControllerBox >= 0 &&
+            selection.RawControllerPort >= 0) {
+          this.PaintHardware(LEDDomeOutput.GetStripPathStruts(
+            selection.RawControllerBox, selection.RawControllerPort));
+        } else if (selection.RawControllerCable >= 0 &&
+            selection.RawControllerCable < LEDDomeOutput.NumCables) {
+          this.PaintHardware(LEDDomeOutput.GetControllerCableStruts(
+            selection.RawControllerCable / 2,
+            selection.RawControllerCable % 2));
+        }
+      }
+      this.dome.FlushHardware();
+    }
 
+    private void RenderSimulator(DomeCalibrationSelection selection) {
+      this.ClearSimulator();
+      if (selection.Active) {
+        if (selection.SimulatorBox >= 0 &&
+            selection.SimulatorPath >= 0) {
+          this.PaintSimulator(LEDDomeOutput.GetStripPathStruts(
+            selection.SimulatorBox, selection.SimulatorPath));
+        } else if (selection.SimulatorEndpoint >= 0 &&
+            selection.SimulatorEndpoint < LEDDomeOutput.NumCables) {
+          int endpoint = selection.SimulatorEndpoint;
+          this.PaintSimulator(LEDDomeOutput.GetPhysicalCableStruts(
+            endpoint / 2,
+            endpoint % 2,
+            this.EffectivePortMapping(endpoint / 2)));
+        }
+      }
+      this.dome.FlushSimulator();
+    }
+
+    private int DiagnosticColor() {
+      double brightness = Math.Clamp(this.config.domeMaxBrightness, 0.0, 1.0);
+      byte value = (byte)(0xFF * brightness);
+      return value << 16 | value << 8 | value;
+    }
+
+    private void ClearHardware() {
+      for (int strut = 0; strut < LEDDomeOutput.GetNumStruts(); strut++) {
+        for (int led = 0; led < LEDDomeOutput.GetNumLEDs(strut); led++) {
+          this.dome.SetPixelRawHardware(strut, led, 0x000000);
+        }
+      }
+    }
+
+    private void ClearSimulator() {
+      for (int strut = 0; strut < LEDDomeOutput.GetNumStruts(); strut++) {
+        for (int led = 0; led < LEDDomeOutput.GetNumLEDs(strut); led++) {
+          this.dome.SetPixelSimulator(strut, led, 0x000000);
+        }
+      }
+    }
+
+    private void PaintHardware(System.Collections.Generic.IEnumerable<int> struts) {
+      int color = this.DiagnosticColor();
+      foreach (int strut in struts) {
+        for (int led = 0; led < LEDDomeOutput.GetNumLEDs(strut); led++) {
+          this.dome.SetPixelRawHardware(strut, led, color);
+        }
+      }
+    }
+
+    private void PaintSimulator(System.Collections.Generic.IEnumerable<int> struts) {
+      int color = this.DiagnosticColor();
+      foreach (int strut in struts) {
+        for (int led = 0; led < LEDDomeOutput.GetNumLEDs(strut); led++) {
+          this.dome.SetPixelSimulator(strut, led, color);
+        }
+      }
+    }
+
+    private int[] EffectivePortMapping(int box) {
+      DomePortMapping[] perBox = this.config.domePortMappings;
+      if (perBox?.Length == LEDDomeOutput.NumDomeBoxes &&
+          box >= 0 && box < perBox.Length) {
+        int[] configured = perBox[box]?.ports?.ToArray();
+        if (LEDDomeOutput.IsValidPortMapping(configured)) {
+          return configured;
+        }
+      }
+      return Enumerable.Range(0, LEDDomeOutput.NumPortsPerBox).ToArray();
+    }
+  }
 }

@@ -404,7 +404,7 @@
               <Border Style="{StaticResource SectionCard}">
                 <StackPanel>
                   <TextBlock Text="Wiring and mapping" Style="{StaticResource SectionHeadingText}" />
-                  <TextBlock Text="Map controller cables to physical dome sectors with a guided lighting sequence."
+                   <TextBlock Text="Map controller cables and physical ports with the guided two-stage calibration."
                              Style="{StaticResource CaptionText}" TextWrapping="Wrap" />
                   <Button x:Name="domeSetMappingButton" Content="Open dome mapping" HorizontalAlignment="Left"
                           Margin="0,10,0,0" Click="OpenDomeMapping" />

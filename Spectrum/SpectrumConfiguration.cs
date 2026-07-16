@@ -146,17 +146,35 @@ namespace Spectrum {
     // mapping, so a null default is equivalent to the legacy hard-coded wiring.
     private int[] _domeCableMapping = null;
     public int[] domeCableMapping {
-      get => _domeCableMapping;
-      set => SetField(ref _domeCableMapping, value);
+      get => CloneArray(_domeCableMapping);
+      set => SetField(ref _domeCableMapping, CloneArray(value));
     }
-    // Same null-by-default rule as domeCableMapping. Values map each physical
-    // output port to the legacy strip path plugged into it; LEDDomeOutput falls
-    // back to identity unless all values 0..7 occur exactly once.
-    private int[] _domePortMapping = null;
-    public int[] domePortMapping {
-      get => _domePortMapping;
-      set => SetField(ref _domePortMapping, value);
+    // Five independently owned mappings, one for each dome-side box. This is an
+    // array of DTOs rather than a preinitialized jagged array so XSerializer can
+    // reliably construct old and new configuration files. Both boundaries are
+    // deep-cloned so callers cannot mutate live configuration in place.
+    private DomePortMapping[] _domePortMappings = null;
+    public DomePortMapping[] domePortMappings {
+      get => ClonePortMappings(_domePortMappings);
+      set => SetField(ref _domePortMappings, ClonePortMappings(value));
     }
+
+    private static int[] CloneArray(int[] values) =>
+      values == null ? null : (int[])values.Clone();
+
+    private static DomePortMapping[] ClonePortMappings(
+      IReadOnlyList<DomePortMapping> mappings
+    ) {
+      if (mappings == null) {
+        return null;
+      }
+      var clone = new DomePortMapping[mappings.Count];
+      for (int box = 0; box < mappings.Count; box++) {
+        clone[box] = new DomePortMapping(mappings[box]?.ports);
+      }
+      return clone;
+    }
+
     // Cross-layer visual state; per-visualizer tuning lives in each layer's
     // renderer parameter bag instead (see Configuration).
     private double _domeGlobalFadeSpeed = 0;

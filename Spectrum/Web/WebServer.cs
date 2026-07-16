@@ -150,7 +150,7 @@ namespace Spectrum.Web {
     private async void ReconcileCalibrationLease(object _) {
       try {
         var state = this.calibration.State();
-        if (!state.active && !state.reviewing) {
+        if (!state.active) {
           return;
         }
         if (this.locks.Get(LockPolicy.DomeCalibration) != null) {
@@ -387,44 +387,37 @@ namespace Spectrum.Web {
       app.MapGet("/api/maintenance/calibration", () =>
         Results.Json(this.calibration.State()));
 
-      // Static dome-diagram geometry (projected strut segments + labels/colors
-      // per endpoint) the client draws the clickable diagram from. Unguarded and
-      // read-only — it's the same fixed layout regardless of flow state.
-      app.MapGet("/api/maintenance/calibration/geometry", () =>
-        Results.Json(this.calibration.Geometry()));
-
       app.MapPost("/api/maintenance/calibration/start",
         ([FromHeader(Name = LockTokenHeader)] string token) =>
           this.RunCalibration(token, c => c.StartAsync()));
 
-      app.MapPost("/api/maintenance/calibration/load",
-        ([FromHeader(Name = LockTokenHeader)] string token) =>
-          this.RunCalibration(token, c => c.LoadAsync()));
+      app.MapPost("/api/maintenance/calibration/navigate",
+        ([FromHeader(Name = LockTokenHeader)] string token,
+         DirectionBody body) =>
+          this.RunCalibration(
+            token, c => c.NavigateAsync(body?.direction ?? 0)));
 
-      app.MapPost("/api/maintenance/calibration/pick",
-        ([FromHeader(Name = LockTokenHeader)] string token, PickBody body) =>
-          this.RunCalibration(token, c => c.PickAsync(body?.endpoint ?? -1)));
-
-      app.MapPost("/api/maintenance/calibration/skip",
+      app.MapPost("/api/maintenance/calibration/confirm",
         ([FromHeader(Name = LockTokenHeader)] string token) =>
-          this.RunCalibration(token, c => c.SkipAsync()));
+          this.RunCalibration(token, c => c.ConfirmAsync()));
 
       app.MapPost("/api/maintenance/calibration/back",
         ([FromHeader(Name = LockTokenHeader)] string token) =>
           this.RunCalibration(token, c => c.BackAsync()));
 
-      app.MapPost("/api/maintenance/calibration/restart",
-        ([FromHeader(Name = LockTokenHeader)] string token) =>
-          this.RunCalibration(token, c => c.RestartAsync()));
-
-      app.MapPost("/api/maintenance/calibration/swap",
-        ([FromHeader(Name = LockTokenHeader)] string token, SwapBody body) =>
-          this.RunCalibration(token, c => c.SwapAsync(body?.a ?? -1, body?.b ?? -1)));
-
-      app.MapPost("/api/maintenance/calibration/ports",
-        ([FromHeader(Name = LockTokenHeader)] string token, PortMappingBody body) =>
+      app.MapPost("/api/maintenance/calibration/select-box",
+        ([FromHeader(Name = LockTokenHeader)] string token, BoxBody body) =>
           this.RunCalibration(
-            token, c => c.SavePortMappingAsync(body?.mapping)));
+            token, c => c.SelectBoxAsync(body?.box ?? -1)));
+
+      app.MapPost("/api/maintenance/calibration/apply-box-one",
+        ([FromHeader(Name = LockTokenHeader)] string token) =>
+          this.RunCalibration(token, c => c.ApplyBoxOneAsync()));
+
+      app.MapPost("/api/maintenance/calibration/recalibrate-box",
+        ([FromHeader(Name = LockTokenHeader)] string token, BoxBody body) =>
+          this.RunCalibration(
+            token, c => c.RecalibrateBoxAsync(body?.box ?? -1)));
 
       app.MapPost("/api/maintenance/calibration/cancel",
         ([FromHeader(Name = LockTokenHeader)] string token) =>
@@ -616,17 +609,12 @@ namespace Spectrum.Web {
       public string holderName { get; set; }
     }
 
-    private sealed class PickBody {
-      public int endpoint { get; set; }
+    private sealed class DirectionBody {
+      public int direction { get; set; }
     }
 
-    private sealed class SwapBody {
-      public int a { get; set; }
-      public int b { get; set; }
-    }
-
-    private sealed class PortMappingBody {
-      public int[] mapping { get; set; }
+    private sealed class BoxBody {
+      public int box { get; set; }
     }
 
     private sealed class LayersBody {

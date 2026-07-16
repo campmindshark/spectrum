@@ -105,6 +105,8 @@ namespace Spectrum {
     private Timer configSaveTimer = null;
     private Web.WebServer webServer = null;
     private Web.ConfigEventStream webEventStream = null;
+    private Web.AdvisoryLockManager advisoryLocks = null;
+    private Web.DomeCalibrationController domeCalibrationController = null;
     private const int WebServerPort = 8080;
     private const string WindowPlacementPath = "spectrum_window_state.json";
     private string webServerError = null;
@@ -135,12 +137,12 @@ namespace Spectrum {
         this.op.BeatBroadcaster);
       // Advisory locks guard modal ops (calibration, per-device test patterns)
       // against concurrent maintenance users.
-      var locks = new Web.AdvisoryLockManager();
+      this.advisoryLocks = new Web.AdvisoryLockManager();
       // The dome-mapping calibration flow: same state machine as
       // DomeMappingWindow, driven over REST and guarded by the domeCalibration
       // lease. Persisted config writes go through the same gateway; the
       // transient cable selection is the Operator's shared calibration state.
-      var calibration = new Web.DomeCalibrationController(
+      this.domeCalibrationController = new Web.DomeCalibrationController(
         gateway, this.config, this.op.DomeCalibration,
         LEDs.LEDDomeOutput.NumCables);
       // Read-only wand/orientation-device diagnostics (the web port of
@@ -172,7 +174,8 @@ namespace Spectrum {
         ? new Web.WebDomeSimulator(this.op.DomeOutput)
         : null;
       this.webServer = new Web.WebServer(
-        controls, this.webEventStream, locks, calibration, wands,
+        controls, this.webEventStream, this.advisoryLocks,
+        this.domeCalibrationController, wands,
         operatorControl, tempo, layers, scenes, palettes, domeSimulator,
         WebServerPort);
       try {
@@ -1636,7 +1639,7 @@ namespace Spectrum {
         return;
       }
       this.domeMappingWindow = new DomeMappingWindow(
-        this.config, this.op.DomeCalibration);
+        this.domeCalibrationController, this.advisoryLocks);
       this.domeMappingWindow.Closed += DomeMappingClosed;
       this.domeMappingWindow.Show();
     }

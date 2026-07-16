@@ -60,19 +60,15 @@
       </RendererParams>
     </DomeLayerSettings>
   </domeLayerStack>
-  <!-- Zero-based: each item says which legacy path is plugged into that
-       physical port. Keep all values 0-7 exactly once. This identity order is
-       applied to every control box. -->
-  <domePortMapping>
-    <Int32>0</Int32>
-    <Int32>1</Int32>
-    <Int32>2</Int32>
-    <Int32>3</Int32>
-    <Int32>4</Int32>
-    <Int32>5</Int32>
-    <Int32>6</Int32>
-    <Int32>7</Int32>
-  </domePortMapping>
+  <!-- Zero-based: each box contains its physical-port -> legacy-path
+       permutation. Keep all values 0-7 exactly once within each box. -->
+  <domePortMappings>
+    <DomePortMapping><ports><Int32>0</Int32><Int32>1</Int32><Int32>2</Int32><Int32>3</Int32><Int32>4</Int32><Int32>5</Int32><Int32>6</Int32><Int32>7</Int32></ports></DomePortMapping>
+    <DomePortMapping><ports><Int32>0</Int32><Int32>1</Int32><Int32>2</Int32><Int32>3</Int32><Int32>4</Int32><Int32>5</Int32><Int32>6</Int32><Int32>7</Int32></ports></DomePortMapping>
+    <DomePortMapping><ports><Int32>0</Int32><Int32>1</Int32><Int32>2</Int32><Int32>3</Int32><Int32>4</Int32><Int32>5</Int32><Int32>6</Int32><Int32>7</Int32></ports></DomePortMapping>
+    <DomePortMapping><ports><Int32>0</Int32><Int32>1</Int32><Int32>2</Int32><Int32>3</Int32><Int32>4</Int32><Int32>5</Int32><Int32>6</Int32><Int32>7</Int32></ports></DomePortMapping>
+    <DomePortMapping><ports><Int32>0</Int32><Int32>1</Int32><Int32>2</Int32><Int32>3</Int32><Int32>4</Int32><Int32>5</Int32><Int32>6</Int32><Int32>7</Int32></ports></DomePortMapping>
+  </domePortMappings>
   <hueDelay>125</hueDelay>
   <hueIdleOnSilent>true</hueIdleOnSilent>
   <lightsOff>false</lightsOff>

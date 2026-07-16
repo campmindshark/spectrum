@@ -4,13 +4,12 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  xmlns:local="clr-namespace:Spectrum"
   mc:Ignorable="d"
-  Title="Set Dome Mapping"
-  Height="850"
-  Width="1090"
-  MinHeight="620"
-  MinWidth="820"
+  Title="Dome Mapping Calibration"
+  Height="900"
+  Width="1220"
+  MinHeight="680"
+  MinWidth="960"
   ResizeMode="CanResize"
   Icon="pack://siteoforigin:,,,/Resources/s.PNG"
   Loaded="WindowLoaded"
@@ -18,91 +17,102 @@
 >
   <Grid>
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="2*" MinWidth="460" />
-      <ColumnDefinition Width="*" MinWidth="320" />
+      <ColumnDefinition Width="3*" MinWidth="560" />
+      <ColumnDefinition Width="2*" MinWidth="390" />
     </Grid.ColumnDefinitions>
 
-    <Viewbox Grid.Column="0" Margin="12" Stretch="Uniform">
-      <Canvas x:Name="canvas" Width="740" Height="740" />
-    </Viewbox>
+    <Grid Grid.Column="0" Margin="14">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
 
-    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="12,16,12,12">
-      <TextBlock Text="Set Dome Mapping" FontSize="18" FontWeight="Bold"
-        Foreground="{StaticResource TextBrush}" />
-      <TextBlock TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{StaticResource MutedTextBrush}"
-        Text="The dome is lighting one controller cable at a time. Look at the physical dome and click the sector + cable that ACTUALLY lit up." />
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Left">
+          <TextBlock Text="Logical simulator candidate" FontSize="18"
+            FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
+          <TextBlock Text="Navigate the candidate here while the physical output stays fixed."
+            Margin="0,4,0,0" Foreground="{StaticResource MutedTextBrush}" />
+        </StackPanel>
+        <Button x:Name="projectionButton" DockPanel.Dock="Right"
+          Content="View: Real top-down" Margin="12,0,0,0"
+          Padding="10,4" VerticalAlignment="Center"
+          Click="ProjectionClicked" />
+      </DockPanel>
 
-      <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
-        Margin="0,14,0,0" Padding="10">
-        <StackPanel>
-          <TextBlock Text="LED strip plugs" FontSize="14" FontWeight="Bold"
+      <TextBlock x:Name="candidateLabel" Grid.Row="1" Text="Preview is blank"
+        Margin="0,10,0,8" FontSize="14" FontWeight="Bold"
+        Foreground="{StaticResource WarningBrush}" />
+
+      <Border Grid.Row="2" BorderBrush="{StaticResource BorderBrush}"
+        BorderThickness="1" Background="#090B10" Padding="8">
+        <Viewbox Stretch="Uniform">
+          <Canvas x:Name="candidateCanvas" Width="740" Height="740" />
+        </Viewbox>
+      </Border>
+    </Grid>
+
+    <Border Grid.Column="1" BorderBrush="{StaticResource BorderBrush}"
+      BorderThickness="1,0,0,0">
+      <ScrollViewer VerticalScrollBarVisibility="Auto"
+        HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="16">
+          <TextBlock Text="Dome mapping calibration" FontSize="20"
+            FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
+          <TextBlock x:Name="introLabel" TextWrapping="Wrap" Margin="0,7,0,0"
+            Foreground="{StaticResource MutedTextBrush}" />
+
+          <TextBlock x:Name="lockWarning" TextWrapping="Wrap"
+            Margin="0,12,0,0" Foreground="{StaticResource ErrorBrush}"
+            Visibility="Collapsed" />
+
+          <Border x:Name="frameSummary" BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1" Margin="0,14,0,0" Padding="10"
+            Visibility="Collapsed">
+            <StackPanel>
+              <TextBlock x:Name="hardwareLabel" TextWrapping="Wrap"
+                FontWeight="Bold" Foreground="{StaticResource TextBrush}" />
+              <TextBlock x:Name="simulatorLabel" TextWrapping="Wrap"
+                Margin="0,6,0,0" Foreground="{StaticResource WarningBrush}" />
+            </StackPanel>
+          </Border>
+
+          <TextBlock x:Name="progressLabel" TextWrapping="Wrap"
+            Margin="0,14,0,0" Foreground="{StaticResource TextBrush}" />
+
+          <WrapPanel x:Name="boxSelector" Margin="0,10,0,0"
+            Visibility="Collapsed" />
+
+          <WrapPanel x:Name="actionsPanel" Margin="0,10,0,0" />
+
+          <TextBlock x:Name="statusLabel" TextWrapping="Wrap"
+            Margin="0,10,0,0" Foreground="{StaticResource ErrorBrush}" />
+
+          <TextBlock Text="Controller cables → dome endpoints"
+            Margin="0,18,0,4" FontWeight="Bold"
             Foreground="{StaticResource TextBrush}" />
-          <TextBlock TextWrapping="Wrap" Margin="0,4,0,8"
-            Foreground="{StaticResource MutedTextBrush}"
-            Text="For each physical output port, choose the numbered strip cable/path plugged into it. Use every cable/path exactly once; this order applies to all five boxes." />
-          <StackPanel x:Name="portMappingRows" />
-          <Button x:Name="savePortMappingButton" Content="Save Plug Order"
-            Width="130" Height="26" HorizontalAlignment="Left" Margin="0,6,0,0"
-            FontWeight="Bold" Click="SavePortMappingClicked" />
-          <TextBlock x:Name="portMappingStatusLabel" TextWrapping="Wrap"
-            Margin="0,8,0,0" Foreground="{StaticResource ErrorBrush}" />
+          <Border BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1" Padding="8">
+            <TextBlock x:Name="cableReadout" FontFamily="Consolas"
+              FontSize="13" TextWrapping="Wrap"
+              Foreground="{StaticResource TextBrush}" />
+          </Border>
+
+          <TextBlock Text="Physical ports → logical strip paths"
+            Margin="0,14,0,4" FontWeight="Bold"
+            Foreground="{StaticResource TextBrush}" />
+          <Border BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1" Padding="8">
+            <TextBlock x:Name="stripReadout" FontFamily="Consolas"
+              FontSize="13" TextWrapping="Wrap"
+              Foreground="{StaticResource TextBrush}" />
+          </Border>
+          <TextBlock Text="~ means an initial guess; [?] is the candidate currently shown."
+            TextWrapping="Wrap" Margin="0,6,0,0" FontSize="11"
+            Foreground="{StaticResource MutedTextBrush}" />
         </StackPanel>
-      </Border>
-
-      <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
-        Margin="0,14,0,0" Padding="10">
-        <StackPanel>
-          <TextBlock Text="Now lighting" Foreground="{StaticResource MutedTextBrush}" FontSize="11" />
-          <TextBlock x:Name="currentCableLabel" Text="-" FontSize="22"
-            FontWeight="Bold" Foreground="{StaticResource WarningBrush}" />
-          <TextBlock x:Name="progressLabel" Text="" Foreground="{StaticResource MutedTextBrush}"
-            TextWrapping="Wrap" Margin="0,4,0,0" />
-        </StackPanel>
-      </Border>
-
-      <Button x:Name="startButton" Content="Start Dome Mapping" Height="26"
-        FontWeight="Bold" Margin="0,12,0,0" Click="StartClicked" />
-
-      <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-        <Button x:Name="backButton" Content="Back" Width="80" Height="24"
-          Click="BackClicked" />
-        <Button x:Name="skipButton" Content="Nothing lit / Skip" Width="130"
-          Height="24" Margin="8,0,0,0" Click="SkipClicked" />
-        <Button x:Name="restartButton" Content="Restart" Width="80" Height="24"
-          Margin="8,0,0,0" Click="RestartClicked" />
-      </StackPanel>
-
-      <TextBlock Text="Recorded so far" Foreground="{StaticResource MutedTextBrush}" FontSize="11"
-        Margin="0,16,0,4" />
-      <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
-        Padding="8" MinHeight="220">
-        <TextBlock x:Name="recordedLabel" FontFamily="Consolas" FontSize="13"
-          Foreground="{StaticResource TextBrush}" />
-      </Border>
-
-      <TextBlock Text="Swap two cables" Foreground="{StaticResource MutedTextBrush}" FontSize="11"
-        Margin="0,16,0,4" />
-      <StackPanel Orientation="Horizontal">
-        <ComboBox x:Name="swapComboA" Width="135" />
-        <TextBlock Text="↔" Foreground="{StaticResource MutedTextBrush}" FontSize="16"
-          VerticalAlignment="Center" Margin="6,0,6,0" />
-        <ComboBox x:Name="swapComboB" Width="135" />
-      </StackPanel>
-      <Button x:Name="swapButton" Content="Swap" Width="100" Height="24"
-        HorizontalAlignment="Left" Margin="0,8,0,0" Click="SwapClicked" />
-
-      <TextBlock x:Name="statusLabel" TextWrapping="Wrap" Margin="0,12,0,0"
-        Foreground="{StaticResource ErrorBrush}" />
-
-      <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-        <Button x:Name="saveButton" Content="Save Mapping" Width="130"
-          Height="26" FontWeight="Bold" Click="SaveClicked" IsEnabled="False" />
-        <Button x:Name="closeButton" Content="Close" Width="80" Height="26"
-          Margin="8,0,0,0" Click="CloseClicked" />
-      </StackPanel>
-    </StackPanel>
-    </ScrollViewer>
+      </ScrollViewer>
+    </Border>
   </Grid>
 </Window>

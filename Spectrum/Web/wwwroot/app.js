@@ -159,6 +159,9 @@
   // the page (sendBeacon can't set the lock-token header, so it's not usable
   // here); if the browser drops it anyway the lease just lapses on its TTL.
   window.addEventListener("pagehide", () => {
+    if (window.spectrumCalibrationPageHide) {
+      window.spectrumCalibrationPageHide();
+    }
     for (const resource of Object.keys(heldLocks)) {
       fetch(`/api/maintenance/locks/${encodeURIComponent(resource)}`, {
         method: "DELETE",

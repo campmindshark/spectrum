@@ -187,6 +187,7 @@ namespace Spectrum.LEDs {
     // physical dome endpoint; see GetDeviceIndexes and config.domeCableMapping.
     private const int StrandsPerCable = 4;
     public const int NumCables = 10;
+    public const int NumDomeBoxes = NumCables / 2;
     public const int NumPortsPerBox = 8;
     // Struts carried by cable A (strands 0-3) of every box, and the total per
     // box (38). Computed from controlBoxStrutOrder so the A/B boundary stays in
@@ -200,10 +201,12 @@ namespace Spectrum.LEDs {
     // records, per controller cable, the endpoint that lit during calibration).
     // Identity by default, so an uncalibrated dome behaves exactly as before.
     private readonly int[] controllerForEndpoint = new int[NumCables];
-    // portForPath[p] is the physical output port that the legacy hard-coded
-    // strip path p is plugged into. It is the inverse of config.domePortMapping,
-    // whose operator-friendly direction is physical port -> legacy path.
-    private readonly int[] portForPath = new int[NumPortsPerBox];
+    // portForPath[b, p] is the physical output port in dome box b that the
+    // legacy hard-coded strip path p is plugged into. Each row is the inverse
+    // of the corresponding operator-friendly physical port -> legacy path
+    // configuration value.
+    private readonly int[,] portForPath =
+      new int[NumDomeBoxes, NumPortsPerBox];
     private DomeOutputMapping outputMapping;
     // Touched only by the operator thread. Comparing mapping snapshots makes an
     // output-map transition clear OPC's persistent next frame exactly when the
@@ -289,11 +292,19 @@ namespace Spectrum.LEDs {
         this.controllerForEndpoint[endpoint] = controller;
       }
 
-      int[] portMapping = this.config.domePortMapping;
-      bool portMappingValid = IsValidPortMapping(portMapping);
-      for (int port = 0; port < NumPortsPerBox; port++) {
-        int path = portMappingValid ? portMapping[port] : port;
-        this.portForPath[path] = port;
+      DomePortMapping[] configuredMappings =
+        this.config.domePortMappings;
+      bool hasPerBoxMappings =
+        configuredMappings?.Length == NumDomeBoxes;
+      for (int box = 0; box < NumDomeBoxes; box++) {
+        int[] portMapping = hasPerBoxMappings
+          ? configuredMappings[box]?.ports?.ToArray()
+          : null;
+        bool portMappingValid = IsValidPortMapping(portMapping);
+        for (int port = 0; port < NumPortsPerBox; port++) {
+          int path = portMappingValid ? portMapping[port] : port;
+          this.portForPath[box, path] = port;
+        }
       }
 
       var boxes = new List<int>();
@@ -332,7 +343,7 @@ namespace Spectrum.LEDs {
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
       if (
         e.PropertyName == nameof(this.config.domeCableMapping) ||
-        e.PropertyName == nameof(this.config.domePortMapping)
+        e.PropertyName == nameof(this.config.domePortMappings)
       ) {
         this.RebuildOutputMapping();
         return;
@@ -679,9 +690,7 @@ namespace Spectrum.LEDs {
     }
 
     public void Flush() {
-      if (this.opcAPI != null) {
-         this.opcAPI.Flush();
-      }
+      this.FlushHardware();
       if (
         this.ShouldEnqueueDomeCommand &&
         !this.simulatorFramePublishedSinceFlush
@@ -700,6 +709,28 @@ namespace Spectrum.LEDs {
       }
       this.simulatorFramePublishedSinceFlush = false;
       this.webSimulatorFramePublishedSinceFlush = false;
+    }
+
+    // Calibration publishes hardware and logical simulator diagnostics as two
+    // independent frames. Candidate navigation uses FlushSimulator without
+    // touching OPC; changing the fixed physical selection uses FlushHardware.
+    public void FlushHardware() {
+      if (this.opcAPI != null) {
+        this.opcAPI.Flush();
+      }
+    }
+
+    public void FlushSimulator() {
+      if (this.ShouldEnqueueDomeCommand) {
+        this.EnqueueSimulatorCommand(
+          new DomeLEDCommand() { isFlush = true }
+        );
+      }
+      if (this.ShouldEnqueueWebDomeCommand) {
+        this.EnqueueWebSimulatorCommand(
+          new DomeLEDCommand() { isFlush = true }
+        );
+      }
     }
 
     private void SetDevicePixel(int controlBoxIndex, int pixelIndex, int color) {
@@ -743,7 +774,7 @@ namespace Spectrum.LEDs {
       int box = raw.Item1;
       int legacyPath = raw.Item2 / maxStripLength;
       int offsetWithinStrand = raw.Item2 - legacyPath * maxStripLength;
-      int physicalPort = this.portForPath[legacyPath];
+      int physicalPort = this.portForPath[box, legacyPath];
       int half = physicalPort / StrandsPerCable;
       int strandWithinCable = physicalPort % StrandsPerCable;
       int endpoint = box * 2 + half;
@@ -777,14 +808,20 @@ namespace Spectrum.LEDs {
       }
     }
 
-    // Like SetPixel but writes to the raw (unpermuted) control-box address, so
-    // the dome-mapping calibration can light exactly one controller cable
-    // regardless of either current (possibly wrong or identity) permutation.
-    public void SetPixelRaw(int strutIndex, int ledIndex, int color) {
+    // Writes only to the raw (unpermuted) control-box address. The calibration
+    // visualizer uses this for the fixed physical selection while publishing a
+    // different logical candidate to the simulators.
+    public void SetPixelRawHardware(
+      int strutIndex, int ledIndex, int color
+    ) {
       Tuple<int, int> deviceIndexes =
         this.GetDeviceIndexesRaw(strutIndex, ledIndex);
       this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
+    }
 
+    // Publishes a logical strut pixel to native/web simulators without writing
+    // an OPC device address.
+    public void SetPixelSimulator(int strutIndex, int ledIndex, int color) {
       if (this.ShouldEnqueueDomeCommand) {
         this.EnqueueSimulatorCommand(new DomeLEDCommand() {
           strutIndex = strutIndex,
@@ -799,6 +836,13 @@ namespace Spectrum.LEDs {
           color = color,
         });
       }
+    }
+
+    // Compatibility path for the other raw diagnostic visualizers, which want
+    // their unpermuted hardware address mirrored at the same logical strut.
+    public void SetPixelRaw(int strutIndex, int ledIndex, int color) {
+      this.SetPixelRawHardware(strutIndex, ledIndex, color);
+      this.SetPixelSimulator(strutIndex, ledIndex, color);
     }
 
     public DomeFrame MakeDomeFrame() {
@@ -842,6 +886,29 @@ namespace Spectrum.LEDs {
       return struts;
     }
 
+    // Logical struts belonging to one legacy strip path in a dome-side box.
+    // The same geometry is also the raw controller-port shape when boxIndex is
+    // a controller box and path is the raw controller port.
+    public static List<int> GetStripPathStruts(int boxIndex, int path) {
+      var struts = new List<int>();
+      if (boxIndex < 0 || boxIndex >= NumDomeBoxes ||
+          path < 0 || path >= NumPortsPerBox) {
+        return struts;
+      }
+      int start = 0;
+      for (int priorPath = 0; priorPath < path; priorPath++) {
+        start += controlBoxStrutOrder[priorPath].Length;
+      }
+      int end = start + controlBoxStrutOrder[path].Length;
+      for (int localIndex = start; localIndex < end; localIndex++) {
+        int strutIndex = FindStrutIndex(boxIndex, localIndex);
+        if (strutIndex != -1) {
+          struts.Add(strutIndex);
+        }
+      }
+      return struts;
+    }
+
     // The struts physically present at one dome cable endpoint after applying
     // the shared per-box port mapping. Calibration diagrams use this so their
     // A/B regions still match the installed paths even when a path crosses the
@@ -855,17 +922,7 @@ namespace Spectrum.LEDs {
       int endPort = firstPort + StrandsPerCable;
       for (int port = firstPort; port < endPort; port++) {
         int path = valid ? portMapping[port] : port;
-        int start = 0;
-        for (int priorPath = 0; priorPath < path; priorPath++) {
-          start += controlBoxStrutOrder[priorPath].Length;
-        }
-        int end = start + controlBoxStrutOrder[path].Length;
-        for (int localIndex = start; localIndex < end; localIndex++) {
-          int strutIndex = FindStrutIndex(boxIndex, localIndex);
-          if (strutIndex != -1) {
-            struts.Add(strutIndex);
-          }
-        }
+        struts.AddRange(GetStripPathStruts(boxIndex, path));
       }
       return struts;
     }

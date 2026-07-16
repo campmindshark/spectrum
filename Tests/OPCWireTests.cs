@@ -51,8 +51,12 @@ namespace Spectrum.LayerPipeline.Tests {
       run("dome port permutation composes with cable mapping", PortMapping);
       run("dome default config exposes identity port mapping",
         DefaultPortMappingConfig);
-      run("dome port mapping web editor validates and saves atomically",
-        PortMappingEditorContract);
+      run("dome port mappings round-trip without aliasing",
+        PortMappingConfigurationContract);
+      run("two-stage dome calibration owns and commits one atomic draft",
+        TwoStageCalibrationContract);
+      run("dome calibration separates raw hardware and simulator frames",
+        CalibrationDiagnosticFrames);
     }
 
     private static void HeaderAndRgb() {
@@ -283,9 +287,15 @@ namespace Spectrum.LayerPipeline.Tests {
         int[] cableMapping = Enumerable.Range(
           0, LEDDomeOutput.NumCables).Select(
             cable => (cable + 3) % LEDDomeOutput.NumCables).ToArray();
-        int[] portMapping = { 7, 0, 5, 2, 6, 1, 3, 4 };
+        int[][] portMappings = {
+          new[] { 7, 0, 5, 2, 6, 1, 3, 4 },
+          new[] { 4, 3, 2, 1, 0, 7, 6, 5 },
+          new[] { 2, 3, 4, 5, 6, 7, 0, 1 },
+          new[] { 1, 0, 3, 2, 5, 4, 7, 6 },
+          new[] { 6, 5, 4, 7, 2, 1, 0, 3 },
+        };
         config.domeCableMapping = cableMapping;
-        config.domePortMapping = portMapping;
+        config.domePortMappings = PortMappingDtos(portMappings);
         int[] mapped = PayloadPixels(Capture(output, sink, frame));
 
         for (int controllerCable = 0;
@@ -301,7 +311,7 @@ namespace Spectrum.LayerPipeline.Tests {
               controllerHalf * StrandsPerCable + portWithinCable;
             int physicalPort =
               physicalHalf * StrandsPerCable + portWithinCable;
-            int legacyPath = portMapping[physicalPort];
+            int legacyPath = portMappings[physicalBox][physicalPort];
             int expectedStart =
               (physicalBox * PortsPerController + legacyPath) * PortPixels;
             int actualStart =
@@ -314,13 +324,32 @@ namespace Spectrum.LayerPipeline.Tests {
           }
         }
 
-        // Bad settings fail closed to the legacy order, independently of the
-        // cable mapping, and a live replacement rebuilds the cached wire map.
+        // A bad setting fails closed only for its own box. Other boxes retain
+        // their independent mappings, and the live replacement rebuilds the
+        // cached wire map.
         config.domeCableMapping = identityCables;
-        config.domePortMapping = new[] { 0, 0, 2, 3, 4, 5, 6, 7 };
-        int[] invalidFallback = PayloadPixels(Capture(output, sink, frame));
-        Assert(invalidFallback.SequenceEqual(identity),
-          "invalid port mapping did not fall back to identity");
+        portMappings[2] = new[] { 0, 0, 2, 3, 4, 5, 6, 7 };
+        config.domePortMappings = PortMappingDtos(portMappings);
+        int[] containedFallback = PayloadPixels(Capture(output, sink, frame));
+        for (int box = 0; box < LEDDomeOutput.NumDomeBoxes; box++) {
+          int[] expectedMapping = box == 2
+            ? Enumerable.Range(0, PortsPerController).ToArray()
+            : portMappings[box];
+          AssertBoxPortMapping(
+            containedFallback, identity, box, expectedMapping,
+            "invalid per-box fallback");
+        }
+
+        // A missing five-box value falls back directly to identity for every
+        // box; there is no older shared setting to consult.
+        config.domePortMappings = null;
+        int[] missingFallback = PayloadPixels(Capture(output, sink, frame));
+        for (int box = 0; box < LEDDomeOutput.NumDomeBoxes; box++) {
+          AssertBoxPortMapping(
+            missingFallback, identity, box,
+            Enumerable.Range(0, PortsPerController).ToArray(),
+            "missing per-box identity fallback");
+        }
       } finally {
         sink.CloseConnection();
         output.Active = false;
@@ -334,47 +363,356 @@ namespace Spectrum.LayerPipeline.Tests {
       var config =
         new XSerializer.XmlSerializer<global::Spectrum.SpectrumConfiguration>(
         ).Deserialize(stream);
-      Assert(config.domePortMapping != null &&
-          config.domePortMapping.SequenceEqual(
-            Enumerable.Range(0, PortsPerController)),
-        "default config port mapping is missing or not identity");
+      Assert(config.domePortMappings != null &&
+          config.domePortMappings.Length == LEDDomeOutput.NumDomeBoxes &&
+          config.domePortMappings.All(mapping =>
+            mapping?.ports != null && mapping.ports.SequenceEqual(
+              Enumerable.Range(0, PortsPerController))),
+        "default config per-box mappings are missing or not identity");
     }
 
-    private static void PortMappingEditorContract() {
-      var config = new global::Spectrum.SpectrumConfiguration();
-      var controller = new global::Spectrum.Web.DomeCalibrationController(
-        new ImmediateGateway(), config,
-        new global::Spectrum.DomeCalibrationState(), LEDDomeOutput.NumCables);
+    private static void PortMappingConfigurationContract() {
+      int[] cableMapping = Enumerable.Range(
+        0, LEDDomeOutput.NumCables).Reverse().ToArray();
+      int[][] values = Enumerable.Range(0, LEDDomeOutput.NumDomeBoxes)
+        .Select(box => Enumerable.Range(0, PortsPerController)
+          .Select(port => (port + box) % PortsPerController).ToArray())
+        .ToArray();
+      DomePortMapping[] assignedMappings = PortMappingDtos(values);
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeCableMapping = cableMapping,
+        domePortMappings = assignedMappings,
+      };
 
-      global::Spectrum.Web.DomeCalibrationController.CalibrationState initial =
-        controller.State();
-      Assert(initial.numPorts == PortsPerController &&
-          initial.portMapping.SequenceEqual(
-            Enumerable.Range(0, PortsPerController)),
-        "web editor did not expose identity for missing configuration");
+      cableMapping[0] = 0;
+      assignedMappings[1].ports[0] = 7;
+      Assert(config.domeCableMapping[0] == LEDDomeOutput.NumCables - 1 &&
+          config.domePortMappings[1].ports[0] == 1,
+        "configuration retained an alias to assigned mapping values");
 
-      bool rejected = false;
-      try {
-        controller.SavePortMappingAsync(
-          new[] { 0, 0, 2, 3, 4, 5, 6, 7 }).GetAwaiter().GetResult();
-      } catch (ArgumentException) {
-        rejected = true;
+      int[] detachedCables = config.domeCableMapping;
+      DomePortMapping[] detachedPorts = config.domePortMappings;
+      detachedCables[0] = 0;
+      detachedPorts[1].ports[0] = 7;
+      Assert(config.domeCableMapping[0] == LEDDomeOutput.NumCables - 1 &&
+          config.domePortMappings[1].ports[0] == 1,
+        "configuration exposed mutable live mapping values");
+
+      using var stream = new MemoryStream();
+      var serializer =
+        new XSerializer.XmlSerializer<global::Spectrum.SpectrumConfiguration>();
+      serializer.Serialize(stream, config);
+      stream.Position = 0;
+      global::Spectrum.SpectrumConfiguration restored =
+        serializer.Deserialize(stream);
+      Assert(restored.domePortMappings != null &&
+          restored.domePortMappings.Length == LEDDomeOutput.NumDomeBoxes &&
+          restored.domePortMappings[4].ports.SequenceEqual(
+            Enumerable.Range(0, PortsPerController).Select(
+              port => (port + 4) % PortsPerController)),
+        "per-box port mappings did not survive serialization");
+
+    }
+
+    private static DomePortMapping[] PortMappingDtos(
+      IReadOnlyList<int[]> mappings
+    ) => mappings.Select(mapping => new DomePortMapping(mapping)).ToArray();
+
+    private static void AssertBoxPortMapping(
+      int[] actual, int[] identity, int box, int[] mapping, string context
+    ) {
+      for (int physicalPort = 0;
+          physicalPort < PortsPerController; physicalPort++) {
+        int legacyPath = mapping[physicalPort];
+        int expectedStart =
+          (box * PortsPerController + legacyPath) * PortPixels;
+        int actualStart =
+          (box * PortsPerController + physicalPort) * PortPixels;
+        for (int offset = 0; offset < PortPixels; offset++) {
+          Assert(actual[actualStart + offset] == identity[expectedStart + offset],
+            context + " mismatch at box " + box + ", port " +
+            physicalPort + ", pixel " + offset);
+        }
       }
-      Assert(rejected && config.domePortMapping == null,
-        "web editor accepted or persisted a duplicate cable/path");
+    }
 
-      global::Spectrum.Web.DomeCalibrationController.DiagramGeometry before =
-        controller.Geometry();
-      int[] mapping = { 7, 0, 5, 2, 6, 1, 3, 4 };
-      global::Spectrum.Web.DomeCalibrationController.CalibrationState saved =
-        controller.SavePortMappingAsync(mapping).GetAwaiter().GetResult();
-      mapping[0] = 0;
-      Assert(config.domePortMapping.SequenceEqual(
-          new[] { 7, 0, 5, 2, 6, 1, 3, 4 }) &&
-          saved.portMapping.SequenceEqual(config.domePortMapping),
-        "web editor did not atomically own and publish the saved mapping");
-      Assert(!ReferenceEquals(before, controller.Geometry()),
-        "web editor did not invalidate port-dependent diagram geometry");
+    private static void TwoStageCalibrationContract() {
+      int[] identityPorts = Enumerable.Range(
+        0, PortsPerController).ToArray();
+      var missingPortConfig = new global::Spectrum.SpectrumConfiguration {
+        domeCableMapping = Enumerable.Range(
+          0, LEDDomeOutput.NumCables).ToArray(),
+      };
+      var missingPortController =
+        new global::Spectrum.Web.DomeCalibrationController(
+          new ImmediateGateway(), missingPortConfig,
+          new global::Spectrum.DomeCalibrationState(),
+          LEDDomeOutput.NumCables);
+      var missingPortState =
+        missingPortController.StartAsync().GetAwaiter().GetResult();
+      Assert(!missingPortState.hasSavedMapping &&
+          missingPortState.savedPortMappings.All(mapping =>
+            mapping.SequenceEqual(identityPorts)) &&
+          missingPortState.stripMappings.All(mapping =>
+            mapping.SequenceEqual(identityPorts)),
+        "missing five-box mappings did not start from identity guesses");
+      missingPortController.CancelAsync().GetAwaiter().GetResult();
+
+      int[] savedCables = { 2, 0, 1, 3, 4, 5, 6, 7, 8, 9 };
+      int[][] savedPorts = Enumerable.Range(
+        0, LEDDomeOutput.NumDomeBoxes).Select(box =>
+          Enumerable.Range(0, PortsPerController).Select(
+            port => (port + box + 3) % PortsPerController).ToArray())
+        .ToArray();
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeCableMapping = savedCables,
+        domePortMappings = PortMappingDtos(savedPorts),
+      };
+      var renderState = new global::Spectrum.DomeCalibrationState();
+      var controller = new global::Spectrum.Web.DomeCalibrationController(
+        new ImmediateGateway(), config, renderState,
+        LEDDomeOutput.NumCables);
+
+      var state = controller.StartAsync().GetAwaiter().GetResult();
+      Assert(state.stage == "cables" && state.currentStep == 0 &&
+          state.currentCandidate == savedCables[0] &&
+          state.rawControllerCable == 0 &&
+          state.simulatorEndpoint == savedCables[0] &&
+          state.cableReadout.Contains("[") &&
+          state.cableReadout.Contains("~"),
+        "Stage 1 did not start from the saved guess on raw cable 1A");
+
+      var rejectedSave = controller.SaveAsync().GetAwaiter().GetResult();
+      Assert(!rejectedSave.ok &&
+          config.domeCableMapping.SequenceEqual(savedCables),
+        "a partial calibration was persisted");
+
+      state = controller.NavigateAsync(1).GetAwaiter().GetResult();
+      Assert(state.rawControllerCable == 0 &&
+          state.currentCandidate != savedCables[0],
+        "Stage 1 candidate navigation changed the raw cable");
+      state = controller.NavigateAsync(-1).GetAwaiter().GetResult();
+      Assert(state.currentCandidate == savedCables[0],
+        "Stage 1 Previous did not return to the saved candidate");
+      state = controller.ConfirmAsync().GetAwaiter().GetResult();
+      state = controller.CancelAsync().GetAwaiter().GetResult();
+      Assert(state.stage == "idle" && !renderState.Active &&
+          state.picks.SequenceEqual(savedCables) &&
+          state.cableConfirmed.All(value => !value) &&
+          state.stripConfirmed.SelectMany(row => row).All(value => !value) &&
+          state.cableReadout.Contains("~") &&
+          config.domeCableMapping.SequenceEqual(savedCables),
+        "Cancel did not discard the draft and restore saved guesses");
+      state = controller.StartAsync().GetAwaiter().GetResult();
+      Assert(state.currentCandidate == savedCables[0],
+        "a new run after Cancel did not restart from the saved guess");
+      state = controller.ConfirmAsync().GetAwaiter().GetResult();
+      state = controller.BackAsync().GetAwaiter().GetResult();
+      Assert(state.currentStep == 0 &&
+          state.currentCandidate == savedCables[0],
+        "Back did not release and restore the preceding endpoint guess");
+
+      for (int cable = 0; cable < LEDDomeOutput.NumCables; cable++) {
+        state = controller.ConfirmAsync().GetAwaiter().GetResult();
+      }
+      Assert(state.cablesComplete && state.stage == "cables" &&
+          state.currentStep == LEDDomeOutput.NumCables &&
+          state.rawControllerCable == -1,
+        "Stage 1 did not end in a blank review state");
+
+      state = controller.ConfirmAsync().GetAwaiter().GetResult();
+      int expectedControllerCable = Array.IndexOf(savedCables, 0);
+      int expectedRawPort = (expectedControllerCable % 2) * 4;
+      Assert(state.stage == "strips" && state.selectedBox == 0 &&
+          state.rawControllerCable == expectedControllerCable &&
+          state.rawControllerBox == expectedControllerCable / 2 &&
+          state.rawControllerPort == expectedRawPort &&
+          state.currentCandidate == savedPorts[0][0],
+        "Stage 2 did not derive its raw port from the Stage 1 draft");
+
+      int fixedRawCable = state.rawControllerCable;
+      int fixedRawPort = state.rawControllerPort;
+      state = controller.NavigateAsync(1).GetAwaiter().GetResult();
+      Assert(state.rawControllerCable == fixedRawCable &&
+          state.rawControllerPort == fixedRawPort &&
+          state.currentCandidate != savedPorts[0][0],
+        "Stage 2 candidate navigation changed the raw controller port");
+      state = controller.NavigateAsync(-1).GetAwaiter().GetResult();
+      Assert(state.currentCandidate == savedPorts[0][0],
+        "Stage 2 Previous did not return to its per-box saved guess");
+
+      for (int port = 0; port < PortsPerController; port++) {
+        state = controller.ConfirmAsync().GetAwaiter().GetResult();
+      }
+      Assert(state.stripSteps[0] == PortsPerController &&
+          state.canApplyBoxOne,
+        "Box 1 completion did not offer the copy action");
+      state = controller.ApplyBoxOneAsync().GetAwaiter().GetResult();
+      Assert(state.stage == "review" && state.saveable &&
+          state.copiedFromBoxOne.Skip(1).All(value => value) &&
+          state.stripMappings.Skip(1).All(mapping =>
+            mapping.SequenceEqual(state.stripMappings[0])) &&
+          state.stripReadout.Contains("copied from Box 1"),
+        "Apply Box 1 did not create five complete independent drafts");
+
+      int[] untouchedBoxFour =
+        (int[])state.stripMappings[3].Clone();
+      state = controller.RecalibrateBoxAsync(2).GetAwaiter().GetResult();
+      state = controller.NavigateAsync(1).GetAwaiter().GetResult();
+      state = controller.ConfirmAsync().GetAwaiter().GetResult();
+      Assert(!state.stripMappings[2].SequenceEqual(state.stripMappings[3]) &&
+          state.stripMappings[3].SequenceEqual(untouchedBoxFour) &&
+          !state.copiedFromBoxOne[2] && state.copiedFromBoxOne[3],
+        "recalibrating Box 3 mutated another copied box");
+      for (int port = 1; port < PortsPerController; port++) {
+        state = controller.ConfirmAsync().GetAwaiter().GetResult();
+      }
+      Assert(state.stage == "review" && state.saveable,
+        "recalibrated Box 3 did not return to a saveable permutation");
+
+      var result = controller.SaveAsync().GetAwaiter().GetResult();
+      Assert(result.ok && result.state.stage == "idle" &&
+          !renderState.Active &&
+          result.state.cableConfirmed.All(value => !value) &&
+          result.state.cableReadout.Contains("~") &&
+          config.domeCableMapping.SequenceEqual(state.picks) &&
+          config.domePortMappings.Length == LEDDomeOutput.NumDomeBoxes &&
+          config.domePortMappings[2].ports.SequenceEqual(
+            state.stripMappings[2]),
+        "final Save did not atomically commit and release the calibration");
+
+      result.state.stripMappings[2][0] = -1;
+      Assert(config.domePortMappings[2].ports[0] >= 0 &&
+          controller.State().stripMappings[2][0] >= 0,
+        "a returned calibration snapshot aliases the draft or configuration");
+    }
+
+    private static void CalibrationDiagnosticFrames() {
+      using var sink = new LoopbackSink();
+      global::Spectrum.SpectrumConfiguration config;
+      LEDDomeOutput output = ConnectDome(sink, null, out config);
+      config.domeSimulationEnabled = true;
+      output.SimulatorHasConsumer = true;
+      config.domeMaxBrightness = 1;
+      config.domePortMappings = PortMappingDtos(Enumerable.Range(
+        0, LEDDomeOutput.NumDomeBoxes).Select(_ =>
+          Enumerable.Range(0, PortsPerController).ToArray()).ToArray());
+      var state = new global::Spectrum.DomeCalibrationState();
+      var visualizer =
+        new global::Spectrum.LEDDomeMappingCalibrationVisualizer(
+          config, state, output);
+      try {
+        state.ShowCable(0, 4);
+        visualizer.Visualize();
+        Send(output.OperatorUpdate);
+        byte[] firstHardware = sink.ReceiveMessage();
+        HashSet<int> firstSimulator = DrainLitSimulatorStruts(output);
+        var expectedFirstSimulator = new HashSet<int>(
+          LEDDomeOutput.GetPhysicalCableStruts(
+            2, 0, Enumerable.Range(0, PortsPerController).ToArray()));
+        Assert(firstSimulator.SetEquals(expectedFirstSimulator),
+          "the simulator did not show the logical Stage 1 candidate " +
+          "(expected " + expectedFirstSimulator.Count + " struts, got " +
+          firstSimulator.Count + "; missing " +
+          string.Join(",", expectedFirstSimulator.Except(firstSimulator)) +
+          "; extra " +
+          string.Join(",", firstSimulator.Except(expectedFirstSimulator)) + ")");
+
+        state.ShowCable(0, 5);
+        visualizer.Visualize();
+        output.FlushHardware();
+        Send(output.OperatorUpdate);
+        byte[] secondHardware = sink.ReceiveMessage();
+        HashSet<int> secondSimulator = DrainLitSimulatorStruts(output);
+        Assert(firstHardware.SequenceEqual(secondHardware),
+          "candidate navigation changed the raw OPC frame");
+        Assert(secondSimulator.SetEquals(
+            LEDDomeOutput.GetPhysicalCableStruts(
+              2, 1, Enumerable.Range(0, PortsPerController).ToArray())),
+          "candidate navigation did not republish the logical simulator frame");
+
+        // Stage 2 must likewise keep the derived raw controller port fixed
+        // while candidate navigation republishes a different logical strip in
+        // the selected dome-side box.
+        const int rawControllerBox = 3;
+        const int rawControllerPort = 6;
+        const int simulatorBox = 1;
+        state.ShowPort(
+          rawControllerBox * 2 + rawControllerPort / StrandsPerCable,
+          rawControllerBox,
+          rawControllerPort,
+          simulatorBox,
+          2);
+        visualizer.Visualize();
+        Send(output.OperatorUpdate);
+        byte[] firstPortHardware = sink.ReceiveMessage();
+        int[] firstPortPixels = PayloadPixels(firstPortHardware);
+        int firstPortPixel =
+          (rawControllerBox * PortsPerController + rawControllerPort) *
+          PortPixels;
+        int expectedLitPortPixels = LEDDomeOutput.GetStripPathStruts(
+          rawControllerBox, rawControllerPort).Sum(LEDDomeOutput.GetNumLEDs);
+        int[] actualLitPortPixels = Enumerable.Range(
+          0, firstPortPixels.Length).Where(
+            pixel => firstPortPixels[pixel] != 0).ToArray();
+        Assert(actualLitPortPixels.Length == expectedLitPortPixels &&
+            actualLitPortPixels.All(pixel =>
+              pixel >= firstPortPixel &&
+              pixel < firstPortPixel + PortPixels),
+          "Stage 2 did not illuminate only its derived raw controller port");
+        HashSet<int> firstPortSimulator = DrainLitSimulatorStruts(output);
+        Assert(firstPortSimulator.SetEquals(
+            LEDDomeOutput.GetStripPathStruts(simulatorBox, 2)),
+          "Stage 2 simulator did not show its logical strip candidate");
+
+        state.ShowPort(
+          rawControllerBox * 2 + rawControllerPort / StrandsPerCable,
+          rawControllerBox,
+          rawControllerPort,
+          simulatorBox,
+          5);
+        visualizer.Visualize();
+        output.FlushHardware();
+        Send(output.OperatorUpdate);
+        byte[] secondPortHardware = sink.ReceiveMessage();
+        HashSet<int> secondPortSimulator = DrainLitSimulatorStruts(output);
+        Assert(firstPortHardware.SequenceEqual(secondPortHardware),
+          "Stage 2 candidate navigation changed the raw OPC port frame");
+        Assert(secondPortSimulator.SetEquals(
+            LEDDomeOutput.GetStripPathStruts(simulatorBox, 5)),
+          "Stage 2 candidate navigation did not republish the logical strip");
+
+        state.Deactivate();
+        Assert(state.ShouldOverride,
+          "deactivation did not retain one final blanking tick");
+        visualizer.Visualize();
+        Send(output.OperatorUpdate);
+        int[] blanked = PayloadPixels(sink.ReceiveMessage());
+        Assert(blanked.All(color => color == 0) && !state.ShouldOverride,
+          "deactivation did not flush a black raw frame before releasing");
+      } finally {
+        output.SimulatorHasConsumer = false;
+        state.Deactivate();
+        sink.CloseConnection();
+        output.Active = false;
+      }
+    }
+
+    private static HashSet<int> DrainLitSimulatorStruts(
+      LEDDomeOutput output
+    ) {
+      var lit = new HashSet<int>();
+      while (output.SimulatorCommandQueue.TryDequeue(out DomeLEDCommand command)) {
+        if (command.isFlush) {
+          continue;
+        }
+        if (command.color == 0) {
+          lit.Remove(command.strutIndex);
+        } else {
+          lit.Add(command.strutIndex);
+        }
+      }
+      return lit;
     }
 
     private sealed class ImmediateGateway : ControlGateway {
