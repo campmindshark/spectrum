@@ -108,7 +108,19 @@ namespace Spectrum {
     private Web.AdvisoryLockManager advisoryLocks = null;
     private Web.DomeCalibrationController domeCalibrationController = null;
     private const int WebServerPort = 8080;
-    private const string WindowPlacementPath = "spectrum_window_state.json";
+    // Spectrum is distributed as a portable application, so keep its mutable
+    // state beside the executable. AppContext.BaseDirectory is stable when the
+    // process is launched from a shortcut or an unrelated working directory.
+    private static readonly string ConfigPath = Path.Combine(
+      AppContext.BaseDirectory, "spectrum_config.xml");
+    private static readonly string BackupConfigPath = Path.Combine(
+      AppContext.BaseDirectory, "spectrum_old_config.xml");
+    private static readonly string TemporaryConfigPath = Path.Combine(
+      AppContext.BaseDirectory, "spectrum_config.xml.tmp");
+    private static readonly string DefaultConfigPath = Path.Combine(
+      AppContext.BaseDirectory, "spectrum_default_config.xml");
+    private static readonly string WindowPlacementPath = Path.Combine(
+      AppContext.BaseDirectory, "spectrum_window_state.json");
     private string webServerError = null;
     private System.Windows.Threading.DispatcherTimer readinessTimer;
 
@@ -295,30 +307,28 @@ namespace Spectrum {
       if (MainWindow.LoadingConfig) {
         return;
       }
-      const string configPath = "spectrum_config.xml";
-      const string backupPath = "spectrum_old_config.xml";
-      const string tempPath = "spectrum_config.xml.tmp";
       try {
         // Serialize completely before touching the live file. File.Replace then
         // swaps it atomically and creates the recovery backup in the same step.
-        using (FileStream stream = new FileStream(tempPath, FileMode.Create)) {
+        using (FileStream stream = new FileStream(
+            TemporaryConfigPath, FileMode.Create)) {
           new XmlSerializer<SpectrumConfiguration>().Serialize(
             stream,
             this.config
           );
           stream.Flush(true);
         }
-        if (File.Exists(configPath)) {
-          File.Replace(tempPath, configPath, backupPath);
+        if (File.Exists(ConfigPath)) {
+          File.Replace(TemporaryConfigPath, ConfigPath, BackupConfigPath);
         } else {
-          File.Move(tempPath, configPath);
+          File.Move(TemporaryConfigPath, ConfigPath);
         }
       } catch (Exception e) {
         App.LogException("Could not save Spectrum configuration", e);
       } finally {
         try {
-          if (File.Exists(tempPath)) {
-            File.Delete(tempPath);
+          if (File.Exists(TemporaryConfigPath)) {
+            File.Delete(TemporaryConfigPath);
           }
         } catch (Exception e) {
           App.LogException("Could not clean up temporary configuration", e);
@@ -351,9 +361,9 @@ namespace Spectrum {
 
       string loadFile = null;
       string[] candidates = new string[] {
-        "spectrum_config.xml",
-        "spectrum_old_config.xml",
-        "spectrum_default_config.xml",
+        ConfigPath,
+        BackupConfigPath,
+        DefaultConfigPath,
       };
       foreach (string candidate in candidates) {
         if (!File.Exists(candidate)) {
