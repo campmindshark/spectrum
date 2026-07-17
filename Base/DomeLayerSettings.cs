@@ -568,6 +568,11 @@ namespace Spectrum.Base {
           Min = 0, Max = 168, Step = 1, Default = 0,
         },
         new DomeLayerParam {
+          Key = "showDaytimeSky", Label = "Show Daytime Sky",
+          Type = DomeLayerParamType.Bool,
+          Default = 1,
+        },
+        new DomeLayerParam {
           Key = "playbackSpeed", Label = "Playback Speed (x)",
           Type = DomeLayerParamType.Double,
           Min = 0.5, Max = 8, Step = 0.1, Default = 1,

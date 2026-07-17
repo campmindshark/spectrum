@@ -802,6 +802,7 @@ namespace Spectrum.LayerPipeline.Tests {
         ["northHeading"] = 999,
         ["startDate"] = 20260715,
         ["timeOffsetHours"] = 999,
+        ["showDaytimeSky"] = 0,
         ["playbackSpeed"] = 999,
         ["loop"] = 1,
       };
@@ -809,13 +810,14 @@ namespace Spectrum.LayerPipeline.Tests {
         BuiltInOptions<AstronomyLayerOptions>(layer);
       Assert(options.NorthHeading == 359 &&
         options.StartDate == 20260715 && options.TimeOffsetHours == 168 &&
-        options.PlaybackSpeed == 8 && options.Loop,
+        !options.ShowDaytimeSky && options.PlaybackSpeed == 8 && options.Loop,
         "astronomy controls were not clamped by their schema");
       AstronomyLayerOptions defaultOptions =
         BuiltInOptions<AstronomyLayerOptions>(
           Layer("astronomy", "default-astronomy"));
-      Assert(defaultOptions.PlaybackSpeed == 1,
-        "astronomy playback speed did not default to 1x");
+      Assert(defaultOptions.ShowDaytimeSky &&
+          defaultOptions.PlaybackSpeed == 1,
+        "astronomy controls did not preserve their default appearance");
       Assert(DomeLayerDate.TryDecode(defaultOptions.StartDate, out _),
         "astronomy start date did not default to a valid local date");
       Assert(DomeLayerDate.TryParse("2026-07-15", out double encodedDate) &&
@@ -864,6 +866,10 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(LEDDomeAstronomyVisualizer.InterpolateColor(
           0x000000, 0xFFFFFF, 0.5) == 0x7F7F7F,
         "astronomy playback did not linearly interpolate keyframes");
+      Assert(LEDDomeAstronomyVisualizer.SkyColor(0, true) == 0x082040 &&
+          LEDDomeAstronomyVisualizer.SkyColor(0, false) == 0x000006 &&
+          LEDDomeAstronomyVisualizer.SkyColor(1, true) == 0x000006,
+        "astronomy daytime-sky toggle did not suppress the sky effect");
 
       Vector3 northAtZero = AstronomySky.ToDome(Vector3.UnitY, 0);
       Vector3 eastAtZero = AstronomySky.ToDome(Vector3.UnitX, 0);
@@ -1882,9 +1888,15 @@ namespace Spectrum.LayerPipeline.Tests {
         state.visualizers.FirstOrDefault(v => v.key == "astronomy");
       global::Spectrum.Web.LayersController.ParamDto startDate =
         astronomy?.@params.FirstOrDefault(p => p.key == "startDate");
+      global::Spectrum.Web.LayersController.ParamDto showDaytimeSky =
+        astronomy?.@params.FirstOrDefault(
+          p => p.key == "showDaytimeSky");
       Assert(startDate != null && startDate.type == "Date" &&
           DomeLayerDate.TryDecode(startDate.@default, out _),
         "web astronomy start-date descriptor is incomplete");
+      Assert(showDaytimeSky != null && showDaytimeSky.type == "Bool" &&
+          showDaytimeSky.@default == 1,
+        "web astronomy daytime-sky checkbox descriptor is incomplete");
     }
 
     private static CompiledLayer Compiled(

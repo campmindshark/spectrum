@@ -255,7 +255,7 @@ namespace Spectrum.Visualizers {
       // Civil/nautical twilight crossfade: stars reach full strength once the
       // Sun is roughly twelve degrees below the horizon.
       double night = Clamp((-sunLocal.Z - 0.04) / 0.18, 0, 1);
-      int skyColor = MixColor(DaySkyColor, NightSkyColor, night);
+      int skyColor = SkyColor(night, options.ShowDaytimeSky);
       for (int i = 0; i < target.pixels.Length; i++) {
         target.pixels[i].color = skyColor;
       }
@@ -326,6 +326,11 @@ namespace Spectrum.Visualizers {
     internal static int InterpolateColor(
       int start, int end, double amount
     ) => MixColor(start, end, amount);
+
+    internal static int SkyColor(double night, bool showDaytimeSky) =>
+      showDaytimeSky
+        ? MixColor(DaySkyColor, NightSkyColor, night)
+        : NightSkyColor;
 
     private void PaintSoftDisc(
       DomeFrame target,

@@ -67,7 +67,7 @@ namespace Spectrum.Base {
 
   public sealed record AstronomyLayerOptions(
     double NorthHeading, int StartDate, double TimeOffsetHours,
-    double PlaybackSpeed, bool Loop
+    bool ShowDaytimeSky, double PlaybackSpeed, bool Loop
   ) : ILayerRendererOptions;
 
   public sealed record FlashLayerOptions(
@@ -231,7 +231,7 @@ namespace Spectrum.Base {
       ImmutableDictionary<string, ParameterValue> v
     ) => new AstronomyLayerOptions(
       Double(v, "northHeading"), Integer(v, "startDate"),
-      Double(v, "timeOffsetHours"),
+      Double(v, "timeOffsetHours"), Boolean(v, "showDaytimeSky"),
       Double(v, "playbackSpeed"), Boolean(v, "loop"));
 
     internal static ILayerRendererOptions Flash(
