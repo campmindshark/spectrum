@@ -51,6 +51,13 @@ namespace Spectrum.Web {
       public string label { get; set; }
       // Visualizer-consumed param schema for this visualizer (may be empty).
       public IReadOnlyList<ParamDto> @params { get; set; }
+      public ActionDto fireAction { get; set; }
+      public ActionDto clearAction { get; set; }
+    }
+
+    public sealed class ActionDto {
+      public string label { get; set; }
+      public string toolTip { get; set; }
     }
 
     public sealed class OperationOptionDto {
@@ -121,10 +128,18 @@ namespace Spectrum.Web {
           key = definition.Id,
           label = definition.DisplayName,
           @params = ToDtos(definition.Parameters),
+          fireAction = ToDto(definition.FireAction),
+          clearAction = ToDto(definition.ClearAction),
         });
       }
       return options;
     }
+
+    private static ActionDto ToDto(LayerActionDefinition action) =>
+      action == null ? null : new ActionDto {
+        label = action.Label,
+        toolTip = action.ToolTip,
+      };
 
     private static List<OperationOptionDto> OperationOptions() {
       var options = new List<OperationOptionDto>();

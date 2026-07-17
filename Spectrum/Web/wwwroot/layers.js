@@ -30,14 +30,22 @@
   const astronomyPlayback = new Map();
   const astronomyStoppedOffsets = new Map();
   let astronomyPlaybackTimer = null;
+  // Disclosure is UI-only, just like DomeLayersController.IsExpanded in the
+  // native editor. Key it by stable instance ID so a reorder or SSE re-render
+  // does not unexpectedly reopen a layer.
+  const expandedByInstanceId = new Map();
 
   function sameStack(a, b) {
     return JSON.stringify(a) === JSON.stringify(b);
   }
 
   function rendererSchemaFor(layer) {
-    const vis = state.visualizers.find((v) => v.key === layer.visualizerKey);
+    const vis = visualizerFor(layer);
     return (vis && vis.params) || [];
+  }
+
+  function visualizerFor(layer) {
+    return state.visualizers.find((v) => v.key === layer.visualizerKey);
   }
 
   function operationSchemaFor(layer) {
@@ -307,8 +315,22 @@
     const row = document.createElement("div");
     row.className = "layer-row";
 
+    const details = document.createElement("div");
+    details.className = "layer-details";
+    details.id = `layer-${idx}-settings`;
+
     const top = document.createElement("div");
     top.className = "top";
+
+    const disclosure = document.createElement("button");
+    disclosure.type = "button";
+    disclosure.className = "layer-toggle";
+    disclosure.title = "Expand or collapse layer settings";
+    disclosure.setAttribute("aria-controls", details.id);
+    const disclosureIcon = document.createElement("span");
+    disclosureIcon.setAttribute("aria-hidden", "true");
+    disclosure.appendChild(disclosureIcon);
+    top.appendChild(disclosure);
 
     const visSel = document.createElement("select");
     visSel.setAttribute("aria-label", `Visualizer for layer ${idx + 1}`);
@@ -329,6 +351,24 @@
       putLayers();
     });
     top.appendChild(visSel);
+
+    let expanded = !expandedByInstanceId.has(layer.instanceId) ||
+      expandedByInstanceId.get(layer.instanceId);
+    const syncDisclosure = () => {
+      const name = visSel.selectedOptions[0]?.textContent || "layer";
+      row.classList.toggle("layer-collapsed", !expanded);
+      details.hidden = !expanded;
+      disclosureIcon.textContent = expanded ? "\u2212" : "+";
+      disclosure.setAttribute("aria-expanded", String(expanded));
+      disclosure.setAttribute(
+        "aria-label", `${expanded ? "Collapse" : "Expand"} ${name} layer settings`);
+    };
+    disclosure.addEventListener("click", () => {
+      expanded = !expanded;
+      expandedByInstanceId.set(layer.instanceId, expanded);
+      syncDisclosure();
+    });
+    syncDisclosure();
 
     const enabled = document.createElement("input");
     enabled.type = "checkbox";
@@ -368,7 +408,7 @@
       state.layers[idx].notes = notes.value;
       putLayers();
     });
-    row.appendChild(notes);
+    details.appendChild(notes);
 
     const bottom = document.createElement("div");
     bottom.className = "bottom";
@@ -417,61 +457,65 @@
 
     // Front is the last stack entry, so "up" (toward front) means a higher idx.
     const up = document.createElement("button");
-    up.textContent = "Front";
-    up.title = "Move toward front";
-    up.setAttribute("aria-label", `Move ${visSel.selectedOptions[0]?.textContent || "layer"} toward front`);
+    up.textContent = "↑";
+    up.className = "layer-reorder";
+    up.title = "Move up toward front";
+    up.setAttribute("aria-label", `Move ${visSel.selectedOptions[0]?.textContent || "layer"} up toward front`);
     up.disabled = idx === state.layers.length - 1;
     up.addEventListener("click", () => {
       swap(idx, idx + 1);
     });
-    bottom.appendChild(up);
+    top.insertBefore(up, enabledWrap);
 
     const down = document.createElement("button");
-    down.textContent = "Back";
-    down.title = "Move toward back";
-    down.setAttribute("aria-label", `Move ${visSel.selectedOptions[0]?.textContent || "layer"} toward back`);
+    down.textContent = "↓";
+    down.className = "layer-reorder";
+    down.title = "Move down toward back";
+    down.setAttribute("aria-label", `Move ${visSel.selectedOptions[0]?.textContent || "layer"} down toward back`);
     down.disabled = idx === 0;
     down.addEventListener("click", () => {
       swap(idx, idx - 1);
     });
-    bottom.appendChild(down);
+    top.insertBefore(down, enabledWrap);
 
     // Manual fire: bumps this layer's fire counter so a triggerable layer
     // (OneShot Wave/Metaball, Ripple/Stamp) fires once. Not a stack edit, so it
     // POSTs to a dedicated endpoint rather than PUTing the whole stack.
-    const fire = document.createElement("button");
+    const visualizer = visualizerFor(layer);
+    const fireAction = visualizer && visualizer.fireAction;
     const isAstronomy = layer.visualizerKey === "astronomy";
-    fire.textContent = isAstronomy ? "Play" : "Fire";
-    fire.title = isAstronomy
-      ? "Play the one-week astronomy timeline"
-      : "Fire (manual trigger)";
-    fire.setAttribute("aria-label", `${isAstronomy ? "Play" : "Fire"} ${visSel.selectedOptions[0]?.textContent || "layer"}`);
-    fire.addEventListener("click", async () => {
-      const fired = await fireLayer(
-        layer.instanceId, isAstronomy ? "play" : "fire");
-      if (fired && isAstronomy) {
-        startAstronomyPlayback(layer.instanceId);
-      }
-    });
-    bottom.appendChild(fire);
+    if (fireAction) {
+      const fire = document.createElement("button");
+      fire.textContent = fireAction.label;
+      fire.title = fireAction.toolTip;
+      fire.setAttribute("aria-label", `${fireAction.label} ${visSel.selectedOptions[0]?.textContent || "layer"}`);
+      fire.addEventListener("click", async () => {
+        const fired = await fireLayer(
+          layer.instanceId, fireAction.label.toLowerCase());
+        if (fired && isAstronomy) {
+          startAstronomyPlayback(layer.instanceId);
+        }
+      });
+      top.insertBefore(fire, up);
+    }
 
-    // Astronomy repurposes the same per-layer clear edge as playback Stop.
-    const clear = document.createElement("button");
-    clear.textContent = isAstronomy ? "Stop" : "Clear";
-    clear.title = isAstronomy
-      ? "Stop astronomy playback at the current time"
-      : "Clear (drop this layer's live particles)";
-    clear.setAttribute("aria-label", `${isAstronomy ? "Stop" : "Clear"} ${visSel.selectedOptions[0]?.textContent || "layer"}`);
-    clear.addEventListener("click", async () => {
-      const cleared = await clearLayer(
-        layer.instanceId, isAstronomy ? "stop" : "clear");
-      if (cleared && isAstronomy) {
-        stopAstronomyPlayback(layer.instanceId);
-      }
-    });
-    bottom.appendChild(clear);
+    const clearAction = visualizer && visualizer.clearAction;
+    if (clearAction) {
+      const clear = document.createElement("button");
+      clear.textContent = clearAction.label;
+      clear.title = clearAction.toolTip;
+      clear.setAttribute("aria-label", `${clearAction.label} ${visSel.selectedOptions[0]?.textContent || "layer"}`);
+      clear.addEventListener("click", async () => {
+        const cleared = await clearLayer(
+          layer.instanceId, clearAction.label.toLowerCase());
+        if (cleared && isAstronomy) {
+          stopAstronomyPlayback(layer.instanceId);
+        }
+      });
+      top.insertBefore(clear, up);
+    }
 
-    row.appendChild(bottom);
+    details.appendChild(bottom);
 
     // Generic per-layer param editors, built from the layer's combined schema
     // crossed with its namespaced stored values.
@@ -488,8 +532,10 @@
       schema.forEach((p) => {
         params.appendChild(renderParam(layer, idx, p));
       });
-      row.appendChild(params);
+      details.appendChild(params);
     }
+
+    row.appendChild(details);
 
     return row;
   }
@@ -605,6 +651,32 @@
     hint.className = "hint";
     hint.textContent = "Top row is the front; layers blend bottom to top.";
     panel.appendChild(hint);
+
+    const disclosureActions = document.createElement("div");
+    disclosureActions.className = "layer-disclosure-actions";
+    const collapseAll = document.createElement("button");
+    collapseAll.type = "button";
+    collapseAll.textContent = "Collapse All";
+    collapseAll.disabled = state.layers.length === 0;
+    collapseAll.addEventListener("click", () => {
+      state.layers.forEach((layer) => {
+        expandedByInstanceId.set(layer.instanceId, false);
+      });
+      render();
+    });
+    disclosureActions.appendChild(collapseAll);
+    const expandAll = document.createElement("button");
+    expandAll.type = "button";
+    expandAll.textContent = "Expand All";
+    expandAll.disabled = state.layers.length === 0;
+    expandAll.addEventListener("click", () => {
+      state.layers.forEach((layer) => {
+        expandedByInstanceId.set(layer.instanceId, true);
+      });
+      render();
+    });
+    disclosureActions.appendChild(expandAll);
+    panel.appendChild(disclosureActions);
 
     if (state.layers.length === 0) {
       const empty = document.createElement("p");

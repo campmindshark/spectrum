@@ -383,7 +383,15 @@
                 </DockPanel>
             </Border>
 
-            <Label DockPanel.Dock="Top" Content="Layers (top = front)" Margin="4,12,0,4" FontSize="13" FontWeight="SemiBold" />
+            <DockPanel DockPanel.Dock="Top" Margin="4,12,5,4" LastChildFill="True">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button x:Name="domeCollapseAllLayersButton" Content="Collapse All"
+                            Style="{StaticResource SubtleButton}" ToolTip="Collapse every layer's settings" />
+                    <Button x:Name="domeExpandAllLayersButton" Content="Expand All" Margin="4,0,0,0"
+                            Style="{StaticResource SubtleButton}" ToolTip="Expand every layer's settings" />
+                </StackPanel>
+                <Label Content="Layers (top = front)" Margin="0" FontSize="13" FontWeight="SemiBold" />
+            </DockPanel>
             <Button DockPanel.Dock="Bottom" x:Name="domeAddLayerButton" Content="Add layer" HorizontalAlignment="Left" Width="90" Margin="5,4,0,0" />
             <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
                     Margin="5,0,5,0" Padding="5">
@@ -408,10 +416,10 @@
                                         <DockPanel LastChildFill="True">
                                             <Button DockPanel.Dock="Right" Content="Remove" Command="{Binding RemoveCommand}" MinWidth="58" ToolTip="Remove layer" />
                                             <CheckBox DockPanel.Dock="Right" Content="On" IsChecked="{Binding LayerEnabled}" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Enable this layer" />
-                                            <Button DockPanel.Dock="Right" Content="{Binding ClearLabel}" Command="{Binding ClearCommand}" MinWidth="50" ToolTip="{Binding ClearToolTip}" />
-                                            <Button DockPanel.Dock="Right" Content="{Binding FireLabel}" Command="{Binding FireCommand}" MinWidth="46" ToolTip="{Binding FireToolTip}" />
-                                            <Button DockPanel.Dock="Right" Content="Back" Command="{Binding MoveDownCommand}" MinWidth="46" ToolTip="Move toward back" />
-                                            <Button DockPanel.Dock="Right" Content="Front" Command="{Binding MoveUpCommand}" MinWidth="48" ToolTip="Move toward front" />
+                                            <Button DockPanel.Dock="Right" Content="↓" Command="{Binding MoveDownCommand}" Width="28" Padding="0" FontSize="15" ToolTip="Move down toward back" AutomationProperties.Name="Move layer down toward back" />
+                                            <Button DockPanel.Dock="Right" Content="↑" Command="{Binding MoveUpCommand}" Width="28" Padding="0" FontSize="15" ToolTip="Move up toward front" AutomationProperties.Name="Move layer up toward front" />
+                                            <Button DockPanel.Dock="Right" Content="{Binding ClearLabel}" Command="{Binding ClearCommand}" MinWidth="50" ToolTip="{Binding ClearToolTip}" Visibility="{Binding HasClearAction, Converter={StaticResource boolToVis}}" />
+                                            <Button DockPanel.Dock="Right" Content="{Binding FireLabel}" Command="{Binding FireCommand}" MinWidth="46" ToolTip="{Binding FireToolTip}" Visibility="{Binding HasFireAction, Converter={StaticResource boolToVis}}" />
                                             <ToggleButton DockPanel.Dock="Left" IsChecked="{Binding IsExpanded}" Width="24" Margin="0,0,4,0" ToolTip="Expand or collapse layer settings">
                                                 <ToggleButton.Style>
                                                     <Style TargetType="ToggleButton">

@@ -56,7 +56,8 @@ namespace Spectrum {
     }
 
     public DomeLayersController(
-      Configuration config, ItemsControl itemsControl, ButtonBase addButton
+      Configuration config, ItemsControl itemsControl, ButtonBase addButton,
+      ButtonBase collapseAllButton, ButtonBase expandAllButton
     ) {
       this.config = config;
       this.dispatcher = itemsControl.Dispatcher;
@@ -70,8 +71,19 @@ namespace Spectrum {
       this.astronomyPlaybackTimer.Tick += this.AdvanceAstronomyPlayback;
       itemsControl.ItemsSource = this.Rows;
       addButton.Click += (s, e) => this.AddLayer();
+      collapseAllButton.Click += (s, e) => this.SetAllExpanded(false);
+      expandAllButton.Click += (s, e) => this.SetAllExpanded(true);
       this.config.PropertyChanged += this.OnConfigChanged;
       this.RebuildRows();
+    }
+
+    private void SetAllExpanded(bool expanded) {
+      foreach (DomeLayerRowViewModel row in this.Rows) {
+        row.IsExpanded = expanded;
+        if (!string.IsNullOrWhiteSpace(row.InstanceId)) {
+          this.expandedByInstanceId[row.InstanceId] = expanded;
+        }
+      }
     }
 
     private void OnConfigChanged(object sender, PropertyChangedEventArgs e) {

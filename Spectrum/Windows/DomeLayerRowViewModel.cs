@@ -239,6 +239,10 @@ namespace Spectrum {
         this.PropertyChanged?.Invoke(
           this, new PropertyChangedEventArgs(nameof(VisualizerKey)));
         this.PropertyChanged?.Invoke(
+          this, new PropertyChangedEventArgs(nameof(HasFireAction)));
+        this.PropertyChanged?.Invoke(
+          this, new PropertyChangedEventArgs(nameof(HasClearAction)));
+        this.PropertyChanged?.Invoke(
           this, new PropertyChangedEventArgs(nameof(FireLabel)));
         this.PropertyChanged?.Invoke(
           this, new PropertyChangedEventArgs(nameof(FireToolTip)));
@@ -253,19 +257,18 @@ namespace Spectrum {
       }
     }
 
-    // Astronomy uses the existing per-instance fire command as its dedicated
-    // playback start edge. The command transport stays generic; only the row's
-    // user-facing action changes from Fire to Play.
-    public string FireLabel =>
-      this.visualizerKey == "astronomy" ? "Play" : "Fire";
-    public string FireToolTip => this.visualizerKey == "astronomy"
-      ? "Play the one-week astronomy timeline"
-      : "Fire manual trigger";
-    public string ClearLabel =>
-      this.visualizerKey == "astronomy" ? "Stop" : "Clear";
-    public string ClearToolTip => this.visualizerKey == "astronomy"
-      ? "Stop astronomy playback at the current time"
-      : "Clear this layer's live state";
+    private LayerDefinition CurrentDefinition =>
+      LayerCatalog.Default.Get(this.visualizerKey);
+    private LayerActionDefinition FireAction =>
+      this.CurrentDefinition?.FireAction;
+    private LayerActionDefinition ClearAction =>
+      this.CurrentDefinition?.ClearAction;
+    public bool HasFireAction => this.FireAction != null;
+    public bool HasClearAction => this.ClearAction != null;
+    public string FireLabel => this.FireAction?.Label;
+    public string FireToolTip => this.FireAction?.ToolTip;
+    public string ClearLabel => this.ClearAction?.Label;
+    public string ClearToolTip => this.ClearAction?.ToolTip;
 
     private string blendMode = DomeBlend.Default.Id;
     public string BlendMode {

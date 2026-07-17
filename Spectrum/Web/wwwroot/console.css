@@ -244,6 +244,9 @@ input[type="color"] { width: 2.5rem; padding: .15rem; }
 .layer-row { margin-bottom: .75rem; padding: .75rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #0e121b; }
 .layer-row .top, .layer-row .bottom, .scene-row, .palette-row, .palette-saverow, .palette-bankrow, .dome-simulator-toolbar, .calib-swap-row { display: flex; align-items: center; gap: .5rem; }
 .layer-row .top { margin-bottom: .5rem; }
+.layer-row.layer-collapsed .top { margin-bottom: 0; }
+.layer-row .layer-toggle { flex: 0 0 var(--control); width: var(--control); padding: 0; border-color: #3c779a; color: var(--accent); font-size: 1.15rem; line-height: 1; }
+.layer-row .layer-reorder { min-width: 2.25rem; padding-inline: .4rem; font-size: 1.05rem; }
 .layer-row .top select { flex: 1; min-width: 7rem; }
 .layer-row .bottom { flex-wrap: wrap; }
 .layer-row .bottom input[type="range"] { flex: 1 1 8rem; }
@@ -251,6 +254,7 @@ input[type="color"] { width: 2.5rem; padding: .15rem; }
 .layer-row .layer-params { display: grid; gap: .6rem; margin-top: .75rem; padding-top: .7rem; border-top: 1px solid var(--border); }
 .layer-row .layer-params .param { display: grid; grid-template-columns: minmax(7rem, .7fr) 1.3fr auto; align-items: center; gap: .5rem; margin: 0; color: var(--muted); font-size: .76rem; }
 .layer-row .param-value { min-width: 3.5rem; color: var(--accent); text-align: right; font-variant-numeric: tabular-nums; }
+.layers .layer-disclosure-actions { display: flex; justify-content: flex-end; gap: .5rem; margin: 0 0 .7rem; }
 .layers .hint, .palette-subtitle, .dome-simulator-state, .palette-empty, .wand-summary, .calib-swap-label { color: var(--muted); font-size: .76rem; }
 .layers .hint { margin: 0 0 .7rem; }
 .layers .empty-state, .scenes .empty-state { margin: 0 0 .8rem; padding: .75rem; border: 1px dashed var(--border); border-radius: var(--radius-sm); color: var(--muted); }

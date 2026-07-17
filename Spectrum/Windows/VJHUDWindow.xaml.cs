@@ -109,7 +109,8 @@ namespace Spectrum {
       this.Bind(nameof(this.beat.BPMString), this.bpmLabel, Label.ContentProperty, BindingMode.OneWay, null, this.beat);
 
       this.domeLayersController = new DomeLayersController(
-        this.config, this.domeLayersItemsControl, this.domeAddLayerButton);
+        this.config, this.domeLayersItemsControl, this.domeAddLayerButton,
+        this.domeCollapseAllLayersButton, this.domeExpandAllLayersButton);
       this.domeScenesController = new DomeScenesController(
         this.config, this.domeScenesCombo, this.domeSceneNameBox,
         this.domeSceneSaveButton, this.domeSceneLoadButton,

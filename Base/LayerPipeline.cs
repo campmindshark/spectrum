@@ -124,13 +124,17 @@ namespace Spectrum.Base {
     IReadOnlyList<Input> RequiredInputs { get; }
   }
 
+  public sealed record LayerActionDefinition(string Label, string ToolTip);
+
   public sealed record LayerDefinition(
     string Id,
     string DisplayName,
     Func<LayerRendererRuntime, ILayerRenderer> CreateRenderer,
     IReadOnlyList<DomeLayerParam> Parameters,
     Func<ImmutableDictionary<string, ParameterValue>,
-      ILayerRendererOptions> CompileOptions
+      ILayerRendererOptions> CompileOptions,
+    LayerActionDefinition FireAction = null,
+    LayerActionDefinition ClearAction = null
   );
 
   public sealed class LayerCatalog {
@@ -222,9 +226,22 @@ namespace Spectrum.Base {
     private static LayerDefinition BuiltIn(
       string id, string label, IReadOnlyList<DomeLayerParam> parameters,
       Func<ImmutableDictionary<string, ParameterValue>,
-        ILayerRendererOptions> compileOptions
+        ILayerRendererOptions> compileOptions,
+      LayerActionDefinition fireAction = null,
+      LayerActionDefinition clearAction = null
     ) => new LayerDefinition(
-      id, label, null, parameters, compileOptions);
+      id, label, null, parameters, compileOptions, fireAction, clearAction);
+
+    private static readonly LayerActionDefinition FireAction =
+      new LayerActionDefinition("Fire", "Fire manual trigger");
+    private static readonly LayerActionDefinition ClearAction =
+      new LayerActionDefinition("Clear", "Clear this layer's live state");
+    private static readonly LayerActionDefinition PlayAction =
+      new LayerActionDefinition(
+        "Play", "Play the one-week astronomy timeline");
+    private static readonly LayerActionDefinition StopAction =
+      new LayerActionDefinition(
+        "Stop", "Stop astronomy playback at the current time");
 
     // Stable ordering is part of both picker contracts.
     public static LayerCatalog Default { get; } = new LayerCatalog(new[] {
@@ -255,7 +272,7 @@ namespace Spectrum.Base {
         LayerRendererOptionsCompiler.Twinkle),
       BuiltIn(
         "flash", "Flash", LayerParameterSchemas.FlashParams,
-        LayerRendererOptionsCompiler.Flash),
+        LayerRendererOptionsCompiler.Flash, fireAction: FireAction),
       BuiltIn(
         "background", "Background", LayerParameterSchemas.BackgroundParams,
         LayerRendererOptionsCompiler.Background),
@@ -264,22 +281,23 @@ namespace Spectrum.Base {
         LayerRendererOptionsCompiler.Earth),
       BuiltIn(
         "astronomy", "Astronomy", LayerParameterSchemas.AstronomyParams,
-        LayerRendererOptionsCompiler.Astronomy),
+        LayerRendererOptionsCompiler.Astronomy,
+        fireAction: PlayAction, clearAction: StopAction),
       BuiltIn(
         "wave", "Wave", LayerParameterSchemas.WaveParams,
-        LayerRendererOptionsCompiler.Wave),
+        LayerRendererOptionsCompiler.Wave, fireAction: FireAction),
       BuiltIn(
         "ripple", "Ripple", LayerParameterSchemas.RippleParams,
-        LayerRendererOptionsCompiler.Ripple),
+        LayerRendererOptionsCompiler.Ripple, fireAction: FireAction),
       BuiltIn(
         "stamp", "Stamp", LayerParameterSchemas.StampParams,
-        LayerRendererOptionsCompiler.Stamp),
+        LayerRendererOptionsCompiler.Stamp, fireAction: FireAction),
       BuiltIn(
         "tunnel", "Tunnel", LayerParameterSchemas.TunnelParams,
         LayerRendererOptionsCompiler.Tunnel),
       BuiltIn(
         "metaball", "Metaball", LayerParameterSchemas.MetaballParams,
-        LayerRendererOptionsCompiler.Metaball),
+        LayerRendererOptionsCompiler.Metaball, fireAction: FireAction),
       BuiltIn(
         "magnetic-field", "Magnetic Field",
         LayerParameterSchemas.MagneticFieldParams,
@@ -293,10 +311,12 @@ namespace Spectrum.Base {
       BuiltIn(
         "shooting-star", "Shooting Star",
         LayerParameterSchemas.ShootingStarParams,
-        LayerRendererOptionsCompiler.ShootingStar),
+        LayerRendererOptionsCompiler.ShootingStar,
+        fireAction: FireAction, clearAction: ClearAction),
       BuiltIn(
         "sparkler", "Sparkler", LayerParameterSchemas.SparklerParams,
-        LayerRendererOptionsCompiler.Sparkler),
+        LayerRendererOptionsCompiler.Sparkler,
+        fireAction: FireAction, clearAction: ClearAction),
       BuiltIn(
         "noise-cloud", "Noise Cloud", LayerParameterSchemas.NoiseCloudParams,
         LayerRendererOptionsCompiler.NoiseCloud),
@@ -305,7 +325,7 @@ namespace Spectrum.Base {
         LayerRendererOptionsCompiler.Caustics),
       BuiltIn(
         "ripple-tank", "Ripple Tank", LayerParameterSchemas.RippleTankParams,
-        LayerRendererOptionsCompiler.RippleTank),
+        LayerRendererOptionsCompiler.RippleTank, clearAction: ClearAction),
       BuiltIn(
         "vortex", "Vortex", LayerParameterSchemas.VortexParams,
         LayerRendererOptionsCompiler.Vortex),

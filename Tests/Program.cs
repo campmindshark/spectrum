@@ -827,12 +827,18 @@ namespace Spectrum.LayerPipeline.Tests {
         VisualizerKey = "astronomy",
       };
       Assert(astronomyRow.FireLabel == "Play" &&
-          astronomyRow.ClearLabel == "Stop",
+          astronomyRow.ClearLabel == "Stop" &&
+          astronomyRow.HasFireAction && astronomyRow.HasClearAction,
         "astronomy layer actions were not labeled Play and Stop");
       astronomyRow.VisualizerKey = "earth";
-      Assert(astronomyRow.FireLabel == "Fire" &&
+      Assert(!astronomyRow.HasFireAction && !astronomyRow.HasClearAction &&
+          astronomyRow.FireLabel == null && astronomyRow.ClearLabel == null,
+        "non-triggerable layer retained action controls");
+      astronomyRow.VisualizerKey = "shooting-star";
+      Assert(astronomyRow.HasFireAction && astronomyRow.HasClearAction &&
+          astronomyRow.FireLabel == "Fire" &&
           astronomyRow.ClearLabel == "Clear",
-        "non-astronomy layer actions did not retain Fire and Clear");
+        "triggerable layer actions were not exposed");
       Assert(DomeLayerDate.TryDecode(defaultOptions.StartDate, out _),
         "astronomy start date did not default to a valid local date");
       Assert(DomeLayerDate.TryParse("2026-07-15", out double encodedDate) &&
@@ -1985,6 +1991,8 @@ namespace Spectrum.LayerPipeline.Tests {
         "web operation descriptor is incomplete");
       global::Spectrum.Web.LayersController.VisualizerOptionDto astronomy =
         state.visualizers.FirstOrDefault(v => v.key == "astronomy");
+      global::Spectrum.Web.LayersController.VisualizerOptionDto background =
+        state.visualizers.FirstOrDefault(v => v.key == "background");
       global::Spectrum.Web.LayersController.ParamDto startDate =
         astronomy?.@params.FirstOrDefault(p => p.key == "startDate");
       global::Spectrum.Web.LayersController.ParamDto showDaytimeSky =
@@ -2003,6 +2011,10 @@ namespace Spectrum.LayerPipeline.Tests {
           showNighttimeSky.type == "Bool" &&
           showNighttimeSky.@default == 1,
         "web astronomy nighttime-sky checkbox descriptor is incomplete");
+      Assert(astronomy?.fireAction?.label == "Play" &&
+          astronomy.clearAction?.label == "Stop" &&
+          background?.fireAction == null && background?.clearAction == null,
+        "web layer action descriptors are incomplete");
     }
 
     private static CompiledLayer Compiled(
