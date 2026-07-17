@@ -1,19 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <SpectrumConfiguration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <audioDeviceIndex>20</audioDeviceIndex>
-  <audioDeviceID>{0.0.1.00000000}.{1ce71263-2eb5-4744-94e7-5bc353f90945}</audioDeviceID>
-  <huesEnabled>false</huesEnabled>
-  <ledBoardEnabled>false</ledBoardEnabled>
   <domeEnabled>true</domeEnabled>
   <midiInputEnabled>false</midiInputEnabled>
-  <huesOutputInSeparateThread>false</huesOutputInSeparateThread>
-  <ledBoardOutputInSeparateThread>true</ledBoardOutputInSeparateThread>
   <midiInputInSeparateThread>false</midiInputInSeparateThread>
   <domeOutputInSeparateThread>true</domeOutputInSeparateThread>
-  <boardBeagleboneOPCAddress>192.168.7.2:7890</boardBeagleboneOPCAddress>
-  <boardRowLength>30</boardRowLength>
-  <boardRowsPerStrip>5</boardRowsPerStrip>
-  <boardBrightness>0.326415094339623</boardBrightness>
   <domeBeagleboneOPCAddress>192.168.1.69:7890</domeBeagleboneOPCAddress>
   <domeSimulationEnabled>false</domeSimulationEnabled>
   <webDomeSimulatorEnabled>true</webDomeSimulatorEnabled>
@@ -69,36 +59,8 @@
     <DomePortMapping><ports><Int32>0</Int32><Int32>1</Int32><Int32>2</Int32><Int32>3</Int32><Int32>4</Int32><Int32>5</Int32><Int32>6</Int32><Int32>7</Int32></ports></DomePortMapping>
     <DomePortMapping><ports><Int32>0</Int32><Int32>1</Int32><Int32>2</Int32><Int32>3</Int32><Int32>4</Int32><Int32>5</Int32><Int32>6</Int32><Int32>7</Int32></ports></DomePortMapping>
   </domePortMappings>
-  <hueDelay>125</hueDelay>
-  <hueIdleOnSilent>true</hueIdleOnSilent>
-  <lightsOff>false</lightsOff>
-  <redAlert>false</redAlert>
-  <controlLights>true</controlLights>
-  <brighten>0</brighten>
-  <colorslide>0</colorslide>
-  <sat>0</sat>
-  <peakC>0.8</peakC>
-  <dropQ>0.025</dropQ>
-  <dropT>0.075</dropT>
-  <kickQ>1</kickQ>
-  <kickT>2.23622047244094</kickT>
-  <snareQ>1</snareQ>
-  <snareT>2.23622047244094</snareT>
-  <hueURL>http://192.168.1.26/api/161d04c425fa45e293386cf241a26bf/</hueURL>
-  <hueIndices>
-    <Int32>2</Int32>
-    <Int32>1</Int32>
-    <Int32>4</Int32>
-    <Int32>5</Int32>
-    <Int32>6</Int32>
-  </hueIndices>
   <vjHUDEnabled>true</vjHUDEnabled>
-  <midiDevices>
-    <Item>
-      <Key>0</Key>
-      <Value>0</Value>
-    </Item>
-  </midiDevices>
+  <midiDevices/>
   <midiPresets>
     <Item>
       <Key>0</Key>
@@ -535,9 +497,6 @@
       </LEDColor>
     </colors>
   </colorPalette>
-  <colorPaletteIndex>7</colorPaletteIndex>
   <flashSpeed>0</flashSpeed>
-  <hueOverrideIsCustom>false</hueOverrideIsCustom>
-  <hueOverrideIndex>0</hueOverrideIndex>
   <beatInput>0</beatInput>
 </SpectrumConfiguration>

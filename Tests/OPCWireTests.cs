@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Spectrum.Base;
 using Spectrum.LEDs;
 
@@ -51,6 +52,8 @@ namespace Spectrum.LayerPipeline.Tests {
       run("dome port permutation composes with cable mapping", PortMapping);
       run("dome default config exposes identity port mapping",
         DefaultPortMappingConfig);
+      run("default config has neutral hardware selections and no retired fields",
+        SanitizedDefaultConfig);
       run("dome port mappings round-trip without aliasing",
         PortMappingConfigurationContract);
       run("two-stage dome calibration owns and commits one atomic draft",
@@ -369,6 +372,61 @@ namespace Spectrum.LayerPipeline.Tests {
             mapping?.ports != null && mapping.ports.SequenceEqual(
               Enumerable.Range(0, PortsPerController))),
         "default config per-box mappings are missing or not identity");
+    }
+
+    private static void SanitizedDefaultConfig() {
+      string path = Path.Combine(
+        AppContext.BaseDirectory, "spectrum_default_config.xml");
+      XDocument document = XDocument.Load(path);
+      XElement root = document.Root ??
+        throw new Exception("default config has no root element");
+      var retiredElements = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
+        "audioDeviceIndex",
+        "huesEnabled",
+        "huesOutputInSeparateThread",
+        "hueDelay",
+        "hueIdleOnSilent",
+        "hueURL",
+        "hueIndices",
+        "hueOverrideIsCustom",
+        "hueOverrideIndex",
+        "lightsOff",
+        "redAlert",
+        "controlLights",
+        "brighten",
+        "colorslide",
+        "sat",
+        "peakC",
+        "dropQ",
+        "dropT",
+        "kickQ",
+        "kickT",
+        "snareQ",
+        "snareT",
+        "ledBoardEnabled",
+        "ledBoardOutputInSeparateThread",
+        "boardBeagleboneOPCAddress",
+        "boardRowLength",
+        "boardRowsPerStrip",
+        "boardBrightness",
+        "colorPaletteIndex",
+      };
+      string[] foundRetired = root.Elements()
+        .Select(element => element.Name.LocalName)
+        .Where(retiredElements.Contains)
+        .ToArray();
+      Assert(foundRetired.Length == 0,
+        "default config contains retired fields: " +
+        string.Join(", ", foundRetired));
+
+      using FileStream stream = File.OpenRead(path);
+      var config =
+        new XSerializer.XmlSerializer<global::Spectrum.SpectrumConfiguration>(
+        ).Deserialize(stream);
+      Assert(string.IsNullOrWhiteSpace(config.audioDeviceID),
+        "default config selects an audio device");
+      Assert(config.midiDevices != null && config.midiDevices.Count == 0,
+        "default config selects a MIDI device");
     }
 
     private static void PortMappingConfigurationContract() {
