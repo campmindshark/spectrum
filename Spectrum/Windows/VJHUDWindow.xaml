@@ -408,7 +408,7 @@
                                         <DockPanel LastChildFill="True">
                                             <Button DockPanel.Dock="Right" Content="Remove" Command="{Binding RemoveCommand}" MinWidth="58" ToolTip="Remove layer" />
                                             <CheckBox DockPanel.Dock="Right" Content="On" IsChecked="{Binding LayerEnabled}" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Enable this layer" />
-                                            <Button DockPanel.Dock="Right" Content="Clear" Command="{Binding ClearCommand}" MinWidth="50" ToolTip="Clear this layer's live particles" />
+                                            <Button DockPanel.Dock="Right" Content="{Binding ClearLabel}" Command="{Binding ClearCommand}" MinWidth="50" ToolTip="{Binding ClearToolTip}" />
                                             <Button DockPanel.Dock="Right" Content="{Binding FireLabel}" Command="{Binding FireCommand}" MinWidth="46" ToolTip="{Binding FireToolTip}" />
                                             <Button DockPanel.Dock="Right" Content="Back" Command="{Binding MoveDownCommand}" MinWidth="46" ToolTip="Move toward back" />
                                             <Button DockPanel.Dock="Right" Content="Front" Command="{Binding MoveUpCommand}" MinWidth="48" ToolTip="Move toward front" />

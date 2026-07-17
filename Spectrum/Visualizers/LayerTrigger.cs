@@ -46,6 +46,7 @@ namespace Spectrum.Visualizers {
     // counter rather than firing, so a manual counter already bumped in a
     // saved config doesn't fire the instant the layer is (re)constructed.
     private int lastManualCounter = -1;
+    private int lastClearCounter = -1;
     // Prior frame's ProgressThroughMeasure, so a beat boundary (the value
     // wrapping back down) is detectable. -1 = not yet baselined, same first-
     // frame no-fire idiom as lastManualCounter.
@@ -71,6 +72,20 @@ namespace Spectrum.Visualizers {
     // Manual + Button only (Wave/Metaball): no autonomous source.
     public bool Fired(int button) {
       return this.Fired(button, 0, 0, 0);
+    }
+
+    // True exactly once when this layer's clear generation changes. Astronomy
+    // uses the shared clear transport as Stop; particle layers may continue to
+    // handle the same generation directly for their clear behavior.
+    public bool Cleared() {
+      int counter = this.environment.ClearGeneration(this.instanceId);
+      if (this.lastClearCounter == -1) {
+        this.lastClearCounter = counter;
+        return false;
+      }
+      bool cleared = counter != this.lastClearCounter;
+      this.lastClearCounter = counter;
+      return cleared;
     }
 
     // True exactly on the frame the layer newly fires from any live source.

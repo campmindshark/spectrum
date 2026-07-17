@@ -51,6 +51,7 @@ namespace Spectrum {
     ) {
       this.descriptor = descriptor;
       this.value = value;
+      this.storedValue = value;
       this.IsOperationParameter = isOperationParameter;
     }
 
@@ -68,15 +69,19 @@ namespace Spectrum {
     public bool IsColor => this.descriptor.Type == DomeLayerParamType.Color;
     public bool IsDate => this.descriptor.Type == DomeLayerParamType.Date;
 
-    // The canonical stored value. The typed facets below are views onto it.
+    // Value is the live value shown by the editor. StoredValue remains the
+    // persisted setting while a runtime playback display advances Value.
     private double value;
+    private double storedValue;
+    internal double StoredValue => this.storedValue;
     public double Value {
       get => this.value;
       set {
-        if (this.value == value) {
+        if (this.value == value && this.storedValue == value) {
           return;
         }
         this.value = value;
+        this.storedValue = value;
         this.Raise(nameof(Value));
         this.Raise(nameof(BoolValue));
         this.Raise(nameof(IntValue));
@@ -84,6 +89,21 @@ namespace Spectrum {
         this.Raise(nameof(DateText));
         this.Changed?.Invoke();
       }
+    }
+
+    // Playback can move a displayed timeline without turning every animation
+    // tick into a persisted layer-stack edit. User edits still go through the
+    // Value setter above and raise Changed as usual.
+    internal void SetDisplayedValue(double value) {
+      if (this.value == value) {
+        return;
+      }
+      this.value = value;
+      this.Raise(nameof(Value));
+      this.Raise(nameof(BoolValue));
+      this.Raise(nameof(IntValue));
+      this.Raise(nameof(ColorValue));
+      this.Raise(nameof(DateText));
     }
 
     // CheckBox facet for Bool params.
@@ -222,6 +242,10 @@ namespace Spectrum {
           this, new PropertyChangedEventArgs(nameof(FireLabel)));
         this.PropertyChanged?.Invoke(
           this, new PropertyChangedEventArgs(nameof(FireToolTip)));
+        this.PropertyChanged?.Invoke(
+          this, new PropertyChangedEventArgs(nameof(ClearLabel)));
+        this.PropertyChanged?.Invoke(
+          this, new PropertyChangedEventArgs(nameof(ClearToolTip)));
         // The visualizer's param schema changed: rebuild to defaults, dropping
         // keys not in the new schema.
         this.RebuildParams(null, this.CurrentParamValues(true));
@@ -237,6 +261,11 @@ namespace Spectrum {
     public string FireToolTip => this.visualizerKey == "astronomy"
       ? "Play the one-week astronomy timeline"
       : "Fire manual trigger";
+    public string ClearLabel =>
+      this.visualizerKey == "astronomy" ? "Stop" : "Clear";
+    public string ClearToolTip => this.visualizerKey == "astronomy"
+      ? "Stop astronomy playback at the current time"
+      : "Clear this layer's live state";
 
     private string blendMode = DomeBlend.Default.Id;
     public string BlendMode {
@@ -310,7 +339,7 @@ namespace Spectrum {
       var values = new Dictionary<string, double>();
       foreach (LayerParamViewModel vm in this.Params) {
         if (vm.IsOperationParameter == operationParameters) {
-          values[vm.Key] = vm.Value;
+          values[vm.Key] = vm.StoredValue;
         }
       }
       return values;
@@ -324,6 +353,15 @@ namespace Spectrum {
       IDictionary<string, double> operationParams
     ) {
       this.RebuildParams(rendererParams, operationParams);
+    }
+
+    internal LayerParamViewModel FindParam(string key) {
+      foreach (LayerParamViewModel param in this.Params) {
+        if (!param.IsOperationParameter && param.Key == key) {
+          return param;
+        }
+      }
+      return null;
     }
 
     private double opacity = 1.0;

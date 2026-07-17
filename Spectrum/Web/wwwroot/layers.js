@@ -25,6 +25,11 @@
   let initialized = false;
   // Set while a PUT is in flight so we can ignore our own SSE echo cheaply.
   let pending = null;
+  // Astronomy playback is runtime state, not a persisted stack edit. Mirror
+  // its clock locally so the time slider and readout show the running position.
+  const astronomyPlayback = new Map();
+  const astronomyStoppedOffsets = new Map();
+  let astronomyPlaybackTimer = null;
 
   function sameStack(a, b) {
     return JSON.stringify(a) === JSON.stringify(b);
@@ -76,7 +81,140 @@
 
   function setParam(idx, descriptor, value) {
     bagFor(state.layers[idx], descriptor)[descriptor.key] = value;
+    rebaseAstronomyPlayback(state.layers[idx], descriptor.key, value);
     putLayers();
+  }
+
+  function rendererParamValue(layer, key) {
+    const descriptor = rendererSchemaFor(layer).find((p) => p.key === key);
+    const bag = layer.rendererParams || {};
+    return Object.prototype.hasOwnProperty.call(bag, key)
+      ? Number(bag[key])
+      : Number(descriptor ? descriptor.default : 0);
+  }
+
+  function astronomyOffset(playback, now, speed, loop) {
+    const elapsedSeconds = (now - playback.startedAt) / 1000;
+    const offset = playback.startOffset + elapsedSeconds * speed;
+    if (loop) return ((offset % 168) + 168) % 168;
+    return Math.min(offset, 168);
+  }
+
+  function currentAstronomyOffset(instanceId, now = performance.now()) {
+    const playback = astronomyPlayback.get(instanceId);
+    if (!playback) return null;
+    const layer = state.layers.find((candidate) =>
+      candidate.instanceId === instanceId);
+    if (!layer || layer.visualizerKey !== "astronomy") return null;
+    return astronomyOffset(
+      playback, now,
+      rendererParamValue(layer, "playbackSpeed"),
+      rendererParamValue(layer, "loop") !== 0);
+  }
+
+  function rebaseAstronomyPlayback(layer, key, value) {
+    if (layer.visualizerKey !== "astronomy") return;
+    if (key === "timeOffsetHours") {
+      astronomyStoppedOffsets.delete(layer.instanceId);
+    }
+    const playback = astronomyPlayback.get(layer.instanceId);
+    if (!playback) return;
+    const now = performance.now();
+    if (key === "timeOffsetHours") {
+      playback.startOffset = Number(value);
+      playback.configuredTimeOffset = Number(value);
+      playback.startedAt = now;
+      return;
+    }
+    if (key === "playbackSpeed" && Number(value) !== playback.speed) {
+      playback.startOffset = astronomyOffset(
+        playback, now, playback.speed,
+        rendererParamValue(layer, "loop") !== 0);
+      playback.startedAt = now;
+      playback.speed = Number(value);
+    }
+  }
+
+  function startAstronomyPlayback(instanceId) {
+    const layer = state.layers.find((candidate) =>
+      candidate.instanceId === instanceId);
+    if (!layer || layer.visualizerKey !== "astronomy") return;
+    const configuredTimeOffset = rendererParamValue(
+      layer, "timeOffsetHours");
+    const stopped = astronomyStoppedOffsets.get(instanceId);
+    const startOffset = stopped &&
+        stopped.configuredTimeOffset === configuredTimeOffset
+      ? stopped.offset
+      : configuredTimeOffset;
+    astronomyStoppedOffsets.delete(instanceId);
+    astronomyPlayback.set(instanceId, {
+      startOffset,
+      configuredTimeOffset,
+      startedAt: performance.now(),
+      speed: rendererParamValue(layer, "playbackSpeed"),
+    });
+    updateAstronomyPlayback();
+    if (astronomyPlaybackTimer == null) {
+      astronomyPlaybackTimer = setInterval(updateAstronomyPlayback, 100);
+    }
+  }
+
+  function updateAstronomyPlayback() {
+    const now = performance.now();
+    astronomyPlayback.forEach((playback, instanceId) => {
+      const layer = state.layers.find((candidate) =>
+        candidate.instanceId === instanceId);
+      if (!layer || layer.visualizerKey !== "astronomy") {
+        astronomyPlayback.delete(instanceId);
+        return;
+      }
+
+      const speed = rendererParamValue(layer, "playbackSpeed");
+      const loop = rendererParamValue(layer, "loop") !== 0;
+      const configuredTimeOffset = rendererParamValue(
+        layer, "timeOffsetHours");
+      if (configuredTimeOffset !== playback.configuredTimeOffset) {
+        playback.startOffset = configuredTimeOffset;
+        playback.configuredTimeOffset = configuredTimeOffset;
+        playback.startedAt = now;
+        playback.speed = speed;
+      } else if (speed !== playback.speed) {
+        playback.startOffset = astronomyOffset(
+          playback, now, playback.speed, loop);
+        playback.startedAt = now;
+        playback.speed = speed;
+      }
+      const offset = astronomyOffset(playback, now, speed, loop);
+      panel.querySelectorAll("[data-astronomy-time]").forEach((element) => {
+        if (element.dataset.astronomyTime !== instanceId) return;
+        if (element.matches("input")) element.value = offset;
+        else element.textContent = offset.toFixed(2);
+      });
+      if (!loop && offset >= 168) astronomyPlayback.delete(instanceId);
+    });
+    if (astronomyPlayback.size === 0 && astronomyPlaybackTimer != null) {
+      clearInterval(astronomyPlaybackTimer);
+      astronomyPlaybackTimer = null;
+    }
+  }
+
+  function stopAstronomyPlayback(instanceId) {
+    const offset = currentAstronomyOffset(instanceId);
+    const layer = state.layers.find((candidate) =>
+      candidate.instanceId === instanceId);
+    if (offset != null && layer) {
+      astronomyStoppedOffsets.set(instanceId, {
+        offset,
+        configuredTimeOffset: rendererParamValue(
+          layer, "timeOffsetHours"),
+      });
+    }
+    updateAstronomyPlayback();
+    astronomyPlayback.delete(instanceId);
+    if (astronomyPlayback.size === 0 && astronomyPlaybackTimer != null) {
+      clearInterval(astronomyPlaybackTimer);
+      astronomyPlaybackTimer = null;
+    }
   }
 
   function formatDateParam(value) {
@@ -134,29 +272,33 @@
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         setStatus(`${action}: ${body.error || res.status}`, true);
-        return;
+        return false;
       }
       setStatus(`${action === "play" ? "playing" : "fired"} ${key}`);
+      return true;
     } catch (e) {
       setStatus(`${action}: ${e}`, true);
+      return false;
     }
   }
 
   // Clear one layer's live state. Same shape as fireLayer, bumping the clear
   // counter instead — a layer holding accumulated particles (Shooting Star)
   // drops them; layers with no such state ignore it.
-  async function clearLayer(key) {
+  async function clearLayer(key, action = "clear") {
     try {
       const res = await fetch(
         `/api/layers/${encodeURIComponent(key)}/clear`, { method: "POST" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setStatus(`clear: ${body.error || res.status}`, true);
-        return;
+        setStatus(`${action}: ${body.error || res.status}`, true);
+        return false;
       }
-      setStatus(`cleared ${key}`);
+      setStatus(`${action === "stop" ? "stopped" : "cleared"} ${key}`);
+      return true;
     } catch (e) {
-      setStatus(`clear: ${e}`, true);
+      setStatus(`${action}: ${e}`, true);
+      return false;
     }
   }
 
@@ -304,18 +446,28 @@
       ? "Play the one-week astronomy timeline"
       : "Fire (manual trigger)";
     fire.setAttribute("aria-label", `${isAstronomy ? "Play" : "Fire"} ${visSel.selectedOptions[0]?.textContent || "layer"}`);
-    fire.addEventListener("click", () => {
-      fireLayer(layer.instanceId, isAstronomy ? "play" : "fire");
+    fire.addEventListener("click", async () => {
+      const fired = await fireLayer(
+        layer.instanceId, isAstronomy ? "play" : "fire");
+      if (fired && isAstronomy) {
+        startAstronomyPlayback(layer.instanceId);
+      }
     });
     bottom.appendChild(fire);
 
-    // Manual clear: drops the layer's live particles (see clearLayer).
+    // Astronomy repurposes the same per-layer clear edge as playback Stop.
     const clear = document.createElement("button");
-    clear.textContent = "Clear";
-    clear.title = "Clear (drop this layer's live particles)";
-    clear.setAttribute("aria-label", `Clear ${visSel.selectedOptions[0]?.textContent || "layer"}`);
-    clear.addEventListener("click", () => {
-      clearLayer(layer.instanceId);
+    clear.textContent = isAstronomy ? "Stop" : "Clear";
+    clear.title = isAstronomy
+      ? "Stop astronomy playback at the current time"
+      : "Clear (drop this layer's live particles)";
+    clear.setAttribute("aria-label", `${isAstronomy ? "Stop" : "Clear"} ${visSel.selectedOptions[0]?.textContent || "layer"}`);
+    clear.addEventListener("click", async () => {
+      const cleared = await clearLayer(
+        layer.instanceId, isAstronomy ? "stop" : "clear");
+      if (cleared && isAstronomy) {
+        stopAstronomyPlayback(layer.instanceId);
+      }
     });
     bottom.appendChild(clear);
 
@@ -410,12 +562,24 @@
       value.className = "param-value";
       value.textContent = Number(cur).toFixed(2);
       input.addEventListener("input", () => {
-        bagFor(state.layers[idx], p)[p.key] = parseFloat(input.value);
-        value.textContent = Number(input.value).toFixed(2);
+        const parsed = parseFloat(input.value);
+        bagFor(state.layers[idx], p)[p.key] = parsed;
+        rebaseAstronomyPlayback(state.layers[idx], p.key, parsed);
+        value.textContent = Number(parsed).toFixed(2);
       });
       input.addEventListener("change", () => {
         setParam(idx, p, parseFloat(input.value));
       });
+      if (layer.visualizerKey === "astronomy" &&
+          p.key === "timeOffsetHours") {
+        input.dataset.astronomyTime = layer.instanceId;
+        value.dataset.astronomyTime = layer.instanceId;
+        const playbackOffset = currentAstronomyOffset(layer.instanceId);
+        if (playbackOffset != null) {
+          input.value = playbackOffset;
+          value.textContent = playbackOffset.toFixed(2);
+        }
+      }
       wrap.appendChild(input);
       wrap.appendChild(value);
       return wrap;

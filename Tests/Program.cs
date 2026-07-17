@@ -38,6 +38,8 @@ namespace Spectrum.LayerPipeline.Tests {
         EarthTextureFollowsSpotlight);
       Run("astronomy options and north heading are deterministic",
         AstronomyOptionsAndHeading);
+      Run("astronomy playback display updates stay transient",
+        AstronomyPlaybackDisplayUpdatesStayTransient);
       Run("simulator real view foreshortens the dome from above",
         SimulatorTopDownProjection);
       Run("dome topology stores both projections and unit normals",
@@ -803,6 +805,7 @@ namespace Spectrum.LayerPipeline.Tests {
         ["startDate"] = 20260715,
         ["timeOffsetHours"] = 999,
         ["showDaytimeSky"] = 0,
+        ["showNighttimeSky"] = 0,
         ["playbackSpeed"] = 999,
         ["loop"] = 1,
       };
@@ -810,14 +813,26 @@ namespace Spectrum.LayerPipeline.Tests {
         BuiltInOptions<AstronomyLayerOptions>(layer);
       Assert(options.NorthHeading == 359 &&
         options.StartDate == 20260715 && options.TimeOffsetHours == 168 &&
-        !options.ShowDaytimeSky && options.PlaybackSpeed == 8 && options.Loop,
+        !options.ShowDaytimeSky && !options.ShowNighttimeSky &&
+        options.PlaybackSpeed == 8 && options.Loop,
         "astronomy controls were not clamped by their schema");
       AstronomyLayerOptions defaultOptions =
         BuiltInOptions<AstronomyLayerOptions>(
           Layer("astronomy", "default-astronomy"));
       Assert(defaultOptions.ShowDaytimeSky &&
+          defaultOptions.ShowNighttimeSky &&
           defaultOptions.PlaybackSpeed == 1,
         "astronomy controls did not preserve their default appearance");
+      var astronomyRow = new global::Spectrum.DomeLayerRowViewModel {
+        VisualizerKey = "astronomy",
+      };
+      Assert(astronomyRow.FireLabel == "Play" &&
+          astronomyRow.ClearLabel == "Stop",
+        "astronomy layer actions were not labeled Play and Stop");
+      astronomyRow.VisualizerKey = "earth";
+      Assert(astronomyRow.FireLabel == "Fire" &&
+          astronomyRow.ClearLabel == "Clear",
+        "non-astronomy layer actions did not retain Fire and Clear");
       Assert(DomeLayerDate.TryDecode(defaultOptions.StartDate, out _),
         "astronomy start date did not default to a valid local date");
       Assert(DomeLayerDate.TryParse("2026-07-15", out double encodedDate) &&
@@ -866,10 +881,63 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(LEDDomeAstronomyVisualizer.InterpolateColor(
           0x000000, 0xFFFFFF, 0.5) == 0x7F7F7F,
         "astronomy playback did not linearly interpolate keyframes");
-      Assert(LEDDomeAstronomyVisualizer.SkyColor(0, true) == 0x082040 &&
-          LEDDomeAstronomyVisualizer.SkyColor(0, false) == 0x000006 &&
-          LEDDomeAstronomyVisualizer.SkyColor(1, true) == 0x000006,
-        "astronomy daytime-sky toggle did not suppress the sky effect");
+      Assert(LEDDomeAstronomyVisualizer.SkyColor(
+            0, true, true) == 0x082040 &&
+          LEDDomeAstronomyVisualizer.SkyColor(
+            0, false, true) == 0x000000 &&
+          LEDDomeAstronomyVisualizer.SkyColor(
+            1, true, true) == 0x000006 &&
+          LEDDomeAstronomyVisualizer.SkyColor(
+            1, true, false) == 0x000000 &&
+          !LEDDomeAstronomyVisualizer.StarsVisible(1, false) &&
+          LEDDomeAstronomyVisualizer.StarsVisible(1, true),
+        "astronomy day/night sky toggles did not isolate their effects");
+
+      DomeLayerSettings playbackLayer = Layer(
+        "astronomy", "astronomy-playback-controls");
+      playbackLayer.RendererParams = new Dictionary<string, double> {
+        ["timeOffsetHours"] = 10,
+      };
+      var playbackConfig = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> { playbackLayer },
+      };
+      var playbackRuntime = new global::Spectrum.Operator(playbackConfig);
+      LEDDomeAstronomyVisualizer playbackVisualizer = null;
+      foreach (
+        Visualizer visualizer in playbackRuntime.DomeOutput.GetVisualizers()
+      ) {
+        if (visualizer is LEDDomeAstronomyVisualizer astronomy) {
+          playbackVisualizer = astronomy;
+          break;
+        }
+      }
+      Assert(playbackVisualizer != null,
+        "astronomy playback visualizer was not created");
+      playbackVisualizer.Visualize();
+      playbackConfig.domeLayerFireCounters = new Dictionary<string, int> {
+        [playbackLayer.InstanceId] = 1,
+      };
+      playbackVisualizer.Visualize();
+      Assert(playbackVisualizer.PlaybackActive,
+        "astronomy Play did not start playback");
+      System.Threading.Thread.Sleep(20);
+      playbackConfig.domeLayerClearCounters = new Dictionary<string, int> {
+        [playbackLayer.InstanceId] = 1,
+      };
+      playbackVisualizer.Visualize();
+      Assert(!playbackVisualizer.PlaybackActive,
+        "astronomy Stop did not halt playback");
+      double stoppedOffset = playbackVisualizer.PlaybackStartOffset;
+      Assert(stoppedOffset > 10.001,
+        "astronomy Stop did not retain the current playback offset");
+      playbackConfig.domeLayerFireCounters = new Dictionary<string, int> {
+        [playbackLayer.InstanceId] = 2,
+      };
+      playbackVisualizer.Visualize();
+      Assert(playbackVisualizer.PlaybackActive &&
+          Math.Abs(
+            playbackVisualizer.PlaybackStartOffset - stoppedOffset) < 1e-6,
+        "astronomy Play did not resume from the stopped offset");
 
       Vector3 northAtZero = AstronomySky.ToDome(Vector3.UnitY, 0);
       Vector3 eastAtZero = AstronomySky.ToDome(Vector3.UnitX, 0);
@@ -896,6 +964,37 @@ namespace Spectrum.LayerPipeline.Tests {
         Assert(Math.Abs(body.Equatorial.Length() - 1) < 1e-5,
           body.Name + " position was not normalized");
       }
+    }
+
+    private static void AstronomyPlaybackDisplayUpdatesStayTransient() {
+      var descriptor = new DomeLayerParam {
+        Key = "timeOffsetHours",
+        Label = "Time (hours from start)",
+        Type = DomeLayerParamType.Double,
+        Min = 0,
+        Max = 168,
+        Step = 1,
+        Default = 0,
+      };
+      var param = new global::Spectrum.LayerParamViewModel(
+        descriptor, 12, false);
+      int edits = 0;
+      bool valueChanged = false;
+      param.Changed += () => edits++;
+      param.PropertyChanged += (sender, e) => {
+        if (e.PropertyName == nameof(param.Value)) {
+          valueChanged = true;
+        }
+      };
+
+      param.SetDisplayedValue(13.5);
+      Assert(param.Value == 13.5 && param.StoredValue == 12 &&
+          edits == 0 && valueChanged,
+        "astronomy playback display persisted a timer tick");
+
+      param.Value = 14;
+      Assert(param.Value == 14 && param.StoredValue == 14 && edits == 1,
+        "astronomy time slider edit was not persisted");
     }
 
     private static void PlanFreezesRendererInputs() {
@@ -1891,12 +1990,19 @@ namespace Spectrum.LayerPipeline.Tests {
       global::Spectrum.Web.LayersController.ParamDto showDaytimeSky =
         astronomy?.@params.FirstOrDefault(
           p => p.key == "showDaytimeSky");
+      global::Spectrum.Web.LayersController.ParamDto showNighttimeSky =
+        astronomy?.@params.FirstOrDefault(
+          p => p.key == "showNighttimeSky");
       Assert(startDate != null && startDate.type == "Date" &&
           DomeLayerDate.TryDecode(startDate.@default, out _),
         "web astronomy start-date descriptor is incomplete");
       Assert(showDaytimeSky != null && showDaytimeSky.type == "Bool" &&
           showDaytimeSky.@default == 1,
         "web astronomy daytime-sky checkbox descriptor is incomplete");
+      Assert(showNighttimeSky != null &&
+          showNighttimeSky.type == "Bool" &&
+          showNighttimeSky.@default == 1,
+        "web astronomy nighttime-sky checkbox descriptor is incomplete");
     }
 
     private static CompiledLayer Compiled(

@@ -50,6 +50,7 @@ namespace Spectrum.Visualizers {
     private double configuredPlaybackSpeed = double.NaN;
     private double playbackStartOffset;
     private bool playbackActive;
+    private bool resumeFromStoppedOffset;
     private DateTime playbackAnchorUtc;
     private long interpolationSegment = long.MinValue;
     private AstronomyLayerOptions interpolationOptions;
@@ -75,6 +76,8 @@ namespace Spectrum.Visualizers {
     public string LayerKey => "astronomy";
     public DomeFrame LayerBuffer => this.buffer;
     public bool Enabled { get; set; }
+    internal bool PlaybackActive => this.playbackActive;
+    internal double PlaybackStartOffset => this.playbackStartOffset;
 
     private Input[] inputs;
     public Input[] GetInputs() {
@@ -85,6 +88,7 @@ namespace Spectrum.Visualizers {
       AstronomyLayerOptions options =
         this.runtime.GetOptions<AstronomyLayerOptions>();
       DateTime utc = DateTime.UtcNow;
+      bool stopRequested = this.playTrigger.Cleared();
 
       bool startDateChanged = options.StartDate != this.configuredStartDate;
       bool sliderChanged = options.TimeOffsetHours != this.configuredTimeOffset;
@@ -93,6 +97,7 @@ namespace Spectrum.Visualizers {
         this.configuredStartDate = options.StartDate;
         this.configuredTimeOffset = options.TimeOffsetHours;
         this.playbackStartOffset = options.TimeOffsetHours;
+        this.resumeFromStoppedOffset = false;
         if (this.playbackActive) {
           this.RestartPlaybackClock(utc);
         }
@@ -112,6 +117,7 @@ namespace Spectrum.Visualizers {
             options.Loop,
             out bool completedAtOldSpeed);
           this.playbackActive = !completedAtOldSpeed;
+          this.resumeFromStoppedOffset = false;
           if (this.playbackActive) {
             this.RestartPlaybackClock(utc);
           } else {
@@ -124,10 +130,14 @@ namespace Spectrum.Visualizers {
 
       bool playRequested = this.playTrigger.Fired(0);
       if (playRequested) {
-        // Play always starts from the slider's selected position. Pressing Play
-        // again while already running is therefore a deterministic restart.
-        this.playbackStartOffset = options.TimeOffsetHours;
+        // A stopped run resumes exactly where Stop froze it. Otherwise Play
+        // starts from the slider's selected position, so pressing it during an
+        // active run remains a deterministic restart.
+        if (!this.resumeFromStoppedOffset) {
+          this.playbackStartOffset = options.TimeOffsetHours;
+        }
         this.playbackActive = true;
+        this.resumeFromStoppedOffset = false;
         this.RestartPlaybackClock(utc);
       }
 
@@ -143,7 +153,15 @@ namespace Spectrum.Visualizers {
           this.playbackActive = false;
           this.playbackClock.Stop();
           this.playbackStartOffset = effectiveOffset;
+          this.resumeFromStoppedOffset = false;
         }
+      }
+      if (stopRequested && this.playbackActive) {
+        this.playbackActive = false;
+        this.playbackClock.Stop();
+        this.playbackStartOffset = effectiveOffset;
+        this.resumeFromStoppedOffset = true;
+        this.interpolationSegment = long.MinValue;
       }
 
       if (this.playbackActive &&
@@ -161,7 +179,8 @@ namespace Spectrum.Visualizers {
       long renderBucket = utc.Ticks / bucketSize;
       if (renderBucket == this.lastRenderBucket &&
           options == this.lastOptions &&
-          !playRequested && !timelineChanged && !speedChanged) {
+          !playRequested && !stopRequested &&
+          !timelineChanged && !speedChanged) {
         return;
       }
       this.lastRenderBucket = renderBucket;
@@ -255,7 +274,8 @@ namespace Spectrum.Visualizers {
       // Civil/nautical twilight crossfade: stars reach full strength once the
       // Sun is roughly twelve degrees below the horizon.
       double night = Clamp((-sunLocal.Z - 0.04) / 0.18, 0, 1);
-      int skyColor = SkyColor(night, options.ShowDaytimeSky);
+      int skyColor = SkyColor(
+        night, options.ShowDaytimeSky, options.ShowNighttimeSky);
       for (int i = 0; i < target.pixels.Length; i++) {
         target.pixels[i].color = skyColor;
       }
@@ -263,7 +283,7 @@ namespace Spectrum.Visualizers {
       // Stars remain tied to the celestial sphere and therefore share the same
       // sidereal rotation, observer transform, and heading calibration as the
       // Solar System bodies.
-      if (night > 0.01) {
+      if (StarsVisible(night, options.ShowNighttimeSky)) {
         foreach (AstronomyStar star in AstronomySky.Stars) {
           Vector3 local = AstronomySky.ToBlackRockHorizontal(
             star.Equatorial, julianDay);
@@ -327,10 +347,16 @@ namespace Spectrum.Visualizers {
       int start, int end, double amount
     ) => MixColor(start, end, amount);
 
-    internal static int SkyColor(double night, bool showDaytimeSky) =>
-      showDaytimeSky
-        ? MixColor(DaySkyColor, NightSkyColor, night)
-        : NightSkyColor;
+    internal static int SkyColor(
+      double night, bool showDaytimeSky, bool showNighttimeSky
+    ) => MixColor(
+      showDaytimeSky ? DaySkyColor : 0,
+      showNighttimeSky ? NightSkyColor : 0,
+      night);
+
+    internal static bool StarsVisible(
+      double night, bool showNighttimeSky
+    ) => showNighttimeSky && night > 0.01;
 
     private void PaintSoftDisc(
       DomeFrame target,

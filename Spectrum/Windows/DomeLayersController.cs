@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Threading;
 using Spectrum.Base;
+using Spectrum.Visualizers;
 
 namespace Spectrum {
 
@@ -33,12 +35,39 @@ namespace Spectrum {
     // UI-only disclosure state, retained when a web edit or scene load rebuilds
     // the row view models. Stable layer IDs make the preference reorder-safe.
     private readonly Dictionary<string, bool> expandedByInstanceId = new();
+    private readonly Dictionary<string, AstronomyPlaybackDisplay>
+      astronomyPlaybackByInstanceId = new();
+    private readonly Dictionary<string, AstronomyStoppedDisplay>
+      astronomyStoppedByInstanceId = new();
+    private Dictionary<string, int> observedFireGenerations;
+    private Dictionary<string, int> observedClearGenerations;
+    private readonly DispatcherTimer astronomyPlaybackTimer;
+
+    private sealed class AstronomyPlaybackDisplay {
+      public double StartOffset;
+      public double ConfiguredTimeOffset;
+      public double Speed;
+      public long StartedAt;
+    }
+
+    private sealed class AstronomyStoppedDisplay {
+      public double Offset;
+      public double ConfiguredTimeOffset;
+    }
 
     public DomeLayersController(
       Configuration config, ItemsControl itemsControl, ButtonBase addButton
     ) {
       this.config = config;
       this.dispatcher = itemsControl.Dispatcher;
+      this.observedFireGenerations = new Dictionary<string, int>(
+        this.config.domeLayerFireCounters ?? new Dictionary<string, int>());
+      this.observedClearGenerations = new Dictionary<string, int>(
+        this.config.domeLayerClearCounters ?? new Dictionary<string, int>());
+      this.astronomyPlaybackTimer = new DispatcherTimer {
+        Interval = TimeSpan.FromMilliseconds(100),
+      };
+      this.astronomyPlaybackTimer.Tick += this.AdvanceAstronomyPlayback;
       itemsControl.ItemsSource = this.Rows;
       addButton.Click += (s, e) => this.AddLayer();
       this.config.PropertyChanged += this.OnConfigChanged;
@@ -46,6 +75,16 @@ namespace Spectrum {
     }
 
     private void OnConfigChanged(object sender, PropertyChangedEventArgs e) {
+      if (e.PropertyName == "domeLayerFireCounters") {
+        this.dispatcher.BeginInvoke(
+          new Action(this.StartNewAstronomyPlaybackDisplays));
+        return;
+      }
+      if (e.PropertyName == "domeLayerClearCounters") {
+        this.dispatcher.BeginInvoke(
+          new Action(this.StopNewAstronomyPlaybackDisplays));
+        return;
+      }
       if (e.PropertyName != "domeLayerStack") {
         return;
       }
@@ -75,6 +114,10 @@ namespace Spectrum {
         }
       }
       this.rebuilding = false;
+      this.RestoreStoppedAstronomyDisplays();
+      if (this.astronomyPlaybackByInstanceId.Count > 0) {
+        this.AdvanceAstronomyPlayback(null, EventArgs.Empty);
+      }
     }
 
     private DomeLayerRowViewModel MakeRow(DomeLayerSettings settings) {
@@ -157,6 +200,185 @@ namespace Spectrum {
       this.config.domeLayerFireCounters = counters;
     }
 
+    // A fire-generation change may originate from either native window or the
+    // web console. Every open native layer panel mirrors an Astronomy Play edge
+    // into its own UI without persisting each timer tick.
+    private void StartNewAstronomyPlaybackDisplays() {
+      Dictionary<string, int> current = new Dictionary<string, int>(
+        this.config.domeLayerFireCounters ?? new Dictionary<string, int>());
+      foreach (DomeLayerRowViewModel row in this.Rows) {
+        if (row.VisualizerKey != "astronomy" || row.InstanceId == null) {
+          continue;
+        }
+        current.TryGetValue(row.InstanceId, out int generation);
+        this.observedFireGenerations.TryGetValue(
+          row.InstanceId, out int observedGeneration);
+        if (generation > observedGeneration) {
+          this.StartAstronomyPlaybackDisplay(row);
+        }
+      }
+      this.observedFireGenerations = current;
+    }
+
+    private void StopNewAstronomyPlaybackDisplays() {
+      Dictionary<string, int> current = new Dictionary<string, int>(
+        this.config.domeLayerClearCounters ?? new Dictionary<string, int>());
+      foreach (DomeLayerRowViewModel row in this.Rows) {
+        if (row.VisualizerKey != "astronomy" || row.InstanceId == null) {
+          continue;
+        }
+        current.TryGetValue(row.InstanceId, out int generation);
+        this.observedClearGenerations.TryGetValue(
+          row.InstanceId, out int observedGeneration);
+        if (generation > observedGeneration) {
+          this.StopAstronomyPlaybackDisplay(row.InstanceId);
+        }
+      }
+      this.observedClearGenerations = current;
+    }
+
+    private void StartAstronomyPlaybackDisplay(
+      DomeLayerRowViewModel row
+    ) {
+      LayerParamViewModel time = row.FindParam("timeOffsetHours");
+      LayerParamViewModel speed = row.FindParam("playbackSpeed");
+      if (time == null || speed == null) {
+        return;
+      }
+      double startOffset = time.StoredValue;
+      if (this.astronomyStoppedByInstanceId.TryGetValue(
+            row.InstanceId, out AstronomyStoppedDisplay stopped) &&
+          Math.Abs(
+            stopped.ConfiguredTimeOffset - time.StoredValue) <= 1e-6) {
+        startOffset = stopped.Offset;
+      }
+      this.astronomyStoppedByInstanceId.Remove(row.InstanceId);
+      this.astronomyPlaybackByInstanceId[row.InstanceId] =
+        new AstronomyPlaybackDisplay {
+          StartOffset = startOffset,
+          ConfiguredTimeOffset = time.StoredValue,
+          Speed = speed.Value,
+          StartedAt = Stopwatch.GetTimestamp(),
+        };
+      time.SetDisplayedValue(startOffset);
+      if (!this.astronomyPlaybackTimer.IsEnabled) {
+        this.astronomyPlaybackTimer.Start();
+      }
+    }
+
+    private void AdvanceAstronomyPlayback(object sender, EventArgs e) {
+      long now = Stopwatch.GetTimestamp();
+      var completedIds = new List<string>();
+      foreach (
+        KeyValuePair<string, AstronomyPlaybackDisplay> item
+        in this.astronomyPlaybackByInstanceId
+      ) {
+        DomeLayerRowViewModel row = this.FindRow(item.Key);
+        LayerParamViewModel time = row?.FindParam("timeOffsetHours");
+        LayerParamViewModel speed = row?.FindParam("playbackSpeed");
+        LayerParamViewModel loop = row?.FindParam("loop");
+        if (row?.VisualizerKey != "astronomy" || time == null ||
+            speed == null || loop == null) {
+          completedIds.Add(item.Key);
+          continue;
+        }
+
+        AstronomyPlaybackDisplay playback = item.Value;
+        bool timeWasEdited = Math.Abs(
+          time.StoredValue - playback.ConfiguredTimeOffset) > 1e-6;
+        if (timeWasEdited) {
+          playback.StartOffset = time.StoredValue;
+          playback.ConfiguredTimeOffset = time.StoredValue;
+          playback.StartedAt = now;
+        } else if (speed.Value != playback.Speed) {
+          double oldElapsed = ElapsedSeconds(playback.StartedAt, now);
+          playback.StartOffset =
+            LEDDomeAstronomyVisualizer.PlaybackOffset(
+              playback.StartOffset, oldElapsed, playback.Speed,
+              loop.BoolValue, out bool completedAtOldSpeed);
+          playback.StartedAt = now;
+          if (completedAtOldSpeed) {
+            time.SetDisplayedValue(playback.StartOffset);
+            completedIds.Add(item.Key);
+            continue;
+          }
+        }
+        playback.Speed = speed.Value;
+
+        double offset = LEDDomeAstronomyVisualizer.PlaybackOffset(
+          playback.StartOffset,
+          ElapsedSeconds(playback.StartedAt, now),
+          playback.Speed,
+          loop.BoolValue,
+          out bool completed);
+        time.SetDisplayedValue(offset);
+        if (completed) {
+          completedIds.Add(item.Key);
+        }
+      }
+
+      foreach (string instanceId in completedIds) {
+        this.astronomyPlaybackByInstanceId.Remove(instanceId);
+      }
+      if (this.astronomyPlaybackByInstanceId.Count == 0) {
+        this.astronomyPlaybackTimer.Stop();
+      }
+    }
+
+    private void StopAstronomyPlaybackDisplay(string instanceId) {
+      if (!this.astronomyPlaybackByInstanceId.ContainsKey(instanceId)) {
+        return;
+      }
+      this.AdvanceAstronomyPlayback(null, EventArgs.Empty);
+      DomeLayerRowViewModel row = this.FindRow(instanceId);
+      LayerParamViewModel time = row?.FindParam("timeOffsetHours");
+      if (this.astronomyPlaybackByInstanceId.ContainsKey(instanceId) &&
+          time != null) {
+        this.astronomyStoppedByInstanceId[instanceId] =
+          new AstronomyStoppedDisplay {
+            Offset = time.Value,
+            ConfiguredTimeOffset = time.StoredValue,
+          };
+      }
+      this.astronomyPlaybackByInstanceId.Remove(instanceId);
+      if (this.astronomyPlaybackByInstanceId.Count == 0) {
+        this.astronomyPlaybackTimer.Stop();
+      }
+    }
+
+    private void RestoreStoppedAstronomyDisplays() {
+      var invalidIds = new List<string>();
+      foreach (
+        KeyValuePair<string, AstronomyStoppedDisplay> item
+        in this.astronomyStoppedByInstanceId
+      ) {
+        DomeLayerRowViewModel row = this.FindRow(item.Key);
+        LayerParamViewModel time = row?.FindParam("timeOffsetHours");
+        if (row?.VisualizerKey != "astronomy" || time == null ||
+            Math.Abs(
+              time.StoredValue - item.Value.ConfiguredTimeOffset) > 1e-6) {
+          invalidIds.Add(item.Key);
+          continue;
+        }
+        time.SetDisplayedValue(item.Value.Offset);
+      }
+      foreach (string instanceId in invalidIds) {
+        this.astronomyStoppedByInstanceId.Remove(instanceId);
+      }
+    }
+
+    private DomeLayerRowViewModel FindRow(string instanceId) {
+      foreach (DomeLayerRowViewModel row in this.Rows) {
+        if (row.InstanceId == instanceId) {
+          return row;
+        }
+      }
+      return null;
+    }
+
+    private static double ElapsedSeconds(long startedAt, long now) =>
+      (now - startedAt) / (double)Stopwatch.Frequency;
+
     // Bump this row's manual-clear counter, exactly like FireRow. A layer that
     // holds accumulated live state (Shooting Star) edge-detects the bump and
     // drops it; layers with no such state ignore it (harmless no-op).
@@ -193,7 +415,7 @@ namespace Spectrum {
             } else {
               target = rendererParams ??= new Dictionary<string, double>();
             }
-            target[p.Key] = p.Value;
+            target[p.Key] = p.StoredValue;
           }
         }
         stack.Add(new DomeLayerSettings {
