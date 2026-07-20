@@ -133,9 +133,9 @@ namespace Spectrum {
     public string LayerKey => "volume";
     public DomeFrame LayerBuffer => this.buffer;
 
-    // Which palette bank this layer draws from, resolved once per frame in
+    // Which named palette this layer draws from, resolved once per frame in
     // Visualize() and read by the ColorFrom* helpers.
-    private int paletteBank = 0;
+    private int selectedPalette = 0;
 
     private bool enabled = false;
     public bool Enabled {
@@ -177,7 +177,7 @@ namespace Spectrum {
       int newAnimationSize = options.AnimationSize;
       double rotationSpeed = options.RotationSpeed;
       double gradientSpeed = options.GradientSpeed;
-      this.paletteBank = options.Palette;
+      this.selectedPalette = options.Palette;
 
       this.UpdateCenter(rotationSpeed);
       this.UpdateAnimationSize(newAnimationSize);
@@ -323,7 +323,7 @@ namespace Spectrum {
         pixelPos,
         gradientFocus,
         true,
-        this.paletteBank
+        this.selectedPalette
       );
     }
 
@@ -345,7 +345,7 @@ namespace Spectrum {
         pixelPos,
         gradientFocus,
         true,
-        this.paletteBank
+        this.selectedPalette
       );
     }
 
@@ -389,7 +389,7 @@ namespace Spectrum {
         pixelPos,
         gradientFocus,
         true,
-        this.paletteBank
+        this.selectedPalette
       );
     }
 

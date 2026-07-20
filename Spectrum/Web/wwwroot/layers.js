@@ -16,7 +16,8 @@
   const setStatus = window.spectrumStatus || function () {};
 
   // state.layers is in stack order (index 0 = background). The visualizer and
-  // operation descriptors come from the initial GET and don't change.
+  // operation descriptors come from the initial GET. Palette option labels are
+  // refreshed when the ordered named-palette list changes.
   const state = {
     layers: [],
     visualizers: [],
@@ -25,6 +26,7 @@
   let initialized = false;
   // Set while a PUT is in flight so we can ignore our own SSE echo cheaply.
   let pending = null;
+  let paletteOptionsChanged = false;
   // Astronomy playback is runtime state, not a persisted stack edit. Mirror
   // its clock locally so the time slider and readout show the running position.
   const astronomyPlayback = new Map();
@@ -732,6 +734,25 @@
     render();
   }
 
+  function applyPaletteOptions(names) {
+    state.visualizers.forEach((visualizer) => {
+      (visualizer.params || []).forEach((descriptor) => {
+        if (descriptor.key === "palette") descriptor.options = names || [];
+      });
+    });
+    state.operations.forEach((operation) => {
+      (operation.params || []).forEach((descriptor) => {
+        if (descriptor.key === "palette") descriptor.options = names || [];
+      });
+    });
+    if (!initialized) return;
+    if (panel.contains(document.activeElement)) {
+      paletteOptionsChanged = true;
+      return;
+    }
+    render();
+  }
+
   panel.addEventListener("focusout", () => {
     // A moment after focus leaves a control, apply any stack a remote client
     // pushed while we were editing.
@@ -739,6 +760,9 @@
       if (pending && !panel.contains(document.activeElement)) {
         state.layers = pending;
         pending = null;
+        render();
+      } else if (paletteOptionsChanged && !panel.contains(document.activeElement)) {
+        paletteOptionsChanged = false;
         render();
       }
     }, 0);
@@ -764,4 +788,5 @@
 
   window.spectrumLayersInit = init;
   window.spectrumApplyLayers = applyLayers;
+  window.spectrumApplyPaletteOptions = applyPaletteOptions;
 })();

@@ -91,12 +91,10 @@ namespace Spectrum.Base {
     // migration needed.
     List<DomeScene> domeScenes { get; set; }
 
-    // Named snapshots of one palette bank (eight gradient pairs), saved/recalled
-    // by the VJ independently of scenes. Bank-agnostic: Save snapshots the bank
-    // currently selected in the palette editor and Apply loads into it. See
-    // DomePalette and PaletteService. Null by default, following the same
-    // null-by-default XSerializer rule as domeScenes / domeLayerStack: a non-null
-    // initializer double-adds entries on deserialize.
+    // Ordered named palettes. These are the live color sources: a layer's
+    // "palette" parameter indexes this list directly, and editing a DomePalette
+    // changes every layer that selects it. Current configuration files always
+    // contain at least one palette.
     List<DomePalette> domePalettes { get; set; }
 
     // maps from device ID to preset ID
@@ -108,14 +106,6 @@ namespace Spectrum.Base {
     Dictionary<int, string> channelToAudioLevelDriverPreset { get; set; }
     Dictionary<int, string> channelToMidiLevelDriverPreset { get; set; }
 
-    // 64 slots = 8 palette banks of 8 gradient pairs. Each palette-consuming
-    // dome layer picks its bank via its "palette" param (DomeLayerSettings);
-    // the editor edits one bank at a time.
-    LEDColorPalette colorPalette { get; set; }
-    // Vestigial: the old global bank selector. No longer read or written (bank
-    // selection is per-layer now); kept only so old config files still
-    // deserialize without error.
-    int colorPaletteIndex { get; set; }
     double flashSpeed { get; set; }
 
     // 0 = human, 1 = Madmom, 2 = Pro DJ Link

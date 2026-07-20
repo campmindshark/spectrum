@@ -9,7 +9,7 @@ namespace Spectrum.Base {
     public int indexRangeStart { get; set; }
 
     public AdsrLevelDriverMidiBindingConfig() {
-      this.BindingType = 5;
+      this.BindingType = 4;
     }
 
     public override object Clone() {

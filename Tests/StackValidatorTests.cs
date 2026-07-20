@@ -90,8 +90,13 @@ namespace Spectrum.LayerPipeline.Tests {
         domeLayerStack = liveStack,
         domeGlobalFadeSpeed = 0.25,
         domeGlobalHueSpeed = 0.5,
+        domePalettes = new List<DomePalette> {
+          new DomePalette {
+            Name = "Live",
+            Colors = new[] { new LEDColor(0x112233) },
+          },
+        },
       };
-      config.colorPalette.SetColor(0, 0x112233);
 
       DomeLayerSettings incompleteFirstLayer = ValidLayer(null);
       DomeLayerSettings invalidSecondLayer = ValidLayer("invalid");
@@ -105,7 +110,6 @@ namespace Spectrum.LayerPipeline.Tests {
           },
           GlobalFadeSpeed = 0.75,
           GlobalHueSpeed = 1.5,
-          Palette = new[] { new LEDColor(0xFFFFFF) },
         },
       };
 
@@ -118,7 +122,7 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(config.domeGlobalFadeSpeed == 0.25 &&
         config.domeGlobalHueSpeed == 0.5,
         "invalid scene partially replaced global settings");
-      Assert(config.colorPalette.GetSingleColor(0) == 0x112233,
+      Assert(config.domePalettes[0].GetSingleColor(0) == 0x112233,
         "invalid scene partially replaced the palette");
       Assert(incompleteFirstLayer.InstanceId == null,
         "failed validation mutated an earlier scene layer");

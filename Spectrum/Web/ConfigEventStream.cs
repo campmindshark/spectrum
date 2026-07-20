@@ -128,6 +128,8 @@ namespace Spectrum.Web {
       // Likewise seed the saved-scene list so the scenes dropdown is correct
       // immediately.
       frames.Add(Frame("scenes", "scenes", SceneNames(this.config)));
+      frames.Add(Frame(
+        "palettes", "palettes", PaletteController.BuildPalettes(this.config)));
       return frames;
     }
 
@@ -161,24 +163,13 @@ namespace Spectrum.Web {
         this.Fan(Frame("scenes", "scenes", SceneNames(this.config)), null);
         return;
       }
-      // The saved palette-preset list, exactly parallel to scenes — its frame
-      // carries each preset's name and colors so every client's list (with
-      // previews) stays in sync.
-      if (e.PropertyName == nameof(this.config.domePalettes)) {
+      // Named palettes are live compound state. List mutations and in-place
+      // native color edits both publish the full ordered list so every editor
+      // and layer palette dropdown converges.
+      if (e.PropertyName == nameof(this.config.domePalettes) ||
+          e.PropertyName.StartsWith("domePalettes.")) {
         this.Fan(
-          Frame("palettes", "palettes", PaletteController.BuildPresets(this.config)),
-          null);
-        return;
-      }
-      // The palette (all eight banks, colorPalette's 64 slots) is compound state
-      // under colorPalette; SpectrumConfiguration re-raises the palette's own
-      // change as "colorPalette" (full swap) or "colorPalette.Item[]" (a slot
-      // edit). Either way, rebroadcast every bank so clients viewing different
-      // banks all converge. Not role-gated.
-      if (e.PropertyName == nameof(this.config.colorPalette) ||
-          e.PropertyName.StartsWith("colorPalette.")) {
-        this.Fan(
-          Frame("palette", "palette", PaletteController.BuildAllBanks(this.config)),
+          Frame("palettes", "palettes", PaletteController.BuildPalettes(this.config)),
           null);
       }
     }

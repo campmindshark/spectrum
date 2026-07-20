@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using Spectrum.Base;
 
 namespace Spectrum.LayerPipeline.Tests {
@@ -8,100 +7,97 @@ namespace Spectrum.LayerPipeline.Tests {
   internal static class PaletteServiceTests {
 
     public static void Register(Action<string, Action> run) {
-      run("palette presets are bank-local value snapshots", PresetSnapshots);
-      run("scene recall restores its captured palette", ScenePaletteRecall);
+      run("named live palettes preserve layer references", PaletteMutations);
+      run("scene recall does not overwrite live palettes", ScenePaletteOwnership);
     }
 
-    private static void PresetSnapshots() {
-      var config = new global::Spectrum.SpectrumConfiguration();
-      int bank = 2;
-      int first = bank * PaletteService.LiveSlots;
-      config.colorPalette.SetColor(0, 0x010203);
-      config.colorPalette.SetGradientColor(first, 0x112233, 0x445566);
-      config.colorPalette.SetColor(first + 1, 0x778899);
-      LEDColor originalLiveColor = config.colorPalette.colors[first];
-
-      var palettes = new PaletteService(config);
-      (bool saved, string saveError) = palettes.Save("  Aurora  ", bank);
-      Assert(saved, saveError);
-      Assert(config.domePalettes.Count == 1 &&
-        config.domePalettes[0].Name == "Aurora",
-        "palette name was not normalized");
-      DomePalette stored = config.domePalettes[0];
-      Assert(!ReferenceEquals(originalLiveColor, stored.Colors[0]),
-        "saved palette aliases the live color");
-
-      originalLiveColor.color1 = 0xFFFFFF;
-      originalLiveColor.color2 = 0;
-      config.colorPalette.SetColor(first + 1, 0x000000);
-      config.colorPalette.SetColor(first + 2, 0xABCDEF);
-      AssertColor(stored.Colors[0], 0x112233, 0x445566,
-        "saved gradient changed with the live palette");
-
-      int notifications = 0;
-      string notificationName = null;
-      config.colorPalette.PropertyChanged +=
-        (object sender, PropertyChangedEventArgs e) => {
-          notifications++;
-          notificationName = e.PropertyName;
-        };
-      (bool applied, string applyError) = palettes.Apply("aurora", bank);
-      Assert(applied, applyError);
-
-      AssertColor(config.colorPalette.colors[first], 0x112233, 0x445566,
-        "stored gradient was not restored");
-      AssertColor(config.colorPalette.colors[first + 1], 0x778899, null,
-        "stored solid color was not restored");
-      Assert(config.colorPalette.colors[first + 2] == null,
-        "stored empty slot did not clear the live slot");
-      Assert(config.colorPalette.GetSingleColor(0) == 0x010203,
-        "recalling bank 2 changed bank 0");
-      Assert(notifications == 1 && notificationName == "Item[]",
-        "palette recall was not published as one atomic change");
-      Assert(!ReferenceEquals(
-          config.colorPalette.colors[first], stored.Colors[0]),
-        "recalled palette aliases its stored preset");
-
-      config.colorPalette.colors[first].color1 = 0;
-      Assert(stored.Colors[0].Color1 == 0x112233,
-        "editing a recalled color mutated its preset");
-    }
-
-    private static void ScenePaletteRecall() {
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings>(),
+    private static void PaletteMutations() {
+      var config = DirectConfig(
+        Palette("Warm", 0xAA1100),
+        Palette("Cool", 0x0011AA),
+        Palette("Mono", 0x777777));
+      config.domeLayerStack = new List<DomeLayerSettings> {
+        LayerWithPalette("warm", 0),
+        LayerWithPalette("cool", 1),
+        LayerWithPalette("mono", 2),
       };
-      config.colorPalette.SetGradientColor(0, 0x102030, 0xA0B0C0);
-
-      var scenes = new SceneService(config);
-      (bool saved, string saveError) = scenes.Save("Blue hour");
-      Assert(saved, saveError);
-      DomeScene stored = config.domeScenes[0];
-      LEDColor storedColor = stored.Palette[0];
-      Assert(!ReferenceEquals(storedColor, config.colorPalette.colors[0]),
-        "scene palette aliases the live palette");
-
-      config.colorPalette.SetColor(0, 0xFFFFFF);
-      (bool applied, string applyError) = scenes.Apply("blue HOUR");
-      Assert(applied, applyError);
-      AssertColor(config.colorPalette.colors[0], 0x102030, 0xA0B0C0,
-        "scene did not restore its captured palette");
-      Assert(!ReferenceEquals(storedColor, config.colorPalette.colors[0]),
-        "recalled scene aliases its stored palette");
-
       config.domeScenes = new List<DomeScene> {
         new DomeScene {
-          Name = "Legacy",
-          Layers = new List<DomeLayerSettings>(),
-          Palette = null,
+          Name = "Look",
+          Layers = new List<DomeLayerSettings> {
+            LayerWithPalette("saved-cool", 1),
+            LayerWithPalette("saved-mono", 2),
+          },
         },
       };
-      config.colorPalette.SetColor(0, 0x13579B);
-      (bool legacyApplied, string legacyError) = scenes.Apply("Legacy");
-      Assert(legacyApplied, legacyError);
-      Assert(config.colorPalette.GetSingleColor(0) == 0x13579B,
-        "legacy scene without a palette erased live colors");
+      var service = new PaletteService(config);
+
+      (bool added, string addError) = service.Add(
+        "Warm variation", config.domePalettes[0].Colors);
+      Assert(added, addError);
+      Assert(config.domePalettes.Count == 4 &&
+          config.domePalettes[3].Name == "Warm variation",
+        "palette copy was not appended");
+      Assert(!ReferenceEquals(
+          config.domePalettes[0].Colors[0], config.domePalettes[3].Colors[0]),
+        "palette copy aliases its source colors");
+
+      (bool renamed, string renameError) = service.Rename("Cool", "Ocean");
+      Assert(renamed, renameError);
+      Assert(config.domePalettes[1].Name == "Ocean",
+        "palette was not renamed in place");
+
+      (bool deleted, string deleteError) = service.Delete("Ocean");
+      Assert(deleted, deleteError);
+      Assert(config.domePalettes.Count == 3 &&
+          config.domePalettes[1].Name == "Mono",
+        "deleted palette remained in the ordered list");
+      Assert(config.domeLayerStack[0].RendererParams["palette"] == 0 &&
+          config.domeLayerStack[1].RendererParams["palette"] == 0 &&
+          config.domeLayerStack[2].RendererParams["palette"] == 1,
+        "live layer palette references were not remapped on delete");
+      Assert(config.domeScenes[0].Layers[0].RendererParams["palette"] == 0 &&
+          config.domeScenes[0].Layers[1].RendererParams["palette"] == 1,
+        "saved scene palette references were not remapped on delete");
     }
+
+    private static void ScenePaletteOwnership() {
+      var config = DirectConfig(Palette("Blue hour", 0x102030));
+      config.domeLayerStack = new List<DomeLayerSettings>();
+      var scenes = new SceneService(config);
+      (bool saved, string saveError) = scenes.Save("Look");
+      Assert(saved, saveError);
+
+      config.domePalettes[0][0, 0] = 0x13579B;
+      (bool applied, string applyError) = scenes.Apply("Look");
+      Assert(applied, applyError);
+      Assert(config.domePalettes[0].GetSingleColor(0) == 0x13579B,
+        "scene recall overwrote a named live palette");
+    }
+
+    private static global::Spectrum.SpectrumConfiguration DirectConfig(
+      params DomePalette[] palettes
+    ) => new global::Spectrum.SpectrumConfiguration {
+      domePalettes = new List<DomePalette>(palettes),
+    };
+
+    private static DomePalette Palette(string name, int firstColor) {
+      var colors = new LEDColor[DomePalette.SlotCount];
+      colors[0] = new LEDColor(firstColor);
+      return new DomePalette { Name = name, Colors = colors };
+    }
+
+    private static DomeLayerSettings LayerWithPalette(string id, int palette) =>
+      new DomeLayerSettings {
+        InstanceId = id,
+        VisualizerKey = "radial",
+        BlendMode = DomeBlend.Default.Id,
+        Opacity = 1,
+        Enabled = true,
+        RendererParams = new Dictionary<string, double> {
+          ["palette"] = palette,
+        },
+      };
 
     private static void AssertColor(
       LEDColor actual, int color1, int? color2, string message

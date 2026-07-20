@@ -69,15 +69,16 @@ namespace Spectrum {
         return;
       }
 
-      // The palette bank this layer draws from (its trailing color still cycles
-      // through the eight relative slots of that bank via colorPaletteIndex).
-      int paletteBank =
+      // The named palette this layer draws from (its trailing color still cycles
+      // through that palette's eight relative slots via colorPaletteIndex).
+      int selectedPalette =
         this.runtime.GetOptions<PaletteLayerOptions>().Palette;
 
       // Progress all snakes
       foreach (var snake in snakes) {
         ProgressSnake(
-          snake, 0, this.dome.GetSingleColor(colorPaletteIndex, paletteBank));
+          snake, 0, this.dome.GetSingleColor(
+            colorPaletteIndex, selectedPalette));
       }
       colorPaletteIndex = (colorPaletteIndex + 1) % colorPaletteCount;
       lastUpdate = DateTime.Now;

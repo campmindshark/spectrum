@@ -96,24 +96,26 @@ namespace Spectrum {
         MoveRads(numSeconds, radsPerSecond);
       }
 
-      // `bank` is the layer's chosen palette bank; every color read is offset
-      // into it (idx and the Multi gradient are bank-relative slot indices).
-      public int Color(LEDDomeOutput dome, int bank, double loc_y, double loc_ang) {
+      // `palette` is the layer's chosen named palette; idx and the Multi
+      // gradient remain relative color-slot indices within it.
+      public int Color(
+        LEDDomeOutput dome, int palette, double loc_y, double loc_ang
+      ) {
         if (conf.coloring == Coloring.Fade) {
-          return LEDColor.ScaleColor(dome.GetSingleColor(idx, bank), loc_ang);
+          return LEDColor.ScaleColor(
+            dome.GetSingleColor(idx, palette), loc_ang);
         } else if (conf.coloring == Coloring.FadeExp) {
           var s = 4 * loc_ang - 4;
           return LEDColor.ScaleColor(
-            dome.GetSingleColor(idx, bank),
+            dome.GetSingleColor(idx, palette),
             1.0 / (1 + Math.Pow(Math.E, -s))
          );
         } else if (conf.coloring == Coloring.Multi) {
-          // The bank's top five slots (relative 3-7): a gradient across the
-          // upper palette, now within this layer's bank rather than the far end
-          // of the 64-slot array.
-          return dome.GetGradientBetweenColors(3, 7, loc_ang, 0.0, false, bank);
+          // The palette's top five slots (relative 3-7).
+          return dome.GetGradientBetweenColors(
+            3, 7, loc_ang, 0.0, false, palette);
         }
-        return dome.GetSingleColor(idx, bank);
+        return dome.GetSingleColor(idx, palette);
       }
 
       private void MoveRads(double numSeconds, double radsPerSecond) {
@@ -305,7 +307,7 @@ namespace Spectrum {
       RaceLayerOptions options = this.runtime.GetOptions<RaceLayerOptions>();
       this.racer_spacing = options.Spacing;
       double speed = options.Speed;
-      int paletteBank = options.Palette;
+      int selectedPalette = options.Palette;
       var curTicks = DateTime.Now.Ticks;
       if (this.lastTicks == -1) {
         this.lastTicks = curTicks;
@@ -328,7 +330,8 @@ namespace Spectrum {
           this.buffer.pixels[i].color = 0;
         } else {
           // Let the racer choose its color
-          this.buffer.pixels[i].color = racer.Color(dome, paletteBank, locY, locAng);
+          this.buffer.pixels[i].color = racer.Color(
+            dome, selectedPalette, locY, locAng);
         }
       }
     }

@@ -131,7 +131,7 @@ namespace Spectrum {
       int button = options.Button;
       double levelThreshold = options.Level;
       double interval = options.Interval;
-      int paletteBank = options.Palette;
+      int selectedPalette = options.Palette;
 
       // Trails come from the global dome fade, the
       // same per-frame retention Metaball/Ripple use — no per-layer trail knob.
@@ -166,7 +166,7 @@ namespace Spectrum {
 
       this.SpawnStars(spawnRate, dt, aim);
       this.Advance(accel, maxSpeed, dt, homing, aim);
-      this.RenderPixels(size, paletteBank);
+      this.RenderPixels(size, selectedPalette);
     }
 
     // The wand's aim point, projected into the centered (u, v) screen frame.
@@ -282,7 +282,7 @@ namespace Spectrum {
     // every pixel is written at most once (brightest contributing star wins);
     // inner loop over the small star list. Untouched pixels keep their faded
     // trail from Fade() above.
-    private void RenderPixels(double size, int bank) {
+    private void RenderPixels(double size, int selectedPalette) {
       if (this.stars.Count == 0) {
         return;
       }
@@ -307,7 +307,8 @@ namespace Spectrum {
           double value = 1 - Math.Sqrt(dSq) / size;
           if (value > bestValue) {
             bestValue = value;
-            bestColor = this.dome.GetGradientColor(s.hueIndex, value, 0, true, bank);
+            bestColor = this.dome.GetGradientColor(
+              s.hueIndex, value, 0, true, selectedPalette);
           }
         }
         if (bestValue > 0) {

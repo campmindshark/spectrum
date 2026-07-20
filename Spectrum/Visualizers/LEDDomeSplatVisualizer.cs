@@ -47,7 +47,7 @@ namespace Spectrum {
 
     void Render() {
 
-      int paletteBank =
+      int selectedPalette =
         this.runtime.GetOptions<PaletteLayerOptions>().Palette;
 
       double level = this.audio.Volume;
@@ -78,7 +78,7 @@ namespace Spectrum {
               dist/radius,
               0,
               true,
-              paletteBank
+              selectedPalette
             );
           }
         }

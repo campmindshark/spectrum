@@ -16,7 +16,7 @@ namespace Spectrum.Visualizers {
   // tracks the wand — the following end); see OrientationCenter for the
   // shared position/color-field machinery both ends read.
   //
-  // Uses the orientation-derived palette, not config.colorPalette: each ring
+  // Uses the orientation-derived palette, not the configured dome palettes: each ring
   // pixel's hue is the metaball field's hue sampled live at that pixel, every
   // frame — even a pinned ring's *position* is frozen, its *color* is not
   // (the two are independent freezes; see the design doc). This matches what

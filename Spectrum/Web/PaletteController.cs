@@ -5,36 +5,16 @@ using Spectrum.Base;
 
 namespace Spectrum.Web {
 
-  /**
-   * The web control for the color palette, the counterpart of the native VJ HUD
-   * palette panel. Two surfaces, both funneled through the ControlGateway so the
-   * reads and writes land on the serialization thread exactly like a native GUI
-   * write:
-   *
-   *  - the *live* palette — colorPalette slots 0-7, the eight gradient pairs
-   *    every visualizer consumes. Whole-palette last-write-wins, like the layer
-   *    stack: the client PUTs all eight slots, broadcast on the SSE "palette"
-   *    frame so every client converges.
-   *  - named *presets* — parallel to scenes: save the live palette under a name,
-   *    apply/delete by name. The preset list is broadcast on the SSE "palettes"
-   *    frame; applying a preset rewrites the live slots, which broadcast over the
-   *    "palette" frame.
-   *
-   * All the logic lives in the shared PaletteService (Base), so this surface and
-   * the native DomePalettesController can't diverge. A slot is carried over JSON
-   * as { start, end } hex strings ("#rrggbb"); end == null means a single-color
-   * (non-gradient) slot, and start == null means an empty slot.
-   */
+  // REST/SSE projection of the named live palettes. Every palette owns its
+  // eight editable slots; selecting a palette in either UI only chooses which
+  // object to edit and never copies colors through an Apply operation.
   public sealed class PaletteController {
-
-    // One palette slot over the wire: start color plus an optional gradient end.
     public sealed class SlotDto {
       public string start { get; set; }
       public string end { get; set; }
     }
 
-    // A named preset: its name plus its eight slots (for the client's preview).
-    public sealed class PresetDto {
+    public sealed class PaletteDto {
       public string name { get; set; }
       public List<SlotDto> colors { get; set; }
     }
@@ -49,60 +29,43 @@ namespace Spectrum.Web {
       this.service = new PaletteService(config);
     }
 
-    // GET /api/palette — all eight palette banks (each eight slots). Clients pick
-    // which bank they're viewing/editing; every client sees every bank so a bank
-    // edit on one converges everywhere.
-    public object LiveState() {
-      return new { banks = BuildAllBanks(this.config) };
-    }
+    public object State() => new { palettes = BuildPalettes(this.config) };
 
-    // PUT /api/palette — replace one bank's eight slots wholesale. Runs the
-    // conversion + write on the serialization thread inside the gateway action,
-    // so the single Item[] notification (PaletteService.Restore) fans out to
-    // every client. Rejects a bad bank or malformed hex before touching config.
-    public async Task<(bool ok, string error)> SetLiveAsync(
-      List<SlotDto> colors, int bank
+    public async Task<(bool ok, string error)> SetColorsAsync(
+      string name, List<SlotDto> colors
     ) {
       if (colors == null) {
-        return (false, "body must be {\"bank\": n, \"colors\": [ ... ]}");
+        return (false, "body must be {\"colors\": [ ... ]}");
       }
-      if (bank < 0 || bank >= PaletteService.BankCount) {
-        return (false, "bank out of range: " + bank);
-      }
-      LEDColor[] slots;
+      LEDColor[] converted;
       try {
-        slots = ToColors(colors);
+        converted = ToColors(colors);
       } catch (ArgumentException e) {
         return (false, e.Message);
       }
-      await this.gateway.InvokeAsync(
-        () => PaletteService.Restore(this.config, slots, bank));
-      return (true, null);
-    }
-
-    // GET /api/palettes — the saved presets (name + colors), in stored order.
-    public object PresetsState() {
-      return new { palettes = BuildPresets(this.config) };
-    }
-
-    // Save the live palette under `name` (overwriting an existing preset with
-    // that name). The read of the live slots and the domePalettes swap both run
-    // on the serialization thread inside the gateway action.
-    public async Task<(bool ok, string error)> SaveAsync(string name, int bank) {
-      if (bank < 0 || bank >= PaletteService.BankCount) {
-        return (false, "bank out of range: " + bank);
-      }
       (bool ok, string error) result = (false, "not run");
-      await this.gateway.InvokeAsync(() => result = this.service.Save(name, bank));
+      await this.gateway.InvokeAsync(
+        () => result = this.service.ReplaceColors(name, converted));
       return result;
     }
 
-    public async Task<(bool ok, string error)> ApplyAsync(string name, int bank) {
-      if (bank < 0 || bank >= PaletteService.BankCount) {
-        return (false, "bank out of range: " + bank);
-      }
+    public async Task<(bool ok, string error)> AddAsync(
+      string name, string sourceName
+    ) {
       (bool ok, string error) result = (false, "not run");
-      await this.gateway.InvokeAsync(() => result = this.service.Apply(name, bank));
+      await this.gateway.InvokeAsync(() => {
+        LEDColor[] colors = Find(this.config.domePalettes, sourceName)?.Colors;
+        result = this.service.Add(name, colors);
+      });
+      return result;
+    }
+
+    public async Task<(bool ok, string error)> RenameAsync(
+      string name, string newName
+    ) {
+      (bool ok, string error) result = (false, "not run");
+      await this.gateway.InvokeAsync(
+        () => result = this.service.Rename(name, newName));
       return result;
     }
 
@@ -112,80 +75,68 @@ namespace Spectrum.Web {
       return result;
     }
 
-    // All banks' slots as DTOs (8 lists of 8). Shared by the REST GET and the SSE
-    // "palette" frame (ConfigEventStream), so both render from the same server
-    // truth.
-    public static List<List<SlotDto>> BuildAllBanks(Configuration config) {
-      var banks = new List<List<SlotDto>>(PaletteService.BankCount);
-      for (int bank = 0; bank < PaletteService.BankCount; bank++) {
-        banks.Add(ToSlots(PaletteService.Snapshot(config, bank)));
-      }
-      return banks;
-    }
-
-    // The saved presets as DTOs. Shared by the REST GET and the SSE "palettes"
-    // frame.
-    public static List<PresetDto> BuildPresets(Configuration config) {
-      var presets = new List<PresetDto>();
-      List<DomePalette> stored = config.domePalettes;
-      if (stored != null) {
-        foreach (DomePalette palette in stored) {
-          if (palette == null || palette.Name == null) {
+    public static List<PaletteDto> BuildPalettes(Configuration config) {
+      var result = new List<PaletteDto>();
+      if (config.domePalettes != null) {
+        foreach (DomePalette palette in config.domePalettes) {
+          if (palette == null || string.IsNullOrWhiteSpace(palette.Name)) {
             continue;
           }
-          presets.Add(new PresetDto {
+          result.Add(new PaletteDto {
             name = palette.Name,
             colors = ToSlots(palette.Colors),
           });
         }
       }
-      return presets;
+      return result;
+    }
+
+    private static DomePalette Find(
+      List<DomePalette> palettes, string name
+    ) {
+      if (palettes == null || name == null) {
+        return null;
+      }
+      foreach (DomePalette palette in palettes) {
+        if (palette != null && string.Equals(
+              palette.Name, name, StringComparison.OrdinalIgnoreCase)) {
+          return palette;
+        }
+      }
+      return null;
     }
 
     private static List<SlotDto> ToSlots(LEDColor[] colors) {
-      var slots = new List<SlotDto>(PaletteService.LiveSlots);
-      for (int i = 0; i < PaletteService.LiveSlots; i++) {
+      var slots = new List<SlotDto>(DomePalette.SlotCount);
+      for (int i = 0; i < DomePalette.SlotCount; i++) {
         LEDColor color = colors != null && i < colors.Length ? colors[i] : null;
-        slots.Add(ToSlot(color));
+        slots.Add(color == null
+          ? new SlotDto { start = null, end = null }
+          : new SlotDto {
+              start = ToHex(color.Color1),
+              end = color.IsGradient ? ToHex(color.Color2) : null,
+            });
       }
       return slots;
     }
 
-    private static SlotDto ToSlot(LEDColor color) {
-      if (color == null) {
-        return new SlotDto { start = null, end = null };
-      }
-      return new SlotDto {
-        start = ToHex(color.Color1),
-        end = color.IsGradient ? ToHex(color.Color2) : null,
-      };
-    }
-
-    // Map up to eight incoming slots to an LEDColor[8]; extra entries are
-    // ignored, missing ones become empty slots. Throws ArgumentException on a
-    // malformed hex string.
     private static LEDColor[] ToColors(List<SlotDto> slots) {
-      var colors = new LEDColor[PaletteService.LiveSlots];
-      for (int i = 0; i < PaletteService.LiveSlots && i < slots.Count; i++) {
-        colors[i] = ToColor(slots[i]);
+      var colors = new LEDColor[DomePalette.SlotCount];
+      for (int i = 0; i < DomePalette.SlotCount && i < slots.Count; i++) {
+        SlotDto slot = slots[i];
+        if (slot == null || string.IsNullOrEmpty(slot.start)) {
+          continue;
+        }
+        int start = FromHex(slot.start);
+        colors[i] = string.IsNullOrEmpty(slot.end)
+          ? new LEDColor(start)
+          : new LEDColor(start, FromHex(slot.end));
       }
       return colors;
     }
 
-    private static LEDColor ToColor(SlotDto slot) {
-      if (slot == null || string.IsNullOrEmpty(slot.start)) {
-        return null;
-      }
-      int start = FromHex(slot.start);
-      if (string.IsNullOrEmpty(slot.end)) {
-        return new LEDColor(start);
-      }
-      return new LEDColor(start, FromHex(slot.end));
-    }
-
-    private static string ToHex(int rgb) {
-      return "#" + (rgb & 0xFFFFFF).ToString("x6");
-    }
+    private static string ToHex(int rgb) =>
+      "#" + (rgb & 0xFFFFFF).ToString("x6");
 
     private static int FromHex(string value) {
       string hex = value.StartsWith("#") ? value.Substring(1) : value;
@@ -199,4 +150,5 @@ namespace Spectrum.Web {
       }
     }
   }
+
 }

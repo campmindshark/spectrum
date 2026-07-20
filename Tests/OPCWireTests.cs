@@ -192,7 +192,7 @@ namespace Spectrum.LayerPipeline.Tests {
         "negative gradient endpoint");
       AssertThrows<ArgumentOutOfRangeException>(
         () => output.GetGradientBetweenColors(3, 7, .5, 0, false, -1),
-        "negative palette bank");
+        "negative palette index");
       AssertThrows<ArgumentException>(
         () => output.GetGradientBetweenColors(3, 7, double.NaN, 0, false),
         "non-finite gradient position");
@@ -410,6 +410,8 @@ namespace Spectrum.LayerPipeline.Tests {
         "boardRowsPerStrip",
         "boardBrightness",
         "colorPaletteIndex",
+        "colorPalette",
+        "paletteModelVersion",
       };
       string[] foundRetired = root.Elements()
         .Select(element => element.Name.LocalName)
@@ -427,6 +429,8 @@ namespace Spectrum.LayerPipeline.Tests {
         "default config selects an audio device");
       Assert(config.midiDevices != null && config.midiDevices.Count == 0,
         "default config selects a MIDI device");
+      Assert(config.domePalettes?.Count == 8,
+        "default config does not use the named live palette model");
     }
 
     private static void PortMappingConfigurationContract() {

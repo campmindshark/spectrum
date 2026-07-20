@@ -218,21 +218,25 @@ namespace Spectrum.Base {
         Min = 0, Max = 0.001, Step = 0.0001, Default = 0,
       };
 
-    // Which of the eight palette banks (colorPalette slots bank*8 .. bank*8+7)
-    // this layer draws its colors from. Shared by every palette-consuming layer
-    // (the ones that call dome.Get*Color); the visualizer reads it once per frame
-    // and passes it into the color lookups. Default 0 = bank 0 = the historical
-    // single live palette, so a layer with no "palette" key renders unchanged.
+    // Which named live palette this layer draws its colors from. The stored value
+    // is an index into Configuration.domePalettes; UIs replace these generic
+    // labels with the current palette names. A 64-entry schema preserves the
+    // configured guard rail while the actual list grows and shrinks at runtime.
     private static readonly DomeLayerParam PaletteBankParam =
       new DomeLayerParam {
         Key = "palette", Label = "Palette",
         Type = DomeLayerParamType.Enum,
-        Options = new string[] {
-          "Palette 1", "Palette 2", "Palette 3", "Palette 4",
-          "Palette 5", "Palette 6", "Palette 7", "Palette 8",
-        },
+        Options = BuildPaletteOptions(),
         Default = 0,
       };
+
+    private static string[] BuildPaletteOptions() {
+      var options = new string[PaletteService.MaxPalettes];
+      for (int i = 0; i < options.Length; i++) {
+        options[i] = "Palette " + (i + 1);
+      }
+      return options;
+    }
 
     // Radial's tuning, formerly the domeRadial* cluster of global properties.
     internal static readonly DomeLayerParam[] RadialParams = new DomeLayerParam[] {

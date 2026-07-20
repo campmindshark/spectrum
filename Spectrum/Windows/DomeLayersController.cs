@@ -97,6 +97,10 @@ namespace Spectrum {
           new Action(this.StopNewAstronomyPlaybackDisplays));
         return;
       }
+      if (e.PropertyName == nameof(this.config.domePalettes)) {
+        this.dispatcher.BeginInvoke(new Action(this.RebuildRows));
+        return;
+      }
       if (e.PropertyName != "domeLayerStack") {
         return;
       }
@@ -134,7 +138,8 @@ namespace Spectrum {
 
     private DomeLayerRowViewModel MakeRow(DomeLayerSettings settings) {
       string instanceId = settings.InstanceId ?? LayerInstanceId.NewId().Value;
-      var vm = new DomeLayerRowViewModel {
+      var vm = new DomeLayerRowViewModel(
+        PaletteService.Names(this.config)) {
         InstanceId = instanceId,
         VisualizerKey = settings.VisualizerKey,
         BlendMode = settings.BlendMode,
@@ -157,7 +162,8 @@ namespace Spectrum {
     }
 
     private void AddLayer() {
-      var vm = new DomeLayerRowViewModel {
+      var vm = new DomeLayerRowViewModel(
+        PaletteService.Names(this.config)) {
         VisualizerKey = LayerCatalog.Default.Definitions[0].Id,
         BlendMode = DomeBlend.Default.Id,
         Opacity = 1.0,

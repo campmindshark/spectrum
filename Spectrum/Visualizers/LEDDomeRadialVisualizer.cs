@@ -65,7 +65,7 @@ namespace Spectrum {
       double centerSpeed = options.CenterSpeed;
       double rotationSpeed = options.RotationSpeed;
       double gradientSpeed = options.GradientSpeed;
-      int paletteBank = options.Palette;
+      int selectedPalette = options.Palette;
 
       buffer.Fade(1 - Math.Pow(10, -this.environment.GlobalFadeSpeed), 0);
       // Hue rotation is now applied globally by LEDDomeOutput, which rotates
@@ -175,7 +175,7 @@ namespace Spectrum {
               gradientVal,
               currentGradient,
               true,
-              paletteBank
+              selectedPalette
             );
         }
       }

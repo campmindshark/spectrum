@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
@@ -10,166 +9,163 @@ using Spectrum.Base;
 
 namespace Spectrum {
 
-  // Drives the named-palette panel in the VJ HUD: a list of saved palette
-  // presets (each showing its eight-slot gradient strip) plus a name box and
-  // Apply / Save / Delete buttons, bound to config.domePalettes through the
-  // shared PaletteService. The direct analogue of DomeScenesController — applying
-  // a preset re-fires the live palette's Item[] notification, so the pickers and
-  // the dome both refresh automatically; this controller only manages the preset
-  // list.
-  //
-  // Every mutation runs on the UI thread (native GUI writes always do), so it
-  // calls PaletteService directly rather than through the web ControlGateway.
+  // Drives the native list of named live palettes. Selecting an entry chooses
+  // which colors the editor changes; there is no independent bank and no Apply.
   public class DomePalettesController {
     private readonly Configuration config;
     private readonly PaletteService service;
     private readonly Dispatcher dispatcher;
-    private readonly ListBox presetList;
+    private readonly ListBox paletteList;
     private readonly TextBox nameBox;
-    // Which palette bank Save snapshots and Apply loads into — the bank the
-    // editor is currently showing. Supplied by the window so this controller and
-    // the live-palette pickers always agree on the target bank.
-    private readonly Func<int> currentBank;
+    private readonly Action<DomePalette> selectionChanged;
 
-    // The stored DomePalette snapshots themselves (not just names), so the list's
-    // item template can render each preset's gradient strip.
-    public ObservableCollection<DomePalette> Presets { get; } =
+    public ObservableCollection<DomePalette> Palettes { get; } =
       new ObservableCollection<DomePalette>();
 
-    // True while we repopulate Presets, so the list's SelectionChanged echo
-    // doesn't clobber the name box mid-refresh.
     private bool refreshing;
 
     public DomePalettesController(
-      Configuration config, ListBox presetList, TextBox nameBox,
-      ButtonBase saveButton, ButtonBase applyButton, ButtonBase deleteButton,
-      Func<int> currentBank
+      Configuration config, ListBox paletteList, TextBox nameBox,
+      ButtonBase addButton, ButtonBase renameButton, ButtonBase deleteButton,
+      Action<DomePalette> selectionChanged
     ) {
       this.config = config;
       this.service = new PaletteService(config);
-      this.dispatcher = presetList.Dispatcher;
-      this.presetList = presetList;
+      this.dispatcher = paletteList.Dispatcher;
+      this.paletteList = paletteList;
       this.nameBox = nameBox;
-      this.currentBank = currentBank;
-      presetList.ItemsSource = this.Presets;
-      presetList.SelectionChanged += this.OnSelectionChanged;
-      saveButton.Click += (s, e) => this.Save();
-      applyButton.Click += (s, e) => this.Apply();
+      this.selectionChanged = selectionChanged;
+      paletteList.ItemsSource = this.Palettes;
+      paletteList.SelectionChanged += this.OnSelectionChanged;
+      addButton.Click += (s, e) => this.Add();
+      renameButton.Click += (s, e) => this.Rename();
       deleteButton.Click += (s, e) => this.Delete();
       this.config.PropertyChanged += this.OnConfigChanged;
       this.Refresh();
     }
 
+    private DomePalette Selected =>
+      this.paletteList.SelectedItem as DomePalette;
+
     private void OnConfigChanged(object sender, PropertyChangedEventArgs e) {
-      if (e.PropertyName != nameof(this.config.domePalettes)) {
-        return;
+      // In-place color edits raise domePalettes.Item[] and are already reflected
+      // by the selected object. Only rebuild for ordered-list mutations.
+      if (e.PropertyName == nameof(this.config.domePalettes)) {
+        this.dispatcher.BeginInvoke(new Action(this.Refresh));
       }
-      // A mutation may land off the UI thread; marshal the refresh onto the
-      // Dispatcher (mirrors DomeScenesController).
-      this.dispatcher.BeginInvoke(new Action(this.Refresh));
     }
 
-    // Selecting a saved preset fills the name box so Save-over-that-preset is one
-    // click and Apply/Delete have an obvious target.
     private void OnSelectionChanged(object sender, SelectionChangedEventArgs e) {
       if (this.refreshing) {
         return;
       }
-      if (this.presetList.SelectedItem is DomePalette palette) {
-        this.nameBox.Text = palette.Name;
+      DomePalette selected = this.Selected;
+      if (selected != null) {
+        this.nameBox.Text = selected.Name;
       }
+      this.selectionChanged?.Invoke(selected);
     }
 
     private void Refresh() {
+      string selectedName = this.Selected?.Name;
       this.refreshing = true;
-      string selected = (this.presetList.SelectedItem as DomePalette)?.Name;
-      this.Presets.Clear();
+      this.Palettes.Clear();
       if (this.config.domePalettes != null) {
         foreach (DomePalette palette in this.config.domePalettes) {
-          if (palette != null && palette.Name != null) {
-            this.Presets.Add(palette);
+          if (palette != null && !string.IsNullOrWhiteSpace(palette.Name)) {
+            this.Palettes.Add(palette);
           }
         }
       }
-      // Preserve the selection across the rebuild when it still exists.
+      DomePalette selected = Find(this.Palettes, selectedName) ??
+        (this.Palettes.Count > 0 ? this.Palettes[0] : null);
+      this.paletteList.SelectedItem = selected;
       if (selected != null) {
-        foreach (DomePalette palette in this.Presets) {
-          if (string.Equals(
-                palette.Name, selected, StringComparison.OrdinalIgnoreCase)) {
-            this.presetList.SelectedItem = palette;
-            break;
-          }
-        }
+        this.nameBox.Text = selected.Name;
       }
       this.refreshing = false;
+      this.selectionChanged?.Invoke(selected);
     }
 
-    private void Save() {
+    // Add duplicates the currently selected colors under the typed name. This
+    // makes variations quick while the first palette can still be created empty.
+    private void Add() {
       string name = this.nameBox.Text?.Trim();
-      if (string.IsNullOrEmpty(name)) {
-        MessageBox.Show("Type a palette name to save.", "Palettes",
-          MessageBoxButton.OK, MessageBoxImage.Information);
+      LEDColor[] colors = this.Selected?.Colors;
+      (bool ok, string error) = this.service.Add(name, colors);
+      if (!this.Report((ok, error))) {
         return;
       }
-      if (this.NameExists(name) && MessageBox.Show(
-            "Overwrite palette \"" + name + "\"?", "Palettes",
-            MessageBoxButton.OKCancel, MessageBoxImage.Question)
-          != MessageBoxResult.OK) {
-        return;
+      this.Refresh();
+      DomePalette added = Find(this.Palettes, name);
+      if (added != null) {
+        this.paletteList.SelectedItem = added;
       }
-      this.Report(this.service.Save(name, this.currentBank()));
     }
 
-    private void Apply() {
-      string name = this.PaletteTarget();
-      if (name == null) {
+    private void Rename() {
+      DomePalette selected = this.Selected;
+      if (selected == null) {
+        this.PickFirst();
         return;
       }
-      this.Report(this.service.Apply(name, this.currentBank()));
+      string newName = this.nameBox.Text?.Trim();
+      (bool ok, string error) = this.service.Rename(selected.Name, newName);
+      if (!this.Report((ok, error))) {
+        return;
+      }
+      this.Refresh();
+      DomePalette renamed = Find(this.Palettes, newName);
+      if (renamed != null) {
+        this.paletteList.SelectedItem = renamed;
+      }
     }
 
     private void Delete() {
-      string name = this.PaletteTarget();
-      if (name == null) {
+      DomePalette selected = this.Selected;
+      if (selected == null) {
+        this.PickFirst();
         return;
       }
-      if (MessageBox.Show("Delete palette \"" + name + "\"?", "Palettes",
-            MessageBoxButton.OKCancel, MessageBoxImage.Warning)
+      if (MessageBox.Show(
+            "Delete palette \"" + selected.Name + "\"? Layers using it " +
+            "will switch to the first palette.",
+            "Palettes", MessageBoxButton.OKCancel, MessageBoxImage.Warning)
           != MessageBoxResult.OK) {
         return;
       }
-      this.Report(this.service.Delete(name));
+      if (this.Report(this.service.Delete(selected.Name))) {
+        this.Refresh();
+      }
     }
 
-    // The preset Apply/Delete act on: the list selection, else the name box.
-    private string PaletteTarget() {
-      string name = (this.presetList.SelectedItem as DomePalette)?.Name;
-      if (string.IsNullOrEmpty(name)) {
-        name = this.nameBox.Text?.Trim();
-      }
-      if (string.IsNullOrEmpty(name)) {
-        MessageBox.Show("Pick a palette first.", "Palettes",
-          MessageBoxButton.OK, MessageBoxImage.Information);
-        return null;
-      }
-      return name;
+    private void PickFirst() {
+      MessageBox.Show("Pick a palette first.", "Palettes",
+        MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
-    private bool NameExists(string name) {
-      foreach (DomePalette palette in this.Presets) {
-        if (string.Equals(
-              palette.Name, name, StringComparison.OrdinalIgnoreCase)) {
-          return true;
-        }
+    private bool Report((bool ok, string error) result) {
+      if (result.ok) {
+        return true;
       }
+      MessageBox.Show(result.error, "Palettes",
+        MessageBoxButton.OK, MessageBoxImage.Warning);
       return false;
     }
 
-    private void Report((bool ok, string error) result) {
-      if (!result.ok) {
-        MessageBox.Show(result.error, "Palettes",
-          MessageBoxButton.OK, MessageBoxImage.Warning);
+    private static DomePalette Find(
+      ObservableCollection<DomePalette> palettes, string name
+    ) {
+      if (name == null) {
+        return null;
       }
+      foreach (DomePalette palette in palettes) {
+        if (string.Equals(
+              palette.Name, name, StringComparison.OrdinalIgnoreCase)) {
+          return palette;
+        }
+      }
+      return null;
     }
   }
 

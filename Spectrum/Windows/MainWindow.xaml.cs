@@ -1098,22 +1098,19 @@ namespace Spectrum {
     }
 
     private void MidiBindingTypeSelectionChanged(object sender, SelectionChangedEventArgs e) {
-      this.midiChangeColorBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 0
+      this.midiTapTempoBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 0
         ? Visibility.Visible
         : Visibility.Collapsed;
-      this.midiTapTempoBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 1
+      this.midiContinuousKnobBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 1
         ? Visibility.Visible
         : Visibility.Collapsed;
-      this.midiContinuousKnobBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 2
+      this.midiDiscreteKnobBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 2
         ? Visibility.Visible
         : Visibility.Collapsed;
-      this.midiDiscreteKnobBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 3
+      this.midiLogarithmicKnobBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 3
         ? Visibility.Visible
         : Visibility.Collapsed;
-      this.midiLogarithmicKnobBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 4
-        ? Visibility.Visible
-        : Visibility.Collapsed;
-      this.midiAdsrLevelDriverBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 5
+      this.midiAdsrLevelDriverBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 4
         ? Visibility.Visible
         : Visibility.Collapsed;
     }
@@ -1159,19 +1156,6 @@ namespace Spectrum {
       bool editing = this.currentlyEditingBinding.HasValue;
       IMidiBindingConfig newBinding;
       if (this.midiBindingType.SelectedIndex == 0) {
-        int indexRangeStart;
-        try {
-          indexRangeStart = Convert.ToInt32(this.midiChangeColorIndexRangeStart.Text.Trim());
-        } catch (Exception) {
-          this.midiChangeColorIndexRangeStart.Text = "";
-          this.midiChangeColorIndexRangeStart.Focus();
-          return;
-        }
-        newBinding = new ColorPaletteMidiBindingConfig() {
-          BindingName = newName,
-          indexRangeStart = indexRangeStart,
-        };
-      } else if (this.midiBindingType.SelectedIndex == 1) {
         if (this.midiTapTempoButtonType.SelectedIndex == -1) {
           this.midiTapTempoButtonType.Focus();
           return;
@@ -1190,7 +1174,7 @@ namespace Spectrum {
           buttonType = buttonType,
           buttonIndex = buttonIndex,
         };
-      } else if (this.midiBindingType.SelectedIndex == 2) {
+      } else if (this.midiBindingType.SelectedIndex == 1) {
         string configPropertyName = this.midiContinuousKnobPropertyName.Text.Trim();
         if (String.IsNullOrEmpty(configPropertyName)) {
           this.midiContinuousKnobPropertyName.Text = "";
@@ -1232,7 +1216,7 @@ namespace Spectrum {
           startValue = startValue,
           endValue = endValue,
         };
-      } else if (this.midiBindingType.SelectedIndex == 3) {
+      } else if (this.midiBindingType.SelectedIndex == 2) {
         string configPropertyName = this.midiDiscreteKnobPropertyName.Text.Trim();
         if (String.IsNullOrEmpty(configPropertyName)) {
           this.midiDiscreteKnobPropertyName.Text = "";
@@ -1260,7 +1244,7 @@ namespace Spectrum {
           configPropertyName = configPropertyName,
           numPossibleValues = numPossibleValues,
         };
-      } else if (this.midiBindingType.SelectedIndex == 4) {
+      } else if (this.midiBindingType.SelectedIndex == 3) {
         string configPropertyName = this.midiLogarithmicKnobPropertyName.Text.Trim();
         if (String.IsNullOrEmpty(configPropertyName)) {
           this.midiLogarithmicKnobPropertyName.Text = "";
@@ -1297,7 +1281,7 @@ namespace Spectrum {
           numPossibleValues = numPossibleValues,
           startValue = startValue,
         };
-      } else if (this.midiBindingType.SelectedIndex == 5) {
+      } else if (this.midiBindingType.SelectedIndex == 4) {
         int indexRangeStart;
         try {
           indexRangeStart = Convert.ToInt32(this.midiAdsrLevelDriverIndexRangeStart.Text.Trim());
@@ -1324,25 +1308,23 @@ namespace Spectrum {
       this.config.midiPresets = newMidiPresets;
 
       if (this.midiBindingType.SelectedIndex == 0) {
-        this.midiChangeColorIndexRangeStart.Text = "";
-      } else if (this.midiBindingType.SelectedIndex == 1) {
         this.midiTapTempoButtonType.SelectedIndex = -1;
         this.midiTapTempoButtonIndex.Text = "";
-      } else if (this.midiBindingType.SelectedIndex == 2) {
+      } else if (this.midiBindingType.SelectedIndex == 1) {
         this.midiContinuousKnobIndex.Text = "";
         this.midiContinuousKnobPropertyName.Text = "";
         this.midiContinuousKnobStartValue.Text = "";
         this.midiContinuousKnobEndValue.Text = "";
-      } else if (this.midiBindingType.SelectedIndex == 3) {
+      } else if (this.midiBindingType.SelectedIndex == 2) {
         this.midiDiscreteKnobIndex.Text = "";
         this.midiDiscreteKnobPropertyName.Text = "";
         this.midiDiscreteKnobNumPossibleValues.Text = "";
-      } else if (this.midiBindingType.SelectedIndex == 4) {
+      } else if (this.midiBindingType.SelectedIndex == 3) {
         this.midiLogarithmicKnobIndex.Text = "";
         this.midiLogarithmicKnobPropertyName.Text = "";
         this.midiLogarithmicKnobNumPossibleValues.Text = "";
         this.midiLogarithmicKnobStartValue.Text = "";
-      } else if (this.midiBindingType.SelectedIndex == 5) {
+      } else if (this.midiBindingType.SelectedIndex == 4) {
         this.midiAdsrLevelDriverIndexRangeStart.Text = "";
       }
 
@@ -1423,30 +1405,27 @@ namespace Spectrum {
 
       this.midiBindingType.SelectedIndex = bindingConfig.BindingType;
       if (bindingConfig.BindingType == 0) {
-        var config = (ColorPaletteMidiBindingConfig)bindingConfig;
-        this.midiChangeColorIndexRangeStart.Text = config.indexRangeStart.ToString();
-      } else if (this.midiBindingType.SelectedIndex == 1) {
         var config = (TapTempoMidiBindingConfig)bindingConfig;
         this.midiTapTempoButtonType.SelectedIndex = indexFromCommandType(config.buttonType);
         this.midiTapTempoButtonIndex.Text = config.buttonIndex.ToString();
-      } else if (this.midiBindingType.SelectedIndex == 2) {
+      } else if (this.midiBindingType.SelectedIndex == 1) {
         var config = (ContinuousKnobMidiBindingConfig)bindingConfig;
         this.midiContinuousKnobIndex.Text = config.knobIndex.ToString();
         this.midiContinuousKnobPropertyName.Text = config.configPropertyName;
         this.midiContinuousKnobStartValue.Text = config.startValue.ToString();
         this.midiContinuousKnobEndValue.Text = config.endValue.ToString();
-      } else if (this.midiBindingType.SelectedIndex == 3) {
+      } else if (this.midiBindingType.SelectedIndex == 2) {
         var config = (DiscreteKnobMidiBindingConfig)bindingConfig;
         this.midiDiscreteKnobIndex.Text = config.knobIndex.ToString();
         this.midiDiscreteKnobPropertyName.Text = config.configPropertyName;
         this.midiDiscreteKnobNumPossibleValues.Text = config.numPossibleValues.ToString();
-      } else if (this.midiBindingType.SelectedIndex == 4) {
+      } else if (this.midiBindingType.SelectedIndex == 3) {
         var config = (DiscreteLogarithmicKnobMidiBindingConfig)bindingConfig;
         this.midiLogarithmicKnobIndex.Text = config.knobIndex.ToString();
         this.midiLogarithmicKnobPropertyName.Text = config.configPropertyName;
         this.midiLogarithmicKnobNumPossibleValues.Text = config.numPossibleValues.ToString();
         this.midiLogarithmicKnobStartValue.Text = config.startValue.ToString();
-      } else if (this.midiBindingType.SelectedIndex == 5) {
+      } else if (this.midiBindingType.SelectedIndex == 4) {
         var config = (AdsrLevelDriverMidiBindingConfig)bindingConfig;
         this.midiAdsrLevelDriverIndexRangeStart.Text = config.indexRangeStart.ToString();
       }
@@ -1464,8 +1443,6 @@ namespace Spectrum {
       this.midiNewBindingName.Text = "";
       this.midiBindingType.SelectedIndex = -1;
 
-      this.midiChangeColorIndexRangeStart.Text = "";
-
       this.midiTapTempoButtonType.SelectedIndex = -1;
       this.midiTapTempoButtonIndex.Text = "";
 
@@ -1482,15 +1459,6 @@ namespace Spectrum {
       this.midiLogarithmicKnobPropertyName.Text = "";
       this.midiLogarithmicKnobNumPossibleValues.Text = "";
       this.midiLogarithmicKnobStartValue.Text = "";
-    }
-
-    private void MidiChangeColorIndexRangeStartLostFocus(object sender, RoutedEventArgs e) {
-      try {
-        Convert.ToInt32(this.midiChangeColorIndexRangeStart.Text.Trim());
-      } catch (Exception) {
-        this.midiChangeColorIndexRangeStart.Text = "";
-        return;
-      }
     }
 
     private void MidiContinuousKnobIndexLostFocus(object sender, RoutedEventArgs e) {

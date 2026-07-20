@@ -76,10 +76,9 @@ namespace Spectrum.Web {
           label: "Flash rate",
           description: "Flash multiplier relative to the active tempo."),
 
-        // The color palette replaces the retired 8-bank colorPaletteIndex
-        // switcher: it is compound state served by PaletteController
-        // (GET/PUT /api/palette + /api/palettes) and broadcast on the SSE
-        // "palette"/"palettes" frames, not a field-level parameter here.
+        // Named live palettes are compound state served by PaletteController
+        // under /api/palettes and broadcast on the SSE "palettes" frame, not a
+        // field-level parameter here.
 
         // ---- Maintenance surface: device wiring & diagnostics ----
 

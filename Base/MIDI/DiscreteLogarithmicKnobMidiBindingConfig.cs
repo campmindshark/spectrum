@@ -13,7 +13,7 @@ namespace Spectrum.Base {
     public double startValue { get; set; }
 
     public DiscreteLogarithmicKnobMidiBindingConfig() {
-      this.BindingType = 4;
+      this.BindingType = 3;
     }
 
     public override object Clone() {

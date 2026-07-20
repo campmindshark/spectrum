@@ -30,7 +30,7 @@ namespace Spectrum.Visualizers {
   // orientation can't encode, so the rotor rim's chasing highlight is
   // clock-driven. Tuning comes from the gyroscope definition in LayerCatalog;
   // the three rings (outer/middle/inner)
-  // take their colors from the live palette bank's first three slots, each
+  // take their colors from the selected palette's first three slots, each
   // scaled by the ring's cross-section falloff so it still fades to black at the
   // band edges.
   class LEDDomeGyroscopeVisualizer : DomeLayerVisualizer {
@@ -88,16 +88,16 @@ namespace Spectrum.Visualizers {
         this.runtime.GetOptions<GyroscopeLayerOptions>();
       double ringWidth = options.RingWidth; // band thickness (dot units)
       double rotorRate = options.RotorRate; // highlight orbit, rev/s
-      int paletteBank = options.Palette;
+      int selectedPalette = options.Palette;
 
-      // Per-ring colors (outer/middle/inner), pulled from the live palette bank's
+      // Per-ring colors (outer/middle/inner), pulled from the selected palette's
       // first three relative slots and decoded once per frame. Kept as Color so
       // the render loop reads their H/S and scales V by the ring's cross-section
       // falloff — indexed to match n[0]=outer, n[1]=middle, n[2]=inner.
       Color[] ringColor = {
-        new Color(this.dome.GetSingleColor(0, paletteBank)),
-        new Color(this.dome.GetSingleColor(1, paletteBank)),
-        new Color(this.dome.GetSingleColor(2, paletteBank)),
+        new Color(this.dome.GetSingleColor(0, selectedPalette)),
+        new Color(this.dome.GetSingleColor(1, selectedPalette)),
+        new Color(this.dome.GetSingleColor(2, selectedPalette)),
       };
 
       // Advance the shared idle-drift/spotlight resolver and take this frame's

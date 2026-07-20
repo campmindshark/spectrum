@@ -1031,21 +1031,16 @@ namespace Spectrum.LEDs {
       return strutLengths[controlBoxStrutOrder[i][strutsLeft]];
     }
 
-    // Slots per palette bank. colorPalette holds 8 banks of 8 gradient pairs
-    // (64 slots); a layer selects its bank via the per-layer "palette" param and
-    // passes it here, offsetting its relative index 0-7 into the bank's slots.
-    private const int SlotsPerBank = 8;
-
-    public int GetSingleColor(int index, int bank = 0) {
+    // Resolve a relative color slot through the named palette selected by the
+    // layer. The palette parameter is an index into config.domePalettes.
+    public int GetSingleColor(int index, int paletteIndex = 0) {
       this.EnsureFrameColorCache();
       if (this.frameFlashedOff) {
         return 0x000000;
       }
-      // Relative index 0-7 offset into the layer's chosen bank (bank 0 = slots
-      // 0-7, the historical single live palette).
-      int absoluteIndex = index + bank * SlotsPerBank;
+      DomePalette palette = PaletteService.Resolve(this.config, paletteIndex);
       return LEDColor.ScaleColor(
-        this.config.colorPalette.GetSingleColor(absoluteIndex),
+        palette == null ? 0x000000 : palette.GetSingleColor(index),
         this.frameBrightness
       );
     }
@@ -1055,37 +1050,28 @@ namespace Spectrum.LEDs {
       double pixelPos,
       double focusPos,
       bool wrap,
-      int bank = 0
+      int paletteIndex = 0
     ) {
       this.EnsureFrameColorCache();
       if (this.frameFlashedOff) {
         return 0x000000;
       }
-      // Offset the relative index into the layer's chosen bank; see
-      // GetSingleColor.
-      int absoluteIndex = index + bank * SlotsPerBank;
+      DomePalette palette = PaletteService.Resolve(this.config, paletteIndex);
       if (
-        this.config.colorPalette.colors == null ||
-        this.config.colorPalette.colors.Length <= absoluteIndex ||
-        this.config.colorPalette.colors[absoluteIndex] == null
+        palette?.Colors == null ||
+        index < 0 || index >= palette.Colors.Length ||
+        palette.Colors[index] == null
       ) {
         return 0x000000;
       }
-      if (!this.config.colorPalette.colors[absoluteIndex].IsGradient) {
-        // absoluteIndex is already offset; call the palette directly rather
-        // than this.GetSingleColor, which would apply the palette offset again.
+      if (!palette.Colors[index].IsGradient) {
         return LEDColor.ScaleColor(
-          this.config.colorPalette.GetSingleColor(absoluteIndex),
+          palette.GetSingleColor(index),
           this.frameBrightness
         );
       }
       return LEDColor.ScaleColor(
-        this.config.colorPalette.GetGradientColor(
-          absoluteIndex,
-          pixelPos,
-          focusPos,
-          wrap
-        ),
+        palette.GetGradientColor(index, pixelPos, focusPos, wrap),
         this.frameBrightness
       );
     }
@@ -1096,7 +1082,7 @@ namespace Spectrum.LEDs {
       double pixelPos,
       double focusPos,
       bool wrap,
-      int bank = 0
+      int paletteIndex = 0
     ) {
       // Return a color evenly scaled between min index and max index, based on the pixel position.
       if (double.IsNaN(pixelPos) || double.IsInfinity(pixelPos) ||
@@ -1112,9 +1098,9 @@ namespace Spectrum.LEDs {
           "Maximum color index must be greater than minimum color index.",
           nameof(maxIndex));
       }
-      if (bank < 0) {
+      if (paletteIndex < 0) {
         throw new ArgumentOutOfRangeException(
-          nameof(bank), "Palette bank cannot be negative.");
+          nameof(paletteIndex), "Palette index cannot be negative.");
       }
       this.EnsureFrameColorCache();
       if (this.frameFlashedOff) {
@@ -1140,35 +1126,30 @@ namespace Spectrum.LEDs {
       } else if (scaledPixelPos > 1) {
         scaledPixelPos = 1;
       }
-      // Offset both endpoints into the layer's chosen bank; see GetSingleColor.
-      int absoluteIndexMin = minColorIdx + bank * SlotsPerBank;
-      int absoluteIndexMax = maxColorIdx + bank * SlotsPerBank;
+      DomePalette palette = PaletteService.Resolve(this.config, paletteIndex);
       if (
-        this.config.colorPalette.colors == null ||
-        this.config.colorPalette.colors.Length <= absoluteIndexMin ||
-        this.config.colorPalette.colors[absoluteIndexMin] == null
+        palette?.Colors == null ||
+        palette.Colors.Length <= minColorIdx ||
+        palette.Colors[minColorIdx] == null
       ) {
         return 0x000000;
       }
       if (
-        this.config.colorPalette.colors == null ||
-        this.config.colorPalette.colors.Length <= absoluteIndexMax ||
-        this.config.colorPalette.colors[absoluteIndexMax] == null
+        palette.Colors.Length <= maxColorIdx ||
+        palette.Colors[maxColorIdx] == null
       ) {
         return 0x000000;
       }
-      if (!this.config.colorPalette.colors[absoluteIndexMin].IsGradient) {
-        // minColorIdx is bank-relative; GetSingleColor re-applies the bank
-        // offset itself, so pass it the relative index (not absoluteIndexMin).
-        return this.GetSingleColor(minColorIdx, bank);
+      if (!palette.Colors[minColorIdx].IsGradient) {
+        return this.GetSingleColor(minColorIdx, paletteIndex);
       }
       // Blend Color1 of the two adjacent slots. Read the palette directly
       // (unscaled) and apply frameBrightness exactly once at the end — routing
       // the endpoints through this.GetSingleColor would pre-scale each by
       // frameBrightness, making the result quadratic in the brightness slider.
       LEDColor color = new LEDColor(
-        this.config.colorPalette.GetSingleColor(absoluteIndexMin),
-        this.config.colorPalette.GetSingleColor(absoluteIndexMax));
+        palette.GetSingleColor(minColorIdx),
+        palette.GetSingleColor(maxColorIdx));
       return LEDColor.ScaleColor(
         color.GradientColor(scaledPixelPos, focusPos, wrap),
         this.frameBrightness

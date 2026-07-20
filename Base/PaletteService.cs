@@ -1,33 +1,16 @@
+using System;
 using System.Collections.Generic;
 
 namespace Spectrum.Base {
 
-  /**
-   * The shared, thread-agnostic core behind saving and recalling named palette
-   * presets, exactly parallel to SceneService. The native DomePalettesController
-   * (already on the UI thread) calls it directly; a future web palette surface
-   * would wrap each call in ControlGateway.InvokeAsync. Every method assumes it
-   * runs on the serialization thread (UI/Dispatcher) — it reads and writes
-   * Configuration properties directly, so the PropertyChanged events land where
-   * every subscriber expects.
-   *
-   * A preset captures just the eight-slot live palette (colorPalette slots 0-7,
-   * the relative indices 0-7 every visualizer already consumes). Save and Apply
-   * both deep-copy — a saved preset never aliases the live slots, and applying
-   * never aliases the stored preset — so a later edit to one can't mutate the
-   * other. Apply writes all eight slots through LEDColorPalette.ReplaceColors, so
-   * the whole change fires a single Item[] notification.
-   */
+  // Shared mutations for the ordered list of named, live palettes. A layer's
+  // "palette" parameter is an index into this list. List mutations are
+  // copy-on-write so the renderer never observes a half-updated collection.
   public sealed class PaletteService {
-
-    // Slots in one palette bank; a preset snapshots exactly one bank.
-    public const int LiveSlots = 8;
-    // Palette banks in colorPalette (64 slots = BankCount * LiveSlots). Each
-    // dome layer picks its bank via its "palette" param.
-    public const int BankCount = 8;
-    // Guard rails, matching the MaxScenes / MaxNameLength style in SceneService.
+    public const int SlotCount = DomePalette.SlotCount;
     public const int MaxPalettes = 64;
     public const int MaxNameLength = 64;
+    public const string LayerParameterKey = "palette";
 
     private readonly Configuration config;
 
@@ -35,153 +18,211 @@ namespace Spectrum.Base {
       this.config = config;
     }
 
-    // The saved preset names, in stored order. Never null.
-    public IReadOnlyList<string> Names() {
+    public IReadOnlyList<string> Names() => Names(this.config);
+
+    public static IReadOnlyList<string> Names(Configuration config) {
       var names = new List<string>();
-      List<DomePalette> palettes = this.config.domePalettes;
-      if (palettes != null) {
-        foreach (DomePalette palette in palettes) {
-          if (palette != null && palette.Name != null) {
+      if (config?.domePalettes != null) {
+        foreach (DomePalette palette in config.domePalettes) {
+          if (palette != null && !string.IsNullOrWhiteSpace(palette.Name)) {
             names.Add(palette.Name);
           }
         }
       }
+      if (names.Count == 0) {
+        names.Add("Palette 1");
+      }
       return names;
     }
 
-    // Snapshot the current live palette (slots 0-7) under `name`, overwriting an
-    // existing preset with the same name (case-insensitive). Returns
-    // (false, error) on a bad name or when the cap is hit and the name is new;
-    // the caller (each UI) confirms an overwrite before calling.
-    public (bool ok, string error) Save(string name, int bank = 0) {
-      name = name == null ? null : name.Trim();
+    // Append a palette. `colors` is copied; null creates an empty palette.
+    public (bool ok, string error) Add(string name, LEDColor[] colors = null) {
+      name = NormalizeName(name);
       (bool ok, string error) = ValidateName(name);
       if (!ok) {
         return (false, error);
       }
-      var palette = new DomePalette {
+      List<DomePalette> current = ValidPalettes(this.config.domePalettes);
+      if (FindIndex(current, name) >= 0) {
+        return (false, "a palette named " + name + " already exists");
+      }
+      if (current.Count >= MaxPalettes) {
+        return (false, "too many palettes (max " + MaxPalettes + ")");
+      }
+      current.Add(new DomePalette {
         Name = name,
-        Colors = Snapshot(this.config, bank),
-      };
-      // Copy-on-write: build a fresh list so the swap fires PropertyChanged and
-      // the operator/serialization threads never observe a mid-mutation list.
-      var next = new List<DomePalette>();
-      bool replaced = false;
-      List<DomePalette> current = this.config.domePalettes;
-      if (current != null) {
-        foreach (DomePalette existing in current) {
-          if (existing == null) {
-            continue;
-          }
-          if (NameEquals(existing.Name, name)) {
-            next.Add(palette); // overwrite in place, preserving order
-            replaced = true;
-          } else {
-            next.Add(existing);
-          }
-        }
-      }
-      if (!replaced) {
-        if (next.Count >= MaxPalettes) {
-          return (false, "too many palettes (max " + MaxPalettes + ")");
-        }
-        next.Add(palette);
-      }
-      this.config.domePalettes = next;
+        Colors = DomePalette.CopyColors(colors),
+      });
+      this.config.domePalettes = current;
       return (true, null);
     }
 
-    // Recall the named preset: deep-copy its eight slots into the chosen bank's
-    // slots (bank*8 .. bank*8+7) in a single Item[] notification (see Restore).
-    public (bool ok, string error) Apply(string name, int bank = 0) {
-      DomePalette palette = Find(this.config.domePalettes, name);
-      if (palette == null) {
+    // Replace one live palette's color-array reference and notify subscribers.
+    // Used by the web editor; native indexer edits notify through the same object.
+    public (bool ok, string error) ReplaceColors(string name, LEDColor[] colors) {
+      List<DomePalette> current = this.config.domePalettes;
+      int index = current == null ? -1 : FindIndex(current, name);
+      if (index < 0) {
         return (false, "no palette named " + name);
       }
-      Restore(this.config, palette.Colors, bank);
+      current[index].ReplaceColors(colors);
       return (true, null);
     }
 
-    // Remove the named preset. A no-op (still ok) if it doesn't exist.
-    public (bool ok, string error) Delete(string name) {
-      List<DomePalette> current = this.config.domePalettes;
-      if (current == null) {
-        return (true, null);
-      }
-      var next = new List<DomePalette>();
-      foreach (DomePalette existing in current) {
-        if (existing != null && !NameEquals(existing.Name, name)) {
-          next.Add(existing);
-        }
-      }
-      if (next.Count != current.Count) {
-        this.config.domePalettes = next;
-      }
-      return (true, null);
-    }
-
-    // Rename a preset. Fails on a bad new name, an unknown old name, or a
-    // collision with a different existing preset.
     public (bool ok, string error) Rename(string oldName, string newName) {
-      newName = newName == null ? null : newName.Trim();
+      newName = NormalizeName(newName);
       (bool ok, string error) = ValidateName(newName);
       if (!ok) {
         return (false, error);
       }
-      List<DomePalette> current = this.config.domePalettes;
-      if (Find(current, oldName) == null) {
+      List<DomePalette> current = ValidPalettes(this.config.domePalettes);
+      int index = FindIndex(current, oldName);
+      if (index < 0) {
         return (false, "no palette named " + oldName);
       }
-      if (!NameEquals(oldName, newName) && Find(current, newName) != null) {
+      int collision = FindIndex(current, newName);
+      if (collision >= 0 && collision != index) {
         return (false, "a palette named " + newName + " already exists");
       }
-      var next = new List<DomePalette>();
-      foreach (DomePalette existing in current) {
-        if (existing == null) {
-          continue;
-        }
-        if (NameEquals(existing.Name, oldName)) {
-          next.Add(new DomePalette {
-            Name = newName,
-            Colors = existing.Colors,
-          });
-        } else {
-          next.Add(existing);
-        }
-      }
-      this.config.domePalettes = next;
+      current[index] = new DomePalette {
+        Name = newName,
+        Colors = DomePalette.CopyColors(current[index].Colors),
+      };
+      this.config.domePalettes = current;
       return (true, null);
     }
 
-    // Deep-copy one bank's eight slots (bank*8 .. bank*8+7) into a fresh
-    // eight-element array, so a caller storing the result (a scene or a named
-    // preset) never aliases the live LEDColor instances. A missing/short palette
-    // yields null slots. Shared with SceneService, whose scenes snapshot bank 0
-    // the same way (default bank).
-    public static LEDColor[] Snapshot(Configuration config, int bank = 0) {
-      var slots = new LEDColor[LiveSlots];
-      LEDColor[] live = config.colorPalette == null
-        ? null
-        : config.colorPalette.colors;
-      int start = bank * LiveSlots;
-      for (int i = 0; i < LiveSlots; i++) {
-        int src = start + i;
-        LEDColor color = live != null && src < live.Length ? live[src] : null;
-        slots[i] = color == null ? null : new LEDColor(color);
+    // Delete a palette while preserving the identity selected by every live and
+    // saved-scene layer. Higher indices shift down; references to the deleted
+    // palette fall back to the first remaining palette.
+    public (bool ok, string error) Delete(string name) {
+      List<DomePalette> current = ValidPalettes(this.config.domePalettes);
+      int removed = FindIndex(current, name);
+      if (removed < 0) {
+        return (false, "no palette named " + name);
       }
-      return slots;
+      if (current.Count <= 1) {
+        return (false, "at least one palette is required");
+      }
+      current.RemoveAt(removed);
+      this.config.domePalettes = current;
+      this.config.domeLayerStack = RemapStack(
+        this.config.domeLayerStack, removed);
+      this.config.domeScenes = RemapScenes(this.config.domeScenes, removed);
+      return (true, null);
     }
 
-    // Write the supplied slots back into one bank's slots (bank*8 .. bank*8+7) in
-    // a single Item[] notification. ReplaceColors deep-copies, so the stored
-    // snapshot is never aliased by the live slots. A null `slots` (e.g. a scene
-    // saved before scenes captured the palette) leaves the palette untouched.
-    public static void Restore(Configuration config, LEDColor[] slots, int bank = 0) {
-      if (slots == null || config.colorPalette == null) {
-        return;
+    public static DomePalette Resolve(Configuration config, int index) {
+      List<DomePalette> palettes = config?.domePalettes;
+      if (palettes == null || palettes.Count == 0) {
+        return null;
       }
-      config.colorPalette.ReplaceColors(bank * LiveSlots, slots);
+      if (index < 0 || index >= palettes.Count || palettes[index] == null) {
+        index = 0;
+      }
+      return index < palettes.Count ? palettes[index] : null;
     }
+
+    private static List<DomePalette> ValidPalettes(List<DomePalette> source) {
+      var result = new List<DomePalette>();
+      if (source != null) {
+        foreach (DomePalette palette in source) {
+          if (palette != null && !string.IsNullOrWhiteSpace(palette.Name)) {
+            result.Add(palette);
+          }
+        }
+      }
+      return result;
+    }
+
+    private static List<DomeLayerSettings> RemapStack(
+      List<DomeLayerSettings> source, int removed
+    ) {
+      if (source == null) {
+        return null;
+      }
+      var result = new List<DomeLayerSettings>(source.Count);
+      foreach (DomeLayerSettings layer in source) {
+        if (layer != null) {
+          result.Add(CopyLayerWithRemappedPalette(layer, removed));
+        }
+      }
+      return result;
+    }
+
+    private static List<DomeScene> RemapScenes(
+      List<DomeScene> source, int removed
+    ) {
+      if (source == null) {
+        return null;
+      }
+      var result = new List<DomeScene>(source.Count);
+      foreach (DomeScene scene in source) {
+        if (scene == null) {
+          continue;
+        }
+        result.Add(new DomeScene {
+          Name = scene.Name,
+          Layers = RemapStack(scene.Layers, removed),
+          GlobalFadeSpeed = scene.GlobalFadeSpeed,
+          GlobalHueSpeed = scene.GlobalHueSpeed,
+        });
+      }
+      return result;
+    }
+
+    private static DomeLayerSettings CopyLayerWithRemappedPalette(
+      DomeLayerSettings layer, int removed
+    ) {
+      if (layer == null) {
+        return null;
+      }
+      Dictionary<string, double> renderer = RemapBag(
+        layer.RendererParams, removed);
+      Dictionary<string, double> operation = RemapBag(
+        layer.OperationParams, removed);
+      return new DomeLayerSettings {
+        InstanceId = layer.InstanceId,
+        VisualizerKey = layer.VisualizerKey,
+        BlendMode = layer.BlendMode,
+        Opacity = layer.Opacity,
+        Enabled = layer.Enabled,
+        Notes = layer.Notes,
+        RendererParams = renderer,
+        OperationParams = operation,
+      };
+    }
+
+    private static Dictionary<string, double> RemapBag(
+      Dictionary<string, double> source, int removed
+    ) {
+      Dictionary<string, double> copy = source == null
+        ? null
+        : new Dictionary<string, double>(source);
+      if (copy != null &&
+          copy.TryGetValue(LayerParameterKey, out double raw)) {
+        int selected = (int)Math.Round(raw);
+        copy[LayerParameterKey] = selected == removed
+          ? 0
+          : selected > removed ? selected - 1 : selected;
+      }
+      return copy;
+    }
+
+    private static int FindIndex(List<DomePalette> palettes, string name) {
+      if (name == null) {
+        return -1;
+      }
+      for (int i = 0; i < palettes.Count; i++) {
+        if (palettes[i] != null && string.Equals(
+              palettes[i].Name, name, StringComparison.OrdinalIgnoreCase)) {
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    private static string NormalizeName(string name) => name?.Trim();
 
     private static (bool ok, string error) ValidateName(string name) {
       if (string.IsNullOrEmpty(name)) {
@@ -192,20 +233,6 @@ namespace Spectrum.Base {
       }
       return (true, null);
     }
-
-    private static DomePalette Find(List<DomePalette> palettes, string name) {
-      if (palettes == null || name == null) {
-        return null;
-      }
-      foreach (DomePalette palette in palettes) {
-        if (palette != null && NameEquals(palette.Name, name)) {
-          return palette;
-        }
-      }
-      return null;
-    }
-
-    private static bool NameEquals(string a, string b) =>
-      string.Equals(a, b, System.StringComparison.OrdinalIgnoreCase);
   }
+
 }

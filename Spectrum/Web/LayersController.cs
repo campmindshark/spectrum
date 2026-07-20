@@ -85,8 +85,8 @@ namespace Spectrum.Web {
     public LayersState State() {
       return new LayersState {
         layers = SerializeStack(this.config),
-        visualizers = VisualizerOptions(),
-        operations = OperationOptions(),
+        visualizers = VisualizerOptions(this.config),
+        operations = OperationOptions(this.config),
       };
     }
 
@@ -121,13 +121,15 @@ namespace Spectrum.Web {
       return list;
     }
 
-    private static List<VisualizerOptionDto> VisualizerOptions() {
+    private static List<VisualizerOptionDto> VisualizerOptions(
+      Configuration config
+    ) {
       var options = new List<VisualizerOptionDto>();
       foreach (LayerDefinition definition in LayerCatalog.Default.Definitions) {
         options.Add(new VisualizerOptionDto {
           key = definition.Id,
           label = definition.DisplayName,
-          @params = ToDtos(definition.Parameters),
+          @params = ToDtos(definition.Parameters, config),
           fireAction = ToDto(definition.FireAction),
           clearAction = ToDto(definition.ClearAction),
         });
@@ -141,19 +143,23 @@ namespace Spectrum.Web {
         toolTip = action.ToolTip,
       };
 
-    private static List<OperationOptionDto> OperationOptions() {
+    private static List<OperationOptionDto> OperationOptions(
+      Configuration config
+    ) {
       var options = new List<OperationOptionDto>();
       foreach (DomeBlend blend in DomeBlend.All) {
         options.Add(new OperationOptionDto {
           id = blend.Id,
           label = blend.DisplayName,
-          @params = ToDtos(blend.Params),
+          @params = ToDtos(blend.Params, config),
         });
       }
       return options;
     }
 
-    private static List<ParamDto> ToDtos(IReadOnlyList<DomeLayerParam> schema) {
+    private static List<ParamDto> ToDtos(
+      IReadOnlyList<DomeLayerParam> schema, Configuration config
+    ) {
       return schema.Select(p => new ParamDto {
         key = p.Key,
         label = p.Label,
@@ -161,7 +167,9 @@ namespace Spectrum.Web {
         min = p.Min,
         max = p.Max,
         step = p.Step,
-        options = p.Options,
+        options = p.Key == PaletteService.LayerParameterKey && config != null
+          ? PaletteService.Names(config).ToArray()
+          : p.Options,
         @default = DomeLayerDate.ResolveDefault(p),
         compositorConsumed = p.CompositorConsumed,
       }).ToList();

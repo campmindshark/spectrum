@@ -261,46 +261,43 @@ namespace Spectrum.Web {
           : Results.BadRequest(new { error });
       });
 
-      // ---- Live color palette (user scope). The eight-slot gradient palette
-      // (colorPalette slots 0-7) every visualizer reads. Whole-palette
-      // last-write-wins like the layer stack — the client PUTs all eight slots,
-      // broadcast on the SSE "palette" frame. No advisory lease. ----
-      app.MapGet("/api/palette", () => Results.Json(this.palettes.LiveState()));
-
-      app.MapPut("/api/palette", async (PaletteLiveBody body) => {
-        (bool ok, string error) = await this.palettes.SetLiveAsync(
-          body?.colors, body?.bank ?? 0);
-        return ok
-          ? Results.Json(this.palettes.LiveState())
-          : Results.BadRequest(new { error });
-      });
-
-      // ---- Named palette presets (user scope), parallel to scenes. Save/delete
-      // change the preset *list*, broadcast on the SSE "palettes" frame; apply
-      // rewrites the live slots, which converge over the "palette" frame. Like
-      // scenes, whole-list last-write-wins — no advisory lease. ----
-      app.MapGet("/api/palettes", () => Results.Json(this.palettes.PresetsState()));
+      // ---- Named live palettes (user scope). Layers select these entries
+      // directly; edits update the selected entry and broadcast the whole list.
+      // No separate live bank or Apply endpoint exists. ----
+      app.MapGet("/api/palettes", () => Results.Json(this.palettes.State()));
 
       app.MapPost("/api/palettes", async (PaletteBody body) => {
-        (bool ok, string error) = await this.palettes.SaveAsync(
-          body?.name, body?.bank ?? 0);
+        (bool ok, string error) = await this.palettes.AddAsync(
+          body?.name, body?.sourceName);
         return ok
-          ? Results.Json(this.palettes.PresetsState())
+          ? Results.Json(this.palettes.State())
           : Results.BadRequest(new { error });
       });
 
-      app.MapPost("/api/palettes/{name}/apply", async (string name, int? bank) => {
-        (bool ok, string error) =
-          await this.palettes.ApplyAsync(name, bank ?? 0);
+      app.MapPut("/api/palettes/{name}", async (
+        string name, PaletteLiveBody body
+      ) => {
+        (bool ok, string error) = await this.palettes.SetColorsAsync(
+          name, body?.colors);
         return ok
-          ? Results.Json(this.palettes.PresetsState())
+          ? Results.Json(this.palettes.State())
+          : Results.BadRequest(new { error });
+      });
+
+      app.MapPost("/api/palettes/{name}/rename", async (
+        string name, PaletteRenameBody body
+      ) => {
+        (bool ok, string error) = await this.palettes.RenameAsync(
+          name, body?.newName);
+        return ok
+          ? Results.Json(this.palettes.State())
           : Results.BadRequest(new { error });
       });
 
       app.MapDelete("/api/palettes/{name}", async (string name) => {
         (bool ok, string error) = await this.palettes.DeleteAsync(name);
         return ok
-          ? Results.Json(this.palettes.PresetsState())
+          ? Results.Json(this.palettes.State())
           : Results.BadRequest(new { error });
       });
 
@@ -629,16 +626,17 @@ namespace Spectrum.Web {
 
     private sealed class PaletteBody {
       public string name { get; set; }
-      // Which bank Save snapshots (0-7); defaults to bank 0.
-      public int bank { get; set; }
+      public string sourceName { get; set; }
     }
 
     private sealed class PaletteLiveBody {
-      // Which bank these slots replace (0-7); defaults to bank 0.
-      public int bank { get; set; }
       public System.Collections.Generic.List<PaletteController.SlotDto> colors {
         get; set;
       }
+    }
+
+    private sealed class PaletteRenameBody {
+      public string newName { get; set; }
     }
   }
 }

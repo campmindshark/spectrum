@@ -90,7 +90,7 @@ namespace Spectrum {
       int button = options.Button;
       double levelThreshold = options.Level;
       double interval = options.Interval;
-      int paletteBank = options.Palette;
+      int selectedPalette = options.Palette;
 
       double frameRetention =
         1 - Math.Pow(5, -this.environment.GlobalFadeSpeed);
@@ -114,7 +114,7 @@ namespace Spectrum {
       this.EmitParticles(emissionRate, dt, aim, speed);
 
       this.Advance(dt);
-      this.RenderPixels(size, paletteBank);
+      this.RenderPixels(size, selectedPalette);
     }
 
     private Vector2 AimPoint() {
@@ -179,7 +179,7 @@ namespace Spectrum {
       }
     }
 
-    private void RenderPixels(double size, int bank) {
+    private void RenderPixels(double size, int selectedPalette) {
       if (this.particles.Count == 0) {
         return;
       }
@@ -206,7 +206,7 @@ namespace Spectrum {
           if (strength > bestValue) {
             bestValue = strength;
             int color = this.dome.GetGradientColor(
-              particle.hueIndex, radialValue, 0, true, bank);
+              particle.hueIndex, radialValue, 0, true, selectedPalette);
             bestColor = LEDColor.ScaleColor(color, strength);
           }
         }

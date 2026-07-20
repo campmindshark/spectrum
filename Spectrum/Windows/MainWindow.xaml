@@ -284,7 +284,6 @@
                   <TextBox x:Name="midiNewBindingName" Margin="0,4,0,0" />
                   <TextBlock Text="Binding type" Style="{StaticResource CaptionText}" Margin="0,8,0,0" />
                   <ComboBox x:Name="midiBindingType" Margin="0,4,0,0" SelectionChanged="MidiBindingTypeSelectionChanged">
-                    <ComboBoxItem>Change color</ComboBoxItem>
                     <ComboBoxItem>Tap tempo</ComboBoxItem>
                     <ComboBoxItem>Continuous knob</ComboBoxItem>
                     <ComboBoxItem>Discrete knob</ComboBoxItem>
@@ -292,10 +291,6 @@
                     <ComboBoxItem>ADSR level driver</ComboBoxItem>
                   </ComboBox>
 
-                  <StackPanel x:Name="midiChangeColorBindingPanel" Visibility="Collapsed" Margin="0,8,0,0">
-                    <TextBlock Text="Start MIDI note" Style="{StaticResource CaptionText}" />
-                    <TextBox x:Name="midiChangeColorIndexRangeStart" LostFocus="MidiChangeColorIndexRangeStartLostFocus" />
-                  </StackPanel>
                   <StackPanel x:Name="midiTapTempoBindingPanel" Visibility="Collapsed" Margin="0,8,0,0">
                     <TextBlock Text="Button" Style="{StaticResource CaptionText}" />
                     <Grid>

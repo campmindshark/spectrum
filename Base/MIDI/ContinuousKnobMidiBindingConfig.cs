@@ -13,7 +13,7 @@ namespace Spectrum.Base {
     public double endValue { get; set; }
 
     public ContinuousKnobMidiBindingConfig() {
-      this.BindingType = 2;
+      this.BindingType = 1;
     }
 
     public override object Clone() {

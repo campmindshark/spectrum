@@ -19,14 +19,35 @@ namespace Spectrum {
       this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    public SpectrumConfiguration() {
-      this._colorPalette.PropertyChanged += ColorPalettePropertyChanged;
+    private void DomePalettePropertyChanged(
+      object sender, PropertyChangedEventArgs e
+    ) {
+      this.PropertyChanged?.Invoke(
+        this,
+        new PropertyChangedEventArgs("domePalettes." + e.PropertyName)
+      );
     }
 
-    private void ColorPalettePropertyChanged(object sender, PropertyChangedEventArgs e) {
-      PropertyChangedEventArgs forwardedEvent =
-        new PropertyChangedEventArgs("colorPalette." + e.PropertyName);
-      this.PropertyChanged?.Invoke(this, forwardedEvent);
+    private void SubscribePalettes(List<DomePalette> palettes) {
+      if (palettes == null) {
+        return;
+      }
+      foreach (DomePalette palette in palettes) {
+        if (palette != null) {
+          palette.PropertyChanged += this.DomePalettePropertyChanged;
+        }
+      }
+    }
+
+    private void UnsubscribePalettes(List<DomePalette> palettes) {
+      if (palettes == null) {
+        return;
+      }
+      foreach (DomePalette palette in palettes) {
+        if (palette != null) {
+          palette.PropertyChanged -= this.DomePalettePropertyChanged;
+        }
+      }
     }
 
     private string _audioDeviceID = null;
@@ -203,7 +224,16 @@ namespace Spectrum {
     private List<DomePalette> _domePalettes = null;
     public List<DomePalette> domePalettes {
       get => _domePalettes;
-      set => SetField(ref _domePalettes, value);
+      set {
+        if (ReferenceEquals(this._domePalettes, value)) {
+          return;
+        }
+        this.UnsubscribePalettes(this._domePalettes);
+        this._domePalettes = value;
+        this.SubscribePalettes(this._domePalettes);
+        this.PropertyChanged?.Invoke(
+          this, new PropertyChangedEventArgs(nameof(domePalettes)));
+      }
     }
     // Non-null default, matching midiDevices/channelToMidiLevelDriverPreset
     // (Dictionary properties round-trip fine through XSerializer, unlike
@@ -257,22 +287,6 @@ namespace Spectrum {
       set => SetField(ref _channelToMidiLevelDriverPreset, value);
     }
 
-    private LEDColorPalette _colorPalette = new LEDColorPalette();
-    public LEDColorPalette colorPalette {
-      get {
-        return _colorPalette;
-      }
-      set {
-        value.PropertyChanged += this.ColorPalettePropertyChanged;
-        this._colorPalette = value;
-        this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(colorPalette)));
-      }
-    }
-    private int _colorPaletteIndex = 0;
-    public int colorPaletteIndex {
-      get => _colorPaletteIndex;
-      set => SetField(ref _colorPaletteIndex, value);
-    }
     private double _flashSpeed = 0.0;
     public double flashSpeed {
       get => _flashSpeed;

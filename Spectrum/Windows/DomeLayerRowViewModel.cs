@@ -45,11 +45,14 @@ namespace Spectrum {
     public event Action Changed;
 
     private readonly DomeLayerParam descriptor;
+    private readonly IReadOnlyList<string> optionOverride;
 
     public LayerParamViewModel(
-      DomeLayerParam descriptor, double value, bool isOperationParameter
+      DomeLayerParam descriptor, double value, bool isOperationParameter,
+      IReadOnlyList<string> optionOverride = null
     ) {
       this.descriptor = descriptor;
+      this.optionOverride = optionOverride;
       this.value = value;
       this.storedValue = value;
       this.IsOperationParameter = isOperationParameter;
@@ -58,9 +61,12 @@ namespace Spectrum {
     public string Key => this.descriptor.Key;
     public string Label => this.descriptor.Label;
     public double Min => this.descriptor.Min;
-    public double Max => this.descriptor.Max;
+    public double Max => this.optionOverride != null
+      ? Math.Max(0, this.optionOverride.Count - 1)
+      : this.descriptor.Max;
     public double Step => this.descriptor.Step;
-    public IReadOnlyList<string> Options => this.descriptor.Options;
+    public IReadOnlyList<string> Options =>
+      this.optionOverride ?? this.descriptor.Options;
     public bool IsOperationParameter { get; }
 
     public bool IsDouble => this.descriptor.Type == DomeLayerParamType.Double;
@@ -170,7 +176,12 @@ namespace Spectrum {
     // domeLayerClearCounters entry so a layer can drop its live state.
     public event Action<DomeLayerRowViewModel> ClearRequested;
 
-    public DomeLayerRowViewModel() {
+    private readonly IReadOnlyList<string> paletteOptions;
+
+    public DomeLayerRowViewModel(
+      IReadOnlyList<string> paletteOptions = null
+    ) {
+      this.paletteOptions = paletteOptions;
       this.RemoveCommand = new RelayCommand(
         () => this.RemoveRequested?.Invoke(this));
       this.MoveUpCommand = new RelayCommand(
@@ -322,8 +333,12 @@ namespace Spectrum {
         if (seed != null && seed.TryGetValue(descriptor.Key, out double v)) {
           value = v;
         }
+        IReadOnlyList<string> options =
+          descriptor.Key == PaletteService.LayerParameterKey
+            ? this.paletteOptions
+            : null;
         var vm = new LayerParamViewModel(
-          descriptor, value, isOperationParameter);
+          descriptor, value, isOperationParameter, options);
         vm.Changed += this.OnParamChanged;
         this.Params.Add(vm);
       }

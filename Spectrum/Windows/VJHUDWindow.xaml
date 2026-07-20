@@ -86,25 +86,44 @@
                     </StackPanel>
                 </Border>
 
-                <Label Content="Live palette" Margin="4,12,0,4" FontSize="13" FontWeight="SemiBold" />
+                <Label Content="Palettes" Margin="4,12,0,4" FontSize="13" FontWeight="SemiBold" />
                 <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
                         Margin="5,0,5,0" Padding="5">
                     <StackPanel>
-                        <!-- Which of the eight palette banks these rows edit; each
-                             dome layer picks its bank via its own Palette param. -->
-                        <DockPanel Margin="0,0,0,4">
-                            <Label DockPanel.Dock="Left" Content="Editing" Padding="0,0,4,0" VerticalAlignment="Center" FontSize="10" FontFamily="Segoe UI Semilight" />
-                            <ComboBox x:Name="paletteBankSelector" SelectedIndex="0" ToolTip="Which palette bank the rows below edit">
-                                <ComboBoxItem Content="Palette 1" />
-                                <ComboBoxItem Content="Palette 2" />
-                                <ComboBoxItem Content="Palette 3" />
-                                <ComboBoxItem Content="Palette 4" />
-                                <ComboBoxItem Content="Palette 5" />
-                                <ComboBoxItem Content="Palette 6" />
-                                <ComboBoxItem Content="Palette 7" />
-                                <ComboBoxItem Content="Palette 8" />
-                            </ComboBox>
+                        <ListBox x:Name="paletteList" Height="150" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ToolTip="Select the live palette to edit">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ItemsControl ItemsSource="{Binding Colors}" VerticalAlignment="Center">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Rectangle Width="10" Height="14" Stroke="{StaticResource BorderBrush}" StrokeThickness="0.5" Fill="{Binding Converter={StaticResource ledColorToBrush}}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Text="{Binding Name}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <DockPanel Margin="0,4,0,0">
+                            <Button x:Name="paletteDeleteButton" DockPanel.Dock="Right" Content="Delete" Width="52" ToolTip="Delete selected palette" />
+                            <Button x:Name="paletteAddButton" DockPanel.Dock="Right" Content="Add copy" Width="66" Margin="4,0,4,0" ToolTip="Duplicate the selected colors under this name" />
+                            <Button x:Name="paletteRenameButton" DockPanel.Dock="Right" Content="Rename" Width="56" Margin="4,0,4,0" ToolTip="Rename the selected palette" />
+                            <TextBox x:Name="paletteNameBox" VerticalContentAlignment="Center" ToolTip="Palette name" />
                         </DockPanel>
+                    </StackPanel>
+                </Border>
+
+                <Label Content="Selected palette colors" Margin="4,12,0,4" FontSize="13" FontWeight="SemiBold" />
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
+                        Margin="5,0,5,0" Padding="5">
+                    <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="24" />
@@ -116,7 +135,7 @@
                             <Label Grid.Column="2" Content="End" Padding="0" FontSize="10" FontFamily="Segoe UI Semilight" />
                             <Label Grid.Column="3" Content="Preview" Padding="2,0,0,0" FontSize="10" FontFamily="Segoe UI Semilight" />
                         </Grid>
-                        <!-- Eight live-palette rows (colorPalette slots 0-7). -->
+                        <!-- Eight slots of the named palette selected below. -->
                         <Grid Margin="0,2,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="24" />
@@ -269,40 +288,6 @@
                                 </Rectangle.Fill>
                             </Rectangle>
                         </Grid>
-                    </StackPanel>
-                </Border>
-
-                <Label Content="Palette presets" Margin="4,12,0,4" FontSize="13" FontWeight="SemiBold" />
-                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="0"
-                        Margin="5,0,5,0" Padding="5">
-                    <StackPanel>
-                        <ListBox x:Name="palettePresetList" Height="150" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ToolTip="Saved palettes">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal">
-                                        <ItemsControl ItemsSource="{Binding Colors}" VerticalAlignment="Center">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal" />
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Rectangle Width="10" Height="14" Stroke="{StaticResource BorderBrush}" StrokeThickness="0.5" Fill="{Binding Converter={StaticResource ledColorToBrush}}" />
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <TextBlock Text="{Binding Name}" Margin="6,0,0,0" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                        <DockPanel Margin="0,4,0,0">
-                            <Button x:Name="palettePresetDeleteButton" DockPanel.Dock="Right" Content="Delete" Width="52" ToolTip="Delete selected palette" />
-                            <Button x:Name="palettePresetSaveButton" DockPanel.Dock="Right" Content="Save" Width="44" Margin="4,0,4,0" ToolTip="Save the live palette under this name" />
-                            <Button x:Name="palettePresetApplyButton" DockPanel.Dock="Right" Content="Apply" Width="44" Margin="4,0,4,0" ToolTip="Load selected palette into the live palette" />
-                            <TextBox x:Name="palettePresetNameBox" VerticalContentAlignment="Center" ToolTip="Palette name" />
-                        </DockPanel>
                     </StackPanel>
                 </Border>
 

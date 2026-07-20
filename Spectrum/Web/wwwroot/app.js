@@ -613,8 +613,6 @@
           if (window.spectrumApplyLayers) window.spectrumApplyLayers(frame.value);
         } else if (frame.kind === "scenes") {
           if (window.spectrumApplyScenes) window.spectrumApplyScenes(frame.value);
-        } else if (frame.kind === "palette") {
-          if (window.spectrumApplyPalette) window.spectrumApplyPalette(frame.value);
         } else if (frame.kind === "palettes") {
           if (window.spectrumApplyPalettes) window.spectrumApplyPalettes(frame.value);
         } else {

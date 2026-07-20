@@ -12,7 +12,7 @@ namespace Spectrum.Base {
     public int numPossibleValues { get; set; }
 
     public DiscreteKnobMidiBindingConfig() {
-      this.BindingType = 3;
+      this.BindingType = 2;
     }
 
     public override object Clone() {
