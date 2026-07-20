@@ -222,7 +222,7 @@ namespace Spectrum.Base {
     // is an index into Configuration.domePalettes; UIs replace these generic
     // labels with the current palette names. A 64-entry schema preserves the
     // configured guard rail while the actual list grows and shrinks at runtime.
-    private static readonly DomeLayerParam PaletteBankParam =
+    private static readonly DomeLayerParam PaletteParam =
       new DomeLayerParam {
         Key = "palette", Label = "Palette",
         Type = DomeLayerParamType.Enum,
@@ -273,7 +273,7 @@ namespace Spectrum.Base {
       },
       RotationSpeedParam,
       GradientSpeedParam,
-      PaletteBankParam,
+      PaletteParam,
     };
 
     // Volume's tuning (animation size was a MainWindow combo, the speeds were
@@ -286,7 +286,7 @@ namespace Spectrum.Base {
       },
       RotationSpeedParam,
       GradientSpeedParam,
-      PaletteBankParam,
+      PaletteParam,
     };
 
     // Race repurposed two knobs that nominally belonged to other visualizers;
@@ -302,16 +302,16 @@ namespace Spectrum.Base {
         Type = DomeLayerParamType.Double,
         Min = 0, Max = 1, Step = 0.01, Default = 0.1,
       },
-      PaletteBankParam,
+      PaletteParam,
     };
 
-    // Splat and Snakes have no other tunables today; the palette bank picker is
+    // Splat and Snakes have no other tunables today; the palette picker is
     // their only per-layer param.
     internal static readonly DomeLayerParam[] SplatParams = new DomeLayerParam[] {
-      PaletteBankParam,
+      PaletteParam,
     };
     internal static readonly DomeLayerParam[] SnakesParams = new DomeLayerParam[] {
-      PaletteBankParam,
+      PaletteParam,
     };
 
     internal static readonly DomeLayerParam[] TwinkleParams =
@@ -748,7 +748,7 @@ namespace Spectrum.Base {
         TriggerButtonParam,
         TriggerLevelParam,
         TriggerIntervalParam,
-        PaletteBankParam,
+        PaletteParam,
       };
 
     // Sparkler is Shooting Star in reverse: particles are emitted continuously
@@ -780,7 +780,7 @@ namespace Spectrum.Base {
         TriggerButtonParam,
         TriggerLevelParam,
         TriggerIntervalParam,
-        PaletteBankParam,
+        PaletteParam,
       };
 
     // Gyroscope's tuning, all visualizer-consumed (read in Visualize()). The
@@ -792,7 +792,7 @@ namespace Spectrum.Base {
     // wand is moving) is not exposed as a knob — the visualizer feeds a fixed
     // level into the shared OrientationCenter. The three nested gimbal rings
     // (outer/middle/inner) draw their colors from the live palette like every
-    // other palette-consuming layer: `palette` picks the bank, and the visualizer
+    // other palette-consuming layer: `palette` picks the named palette, and the visualizer
     // reads its first three slots (relative 0/1/2) for the outer/middle/inner
     // rings, scaling each by the ring's cross-section falloff so they still fade
     // to black at the edges.
@@ -808,7 +808,7 @@ namespace Spectrum.Base {
           Type = DomeLayerParamType.Double,
           Min = 0, Max = 6, Step = 0.1, Default = 2.2,
         },
-        PaletteBankParam,
+        PaletteParam,
       };
 
     // Noise Cloud's tuning, all visualizer-consumed (read in Visualize()). It
