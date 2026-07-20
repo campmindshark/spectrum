@@ -12,6 +12,8 @@ namespace Spectrum.Base {
     ReadsDestination = 4,
     ReadsDestinationNeighbors = 8,
     PublishesHue = 16,
+    ReadsOrientation = 32,
+    ReadsHistory = 64,
   }
 
   public interface ICompositeOptions { }
@@ -63,11 +65,20 @@ namespace Spectrum.Base {
     // option (docs/prism.md). Nullable — a dome wired up without an
     // orientation source simply never follows.
     public OrientationAngleProvider Orientation { get; }
+    // Per-layer retained composite frames for stateful adjustment operations.
+    // Null unless the operation declares ReadsHistory.
+    public CompositeFrameHistory History { get; }
+    // Resolve one color from a configured named palette at a normalized
+    // position. Hosts without a palette service may leave this null; palette-
+    // aware operations then preserve the sampled composite's color.
+    public Func<int, double, int> PaletteColor { get; }
 
     public DomeBlendContext(
       DomeFrame dest, DomeFrame src, DomeFrame snapshot,
       ICompositeOptions options,
-      double opacity, double seconds, OrientationAngleProvider orientation
+      double opacity, double seconds, OrientationAngleProvider orientation,
+      CompositeFrameHistory history = null,
+      Func<int, double, int> paletteColor = null
     ) {
       this.Dest = dest ?? throw new ArgumentNullException(nameof(dest));
       this.Src = src ?? throw new ArgumentNullException(nameof(src));
@@ -86,6 +97,8 @@ namespace Spectrum.Base {
       this.Opacity = opacity;
       this.Seconds = seconds;
       this.Orientation = orientation;
+      this.History = history;
+      this.PaletteColor = paletteColor;
     }
 
     // Resolve a prism blend's effective angle. When `follow` is set and a wand

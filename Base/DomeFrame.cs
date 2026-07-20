@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Numerics;
 
@@ -282,8 +283,10 @@ namespace Spectrum.Base {
 
     private readonly DomeTopologyPixel[] pixels;
     private readonly int[] strutStartIndex;
+    private readonly int[] strutPixelCount;
     private readonly Lazy<int[]> neighborTable;
     private readonly Lazy<ImmutableArray<Vector3>> normals;
+    private readonly Lazy<TopDownSpatialIndex> topDownSpatialIndex;
 
     public int PixelCount => this.pixels.Length;
     public ImmutableArray<Vector3> Normals => this.normals.Value;
@@ -298,14 +301,20 @@ namespace Spectrum.Base {
         maxStrut = Math.Max(maxStrut, pixel.StrutIndex);
       }
       this.strutStartIndex = new int[maxStrut + 1];
+      this.strutPixelCount = new int[maxStrut + 1];
       for (int i = 0; i < this.pixels.Length; i++) {
         if (this.pixels[i].LedIndex == 0) {
           this.strutStartIndex[this.pixels[i].StrutIndex] = i;
         }
+        this.strutPixelCount[this.pixels[i].StrutIndex] = Math.Max(
+          this.strutPixelCount[this.pixels[i].StrutIndex],
+          this.pixels[i].LedIndex + 1);
       }
       this.neighborTable = new Lazy<int[]>(this.BuildNeighborTable);
       this.normals = new Lazy<ImmutableArray<Vector3>>(
         this.BuildNormals);
+      this.topDownSpatialIndex = new Lazy<TopDownSpatialIndex>(
+        () => new TopDownSpatialIndex(this.pixels));
     }
 
     public DomeTopologyPixel PixelAt(int logicalPixel) =>
@@ -314,11 +323,17 @@ namespace Spectrum.Base {
     internal int FrameIndexAt(int strutIndex, int ledIndex) =>
       this.strutStartIndex[strutIndex] + ledIndex;
 
+    internal int StrutPixelCount(int strutIndex) =>
+      this.strutPixelCount[strutIndex];
+
     internal void EnsureNeighborTable() => _ = this.neighborTable.Value;
 
     internal int NeighborAt(int pixel, int dirBin, int radiusBin) =>
       this.neighborTable.Value[
         (pixel * NeighborRadii + radiusBin) * NeighborDirections + dirBin];
+
+    internal int NearestTopDownPixel(double x, double y) =>
+      this.topDownSpatialIndex.Value.FindNearest(x, y);
 
     private ImmutableArray<Vector3> BuildNormals() {
       var positions = ImmutableArray.CreateBuilder<Vector3>(
@@ -418,6 +433,126 @@ namespace Spectrum.Base {
         }
       }
       return table;
+    }
+
+    // Arbitrary top-down resampling for coordinate-transform operations such
+    // as projection warps. Unlike the short fixed-radius neighbor table, this
+    // uniform spatial index can resolve any point in or near the projected
+    // dome. Queries expand only until the current nearest candidate is closer
+    // than every unvisited cell, so ordinary on-dome samples inspect a small
+    // handful of buckets while still returning the exact nearest pixel.
+    private sealed class TopDownSpatialIndex {
+      private const double CellSize = 0.04;
+
+      private readonly DomeTopologyPixel[] pixels;
+      private readonly Dictionary<(int X, int Y), int[]> buckets;
+      private readonly int minCellX;
+      private readonly int maxCellX;
+      private readonly int minCellY;
+      private readonly int maxCellY;
+
+      public TopDownSpatialIndex(DomeTopologyPixel[] pixels) {
+        this.pixels = pixels;
+        var pending = new Dictionary<(int X, int Y), List<int>>();
+        int minX = int.MaxValue, maxX = int.MinValue;
+        int minY = int.MaxValue, maxY = int.MinValue;
+        for (int i = 0; i < pixels.Length; i++) {
+          int x = Cell(pixels[i].TopDownX);
+          int y = Cell(pixels[i].TopDownY);
+          (int X, int Y) key = (x, y);
+          if (!pending.TryGetValue(key, out List<int> bucket)) {
+            bucket = new List<int>();
+            pending.Add(key, bucket);
+          }
+          bucket.Add(i);
+          minX = Math.Min(minX, x);
+          maxX = Math.Max(maxX, x);
+          minY = Math.Min(minY, y);
+          maxY = Math.Max(maxY, y);
+        }
+        this.buckets = new Dictionary<(int X, int Y), int[]>(pending.Count);
+        foreach (KeyValuePair<(int X, int Y), List<int>> entry in pending) {
+          this.buckets.Add(entry.Key, entry.Value.ToArray());
+        }
+        this.minCellX = minX;
+        this.maxCellX = maxX;
+        this.minCellY = minY;
+        this.maxCellY = maxY;
+      }
+
+      public int FindNearest(double x, double y) {
+        if (this.pixels.Length == 0) {
+          return -1;
+        }
+        int centerX = Cell(x);
+        int centerY = Cell(y);
+        int maxRing = Math.Max(
+          Math.Max(Math.Abs(centerX - this.minCellX),
+            Math.Abs(centerX - this.maxCellX)),
+          Math.Max(Math.Abs(centerY - this.minCellY),
+            Math.Abs(centerY - this.maxCellY)));
+        int nearest = -1;
+        double nearestDistanceSq = double.MaxValue;
+        for (int ring = 0; ring <= maxRing; ring++) {
+          int left = centerX - ring;
+          int right = centerX + ring;
+          int top = centerY - ring;
+          int bottom = centerY + ring;
+          for (int cellX = left; cellX <= right; cellX++) {
+            this.SearchBucket(
+              cellX, top, x, y, ref nearest, ref nearestDistanceSq);
+            if (bottom != top) {
+              this.SearchBucket(
+                cellX, bottom, x, y, ref nearest, ref nearestDistanceSq);
+            }
+          }
+          for (int cellY = top + 1; cellY < bottom; cellY++) {
+            this.SearchBucket(
+              left, cellY, x, y, ref nearest, ref nearestDistanceSq);
+            if (right != left) {
+              this.SearchBucket(
+                right, cellY, x, y, ref nearest, ref nearestDistanceSq);
+            }
+          }
+          if (nearest >= 0) {
+            double boundaryDistance = Math.Min(
+              Math.Min(x - left * CellSize,
+                (right + 1) * CellSize - x),
+              Math.Min(y - top * CellSize,
+                (bottom + 1) * CellSize - y));
+            if (nearestDistanceSq <=
+                boundaryDistance * boundaryDistance) {
+              return nearest;
+            }
+          }
+        }
+        return nearest;
+      }
+
+      private void SearchBucket(
+        int cellX, int cellY, double x, double y,
+        ref int nearest, ref double nearestDistanceSq
+      ) {
+        if (!this.buckets.TryGetValue(
+            (cellX, cellY), out int[] candidates)) {
+          return;
+        }
+        for (int candidateIndex = 0;
+            candidateIndex < candidates.Length; candidateIndex++) {
+          int candidate = candidates[candidateIndex];
+          double dx = this.pixels[candidate].TopDownX - x;
+          double dy = this.pixels[candidate].TopDownY - y;
+          double distanceSq = dx * dx + dy * dy;
+          if (distanceSq < nearestDistanceSq ||
+              (distanceSq == nearestDistanceSq && candidate < nearest)) {
+            nearest = candidate;
+            nearestDistanceSq = distanceSq;
+          }
+        }
+      }
+
+      private static int Cell(double coordinate) =>
+        (int)Math.Floor(coordinate / CellSize);
     }
   }
 
@@ -539,6 +674,11 @@ namespace Spectrum.Base {
     // `radiusBin` (its own index if the tap found nothing near its target).
     public int NeighborAt(int pixel, int dirBin, int radiusBin) =>
       this.Topology.NeighborAt(pixel, dirBin, radiusBin);
+
+    // Nearest logical pixel to an arbitrary point in the dome's baked
+    // top-down projection. Returns -1 only for an empty topology.
+    public int NearestTopDownPixel(double x, double y) =>
+      this.Topology.NearestTopDownPixel(x, y);
 
     // Build neighborTable once from the baked x/y positions. Uses a uniform
     // spatial grid (cell = the max tap radius) so each nearest lookup only scans

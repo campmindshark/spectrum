@@ -50,8 +50,12 @@
     return state.visualizers.find((v) => v.key === layer.visualizerKey);
   }
 
+  function operationFor(layer) {
+    return state.operations.find((o) => o.id === layer.blendMode);
+  }
+
   function operationSchemaFor(layer) {
-    const operation = state.operations.find((o) => o.id === layer.blendMode);
+    const operation = operationFor(layer);
     return (operation && operation.params) || [];
   }
 

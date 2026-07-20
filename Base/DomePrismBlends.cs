@@ -31,7 +31,8 @@ namespace Spectrum.Base {
     public override CompositeRequirements Requirements =>
       CompositeRequirements.ReadsSourceMask |
       CompositeRequirements.ReadsDestination |
-      CompositeRequirements.ReadsDestinationNeighbors;
+      CompositeRequirements.ReadsDestinationNeighbors |
+      CompositeRequirements.ReadsOrientation;
     public override IReadOnlyList<DomeLayerParam> Params => paramSchema;
     private static readonly DomeLayerParam[] paramSchema = new DomeLayerParam[] {
       new DomeLayerParam {
@@ -237,7 +238,8 @@ namespace Spectrum.Base {
     public override string Id => "Iridescence";
     public override CompositeRequirements Requirements =>
       CompositeRequirements.ReadsSourceMask |
-      CompositeRequirements.ReadsDestination;
+      CompositeRequirements.ReadsDestination |
+      CompositeRequirements.ReadsOrientation;
     public override IReadOnlyList<DomeLayerParam> Params => paramSchema;
     private static readonly DomeLayerParam[] paramSchema = new DomeLayerParam[] {
       new DomeLayerParam {

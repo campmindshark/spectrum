@@ -128,9 +128,17 @@ namespace Spectrum.Visualizers {
       }
       Vector3 center =
         Vector3.Transform(Spot, Quaternion.Conjugate(this.currentCenter));
-      angle = Math.Atan2(center.Y, center.X);
+      double x = center.X;
+      double y = center.Y;
+      angle = Math.Atan2(y, x);
       return true;
     }
+
+    // Adjustment operations have no renderer of their own to call the
+    // level-aware overload below. Refresh them with a neutral idle level;
+    // when an orientation-driven renderer already updated this generation,
+    // the generation guard makes this a no-op.
+    void OrientationAngleProvider.Update() => this.Update(1);
 
     // Filters the operator's shared device snapshot, resolves the spotlight,
     // and advances the idle drift. Every active layer may call this before

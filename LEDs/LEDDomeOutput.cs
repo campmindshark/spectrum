@@ -254,7 +254,9 @@ namespace Spectrum.LEDs {
       this.beat = beat;
       this.visualizers = new List<Visualizer>();
       this.compositor = new DomeCompositor(
-        this.MakeDomeFrame, orientationAngle);
+        this.MakeDomeFrame, orientationAngle,
+        paletteColor: (palette, position) => this.GetGradientBetweenColors(
+          0, 7, position, 0, false, palette));
       this.RebuildOutputMapping();
       this.config.PropertyChanged += ConfigUpdated;
     }
