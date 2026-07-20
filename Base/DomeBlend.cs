@@ -32,7 +32,23 @@ namespace Spectrum.Base {
   public sealed record IridescenceOptions(
     double Strength, double Bands, double Spin, bool FollowOrientation
   ) : ICompositeOptions;
-
+  public sealed record KaleidoscopeOptions(
+    int SectorCount, bool MirrorSectors, double Spin,
+    double FocalAngle, double FocalDistance, bool FollowOrientation
+  ) : ICompositeOptions;
+  public sealed record EchoOptions(
+    int CopyCount, double Delay, double Rotation, double Scale,
+    double Drift, double DriftDirection, double Decay, double HueShift,
+    double Saturation
+  ) : ICompositeOptions;
+  public sealed record HalftoneOptions(
+    int CellType, double Scale, double Threshold,
+    double DotMinimum, double DotMaximum, double Rotation, int Palette
+  ) : ICompositeOptions;
+  public sealed record MotionEmbersOptions(
+    double ChangeThreshold, double EmberBrightness, double Retention,
+    int ColorMode, bool CountFading, bool CountHueChanges
+  ) : ICompositeOptions;
   public interface ICompositeOperation {
     string Id { get; }
     CompositeRequirements Requirements { get; }
@@ -72,7 +88,6 @@ namespace Spectrum.Base {
     // position. Hosts without a palette service may leave this null; palette-
     // aware operations then preserve the sampled composite's color.
     public Func<int, double, int> PaletteColor { get; }
-
     public DomeBlendContext(
       DomeFrame dest, DomeFrame src, DomeFrame snapshot,
       ICompositeOptions options,
@@ -187,10 +202,15 @@ namespace Spectrum.Base {
     public static readonly DomeBlend EdgeSpectrum = new EdgeSpectrumBlend();
     public static readonly DomeBlend Iridescence = new IridescenceBlend();
     public static readonly DomeBlend Refract = new RefractBlend();
+    public static readonly DomeBlend Kaleidoscope = new KaleidoscopeBlend();
+    public static readonly DomeBlend Echo = new EchoBlend();
+    public static readonly DomeBlend Halftone = new HalftoneBlend();
+    public static readonly DomeBlend MotionEmbers = new MotionEmbersBlend();
 
     public static readonly IReadOnlyList<DomeBlend> All = new DomeBlend[] {
       Over, Add, Screen, Lighten, Multiply, Desaturate, Hue,
-      ChromaticFringe, EdgeSpectrum, Iridescence, Refract,
+      ChromaticFringe, EdgeSpectrum, Iridescence, Refract, Kaleidoscope,
+      Echo, Halftone, MotionEmbers,
     };
 
     // The blend a fresh layer gets (the old enum default).

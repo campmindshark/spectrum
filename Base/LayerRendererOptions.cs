@@ -100,6 +100,63 @@ namespace Spectrum.Base {
     double RingWidth, double RotorRate, int Palette
   ) : ILayerRendererOptions;
 
+  public sealed record WatchfulIrisLayerOptions(
+    int IrisComplexity, double PupilSize, double DilationGain,
+    int BlinkTrigger, double EyelidSoftness, double ScleraBrightness,
+    int Palette
+  ) : ILayerRendererOptions;
+
+  public sealed record LivingSkinLayerOptions(
+    double FeedRate, double KillRate, double DiffusionScale,
+    double SimulationSpeed, int SeedSource, double EdgeContrast,
+    int FeedButton, int PoisonButton, int EraseButton,
+    int BrushRadius, double BrushStrength, int Palette
+  ) : ILayerRendererOptions;
+
+  public sealed record ArcLightningLayerOptions(
+    int BranchCount, double Jaggedness, int Width,
+    double Afterglow, double Duration,
+    int Trigger, int Button, double Level, double Interval,
+    int Palette
+  ) : ILayerRendererOptions;
+
+  public sealed record GlassMosaicLayerOptions(
+    int TileGrouping, double CascadeSpeed, int PropagationRule,
+    double BorderBrightness, int TileTransition, int Trigger, int Button,
+    double Level, double Interval, int Palette
+  ) : ILayerRendererOptions;
+
+  public sealed record CellularDomeLayerOptions(
+    int Rule, int Neighborhood, double GenerationRate,
+    int BirthColor, double AgeDecay, int TriggerMode, int Palette
+  ) : ILayerRendererOptions;
+
+  public sealed record FireflySwarmLayerOptions(
+    int Population, double Cohesion, double Separation, double Wander,
+    int InteractionMode, double DotSize, double TrailLength, int Palette
+  ) : ILayerRendererOptions;
+
+  public sealed record RainChamberLayerOptions(
+    double RainfallRate, double Gravity, double DropletSize,
+    double TrailRetention, int InteractionMode, double Wind,
+    double SplashStrength, int Palette
+  ) : ILayerRendererOptions;
+
+  public sealed record TopographicDreamLayerOptions(
+    double TerrainScale, double EvolutionSpeed, double ContourInterval,
+    double LineWidth, double SeaLevel, bool BindToOrientation, int Palette
+  ) : ILayerRendererOptions;
+
+  public sealed record OrbitalGardenLayerOptions(
+    int BodyCount, double Gravity, double OrbitalDamping,
+    int CollisionBehavior, double TrailLength, double BodySize, int Palette
+  ) : ILayerRendererOptions;
+
+  public sealed record LavaLampSkyLayerOptions(
+    int BlobCount, double Viscosity, double Buoyancy,
+    double SurfaceTension, double Heat, bool BindGravity, int Palette
+  ) : ILayerRendererOptions;
+
   public sealed record NoiseCloudLayerOptions(
     double Scale, double Speed, int Octaves, double Contrast, int Color
   ) : ILayerRendererOptions;
@@ -275,6 +332,91 @@ namespace Spectrum.Base {
       ImmutableDictionary<string, ParameterValue> v
     ) => new GyroscopeLayerOptions(
       Double(v, "ringWidth"), Double(v, "rotorRate"),
+      Integer(v, "palette"));
+
+    internal static ILayerRendererOptions WatchfulIris(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new WatchfulIrisLayerOptions(
+      TruncatedInteger(v, "irisComplexity"), Double(v, "pupilSize"),
+      Double(v, "dilationGain"), Integer(v, "blinkTrigger"),
+      Double(v, "eyelidSoftness"), Double(v, "scleraBrightness"),
+      Integer(v, "palette"));
+
+    internal static ILayerRendererOptions LivingSkin(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new LivingSkinLayerOptions(
+      Double(v, "feedRate"), Double(v, "killRate"),
+      Double(v, "diffusionScale"), Double(v, "simulationSpeed"),
+      Integer(v, "seedSource"), Double(v, "edgeContrast"),
+      Integer(v, "feedButton"), Integer(v, "poisonButton"),
+      Integer(v, "eraseButton"), TruncatedInteger(v, "brushRadius"),
+      Double(v, "brushStrength"), Integer(v, "palette"));
+
+    internal static ILayerRendererOptions ArcLightning(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new ArcLightningLayerOptions(
+      TruncatedInteger(v, "branchCount"), Double(v, "jaggedness"),
+      TruncatedInteger(v, "width"), Double(v, "afterglow"),
+      Double(v, "duration"), Integer(v, "trigger"),
+      Integer(v, "button"), Double(v, "level"),
+      Double(v, "interval"), Integer(v, "palette"));
+
+    internal static ILayerRendererOptions GlassMosaic(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new GlassMosaicLayerOptions(
+      TruncatedInteger(v, "tileGrouping"), Double(v, "cascadeSpeed"),
+      Integer(v, "propagationRule"), Double(v, "borderBrightness"),
+      Integer(v, "tileTransition"), Integer(v, "trigger"),
+      Integer(v, "button"), Double(v, "level"), Double(v, "interval"),
+      Integer(v, "palette"));
+
+    internal static ILayerRendererOptions CellularDome(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new CellularDomeLayerOptions(
+      Integer(v, "rule"), Integer(v, "neighborhood"),
+      Double(v, "generationRate"), Integer(v, "birthColor"),
+      Double(v, "ageDecay"), Integer(v, "triggerMode"),
+      Integer(v, "palette"));
+
+    internal static ILayerRendererOptions FireflySwarm(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new FireflySwarmLayerOptions(
+      TruncatedInteger(v, "population"), Double(v, "cohesion"),
+      Double(v, "separation"), Double(v, "wander"),
+      Integer(v, "interactionMode"), Double(v, "dotSize"),
+      Double(v, "trailLength"), Integer(v, "palette"));
+
+    internal static ILayerRendererOptions RainChamber(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new RainChamberLayerOptions(
+      Double(v, "rainfallRate"), Double(v, "gravity"),
+      Double(v, "dropletSize"), Double(v, "trailRetention"),
+      Integer(v, "interactionMode"), Double(v, "wind"),
+      Double(v, "splashStrength"),
+      Integer(v, "palette"));
+
+    internal static ILayerRendererOptions TopographicDream(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new TopographicDreamLayerOptions(
+      Double(v, "terrainScale"), Double(v, "evolutionSpeed"),
+      Double(v, "contourInterval"), Double(v, "lineWidth"),
+      Double(v, "seaLevel"), Boolean(v, "bindOrientation"),
+      Integer(v, "palette"));
+
+    internal static ILayerRendererOptions OrbitalGarden(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new OrbitalGardenLayerOptions(
+      TruncatedInteger(v, "bodyCount"), Double(v, "gravity"),
+      Double(v, "orbitalDamping"), Integer(v, "collisionBehavior"),
+      Double(v, "trailLength"), Double(v, "bodySize"),
+      Integer(v, "palette"));
+
+    internal static ILayerRendererOptions LavaLampSky(
+      ImmutableDictionary<string, ParameterValue> v
+    ) => new LavaLampSkyLayerOptions(
+      TruncatedInteger(v, "blobCount"), Double(v, "viscosity"),
+      Double(v, "buoyancy"), Double(v, "surfaceTension"),
+      Double(v, "heat"), Boolean(v, "bindGravity"),
       Integer(v, "palette"));
 
     internal static ILayerRendererOptions NoiseCloud(

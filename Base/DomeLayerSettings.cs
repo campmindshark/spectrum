@@ -748,7 +748,7 @@ namespace Spectrum.Base {
         TriggerButtonParam,
         TriggerLevelParam,
         TriggerIntervalParam,
-        PaletteParam,
+      PaletteParam,
       };
 
     // Sparkler is Shooting Star in reverse: particles are emitted continuously
@@ -780,7 +780,7 @@ namespace Spectrum.Base {
         TriggerButtonParam,
         TriggerLevelParam,
         TriggerIntervalParam,
-        PaletteParam,
+      PaletteParam,
       };
 
     // Gyroscope's tuning, all visualizer-consumed (read in Visualize()). The
@@ -808,7 +808,504 @@ namespace Spectrum.Base {
           Type = DomeLayerParamType.Double,
           Min = 0, Max = 6, Step = 0.1, Default = 2.2,
         },
-        PaletteParam,
+      PaletteParam,
+      };
+
+    // Watchful Iris turns the full dome into one theatrical eye. The iris
+    // pattern is analytic and stable on the dome projection; complexity changes
+    // its radial filament count without introducing per-frame noise. The shared
+    // orientation center supplies either the spotlighted wand or its idle drift,
+    // constrained to a natural gaze range inside the sclera. Capture level
+    // dilates the pupil. The manual action always blinks, while blinkTrigger
+    // adds a beat or strong-audio source. Eyelid softness controls the resting
+    // almond edge and closing lid; sclera brightness scales the completed white,
+    // blush, and vascular surface without changing the iris or eyelids.
+    internal static readonly DomeLayerParam[] WatchfulIrisParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "irisComplexity", Label = "Iris Complexity",
+          Type = DomeLayerParamType.Double,
+          Min = 3, Max = 32, Step = 1, Default = 14,
+        },
+        new DomeLayerParam {
+          Key = "pupilSize", Label = "Pupil Size",
+          Type = DomeLayerParamType.Double,
+          Min = 0.08, Max = 0.65, Step = 0.01, Default = 0.28,
+        },
+        new DomeLayerParam {
+          Key = "dilationGain", Label = "Dilation Gain",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 0.8, Step = 0.01, Default = 0.28,
+        },
+        new DomeLayerParam {
+          Key = "blinkTrigger", Label = "Blink Trigger",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] { "Manual", "Beat", "Audio Transient" },
+          Default = 2,
+        },
+        new DomeLayerParam {
+          Key = "eyelidSoftness", Label = "Eyelid Softness",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 0.18, Step = 0.005, Default = 0.035,
+        },
+        new DomeLayerParam {
+          Key = "scleraBrightness", Label = "Sclera Brightness",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 2, Step = 0.05, Default = 1,
+        },
+      PaletteParam,
+      };
+
+    // Living Skin evolves a persistent two-chemical Gray-Scott field directly
+    // over the dome topology's shared spatial-neighbor table. Feed and kill
+    // select the morphology, while diffusionScale chooses which baked neighbor
+    // radius carries chemicals between physical LEDs. Simulation speed changes
+    // the fixed-step cadence without changing the numerical model. The initial
+    // field and every injected patch are deterministic, so duplicate instances
+    // start alike but retain independent state. Manual Fire always injects a
+    // patch; seedSource optionally adds beat-boundary injections. Clear removes
+    // the second chemical and leaves the surface dormant until it is seeded.
+    // Held wand buttons continuously apply feed, poison, or erase chemistry at
+    // the aimed surface pixel. Brush radius selects bounded baked-neighbor
+    // rings, and strength controls how quickly a held brush reaches its target.
+    internal static readonly DomeLayerParam[] LivingSkinParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "feedRate", Label = "Feed Rate",
+          Type = DomeLayerParamType.Double,
+          Min = 0.01, Max = 0.09, Step = 0.0005, Default = 0.0367,
+        },
+        new DomeLayerParam {
+          Key = "killRate", Label = "Kill Rate",
+          Type = DomeLayerParamType.Double,
+          Min = 0.03, Max = 0.08, Step = 0.0005, Default = 0.0649,
+        },
+        new DomeLayerParam {
+          Key = "diffusionScale", Label = "Diffusion Scale",
+          Type = DomeLayerParamType.Double,
+          Min = 1, Max = 4, Step = 1, Default = 2,
+        },
+        new DomeLayerParam {
+          Key = "simulationSpeed", Label = "Simulation Speed",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 4, Step = 0.05, Default = 1,
+        },
+        new DomeLayerParam {
+          Key = "seedSource", Label = "Seed Source",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] { "Initial + Manual", "Beat + Manual" },
+          Default = 1,
+        },
+        new DomeLayerParam {
+          Key = "edgeContrast", Label = "Edge Contrast",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 8, Step = 0.1, Default = 3,
+        },
+        new DomeLayerParam {
+          Key = "feedButton", Label = "Feed Button",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] { "Unbound", "1", "2", "3" },
+          Default = 1,
+        },
+        new DomeLayerParam {
+          Key = "poisonButton", Label = "Poison Button",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] { "Unbound", "1", "2", "3" },
+          Default = 2,
+        },
+        new DomeLayerParam {
+          Key = "eraseButton", Label = "Erase Button",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] { "Unbound", "1", "2", "3" },
+          Default = 3,
+        },
+        new DomeLayerParam {
+          Key = "brushRadius", Label = "Brush Radius",
+          Type = DomeLayerParamType.Double,
+          Min = 1, Max = 4, Step = 1, Default = 2,
+        },
+        new DomeLayerParam {
+          Key = "brushStrength", Label = "Brush Strength",
+          Type = DomeLayerParamType.Double,
+          Min = 0.05, Max = 1, Step = 0.05, Default = 0.35,
+        },
+      PaletteParam,
+      };
+
+    // Arc Lightning routes every strike over the physical dome graph rather
+    // than treating the LEDs as a flat texture. Jaggedness randomizes positive
+    // strut costs before the shortest route is selected, preserving a connected
+    // origin-to-destination bolt while allowing crooked alternatives. Branches
+    // are short graph walks off that main route. Width expands the energized
+    // struts through the shared spatial-neighbor table; afterglow is the
+    // brightness half-life after the live strike passes. Manual Fire and Clear
+    // remain available regardless of the selected autonomous trigger.
+    internal static readonly DomeLayerParam[] ArcLightningParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "branchCount", Label = "Branch Count",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 12, Step = 1, Default = 4,
+        },
+        new DomeLayerParam {
+          Key = "jaggedness", Label = "Jaggedness",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 1, Step = 0.05, Default = 0.65,
+        },
+        new DomeLayerParam {
+          Key = "width", Label = "Width",
+          Type = DomeLayerParamType.Double,
+          Min = 1, Max = 4, Step = 1, Default = 2,
+        },
+        new DomeLayerParam {
+          Key = "afterglow", Label = "Afterglow (s)",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 3, Step = 0.05, Default = 0.4,
+        },
+        new DomeLayerParam {
+          Key = "duration", Label = "Strike Duration (s)",
+          Type = DomeLayerParamType.Double,
+          Min = 0.05, Max = 1.5, Step = 0.05, Default = 0.25,
+        },
+        new DomeLayerParam {
+          Key = "trigger", Label = "Trigger",
+          Type = DomeLayerParamType.Enum,
+          Options = TriggerSourceOptions, Default = 1, // Beat
+        },
+        TriggerButtonParam,
+        TriggerLevelParam,
+        TriggerIntervalParam,
+      PaletteParam,
+      };
+
+    // Glass Mosaic treats the deployed triangular faces as persistent color
+    // cells. A trigger starts at the current wand aim (or a deterministic
+    // fallback), rotates the starting connected tile group, then advances over
+    // shared-edge face adjacency. Grouping controls how many connected tiles
+    // change together; the propagation rule changes neighbor ordering without
+    // breaking connectivity. Because the physical dome carries LEDs on struts
+    // rather than face interiors, border brightness is the resting intensity
+    // of the shared stained-glass edges and cascade arrivals pulse above it.
+    // The optional flip transition narrows the old tile face to edge-on before
+    // opening the new palette phase; Instant preserves existing configurations.
+    internal static readonly DomeLayerParam[] GlassMosaicParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "tileGrouping", Label = "Tile Grouping",
+          Type = DomeLayerParamType.Double,
+          Min = 1, Max = 6, Step = 1, Default = 1,
+        },
+        new DomeLayerParam {
+          Key = "cascadeSpeed", Label = "Cascade Speed (tiles/s)",
+          Type = DomeLayerParamType.Double,
+          Min = 1, Max = 120, Step = 1, Default = 30,
+        },
+        new DomeLayerParam {
+          Key = "propagationRule", Label = "Propagation Rule",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] {
+            "Neighbor Wave", "Clockwise Wave", "Random Domino",
+          },
+          Default = 0,
+        },
+        new DomeLayerParam {
+          Key = "borderBrightness", Label = "Border Brightness",
+          Type = DomeLayerParamType.Double,
+          Min = 0.02, Max = 1, Step = 0.02, Default = 0.18,
+        },
+        new DomeLayerParam {
+          Key = "tileTransition", Label = "Tile Transition",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] { "Instant", "Flip" }, Default = 0,
+        },
+        new DomeLayerParam {
+          Key = "trigger", Label = "Trigger",
+          Type = DomeLayerParamType.Enum,
+          Options = TriggerSourceOptions, Default = 1, // Beat
+        },
+        TriggerButtonParam,
+        TriggerLevelParam,
+        TriggerIntervalParam,
+      PaletteParam,
+      };
+
+    // Cellular Dome assigns one binary automaton cell to every discovered
+    // triangular face. Shared Edges uses the three face neighbors across the
+    // triangle's struts; Shared Vertices expands the neighborhood to every
+    // face touching any of its corners. The four rule families deliberately
+    // cover stable colonies, exact-one oscillation, persistent traveling
+    // fronts, and a more volatile birth pattern on either topology. Timed mode
+    // advances at generationRate; Beat Step advances once per beat; Beat Rule
+    // Cycle also rotates to the next rule on each beat. Fire injects a colony,
+    // Clear empties the field, and held wand buttons 1/2/3 seed, erase, and
+    // mutate the aimed cells respectively. Birth Color is relative to the
+    // selected palette; surviving cells age through subsequent slots as
+    // their brightness decays.
+    internal static readonly DomeLayerParam[] CellularDomeParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "rule", Label = "Rule",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] {
+            "Colonies (B2/S12)", "Oscillators (B1/S0)",
+            "Traveling Fronts", "Chaos (B13/S12)",
+          },
+          Default = 0,
+        },
+        new DomeLayerParam {
+          Key = "neighborhood", Label = "Neighborhood",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] { "Shared Edges", "Shared Vertices" },
+          Default = 0,
+        },
+        new DomeLayerParam {
+          Key = "generationRate", Label = "Generation Rate (gen/s)",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 30, Step = 0.25, Default = 6,
+        },
+        new DomeLayerParam {
+          Key = "birthColor", Label = "Birth Color",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] {
+            "Color 1", "Color 2", "Color 3", "Color 4",
+            "Color 5", "Color 6", "Color 7", "Color 8",
+          },
+          Default = 0,
+        },
+        new DomeLayerParam {
+          Key = "ageDecay", Label = "Age Decay (s)",
+          Type = DomeLayerParamType.Double,
+          Min = 0.1, Max = 12, Step = 0.1, Default = 2.5,
+        },
+        new DomeLayerParam {
+          Key = "triggerMode", Label = "Trigger Mode",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] {
+            "Timed", "Beat Step", "Beat Rule Cycle",
+          },
+          Default = 0,
+        },
+      PaletteParam,
+      };
+
+    // Firefly Swarm keeps a bounded, persistent boid flock on the true dome
+    // hemisphere. Cohesion and separation shape group motion while wander
+    // keeps the flock alive without input. Every active wand contributes its
+    // aim as either an attractor or repeller; a capture-volume rise above its
+    // recent envelope briefly startles the flock outward. Trail length is an
+    // independent rendered-light half-life rather than the global dome fade.
+    internal static readonly DomeLayerParam[] FireflySwarmParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "population", Label = "Population",
+          Type = DomeLayerParamType.Double,
+          Min = 8, Max = 160, Step = 1, Default = 48,
+        },
+        new DomeLayerParam {
+          Key = "cohesion", Label = "Cohesion",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 4, Step = 0.05, Default = 1.2,
+        },
+        new DomeLayerParam {
+          Key = "separation", Label = "Separation",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 4, Step = 0.05, Default = 1.8,
+        },
+        new DomeLayerParam {
+          Key = "wander", Label = "Wander",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 4, Step = 0.05, Default = 0.65,
+        },
+        new DomeLayerParam {
+          Key = "interactionMode", Label = "Wand Interaction",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] { "Attract", "Repel" }, Default = 0,
+        },
+        new DomeLayerParam {
+          Key = "dotSize", Label = "Dot Size",
+          Type = DomeLayerParamType.Double,
+          Min = 0.015, Max = 0.18, Step = 0.005, Default = 0.055,
+        },
+        new DomeLayerParam {
+          Key = "trailLength", Label = "Trail Half-Life (s)",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 3, Step = 0.05, Default = 0.45,
+        },
+      PaletteParam,
+      };
+
+    // Rain Chamber keeps a bounded set of crown-born droplets on the true
+    // dome hemisphere. Capture volume scales their spawn rate; tangent gravity
+    // pulls them toward the rim while moving wand aims form local umbrella,
+    // dry-region, or motion-driven wind fields. Trail retention is the
+    // rendered-light half-life and rim impacts emit short-lived expanding
+    // splash rings.
+    internal static readonly DomeLayerParam[] RainChamberParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "rainfallRate", Label = "Rainfall Rate (drops/s)",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 80, Step = 1, Default = 22,
+        },
+        new DomeLayerParam {
+          Key = "gravity", Label = "Spherical Gravity",
+          Type = DomeLayerParamType.Double,
+          Min = 0.1, Max = 4, Step = 0.05, Default = 1.4,
+        },
+        new DomeLayerParam {
+          Key = "dropletSize", Label = "Droplet Size",
+          Type = DomeLayerParamType.Double,
+          Min = 0.015, Max = 0.14, Step = 0.005, Default = 0.045,
+        },
+        new DomeLayerParam {
+          Key = "trailRetention", Label = "Trail Half-Life (s)",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 3, Step = 0.05, Default = 0.7,
+        },
+        new DomeLayerParam {
+          Key = "interactionMode", Label = "Wand Interaction",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] { "Umbrella", "Dry Region", "Wind" },
+          Default = 0,
+        },
+        new DomeLayerParam {
+          Key = "wind", Label = "Wand Strength",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 4, Step = 0.05, Default = 1.25,
+        },
+        new DomeLayerParam {
+          Key = "splashStrength", Label = "Splash Strength",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 2, Step = 0.05, Default = 0.9,
+        },
+      PaletteParam,
+      };
+
+    // Topographic Dream samples a seamless evolving elevation field directly
+    // on the true dome surface. Bright interval contours and the current
+    // coastline sit over subdued land/water fills. Capture volume raises the
+    // configured sea level, and optional orientation binding rotates the
+    // whole landscape through the shared wand/idle center.
+    internal static readonly DomeLayerParam[] TopographicDreamParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "terrainScale", Label = "Terrain Scale",
+          Type = DomeLayerParamType.Double,
+          Min = 0.5, Max = 6, Step = 0.1, Default = 2.2,
+        },
+        new DomeLayerParam {
+          Key = "evolutionSpeed", Label = "Evolution Speed",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 1.5, Step = 0.02, Default = 0.12,
+        },
+        new DomeLayerParam {
+          Key = "contourInterval", Label = "Contour Interval",
+          Type = DomeLayerParamType.Double,
+          Min = 0.04, Max = 0.3, Step = 0.01, Default = 0.11,
+        },
+        new DomeLayerParam {
+          Key = "lineWidth", Label = "Line Width",
+          Type = DomeLayerParamType.Double,
+          Min = 0.02, Max = 0.45, Step = 0.01, Default = 0.14,
+        },
+        new DomeLayerParam {
+          Key = "seaLevel", Label = "Quiet Sea Level",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 1, Step = 0.01, Default = 0.42,
+        },
+        new DomeLayerParam {
+          Key = "bindOrientation", Label = "Follow Orientation",
+          Type = DomeLayerParamType.Bool, Default = 0,
+        },
+      PaletteParam,
+      };
+
+    // Orbital Garden keeps a bounded deterministic collection of luminous
+    // bodies on the true dome hemisphere. Every connected wand contributes a
+    // colored gravity well; a fixed fallback well sustains stable motion when
+    // no hardware is present. Gravity is projected into each body's tangent
+    // plane, damping controls how long transferred orbital energy survives,
+    // and collision behavior selects a bounce, a luminous bloom, or a bloom
+    // with finite-lived fragments. Trail length is an independent rendered-
+    // light half-life rather than the global dome fade.
+    internal static readonly DomeLayerParam[] OrbitalGardenParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "bodyCount", Label = "Body Count",
+          Type = DomeLayerParamType.Double,
+          Min = 4, Max = 96, Step = 1, Default = 28,
+        },
+        new DomeLayerParam {
+          Key = "gravity", Label = "Gravity",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 5, Step = 0.05, Default = 1.6,
+        },
+        new DomeLayerParam {
+          Key = "orbitalDamping", Label = "Orbital Damping",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 3, Step = 0.05, Default = 0.12,
+        },
+        new DomeLayerParam {
+          Key = "collisionBehavior", Label = "Collisions",
+          Type = DomeLayerParamType.Enum,
+          Options = new string[] {
+            "Bounce", "Bloom", "Fragment Bloom",
+          },
+          Default = 2,
+        },
+        new DomeLayerParam {
+          Key = "trailLength", Label = "Trail Half-Life (s)",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 4, Step = 0.05, Default = 0.8,
+        },
+        new DomeLayerParam {
+          Key = "bodySize", Label = "Body Size",
+          Type = DomeLayerParamType.Double,
+          Min = 0.015, Max = 0.16, Step = 0.005, Default = 0.05,
+        },
+      PaletteParam,
+      };
+
+    // Lava Lamp Sky keeps a small persistent set of large, soft bodies on the
+    // true dome hemisphere. Their density changes with heat, so warm bodies
+    // climb the spherical gravity field while cool ones sink toward the rim.
+    // Surface tension draws nearby bodies into shared silhouettes and restores
+    // their roundness; viscosity gives the motion its deliberately heavy pace.
+    // Capture volume raises heat and buoyancy while encouraging pinched bodies
+    // to separate. Optional gravity binding tilts the rise axis with the shared
+    // wand/idle orientation instead of fixing it at the crown.
+    internal static readonly DomeLayerParam[] LavaLampSkyParams =
+      new DomeLayerParam[] {
+        new DomeLayerParam {
+          Key = "blobCount", Label = "Blob Count",
+          Type = DomeLayerParamType.Double,
+          Min = 3, Max = 24, Step = 1, Default = 9,
+        },
+        new DomeLayerParam {
+          Key = "viscosity", Label = "Viscosity",
+          Type = DomeLayerParamType.Double,
+          Min = 0.2, Max = 4, Step = 0.05, Default = 1.8,
+        },
+        new DomeLayerParam {
+          Key = "buoyancy", Label = "Buoyancy",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 3, Step = 0.05, Default = 0.8,
+        },
+        new DomeLayerParam {
+          Key = "surfaceTension", Label = "Surface Tension",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 3, Step = 0.05, Default = 1.35,
+        },
+        new DomeLayerParam {
+          Key = "heat", Label = "Heat",
+          Type = DomeLayerParamType.Double,
+          Min = 0, Max = 1, Step = 0.01, Default = 0.35,
+        },
+        new DomeLayerParam {
+          Key = "bindGravity", Label = "Follow Orientation",
+          Type = DomeLayerParamType.Bool, Default = 1,
+        },
+      PaletteParam,
       };
 
     // Noise Cloud's tuning, all visualizer-consumed (read in Visualize()). It

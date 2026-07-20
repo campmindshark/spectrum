@@ -234,6 +234,8 @@ namespace Spectrum.Base {
 
     private static readonly LayerActionDefinition FireAction =
       new LayerActionDefinition("Fire", "Fire manual trigger");
+    private static readonly LayerActionDefinition BlinkAction =
+      new LayerActionDefinition("Blink", "Blink the eye");
     private static readonly LayerActionDefinition ClearAction =
       new LayerActionDefinition("Clear", "Clear this layer's live state");
     private static readonly LayerActionDefinition PlayAction =
@@ -309,6 +311,11 @@ namespace Spectrum.Base {
         "gyroscope", "Gyroscope", LayerParameterSchemas.GyroscopeParams,
         LayerRendererOptionsCompiler.Gyroscope),
       BuiltIn(
+        "watchful-iris", "Watchful Iris",
+        LayerParameterSchemas.WatchfulIrisParams,
+        LayerRendererOptionsCompiler.WatchfulIris,
+        fireAction: BlinkAction),
+      BuiltIn(
         "shooting-star", "Shooting Star",
         LayerParameterSchemas.ShootingStarParams,
         LayerRendererOptionsCompiler.ShootingStar,
@@ -329,6 +336,46 @@ namespace Spectrum.Base {
       BuiltIn(
         "vortex", "Vortex", LayerParameterSchemas.VortexParams,
         LayerRendererOptionsCompiler.Vortex),
+      BuiltIn(
+        "living-skin", "Living Skin",
+        LayerParameterSchemas.LivingSkinParams,
+        LayerRendererOptionsCompiler.LivingSkin,
+        fireAction: FireAction, clearAction: ClearAction),
+      BuiltIn(
+        "arc-lightning", "Arc Lightning",
+        LayerParameterSchemas.ArcLightningParams,
+        LayerRendererOptionsCompiler.ArcLightning,
+        fireAction: FireAction, clearAction: ClearAction),
+      BuiltIn(
+        "glass-mosaic", "Glass Mosaic",
+        LayerParameterSchemas.GlassMosaicParams,
+        LayerRendererOptionsCompiler.GlassMosaic,
+        fireAction: FireAction, clearAction: ClearAction),
+      BuiltIn(
+        "cellular-dome", "Cellular Dome",
+        LayerParameterSchemas.CellularDomeParams,
+        LayerRendererOptionsCompiler.CellularDome,
+        fireAction: FireAction, clearAction: ClearAction),
+      BuiltIn(
+        "firefly-swarm", "Firefly Swarm",
+        LayerParameterSchemas.FireflySwarmParams,
+        LayerRendererOptionsCompiler.FireflySwarm),
+      BuiltIn(
+        "rain-chamber", "Rain Chamber",
+        LayerParameterSchemas.RainChamberParams,
+        LayerRendererOptionsCompiler.RainChamber),
+      BuiltIn(
+        "topographic-dream", "Topographic Dream",
+        LayerParameterSchemas.TopographicDreamParams,
+        LayerRendererOptionsCompiler.TopographicDream),
+      BuiltIn(
+        "orbital-garden", "Orbital Garden",
+        LayerParameterSchemas.OrbitalGardenParams,
+        LayerRendererOptionsCompiler.OrbitalGarden),
+      BuiltIn(
+        "lava-lamp-sky", "Lava Lamp Sky",
+        LayerParameterSchemas.LavaLampSkyParams,
+        LayerRendererOptionsCompiler.LavaLampSky),
     });
   }
 

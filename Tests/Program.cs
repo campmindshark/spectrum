@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
+using Spectrum.Audio;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using Spectrum.Visualizers;
@@ -63,6 +64,26 @@ namespace Spectrum.LayerPipeline.Tests {
         LayerRenderersAvoidConfiguration);
       Run("Magnetic Field models signed orientation charges",
         MagneticFieldUsesSignedCharges);
+      Run("Watchful Iris tracks, dilates, patterns, and blinks",
+        WatchfulIrisBehavesAsSceneCharacter);
+      Run("Living Skin evolves a bounded persistent chemical field",
+        LivingSkinUsesReactionDiffusion);
+      Run("Arc Lightning routes connected triggered strut bolts",
+        ArcLightningUsesPhysicalGraph);
+      Run("Glass Mosaic cascades across physical triangular faces",
+        GlassMosaicUsesTriangleTopology);
+      Run("Cellular Dome evolves physical triangle automata",
+        CellularDomeUsesTriangleCells);
+      Run("Firefly Swarm flocks, startles, and follows wand fields",
+        FireflySwarmUsesCoherentFlock);
+      Run("Rain Chamber runs crown droplets through wand rain fields",
+        RainChamberUsesSphericalRain);
+      Run("Topographic Dream reveals audio-driven spherical contours",
+        TopographicDreamUsesEvolvingContours);
+      Run("Orbital Garden forms wand-centered spherical solar systems",
+        OrbitalGardenUsesSphericalOrbits);
+      Run("Lava Lamp Sky rises, merges, stretches, and divides",
+        LavaLampSkyUsesViscousThermalBlobs);
       Run("Ripple Tank is a standalone orientation-speed layer",
         RippleTankIsOrientationOnly);
       Run("vortex uses global fade for hue-bearing trails",
@@ -75,6 +96,13 @@ namespace Spectrum.LayerPipeline.Tests {
         KernelMatrix);
       Run("operation options are normalized before compilation",
         OperationOptionsAreNormalized);
+      Run("Kaleidoscope folds masked composite coordinates",
+        KaleidoscopeFoldsCompositeCoordinates);
+      Run("Echo retains isolated delayed transformed composites",
+        EchoRetainsDelayedTransformedComposites);
+      MotionEmbersTests.Register(Run);
+      Run("Halftone replaces value fields with palette-colored cells",
+        HalftoneBuildsPaletteCells);
       Run("spatial effects declare neighbor reads", SpatialRequirements);
       Run("spatial passes snapshot and reuse scratch", SpatialPassSnapshots);
       Run("masked adjustment frames are deterministic",
@@ -1311,6 +1339,1840 @@ namespace Spectrum.LayerPipeline.Tests {
         "Ripple Tank is not bound exclusively to OrientationInput");
     }
 
+    private static void WatchfulIrisBehavesAsSceneCharacter() {
+      LayerDefinition definition = LayerCatalog.Default.Get("watchful-iris");
+      Assert(definition != null && definition.DisplayName == "Watchful Iris",
+        "Watchful Iris was not registered");
+      Assert(definition.FireAction?.Label == "Blink",
+        "Watchful Iris manual blink action was not registered");
+
+      WatchfulIrisLayerOptions defaults =
+        BuiltInOptions<WatchfulIrisLayerOptions>(
+          Layer("watchful-iris", "watchful-iris-defaults"));
+      Assert(defaults.IrisComplexity == 14 &&
+          defaults.PupilSize == 0.28 && defaults.DilationGain == 0.28 &&
+          defaults.BlinkTrigger == 2 && defaults.EyelidSoftness == 0.035 &&
+          defaults.ScleraBrightness == 1 && defaults.Palette == 0,
+        "unexpected Watchful Iris defaults");
+      Assert(definition.Parameters.All(
+          parameter => parameter.Key != "trackingMode"),
+        "Watchful Iris still exposes a tracking mode");
+
+      DomeLayerSettings configured = Layer(
+        "watchful-iris", "watchful-iris-clamped");
+      configured.RendererParams = new Dictionary<string, double> {
+        ["irisComplexity"] = 99,
+        ["pupilSize"] = -1,
+        ["dilationGain"] = 99,
+        ["blinkTrigger"] = 99,
+        ["eyelidSoftness"] = 99,
+        ["scleraBrightness"] = 99,
+        ["palette"] = 99,
+      };
+      WatchfulIrisLayerOptions clamped =
+        BuiltInOptions<WatchfulIrisLayerOptions>(configured);
+      Assert(clamped.IrisComplexity == 32 && clamped.PupilSize == 0.08 &&
+          clamped.DilationGain == 0.8 && clamped.BlinkTrigger == 2 &&
+          clamped.EyelidSoftness == 0.18 && clamped.ScleraBrightness == 2 &&
+          clamped.Palette == PaletteService.MaxPalettes - 1,
+        "Watchful Iris controls did not clamp");
+
+      AssertClose(0.28,
+        LEDDomeWatchfulIrisVisualizer.EffectivePupilRatio(0.28, 0.28, 0),
+        "quiet Watchful Iris pupil changed its configured size");
+      AssertClose(0.56,
+        LEDDomeWatchfulIrisVisualizer.EffectivePupilRatio(0.28, 0.28, 1),
+        "Watchful Iris dilation did not respond to audio");
+      AssertClose(1, LEDDomeWatchfulIrisVisualizer.BlinkOpenness(0),
+        "Watchful Iris blink did not begin open");
+      AssertClose(0, LEDDomeWatchfulIrisVisualizer.BlinkOpenness(0.23),
+        "Watchful Iris blink did not fully close");
+      AssertClose(1, LEDDomeWatchfulIrisVisualizer.BlinkOpenness(0.46),
+        "Watchful Iris blink did not reopen");
+      Assert(LEDDomeWatchfulIrisVisualizer.ApertureCoverage(
+          0, 0.1, 0, 0.01) == 0 &&
+          LEDDomeWatchfulIrisVisualizer.ApertureCoverage(
+            0, 0, 1, 0.01) == 1,
+        "Watchful Iris eyelids did not mask the eye aperture");
+
+      double simpleFiber = LEDDomeWatchfulIrisVisualizer.IrisFilament(
+        0.64, 0.37, 5);
+      double complexFiber = LEDDomeWatchfulIrisVisualizer.IrisFilament(
+        0.64, 0.37, 25);
+      Assert(simpleFiber >= 0 && simpleFiber <= 1 &&
+          complexFiber >= 0 && complexFiber <= 1 &&
+          Math.Abs(simpleFiber - complexFiber) > 0.01,
+        "Watchful Iris complexity did not alter its bounded filament field");
+      Assert(LEDDomeWatchfulIrisVisualizer.TrackingOffset(
+          Quaternion.Identity).X < -0.3 &&
+          LEDDomeWatchfulIrisVisualizer.TrackingOffset(
+            Quaternion.CreateFromAxisAngle(
+              Vector3.UnitZ, (float)Math.PI)).X > 0.3,
+        "Watchful Iris did not follow the shared orientation center");
+
+      Vector3 dramaticFacing =
+        LEDDomeWatchfulIrisVisualizer.FacingFromGaze(
+          new Vector2(0.31f, 0.18f));
+      Assert(dramaticFacing.X > 0.5 && dramaticFacing.Y > 0.35 &&
+          dramaticFacing.Z < 0.75 &&
+          Math.Abs(dramaticFacing.Length() - 1) < 0.000001,
+        "Watchful Iris did not lift its gaze into a dramatic spherical turn");
+      Vector3 laggedFacing = LEDDomeWatchfulIrisVisualizer.SmoothFacing(
+        Vector3.UnitZ, dramaticFacing, 0.1, 0.42);
+      double laggedTurn = Math.Acos(Math.Clamp(laggedFacing.Z, -1, 1));
+      double targetTurn = Math.Acos(Math.Clamp(dramaticFacing.Z, -1, 1));
+      Assert(laggedTurn > 0 && laggedTurn < targetTurn,
+        "Watchful Iris globe did not pursue its iris with inertia");
+      Quaternion globeRotation =
+        LEDDomeWatchfulIrisVisualizer.RotationFromForward(laggedFacing);
+      Assert(Vector3.Distance(
+          Vector3.Transform(Vector3.UnitZ, globeRotation),
+          laggedFacing) < 0.000001,
+        "Watchful Iris globe rotation did not face its lagged gaze");
+      Quaternion pursuedRotation =
+        LEDDomeWatchfulIrisVisualizer.SmoothGlobeRotation(
+          Quaternion.Identity, dramaticFacing, 0.1, 0.34);
+      Vector3 pursuedFacing = Vector3.Transform(
+        Vector3.UnitZ, pursuedRotation);
+      Vector3 expectedPursuit =
+        LEDDomeWatchfulIrisVisualizer.SmoothFacing(
+          Vector3.UnitZ, dramaticFacing, 0.1, 0.34);
+      Assert(Vector3.Distance(pursuedFacing, expectedPursuit) < 0.000001,
+        "Watchful Iris full globe orientation did not pursue its gaze");
+
+      // Turning through two different axes must carry the first turn's
+      // orientation forward. Rebuilding a minimal forward rotation would map
+      // the pole correctly but discard this spherical transport/torsion.
+      Vector3 rightFacing =
+        LEDDomeWatchfulIrisVisualizer.FacingFromGaze(
+          new Vector2(0.31f, 0));
+      Vector3 upperFacing =
+        LEDDomeWatchfulIrisVisualizer.FacingFromGaze(
+          new Vector2(0, 0.18f));
+      Quaternion transported =
+        LEDDomeWatchfulIrisVisualizer.SmoothGlobeRotation(
+          Quaternion.Identity, rightFacing, 0.1, 0);
+      transported = LEDDomeWatchfulIrisVisualizer.SmoothGlobeRotation(
+        transported, upperFacing, 0.1, 0);
+      Quaternion rebuilt =
+        LEDDomeWatchfulIrisVisualizer.RotationFromForward(upperFacing);
+      Assert(Vector3.Distance(
+          Vector3.Transform(Vector3.UnitZ, transported),
+          upperFacing) < 0.000001 &&
+          Vector3.Distance(
+            Vector3.Transform(Vector3.UnitX, transported),
+            Vector3.Transform(Vector3.UnitX, rebuilt)) > 0.01,
+        "Watchful Iris sclera discarded its transported globe orientation");
+
+      // At a nearly closed openness, the thin visible seam must travel to the
+      // rotated forward pole. Evaluating the same pole in fixed dome axes
+      // would incorrectly leave it behind the old horizontal eyelids.
+      Vector3 transportedPole = Vector3.Transform(
+        Vector3.UnitZ, transported);
+      Vector3 localPole =
+        LEDDomeWatchfulIrisVisualizer.GlobeLocalPosition(
+          transportedPole, transported);
+      double transportedClosure =
+        LEDDomeWatchfulIrisVisualizer.ApertureCoverage(
+          localPole.X, localPole.Y, 0.15, 0.01);
+      double fixedClosure =
+        LEDDomeWatchfulIrisVisualizer.ApertureCoverage(
+          transportedPole.X, transportedPole.Y, 0.15, 0.01);
+      Assert(Vector3.Distance(localPole, Vector3.UnitZ) < 0.000001 &&
+          transportedClosure > 0.99 && fixedClosure < 0.01,
+        "Watchful Iris blink seam did not rotate to the globe's new meridian");
+      Vector3 vesselPoint = Vector3.Normalize(
+        new Vector3(0.93f, -0.27f, 0));
+      Assert(LEDDomeWatchfulIrisVisualizer.ScleraVascularStrength(
+          vesselPoint) > 0.65 &&
+          LEDDomeWatchfulIrisVisualizer.ScleraVascularStrength(
+            Vector3.UnitZ) < 0.01,
+        "Watchful Iris lacks visible globe-anchored rotation landmarks");
+      Assert(LEDDomeWatchfulIrisVisualizer.ScaleScleraColor(
+          0x804020, 0) == 0 &&
+          LEDDomeWatchfulIrisVisualizer.ScaleScleraColor(
+            0x804020, 0.5) == 0x402010 &&
+          LEDDomeWatchfulIrisVisualizer.ScaleScleraColor(
+            0xC08040, 2) == 0xFFFF80,
+        "Watchful Iris sclera brightness did not scale and clip RGB");
+
+      var onset = new IrisTransientDetector(0.48, 0.14);
+      Assert(!onset.Sample(0.1, 0.016) && onset.Sample(0.8, 0.016) &&
+          !onset.Sample(0.8, 0.016),
+        "Watchful Iris audio onset did not emit one blink edge");
+
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> {
+          Layer("watchful-iris", "watchful-iris-render"),
+        },
+      };
+      SetPaletteColors(config, color => 0x205090 + color * 0x160C02);
+      var runtime = new global::Spectrum.Operator(config);
+      DomeLayerVisualizer iris = null;
+      foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
+        if (visualizer is DomeLayerVisualizer layer &&
+            layer.LayerKey == "watchful-iris") {
+          iris = layer;
+          break;
+        }
+      }
+      Assert(iris != null, "Watchful Iris renderer was not created");
+      Input[] inputs = iris.GetInputs();
+      Assert(inputs.Length == 2 &&
+          ReferenceEquals(inputs[0], runtime.AudioInput) &&
+          ReferenceEquals(inputs[1], runtime.OrientationInput),
+        "Watchful Iris did not declare audio and orientation inputs");
+      ((Visualizer)iris).Visualize();
+      Assert(iris.LayerBuffer.pixels.Any(pixel => pixel.color != 0) &&
+          iris.LayerBuffer.pixels
+            .Select(pixel => pixel.color).Distinct().Count() > 12,
+        "Watchful Iris did not render a patterned eye");
+      Assert(iris.LayerBuffer.pixels.Any(pixel => {
+          int color = pixel.color;
+          return ((color >> 16) & 0xFF) + ((color >> 8) & 0xFF)
+            + (color & 0xFF) < 30;
+        }) && iris.LayerBuffer.pixels.Any(pixel => {
+          int color = pixel.color;
+          return ((color >> 16) & 0xFF) + ((color >> 8) & 0xFF)
+            + (color & 0xFF) > 560;
+        }),
+        "Watchful Iris did not separate its dark pupil/lids and light sclera");
+    }
+
+    private static void LivingSkinUsesReactionDiffusion() {
+      LayerDefinition definition = LayerCatalog.Default.Get("living-skin");
+      Assert(definition != null && definition.DisplayName == "Living Skin",
+        "Living Skin was not registered");
+      Assert(definition.FireAction?.Label == "Fire" &&
+          definition.ClearAction?.Label == "Clear",
+        "Living Skin seed/clear actions were not registered");
+
+      LivingSkinLayerOptions defaults =
+        BuiltInOptions<LivingSkinLayerOptions>(
+          Layer("living-skin", "living-skin-defaults"));
+      AssertClose(0.0367, defaults.FeedRate,
+        "unexpected Living Skin feed rate");
+      AssertClose(0.0649, defaults.KillRate,
+        "unexpected Living Skin kill rate");
+      AssertClose(2, defaults.DiffusionScale,
+        "unexpected Living Skin diffusion scale");
+      AssertClose(1, defaults.SimulationSpeed,
+        "unexpected Living Skin simulation speed");
+      Assert(defaults.SeedSource == 1 && defaults.EdgeContrast == 3 &&
+          defaults.FeedButton == 1 && defaults.PoisonButton == 2 &&
+          defaults.EraseButton == 3 && defaults.BrushRadius == 2 &&
+          defaults.BrushStrength == 0.35 && defaults.Palette == 0,
+        "unexpected Living Skin seed, edge, brush, or palette default");
+
+      DomeLayerSettings configured = Layer(
+        "living-skin", "living-skin-clamped");
+      configured.RendererParams = new Dictionary<string, double> {
+        ["feedRate"] = -1,
+        ["killRate"] = 1,
+        ["diffusionScale"] = 99,
+        ["simulationSpeed"] = -1,
+        ["seedSource"] = 99,
+        ["edgeContrast"] = 99,
+        ["feedButton"] = 99,
+        ["poisonButton"] = -1,
+        ["eraseButton"] = 99,
+        ["brushRadius"] = 99,
+        ["brushStrength"] = -1,
+        ["palette"] = 99,
+      };
+      LivingSkinLayerOptions clamped =
+        BuiltInOptions<LivingSkinLayerOptions>(configured);
+      AssertClose(0.01, clamped.FeedRate,
+        "Living Skin feed rate did not clamp");
+      AssertClose(0.08, clamped.KillRate,
+        "Living Skin kill rate did not clamp");
+      Assert(clamped.DiffusionScale == 4 &&
+          clamped.SimulationSpeed == 0 && clamped.SeedSource == 1 &&
+          clamped.EdgeContrast == 8 && clamped.FeedButton == 3 &&
+          clamped.PoisonButton == 0 && clamped.EraseButton == 3 &&
+          clamped.BrushRadius == 4 && clamped.BrushStrength == 0.05 &&
+          clamped.Palette == PaletteService.MaxPalettes - 1,
+        "Living Skin controls did not clamp");
+
+      Assert(LEDDomeLivingSkinVisualizer.BrushModeForButton(1, defaults) ==
+          LivingSkinBrushMode.Feed &&
+          LEDDomeLivingSkinVisualizer.BrushModeForButton(2, defaults) ==
+          LivingSkinBrushMode.Poison &&
+          LEDDomeLivingSkinVisualizer.BrushModeForButton(3, defaults) ==
+          LivingSkinBrushMode.Erase &&
+          LEDDomeLivingSkinVisualizer.BrushModeForButton(0, defaults) == null,
+        "Living Skin button bindings did not select the configured brushes");
+
+      const int size = 15;
+      var simulation = new LivingSkinSimulation(
+        new DomeFrame(GridTopology(size, size, 0.02)));
+      simulation.Initialize(0);
+      int center = size / 2 * size + size / 2;
+      int frontier = center + 3;
+      AssertClose(1, simulation.ChemicalAAt(center),
+        "Living Skin clear state did not restore chemical A");
+      AssertClose(0, simulation.ChemicalBAt(center),
+        "Living Skin clear state retained chemical B");
+
+      simulation.SeedAt(center);
+      Assert(simulation.ChemicalBAt(center) > 0.9,
+        "Living Skin seed did not inject chemical B");
+      AssertClose(0, simulation.ChemicalBAt(frontier),
+        "Living Skin seed escaped its injection patch");
+
+      simulation.Clear();
+      simulation.BrushAt(center, 1, 1, LivingSkinBrushMode.Feed);
+      AssertClose(1, simulation.ChemicalAAt(center),
+        "Living Skin feed brush did not restore substrate");
+      Assert(simulation.ChemicalBAt(center) > 0,
+        "Living Skin feed brush did not paint an activator trace");
+      AssertClose(0, simulation.ChemicalBAt(frontier),
+        "Living Skin feed brush escaped its bounded radius");
+      simulation.BrushAt(center, 1, 1, LivingSkinBrushMode.Poison);
+      AssertClose(0, simulation.ChemicalAAt(center),
+        "Living Skin poison brush did not starve substrate");
+      Assert(simulation.ChemicalBAt(center) < 0.05,
+        "Living Skin poison brush did not suppress the activator");
+      simulation.BrushAt(center, 1, 1, LivingSkinBrushMode.Erase);
+      AssertClose(1, simulation.ChemicalAAt(center),
+        "Living Skin erase brush did not restore dormant substrate");
+      AssertClose(0, simulation.ChemicalBAt(center),
+        "Living Skin erase brush retained activator");
+
+      simulation.SeedAt(center);
+      simulation.Step(0.0367, 0.0649, 1);
+      Assert(simulation.ChemicalBAt(frontier) > 0,
+        "Living Skin did not diffuse chemical B to a neighbor");
+
+      for (int step = 0; step < 100; step++) {
+        simulation.Step(0.0367, 0.0649, 1);
+      }
+      int livingPixels = 0;
+      for (int i = 0; i < size * size; i++) {
+        double a = simulation.ChemicalAAt(i);
+        double b = simulation.ChemicalBAt(i);
+        Assert(double.IsFinite(a) && double.IsFinite(b) &&
+            a >= 0 && a <= 1 && b >= 0 && b <= 1,
+          "Living Skin chemical state left its finite unit bounds");
+        if (b > 0.01) {
+          livingPixels++;
+        }
+      }
+      Assert(livingPixels > 1,
+        "Living Skin reaction collapsed instead of persisting");
+      simulation.Clear();
+      simulation.Step(0.0367, 0.0649, 1);
+      for (int i = 0; i < size * size; i++) {
+        AssertClose(1, simulation.ChemicalAAt(i),
+          "Living Skin dormant A field evolved after clear");
+        AssertClose(0, simulation.ChemicalBAt(i),
+          "Living Skin dormant B field evolved after clear");
+      }
+
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> {
+          Layer("living-skin", "living-skin-inputs"),
+        },
+      };
+      var runtime = new global::Spectrum.Operator(config);
+      DomeLayerVisualizer livingSkin = null;
+      foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
+        if (visualizer is DomeLayerVisualizer layer &&
+            layer.LayerKey == "living-skin") {
+          livingSkin = layer;
+          break;
+        }
+      }
+      Assert(livingSkin != null, "Living Skin renderer was not created");
+      Input[] livingSkinInputs = livingSkin.GetInputs();
+      Assert(livingSkinInputs.Length == 1 &&
+          ReferenceEquals(livingSkinInputs[0], runtime.OrientationInput),
+        "Living Skin did not declare its wand-orientation input");
+      ((Visualizer)livingSkin).Visualize();
+    }
+
+    private static void ArcLightningUsesPhysicalGraph() {
+      LayerDefinition definition = LayerCatalog.Default.Get("arc-lightning");
+      Assert(definition != null && definition.DisplayName == "Arc Lightning",
+        "Arc Lightning was not registered");
+      Assert(definition.FireAction?.Label == "Fire" &&
+          definition.ClearAction?.Label == "Clear",
+        "Arc Lightning strike/clear actions were not registered");
+
+      ArcLightningLayerOptions defaults =
+        BuiltInOptions<ArcLightningLayerOptions>(
+          Layer("arc-lightning", "arc-lightning-defaults"));
+      Assert(defaults.BranchCount == 4,
+        "unexpected Arc Lightning branch count");
+      AssertClose(0.65, defaults.Jaggedness,
+        "unexpected Arc Lightning jaggedness");
+      Assert(defaults.Width == 2,
+        "unexpected Arc Lightning width");
+      AssertClose(0.4, defaults.Afterglow,
+        "unexpected Arc Lightning afterglow");
+      AssertClose(0.25, defaults.Duration,
+        "unexpected Arc Lightning duration");
+      Assert(defaults.Trigger == 1 && defaults.Button == 0 &&
+          defaults.Level == 0.3 && defaults.Interval == 800 &&
+          defaults.Palette == 0,
+        "unexpected Arc Lightning trigger or palette default");
+
+      DomeLayerSettings configured = Layer(
+        "arc-lightning", "arc-lightning-clamped");
+      configured.RendererParams = new Dictionary<string, double> {
+        ["branchCount"] = 99,
+        ["jaggedness"] = -1,
+        ["width"] = 99,
+        ["afterglow"] = -1,
+        ["duration"] = 9,
+        ["trigger"] = 99,
+        ["button"] = 99,
+        ["level"] = 9,
+        ["interval"] = 1,
+        ["palette"] = 99,
+      };
+      ArcLightningLayerOptions clamped =
+        BuiltInOptions<ArcLightningLayerOptions>(configured);
+      Assert(clamped.BranchCount == 12 && clamped.Jaggedness == 0 &&
+          clamped.Width == 4 && clamped.Afterglow == 0 &&
+          clamped.Duration == 1.5,
+        "Arc Lightning shape/lifecycle controls did not clamp");
+      Assert(clamped.Trigger == 2 && clamped.Button == 3 &&
+          clamped.Level == 1 && clamped.Interval == 50 &&
+          clamped.Palette == PaletteService.MaxPalettes - 1,
+        "Arc Lightning trigger controls did not clamp");
+
+      int[,] edges = new int[,] {
+        { 0, 1 }, { 1, 2 }, { 2, 3 },
+        { 1, 4 }, { 4, 5 }, { 5, 3 },
+        { 2, 6 }, { 6, 7 },
+      };
+      var graph = new ArcLightningGraph(edges);
+      var physicalGraph = new ArcLightningGraph(StrutLayoutFactory.lines);
+      Assert(physicalGraph.VertexCount == 71 &&
+          physicalGraph.Edges.Length == 190,
+        "Arc Lightning did not map the deployed physical dome graph");
+      ArcLightningPath path = graph.Route(
+        0, 3, 2, 0, new Random(7));
+      Assert(path.MainVertices[0] == 0 &&
+          path.MainVertices[path.MainVertices.Length - 1] == 3,
+        "Arc Lightning main route lost a selected pole");
+      Assert(path.MainStruts.SequenceEqual(new[] { 0, 1, 2 }),
+        "zero-jaggedness Arc Lightning did not use the shortest route");
+      var usedStruts = new HashSet<int>(path.MainStruts);
+      foreach (ImmutableArray<int> branch in path.BranchStruts) {
+        Assert(branch.Length > 0,
+          "Arc Lightning emitted an empty branch");
+        foreach (int strut in branch) {
+          Assert(usedStruts.Add(strut),
+            "Arc Lightning branch reused a main or branch strut");
+        }
+      }
+      Assert(path.BranchStruts.Length == 2,
+        "Arc Lightning did not produce the requested available branches");
+      Assert(graph.FarthestVertex(0) == 7,
+        "Arc Lightning fallback pole was not graph-distant");
+
+      ImmutableArray<ArcLightningPolePair> poleFan =
+        LEDDomeArcLightningVisualizer.BuildPoleFan(
+          new ArcLightningPole[] {
+            new ArcLightningPole(30, 4),
+            new ArcLightningPole(10, 1),
+            new ArcLightningPole(40, 7),
+            new ArcLightningPole(20, 3),
+          }, 8);
+      Assert(poleFan.SequenceEqual(new ArcLightningPolePair[] {
+          new ArcLightningPolePair(1, 3),
+          new ArcLightningPolePair(1, 4),
+          new ArcLightningPolePair(1, 7),
+        }),
+        "Arc Lightning did not build a deterministic multi-wand pole fan");
+      ImmutableArray<ArcLightningPolePair> cappedPoleFan =
+        LEDDomeArcLightningVisualizer.BuildPoleFan(
+          Enumerable.Range(0, 12)
+            .Select(i => new ArcLightningPole(i, i)), 8);
+      Assert(cappedPoleFan.Length == 8 &&
+          cappedPoleFan[0] == new ArcLightningPolePair(0, 1) &&
+          cappedPoleFan[7] == new ArcLightningPolePair(0, 8),
+        "Arc Lightning multi-wand pole fan exceeded its strike bound");
+      Assert(LEDDomeArcLightningVisualizer.BuildPoleFan(
+          Array.Empty<ArcLightningPole>(), 8).IsEmpty &&
+          LEDDomeArcLightningVisualizer.BuildPoleFan(
+            new[] { new ArcLightningPole(8, 2) }, 8).IsEmpty,
+        "Arc Lightning pole fan replaced a one/no-wand fallback");
+      ArcLightningPolePair oneWandFallback =
+        LEDDomeArcLightningVisualizer.FallbackPolePair(
+          graph, new[] { new ArcLightningPole(8, 2) }, new Random(3));
+      Assert(oneWandFallback == new ArcLightningPolePair(
+          2, graph.FarthestVertex(2)),
+        "Arc Lightning one-wand fallback lost its selected origin");
+      ArcLightningPolePair noWandFallback =
+        LEDDomeArcLightningVisualizer.FallbackPolePair(
+          graph, Array.Empty<ArcLightningPole>(), new Random(3));
+      Assert(noWandFallback.Origin >= 0 &&
+          noWandFallback.Origin < graph.VertexCount &&
+          noWandFallback.Destination ==
+            graph.FarthestVertex(noWandFallback.Origin),
+        "Arc Lightning hands-off fallback did not choose a distant pole");
+
+      Assert(LEDDomeArcLightningVisualizer.VisibleEdgeCount(10, 0, 1) == 2,
+        "Arc Lightning did not reveal an origin segment immediately");
+      Assert(LEDDomeArcLightningVisualizer.VisibleEdgeCount(10, 0.5, 1) == 6,
+        "Arc Lightning leading edge did not advance with strike age");
+      Assert(LEDDomeArcLightningVisualizer.VisibleEdgeCount(10, 1, 1) == 10,
+        "Arc Lightning did not reveal its full path by strike end");
+      AssertClose(0,
+        LEDDomeArcLightningVisualizer.AfterglowRetention(0, 0.1),
+        "zero Arc Lightning afterglow retained old light");
+      AssertClose(0.5,
+        LEDDomeArcLightningVisualizer.AfterglowRetention(0.4, 0.4),
+        "Arc Lightning afterglow is not a brightness half-life");
+
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> {
+          Layer("arc-lightning", "arc-lightning-inputs"),
+        },
+      };
+      var runtime = new global::Spectrum.Operator(config);
+      DomeLayerVisualizer lightning = null;
+      foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
+        if (visualizer is DomeLayerVisualizer layer &&
+            layer.LayerKey == "arc-lightning") {
+          lightning = layer;
+          break;
+        }
+      }
+      Assert(lightning != null, "Arc Lightning renderer was not created");
+      Input[] inputs = lightning.GetInputs();
+      Assert(inputs.Length == 2 &&
+          ReferenceEquals(inputs[0], runtime.AudioInput) &&
+          ReferenceEquals(inputs[1], runtime.OrientationInput),
+        "Arc Lightning did not declare audio and orientation inputs");
+      ((Visualizer)lightning).Visualize();
+    }
+
+    private static void GlassMosaicUsesTriangleTopology() {
+      LayerDefinition definition = LayerCatalog.Default.Get("glass-mosaic");
+      Assert(definition != null && definition.DisplayName == "Glass Mosaic",
+        "Glass Mosaic was not registered");
+      Assert(definition.FireAction?.Label == "Fire" &&
+          definition.ClearAction?.Label == "Clear",
+        "Glass Mosaic Fire/Clear actions were not registered");
+
+      GlassMosaicLayerOptions defaults =
+        BuiltInOptions<GlassMosaicLayerOptions>(
+          Layer("glass-mosaic", "glass-defaults"));
+      Assert(defaults.TileGrouping == 1,
+        "unexpected Glass Mosaic tile grouping");
+      AssertClose(30, defaults.CascadeSpeed,
+        "unexpected Glass Mosaic cascade speed");
+      Assert(defaults.PropagationRule == 0,
+        "unexpected Glass Mosaic propagation rule");
+      AssertClose(0.18, defaults.BorderBrightness,
+        "unexpected Glass Mosaic border brightness");
+      Assert(defaults.TileTransition == 0,
+        "unexpected Glass Mosaic tile transition");
+      Assert(defaults.Trigger == 1 && defaults.Button == 0 &&
+          defaults.Palette == 0,
+        "unexpected Glass Mosaic trigger or palette default");
+      AssertClose(0.3, defaults.Level,
+        "unexpected Glass Mosaic audio level");
+      AssertClose(800, defaults.Interval,
+        "unexpected Glass Mosaic audio interval");
+
+      DomeLayerSettings configured = Layer(
+        "glass-mosaic", "glass-clamped");
+      configured.RendererParams = new Dictionary<string, double> {
+        ["tileGrouping"] = 99,
+        ["cascadeSpeed"] = 0,
+        ["propagationRule"] = 99,
+        ["borderBrightness"] = 0,
+        ["tileTransition"] = 99,
+        ["trigger"] = 99,
+        ["button"] = 99,
+        ["level"] = -1,
+        ["interval"] = 99999,
+        ["palette"] = 99,
+      };
+      GlassMosaicLayerOptions clamped =
+        BuiltInOptions<GlassMosaicLayerOptions>(configured);
+      Assert(clamped.TileGrouping == 6 && clamped.CascadeSpeed == 1 &&
+          clamped.PropagationRule == 2 &&
+          clamped.BorderBrightness == 0.02 &&
+          clamped.TileTransition == 1 &&
+          clamped.Trigger == 2 && clamped.Button == 3 &&
+          clamped.Level == 0 && clamped.Interval == 4000 &&
+          clamped.Palette == PaletteService.MaxPalettes - 1,
+        "Glass Mosaic controls did not clamp");
+
+      var topology = new GlassMosaicTopology(StrutLayoutFactory.lines);
+      Assert(topology.TileCount == 120 && topology.EdgeCount == 190,
+        "Glass Mosaic did not discover the deployed triangular faces");
+      int boundaryEdges = 0;
+      for (int edge = 0; edge < topology.EdgeCount; edge++) {
+        int incident = topology.EdgeAt(edge).Tiles.Length;
+        Assert(incident == 1 || incident == 2,
+          "Glass Mosaic found a strut outside the face manifold");
+        if (incident == 1) {
+          boundaryEdges++;
+        }
+      }
+      Assert(boundaryEdges == 20,
+        "Glass Mosaic did not preserve the 20-strut dome rim");
+      for (int tile = 0; tile < topology.TileCount; tile++) {
+        Assert(topology.TileAt(tile).Struts.Length == 3,
+          "Glass Mosaic created a non-triangular tile");
+        foreach (int neighbor in topology.NeighborsAt(tile)) {
+          Assert(topology.NeighborsAt(neighbor).Contains(tile),
+            "Glass Mosaic face adjacency was not symmetric");
+        }
+      }
+
+      var state = new GlassMosaicState(topology, 17);
+      Assert(state.PhaseAt(0) == 0 && state.PhaseAt(9) == 1,
+        "Glass Mosaic did not initialize persistent tile phases");
+      state.StartCascade(0, 1, 0);
+      ImmutableArray<int> waveOrder = state.LastCascadeTileOrder;
+      Assert(waveOrder.Length == topology.TileCount &&
+          waveOrder.Distinct().Count() == topology.TileCount,
+        "Glass Mosaic neighbor wave did not cover each tile once");
+      var reached = new HashSet<int> { waveOrder[0] };
+      for (int index = 1; index < waveOrder.Length; index++) {
+        int tile = waveOrder[index];
+        Assert(topology.NeighborsAt(tile).Any(reached.Contains),
+          "Glass Mosaic cascade jumped across disconnected faces");
+        reached.Add(tile);
+      }
+      int secondTile = waveOrder[1];
+      int secondInitialPhase = secondTile & 7;
+      Assert(state.PhaseAt(0) == 1 && state.PreviousPhaseAt(0) == 0 &&
+          state.PulseAt(0) == 1 && state.FlipProgressAt(0) == 0 &&
+          state.PhaseAt(secondTile) == secondInitialPhase,
+        "Glass Mosaic did not flip only its starting tile immediately");
+      GlassMosaicTileAppearance instant =
+        LEDDomeGlassMosaicVisualizer.TileAppearance(0, 1, 0, 0);
+      Assert(instant.Phase == 1 && instant.Visibility == 1,
+        "Glass Mosaic instant transition changed legacy phase rendering");
+      GlassMosaicTileAppearance oldFace =
+        LEDDomeGlassMosaicVisualizer.TileAppearance(0, 1, 0.25, 1);
+      GlassMosaicTileAppearance edgeOn =
+        LEDDomeGlassMosaicVisualizer.TileAppearance(0, 1, 0.5, 1);
+      GlassMosaicTileAppearance newFace =
+        LEDDomeGlassMosaicVisualizer.TileAppearance(0, 1, 0.75, 1);
+      Assert(oldFace.Phase == 0 && newFace.Phase == 1,
+        "Glass Mosaic flip did not select the old and new tile faces");
+      AssertClose(0.5, oldFace.Visibility,
+        "Glass Mosaic old face did not narrow toward edge-on");
+      AssertClose(0, edgeOn.Visibility,
+        "Glass Mosaic flip did not become invisible at edge-on");
+      AssertClose(0.5, newFace.Visibility,
+        "Glass Mosaic new face did not open from edge-on");
+      state.AdvanceFlips(GlassMosaicState.FlipDurationSeconds * 0.25);
+      AssertClose(0.25, state.FlipProgressAt(0),
+        "Glass Mosaic flip did not advance with elapsed time");
+      state.AdvanceCascade(0.99);
+      Assert(state.PhaseAt(secondTile) == secondInitialPhase,
+        "Glass Mosaic cascade ignored its tile-rate budget");
+      state.AdvanceCascade(0.01);
+      Assert(state.PhaseAt(secondTile) == ((secondInitialPhase + 1) & 7),
+        "Glass Mosaic cascade did not advance at one tile of budget");
+      state.DecayPulses(0.325);
+      AssertClose(0.5, state.PulseAt(0),
+        "Glass Mosaic arrival pulse did not decay independently");
+
+      state.Reset();
+      state.StartCascade(0, 3, 1);
+      int groupedArrivals = Enumerable.Range(0, topology.TileCount)
+        .Count(tile => state.PulseAt(tile) == 1);
+      Assert(groupedArrivals == 3,
+        "Glass Mosaic grouping did not flip one connected tile group");
+      Assert(Enumerable.Range(0, topology.TileCount)
+          .Count(tile => state.FlipProgressAt(tile) == 0) == 3,
+        "Glass Mosaic grouped arrivals did not begin together");
+      state.StartCascade(0, 1, 2);
+      Assert(state.LastCascadeTileOrder.Length == topology.TileCount &&
+          state.LastCascadeTileOrder.Distinct().Count() ==
+            topology.TileCount,
+        "Glass Mosaic randomized domino rule lost or duplicated tiles");
+      state.Reset();
+      Assert(Enumerable.Range(0, topology.TileCount)
+          .All(tile => state.PulseAt(tile) == 0 &&
+            state.PhaseAt(tile) == (tile & 7) &&
+            state.PreviousPhaseAt(tile) == (tile & 7) &&
+            state.FlipProgressAt(tile) == 1),
+        "Glass Mosaic Clear did not restore its initial state");
+
+      AssertClose(0.2,
+        LEDDomeGlassMosaicVisualizer.TileBrightness(0.2, 0),
+        "Glass Mosaic resting border brightness changed");
+      AssertClose(1,
+        LEDDomeGlassMosaicVisualizer.TileBrightness(0.2, 1),
+        "Glass Mosaic arrival did not reach full brightness");
+      Assert(LEDDomeGlassMosaicVisualizer.BlendColor(
+          0xFF0000, 0x0000FF, 0.5) == 0x800080,
+        "Glass Mosaic did not interpolate adjacent tile colors");
+
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> {
+          Layer("glass-mosaic", "glass-inputs"),
+        },
+      };
+      SetPaletteColors(config, color => 0xFFFFFF - color * 0x10101);
+      var runtime = new global::Spectrum.Operator(config);
+      DomeLayerVisualizer mosaic = null;
+      foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
+        if (visualizer is DomeLayerVisualizer layer &&
+            layer.LayerKey == "glass-mosaic") {
+          mosaic = layer;
+          break;
+        }
+      }
+      Assert(mosaic != null, "Glass Mosaic renderer was not created");
+      Input[] inputs = mosaic.GetInputs();
+      Assert(inputs.Length == 2 &&
+          ReferenceEquals(inputs[0], runtime.AudioInput) &&
+          ReferenceEquals(inputs[1], runtime.OrientationInput),
+        "Glass Mosaic did not declare audio and wand inputs");
+      ((Visualizer)mosaic).Visualize();
+      Assert(mosaic.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
+        "Glass Mosaic did not render its resting stained-glass borders");
+    }
+
+    private static void CellularDomeUsesTriangleCells() {
+      LayerDefinition definition = LayerCatalog.Default.Get("cellular-dome");
+      Assert(definition != null && definition.DisplayName == "Cellular Dome",
+        "Cellular Dome was not registered");
+      Assert(definition.FireAction?.Label == "Fire" &&
+          definition.ClearAction?.Label == "Clear",
+        "Cellular Dome Fire/Clear actions were not registered");
+
+      CellularDomeLayerOptions defaults =
+        BuiltInOptions<CellularDomeLayerOptions>(
+          Layer("cellular-dome", "cellular-defaults"));
+      Assert(defaults.Rule == 0 && defaults.Neighborhood == 0,
+        "unexpected Cellular Dome rule or neighborhood");
+      AssertClose(6, defaults.GenerationRate,
+        "unexpected Cellular Dome generation rate");
+      Assert(defaults.BirthColor == 0 && defaults.TriggerMode == 0 &&
+          defaults.Palette == 0,
+        "unexpected Cellular Dome color, trigger, or palette");
+      AssertClose(2.5, defaults.AgeDecay,
+        "unexpected Cellular Dome age decay");
+
+      DomeLayerSettings configured = Layer(
+        "cellular-dome", "cellular-clamped");
+      configured.RendererParams = new Dictionary<string, double> {
+        ["rule"] = 99,
+        ["neighborhood"] = 99,
+        ["generationRate"] = -1,
+        ["birthColor"] = 99,
+        ["ageDecay"] = 0,
+        ["triggerMode"] = 99,
+        ["palette"] = 99,
+      };
+      CellularDomeLayerOptions clamped =
+        BuiltInOptions<CellularDomeLayerOptions>(configured);
+      Assert(clamped.Rule == 3 && clamped.Neighborhood == 1 &&
+          clamped.GenerationRate == 0 && clamped.BirthColor == 7 &&
+          clamped.AgeDecay == 0.1 && clamped.TriggerMode == 2 &&
+          clamped.Palette == PaletteService.MaxPalettes - 1,
+        "Cellular Dome controls did not clamp");
+
+      var topology = new GlassMosaicTopology(StrutLayoutFactory.lines);
+      bool foundWiderNeighborhood = false;
+      for (int tile = 0; tile < topology.TileCount; tile++) {
+        ImmutableArray<int> edgeNeighbors = topology.NeighborsAt(tile);
+        ImmutableArray<int> vertexNeighbors =
+          topology.VertexNeighborsAt(tile);
+        Assert(edgeNeighbors.All(vertexNeighbors.Contains),
+          "Cellular Dome vertex neighborhood lost an edge neighbor");
+        if (vertexNeighbors.Length > edgeNeighbors.Length) {
+          foundWiderNeighborhood = true;
+        }
+        foreach (int neighbor in vertexNeighbors) {
+          Assert(topology.VertexNeighborsAt(neighbor).Contains(tile),
+            "Cellular Dome vertex adjacency was not symmetric");
+        }
+      }
+      Assert(foundWiderNeighborhood,
+        "Cellular Dome neighborhoods did not produce distinct topologies");
+
+      Assert(CellularDomeState.NextAlive(0, false, 2) &&
+          CellularDomeState.NextAlive(0, true, 1) &&
+          !CellularDomeState.NextAlive(0, true, 3),
+        "Cellular Dome colony rule did not implement B2/S12");
+      Assert(CellularDomeState.NextAlive(1, false, 1) &&
+          !CellularDomeState.NextAlive(1, true, 1),
+        "Cellular Dome oscillator rule did not implement B1/S0");
+      Assert(CellularDomeState.NextAlive(2, true, 0) &&
+          CellularDomeState.NextAlive(2, false, 1),
+        "Cellular Dome front rule did not persist and expand");
+      Assert(CellularDomeState.NextAlive(3, false, 3) &&
+          !CellularDomeState.NextAlive(3, false, 2),
+        "Cellular Dome chaos rule did not implement B13 births");
+
+      var state = new CellularDomeState(topology);
+      state.Clear();
+      state.SeedAt(0, 0, 0);
+      Assert(state.AliveCount == 1 && state.AliveAt(0) &&
+          state.BrightnessAt(0) == 1,
+        "Cellular Dome did not seed one physical face");
+      int edgeCount = topology.NeighborsAt(0).Length;
+      state.Step(2, 0);
+      Assert(state.AliveCount == edgeCount + 1 && state.AliveAt(0) &&
+          topology.NeighborsAt(0).All(state.AliveAt),
+        "Cellular Dome traveling front did not cross shared struts");
+
+      state.Clear();
+      state.SeedAt(0, 1, 1);
+      Assert(state.AliveCount ==
+          topology.VertexNeighborsAt(0).Length + 1,
+        "Cellular Dome vertex brush did not use the selected neighborhood");
+      state.EraseAt(0, 1, 1);
+      Assert(state.AliveCount == 0 && state.BrightnessAt(0) == 0,
+        "Cellular Dome erase did not remove the colony and its light");
+
+      state.SeedAt(0, 0, 0);
+      state.AdvanceAppearance(2, 2);
+      AssertClose(0.59, state.BrightnessAt(0),
+        "Cellular Dome live-cell age did not decay by one half-life");
+      Assert(state.ColorPhaseAt(0, 3, 2) == 4,
+        "Cellular Dome age did not advance from the birth color");
+      state.MutateAt(0, 0, 0);
+      Assert(!state.AliveAt(0) && state.BrightnessAt(0) > 0,
+        "Cellular Dome mutation did not leave a dying afterimage");
+      state.AdvanceAppearance(2, 2);
+      AssertClose(0.295, state.BrightnessAt(0),
+        "Cellular Dome dead-cell afterimage did not decay independently");
+
+      state.Initialize();
+      Assert(state.AliveCount > 0 &&
+          state.AliveCount < topology.TileCount,
+        "Cellular Dome initial colonies were empty or covered the dome");
+      Assert(LEDDomeCellularDomeVisualizer.BlendColor(
+          0xFF0000, 0x0000FF, 0.5) == 0x800080,
+        "Cellular Dome did not blend adjacent cell colors");
+
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> {
+          Layer("cellular-dome", "cellular-inputs"),
+        },
+      };
+      SetPaletteColors(config, color => 0xFFFFFF - color * 0x10101);
+      var runtime = new global::Spectrum.Operator(config);
+      DomeLayerVisualizer cellular = null;
+      foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
+        if (visualizer is DomeLayerVisualizer layer &&
+            layer.LayerKey == "cellular-dome") {
+          cellular = layer;
+          break;
+        }
+      }
+      Assert(cellular != null, "Cellular Dome renderer was not created");
+      Input[] inputs = cellular.GetInputs();
+      Assert(inputs.Length == 1 &&
+          ReferenceEquals(inputs[0], runtime.OrientationInput),
+        "Cellular Dome did not declare its wand input");
+      ((Visualizer)cellular).Visualize();
+      Assert(cellular.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
+        "Cellular Dome did not render its initial colonies");
+    }
+
+    private static void FireflySwarmUsesCoherentFlock() {
+      LayerDefinition definition = LayerCatalog.Default.Get("firefly-swarm");
+      Assert(definition != null && definition.DisplayName == "Firefly Swarm",
+        "Firefly Swarm was not registered");
+
+      FireflySwarmLayerOptions defaults =
+        BuiltInOptions<FireflySwarmLayerOptions>(
+          Layer("firefly-swarm", "firefly-defaults"));
+      Assert(defaults.Population == 48,
+        "unexpected Firefly Swarm population");
+      AssertClose(1.2, defaults.Cohesion,
+        "unexpected Firefly Swarm cohesion");
+      AssertClose(1.8, defaults.Separation,
+        "unexpected Firefly Swarm separation");
+      AssertClose(0.65, defaults.Wander,
+        "unexpected Firefly Swarm wander");
+      Assert(defaults.InteractionMode == 0,
+        "unexpected Firefly Swarm interaction mode");
+      AssertClose(0.055, defaults.DotSize,
+        "unexpected Firefly Swarm dot size");
+      AssertClose(0.45, defaults.TrailLength,
+        "unexpected Firefly Swarm trail length");
+      Assert(defaults.Palette == 0,
+        "unexpected Firefly Swarm palette");
+
+      DomeLayerSettings configured = Layer(
+        "firefly-swarm", "firefly-clamped");
+      configured.RendererParams = new Dictionary<string, double> {
+        ["population"] = 999,
+        ["cohesion"] = -1,
+        ["separation"] = 99,
+        ["wander"] = 99,
+        ["interactionMode"] = 99,
+        ["dotSize"] = 0,
+        ["trailLength"] = 99,
+        ["palette"] = 99,
+      };
+      FireflySwarmLayerOptions clamped =
+        BuiltInOptions<FireflySwarmLayerOptions>(configured);
+      Assert(clamped.Population == 160 && clamped.Cohesion == 0 &&
+          clamped.Separation == 4 && clamped.Wander == 4 &&
+          clamped.InteractionMode == 1 && clamped.DotSize == 0.015 &&
+          clamped.TrailLength == 3 &&
+          clamped.Palette == PaletteService.MaxPalettes - 1,
+        "Firefly Swarm controls did not clamp");
+
+      var flock = new FireflySwarmState(24, 23);
+      Assert(flock.Agents.Count == 24,
+        "Firefly Swarm did not create its requested population");
+      foreach (FireflyAgent agent in flock.Agents) {
+        Assert(agent.Position.Z >= 0 &&
+            Math.Abs(agent.Position.Length() - 1) < 0.000001,
+          "Firefly Swarm initialized off the visible unit hemisphere");
+        Assert(Math.Abs(Vector3.Dot(
+            agent.Position, agent.Velocity)) < 0.000001,
+          "Firefly Swarm initialized non-tangent velocity");
+      }
+      Vector3 beforeWander = flock.Agents[0].Position;
+      flock.Step(
+        0.1, 0, 0, 1, 0, Array.Empty<Vector3>());
+      Assert(Vector3.Distance(beforeWander, flock.Agents[0].Position) > 0,
+        "Firefly Swarm wander did not move a persistent agent");
+      flock.Resize(37);
+      Assert(flock.Agents.Count == 37,
+        "Firefly Swarm did not grow its bounded population in place");
+      flock.Resize(12);
+      Assert(flock.Agents.Count == 12,
+        "Firefly Swarm did not shrink its bounded population in place");
+
+      Vector3 aim = Vector3.Normalize(new Vector3(0.9f, 0.1f, 0.3f));
+      Func<FireflySwarmState, double> meanAimDistance = state =>
+        state.Agents.Average(agent => Math.Acos(Math.Clamp(
+          Vector3.Dot(agent.Position, aim), -1, 1)));
+      var attracted = new FireflySwarmState(24, 31);
+      var repelled = new FireflySwarmState(24, 31);
+      double initialAimDistance = meanAimDistance(attracted);
+      for (int step = 0; step < 12; step++) {
+        attracted.Step(0.1, 0, 0, 0, 0, new[] { aim });
+        repelled.Step(0.1, 0, 0, 0, 1, new[] { aim });
+      }
+      Assert(meanAimDistance(attracted) < initialAimDistance &&
+          meanAimDistance(repelled) > initialAimDistance,
+        "Firefly Swarm wand attract/repel modes did not diverge");
+
+      var separating = new FireflySwarmState(32, 37);
+      double initialNearest = NearestFireflyDistance(separating.Agents);
+      for (int step = 0; step < 12; step++) {
+        separating.Step(
+          0.1, 0, 4, 0, 0, Array.Empty<Vector3>());
+      }
+      Assert(NearestFireflyDistance(separating.Agents) > initialNearest,
+        "Firefly Swarm separation did not open close spacing");
+
+      var startled = new FireflySwarmState(32, 41);
+      double clusteredSpread = startled.MeanAngularSpread();
+      startled.Startle();
+      for (int step = 0; step < 8; step++) {
+        startled.Step(
+          0.1, 0, 0, 0, 0, Array.Empty<Vector3>());
+      }
+      double startledSpread = startled.MeanAngularSpread();
+      Assert(startledSpread > clusteredSpread,
+        "Firefly Swarm startle did not disperse the group");
+      for (int step = 0; step < 40; step++) {
+        startled.Step(
+          0.1, 4, 0, 0, 0, Array.Empty<Vector3>());
+      }
+      Assert(startled.MeanAngularSpread() < startledSpread,
+        "Firefly Swarm cohesion did not regroup a startled flock");
+      Assert(startled.Agents.All(agent => agent.Position.Z >= 0 &&
+          Math.Abs(agent.Position.Length() - 1) < 0.000001),
+        "Firefly Swarm escaped the visible unit hemisphere");
+
+      var detector = new FireflyStartleDetector();
+      Assert(!detector.Sample(0.1, 0.1) && detector.Sample(0.8, 0.1),
+        "Firefly Swarm did not detect a loud rising transient");
+      Assert(!detector.Sample(0.8, 0.1),
+        "Firefly Swarm retriggered on a sustained loud level");
+      for (int sample = 0; sample < 12; sample++) {
+        detector.Sample(0.05, 0.1);
+      }
+      Assert(detector.Sample(0.8, 0.1),
+        "Firefly Swarm did not re-arm after the audio envelope settled");
+      AssertClose(0,
+        LEDDomeFireflySwarmVisualizer.TrailRetention(0, 0.1),
+        "zero Firefly Swarm trail retained old light");
+      AssertClose(0.5,
+        LEDDomeFireflySwarmVisualizer.TrailRetention(0.45, 0.45),
+        "Firefly Swarm trail length is not a brightness half-life");
+
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> {
+          Layer("firefly-swarm", "firefly-inputs"),
+        },
+      };
+      SetPaletteColors(config, color => 0xFFFFFF - color * 0x10101);
+      var runtime = new global::Spectrum.Operator(config);
+      DomeLayerVisualizer fireflies = null;
+      foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
+        if (visualizer is DomeLayerVisualizer layer &&
+            layer.LayerKey == "firefly-swarm") {
+          fireflies = layer;
+          break;
+        }
+      }
+      Assert(fireflies != null, "Firefly Swarm renderer was not created");
+      Input[] inputs = fireflies.GetInputs();
+      Assert(inputs.Length == 2 &&
+          ReferenceEquals(inputs[0], runtime.AudioInput) &&
+          ReferenceEquals(inputs[1], runtime.OrientationInput),
+        "Firefly Swarm did not declare audio and wand inputs");
+      ((Visualizer)fireflies).Visualize();
+      Assert(fireflies.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
+        "Firefly Swarm did not render its persistent flock");
+    }
+
+    private static double NearestFireflyDistance(
+      IReadOnlyList<FireflyAgent> agents
+    ) {
+      double nearest = double.MaxValue;
+      for (int first = 0; first < agents.Count; first++) {
+        for (int second = first + 1; second < agents.Count; second++) {
+          nearest = Math.Min(nearest, Vector3.Distance(
+            agents[first].Position, agents[second].Position));
+        }
+      }
+      return nearest;
+    }
+
+    private static void RainChamberUsesSphericalRain() {
+      LayerDefinition definition = LayerCatalog.Default.Get("rain-chamber");
+      Assert(definition != null && definition.DisplayName == "Rain Chamber",
+        "Rain Chamber was not registered");
+
+      RainChamberLayerOptions defaults =
+        BuiltInOptions<RainChamberLayerOptions>(
+          Layer("rain-chamber", "rain-defaults"));
+      AssertClose(22, defaults.RainfallRate,
+        "unexpected Rain Chamber rainfall rate");
+      AssertClose(1.4, defaults.Gravity,
+        "unexpected Rain Chamber gravity");
+      AssertClose(0.045, defaults.DropletSize,
+        "unexpected Rain Chamber droplet size");
+      AssertClose(0.7, defaults.TrailRetention,
+        "unexpected Rain Chamber trail retention");
+      Assert(defaults.InteractionMode == 0,
+        "unexpected Rain Chamber wand interaction mode");
+      AssertClose(1.25, defaults.Wind,
+        "unexpected Rain Chamber wand strength");
+      AssertClose(0.9, defaults.SplashStrength,
+        "unexpected Rain Chamber splash strength");
+      Assert(defaults.Palette == 0,
+        "unexpected Rain Chamber palette");
+
+      AssertClose(0.065, RainChamberState.SpawnPolar(0.015),
+        "small Rain Chamber droplets lost the crown spawn radius");
+      AssertClose(0.099, RainChamberState.SpawnPolar(0.045),
+        "default Rain Chamber spawn radius did not follow droplet size");
+      AssertClose(0.308, RainChamberState.SpawnPolar(0.14),
+        "large Rain Chamber spawn radius did not follow droplet size");
+
+      var smallSpawn = new RainChamberState(13);
+      var largeSpawn = new RainChamberState(13);
+      smallSpawn.Step(
+        0.1, 20, 0, 0, 0.015, 0, 1, Array.Empty<Vector3>());
+      largeSpawn.Step(
+        0.1, 20, 0, 0, 0.14, 0, 1, Array.Empty<Vector3>());
+      double smallSpawnSeparation = Math.Acos(Math.Clamp(Vector3.Dot(
+        smallSpawn.Droplets[0].Position,
+        smallSpawn.Droplets[1].Position), -1, 1));
+      double largeSpawnSeparation = Math.Acos(Math.Clamp(Vector3.Dot(
+        largeSpawn.Droplets[0].Position,
+        largeSpawn.Droplets[1].Position), -1, 1));
+      Assert(smallSpawn.Droplets.Count == 2 &&
+          largeSpawn.Droplets.Count == 2 &&
+          largeSpawnSeparation > smallSpawnSeparation * 3,
+        "larger Rain Chamber droplets did not spawn farther apart");
+
+      var smallWarmStart = new RainChamberState(13, 1, 0.015);
+      var largeWarmStart = new RainChamberState(13, 1, 0.14);
+      Assert(largeWarmStart.Droplets[0].Position.Z <
+          smallWarmStart.Droplets[0].Position.Z,
+        "initial Rain Chamber droplets ignored configured droplet size");
+
+      DomeLayerSettings configured = Layer(
+        "rain-chamber", "rain-clamped");
+      configured.RendererParams = new Dictionary<string, double> {
+        ["rainfallRate"] = -1,
+        ["gravity"] = 99,
+        ["dropletSize"] = 0,
+        ["trailRetention"] = 99,
+        ["interactionMode"] = 99,
+        ["wind"] = 99,
+        ["splashStrength"] = -1,
+        ["palette"] = 99,
+      };
+      RainChamberLayerOptions clamped =
+        BuiltInOptions<RainChamberLayerOptions>(configured);
+      Assert(clamped.RainfallRate == 0 && clamped.Gravity == 4 &&
+          clamped.DropletSize == 0.015 &&
+          clamped.TrailRetention == 3 && clamped.InteractionMode == 2 &&
+          clamped.Wind == 4 &&
+          clamped.SplashStrength == 0 &&
+          clamped.Palette == PaletteService.MaxPalettes - 1,
+        "Rain Chamber controls did not clamp");
+
+      AssertClose(3.3,
+        RainChamberState.EffectiveRainfallRate(22, 0),
+        "silent Rain Chamber did not retain a light drizzle");
+      AssertClose(22,
+        RainChamberState.EffectiveRainfallRate(22, 1),
+        "full audio did not reach the configured rainfall rate");
+      var quiet = new RainChamberState(17);
+      var loud = new RainChamberState(17);
+      for (int step = 0; step < 10; step++) {
+        quiet.Step(0.1, 40, 0, 0, 0, 0, 0, Array.Empty<Vector3>());
+        loud.Step(0.1, 40, 0, 0, 0, 0, 1, Array.Empty<Vector3>());
+      }
+      Assert(loud.Droplets.Count > quiet.Droplets.Count &&
+          loud.Droplets.Count == 40,
+        "capture volume did not scale Rain Chamber spawning");
+
+      Vector3 upper = Vector3.Normalize(new Vector3(0.25f, 0, 0.97f));
+      var falling = new RainChamberState(23);
+      falling.SeedDroplet(upper, Vector3.Zero);
+      double initialHeight = falling.Droplets[0].Position.Z;
+      for (int step = 0; step < 10; step++) {
+        falling.Step(
+          0.1, 0, 1.4, 0, 0, 0, 0, Array.Empty<Vector3>());
+      }
+      Assert(falling.Droplets.Count == 1 &&
+          falling.Droplets[0].Position.Z < initialHeight,
+        "spherical gravity did not pull a droplet toward the rim");
+      Assert(Math.Abs(falling.Droplets[0].Position.Length() - 1) <
+          0.000001 &&
+          Math.Abs(Vector3.Dot(
+            falling.Droplets[0].Position,
+            falling.Droplets[0].Velocity)) < 0.000001,
+        "Rain Chamber escaped the tangent unit hemisphere");
+
+      var still = new RainChamberState(29);
+      var deflected = new RainChamberState(29);
+      still.SeedDroplet(upper, Vector3.Zero);
+      deflected.SeedDroplet(upper, Vector3.Zero);
+      for (int step = 0; step < 6; step++) {
+        still.Step(0.1, 0, 0, 2, 0, 0, 0, Array.Empty<Vector3>());
+        deflected.Step(0.1, 0, 0, 2, 0, 0, 0, new[] { upper });
+      }
+      Assert(Vector3.Distance(
+          still.Droplets[0].Position,
+          deflected.Droplets[0].Position) > 0.01,
+        "Rain Chamber umbrella did not deflect a nearby droplet");
+
+      Vector3 sweepTangent = Vector3.Normalize(Vector3.Cross(
+        Vector3.UnitY, upper));
+      Vector3 sweptAim = Vector3.Normalize(
+        upper * (float)Math.Cos(0.1) +
+        sweepTangent * (float)Math.Sin(0.1));
+      Vector3 inferredMotion =
+        LEDDomeRainChamberVisualizer.InferWandMotion(
+          upper, sweptAim, 0.1);
+      Assert(Math.Abs(inferredMotion.Length() - 0.5) < 0.00001,
+        "Rain Chamber wand motion did not preserve bounded angular speed");
+      Assert(Vector3.Dot(inferredMotion, sweepTangent) > 0.45,
+        "Rain Chamber wand motion pointed against the wand sweep");
+      Assert(LEDDomeRainChamberVisualizer.InferWandMotion(
+          upper, upper, 0.1) == Vector3.Zero &&
+          LEDDomeRainChamberVisualizer.InferWandMotion(
+            upper, sweptAim, 0) == Vector3.Zero,
+        "stationary or zero-time wand motion produced a gust");
+      Assert(Math.Abs(LEDDomeRainChamberVisualizer.InferWandMotion(
+          upper, sweptAim, 0.01).Length() - 1) < 0.00001,
+        "Rain Chamber wand motion exceeded its speed bound");
+
+      var noGust = new RainChamberState(29);
+      var gust = new RainChamberState(29);
+      noGust.SeedDroplet(sweptAim, Vector3.Zero);
+      gust.SeedDroplet(sweptAim, Vector3.Zero);
+      for (int step = 0; step < 6; step++) {
+        noGust.Step(
+          0.1, 0, 0, 2, 0, 0, 0, new[] { sweptAim },
+          interactionMode: 2, wandMotions: new[] { Vector3.Zero });
+        gust.Step(
+          0.1, 0, 0, 2, 0, 0, 0, new[] { sweptAim },
+          interactionMode: 2, wandMotions: new[] { inferredMotion });
+      }
+      Assert(Vector3.Distance(
+          noGust.Droplets[0].Position,
+          gust.Droplets[0].Position) > 0.01 &&
+          Vector3.Dot(gust.Droplets[0].Velocity, inferredMotion) > 0,
+        "Rain Chamber motion-driven wind did not carry a nearby droplet");
+
+      double windRadius = RainChamberState.DryRadius(2);
+      Vector3 outsideWind = Vector3.Normalize(
+        sweptAim * (float)Math.Cos(windRadius * 1.2) +
+        sweepTangent * (float)Math.Sin(windRadius * 1.2));
+      var outsideNoGust = new RainChamberState(29);
+      var outsideGust = new RainChamberState(29);
+      outsideNoGust.SeedDroplet(outsideWind, Vector3.Zero);
+      outsideGust.SeedDroplet(outsideWind, Vector3.Zero);
+      outsideNoGust.Step(
+        0.1, 0, 0, 2, 0, 0, 0, new[] { sweptAim },
+        interactionMode: 2, wandMotions: new[] { Vector3.Zero });
+      outsideGust.Step(
+        0.1, 0, 0, 2, 0, 0, 0, new[] { sweptAim },
+        interactionMode: 2, wandMotions: new[] { inferredMotion });
+      Assert(Vector3.Distance(
+          outsideNoGust.Droplets[0].Position,
+          outsideGust.Droplets[0].Position) < 0.000001,
+        "Rain Chamber wind field reached beyond its bounded radius");
+
+      double dryRadius = RainChamberState.DryRadius(2);
+      Vector3 dryTangent = Vector3.Normalize(Vector3.Cross(
+        upper, Vector3.UnitY));
+      Vector3 outsideDryRegion = Vector3.Normalize(
+        upper * (float)Math.Cos(dryRadius * 1.2) +
+        dryTangent * (float)Math.Sin(dryRadius * 1.2));
+      var drying = new RainChamberState(30);
+      drying.SeedDroplet(upper, Vector3.Zero, 1);
+      drying.SeedDroplet(outsideDryRegion, Vector3.Zero, 2);
+      drying.Step(
+        0.01, 0, 0, 2, 0, 0, 0, new[] { upper },
+        interactionMode: 1);
+      Assert(drying.Droplets.Count == 1 &&
+          Vector3.Dot(drying.Droplets[0].Position, outsideDryRegion) > 0.999,
+        "Rain Chamber dry region did not remove only nearby droplets");
+
+      var disabledDrying = new RainChamberState(30);
+      disabledDrying.SeedDroplet(upper, Vector3.Zero);
+      disabledDrying.Step(
+        0.01, 0, 0, 0, 0, 0, 0, new[] { upper },
+        interactionMode: 1);
+      Assert(disabledDrying.Droplets.Count == 1,
+        "zero wand strength still removed a Rain Chamber droplet");
+
+      var impacting = new RainChamberState(31);
+      Vector3 nearRim = Vector3.Normalize(
+        new Vector3(0.999f, 0, 0.03f));
+      impacting.SeedDroplet(nearRim, -Vector3.UnitZ, 3);
+      impacting.Step(
+        0.1, 0, 1, 0, 0.045, 1, 0, Array.Empty<Vector3>());
+      Assert(impacting.Droplets.Count == 0 && impacting.Splashes.Count == 1,
+        "rim impact did not replace a droplet with a splash ring");
+      AssertClose(0, impacting.Splashes[0].Center.Z,
+        "rim impact splash moved away from the dome rim");
+      Assert(RainChamberState.SplashRadius(0.4) >
+          RainChamberState.SplashRadius(0),
+        "Rain Chamber splash rings did not expand");
+      Assert(RainChamberState.SplashEnvelope(0.4, 1) <
+          RainChamberState.SplashEnvelope(0, 1),
+        "Rain Chamber splash rings did not decay");
+      for (int step = 0; step < 10; step++) {
+        impacting.Step(
+          0.1, 0, 0, 0, 0.045, 1, 0, Array.Empty<Vector3>());
+      }
+      Assert(impacting.Splashes.Count == 0,
+        "Rain Chamber retained an expired splash ring");
+
+      double collisionDotSize = 0.06;
+      double collisionRadius = RainChamberState.CollisionRadius(
+        collisionDotSize, 0.5, 0.5);
+      Vector3 collisionCenter = Vector3.Normalize(
+        new Vector3(0.35f, 0.1f, 0.93f));
+      Vector3 collisionTangent = Vector3.Normalize(Vector3.Cross(
+        collisionCenter, Vector3.UnitZ));
+      Vector3 closeNeighbor = Vector3.Normalize(
+        collisionCenter * (float)Math.Cos(collisionRadius * 0.75) +
+        collisionTangent * (float)Math.Sin(collisionRadius * 0.75));
+      var colliding = new RainChamberState(37);
+      colliding.SeedDroplet(
+        collisionCenter, collisionTangent * 0.1f, 2, 0.5);
+      colliding.SeedDroplet(
+        closeNeighbor, -collisionTangent * 0.1f, 6, 0.5);
+      colliding.Step(
+        0.01, 0, 0, 0, collisionDotSize, 1, 0,
+        Array.Empty<Vector3>());
+      Assert(colliding.Droplets.Count == 1 &&
+          colliding.Splashes.Count == 1,
+        "intersecting droplets did not coalesce into one splash");
+      Assert(colliding.Splashes[0].Center.Z > 0.8,
+        "droplet collision splash was projected to the rim");
+      colliding.Step(
+        0.01, 0, 0, 0, collisionDotSize, 1, 0,
+        Array.Empty<Vector3>());
+      Assert(colliding.Splashes.Count == 1,
+        "coalesced droplets retriggered their collision splash");
+
+      Vector3 farNeighbor = Vector3.Normalize(
+        collisionCenter * (float)Math.Cos(collisionRadius * 1.25) +
+        collisionTangent * (float)Math.Sin(collisionRadius * 1.25));
+      var separated = new RainChamberState(41);
+      separated.SeedDroplet(collisionCenter, Vector3.Zero, 1, 0.5);
+      separated.SeedDroplet(farNeighbor, Vector3.Zero, 4, 0.5);
+      separated.Step(
+        0.01, 0, 0, 0, collisionDotSize, 1, 0,
+        Array.Empty<Vector3>());
+      Assert(separated.Droplets.Count == 2 &&
+          separated.Splashes.Count == 0,
+        "Rain Chamber collision reach caught separated droplets");
+
+      var splashDisabled = new RainChamberState(43);
+      splashDisabled.SeedDroplet(collisionCenter, Vector3.Zero, 1, 0.5);
+      splashDisabled.SeedDroplet(closeNeighbor, Vector3.Zero, 4, 0.5);
+      splashDisabled.Step(
+        0.01, 0, 0, 0, collisionDotSize, 0, 0,
+        Array.Empty<Vector3>());
+      Assert(splashDisabled.Droplets.Count == 2 &&
+          splashDisabled.Splashes.Count == 0,
+        "disabled splash strength still resolved droplet collisions");
+
+      AssertClose(0,
+        LEDDomeRainChamberVisualizer.TrailRetention(0, 0.1),
+        "zero Rain Chamber trail retained old light");
+      AssertClose(0.5,
+        LEDDomeRainChamberVisualizer.TrailRetention(0.7, 0.7),
+        "Rain Chamber trail retention is not a brightness half-life");
+
+      var insideTrail = new DomeFrame(OnePixelTopology());
+      insideTrail.pixels[0].color = 0xFFFFFF;
+      LEDDomeRainChamberVisualizer.ApplyDryRegions(
+        insideTrail, new[] { upper }, new[] { upper }, 2);
+      Assert(insideTrail.pixels[0].color == 0 &&
+          insideTrail.pixels[0].a == 0,
+        "Rain Chamber dry region retained old trail light");
+
+      var outsideTrail = new DomeFrame(OnePixelTopology());
+      outsideTrail.pixels[0].color = 0xFFFFFF;
+      LEDDomeRainChamberVisualizer.ApplyDryRegions(
+        outsideTrail, new[] { outsideDryRegion }, new[] { upper }, 2);
+      Assert(outsideTrail.pixels[0].color == 0xFFFFFF &&
+          outsideTrail.pixels[0].a == 1,
+        "Rain Chamber dry region cleared trail light beyond its reach");
+
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> {
+          Layer("rain-chamber", "rain-inputs"),
+        },
+      };
+      SetPaletteColors(config, color => 0xF8FCFF - color * 0x030100);
+      var runtime = new global::Spectrum.Operator(config);
+      DomeLayerVisualizer rain = null;
+      foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
+        if (visualizer is DomeLayerVisualizer layer &&
+            layer.LayerKey == "rain-chamber") {
+          rain = layer;
+          break;
+        }
+      }
+      Assert(rain != null, "Rain Chamber renderer was not created");
+      Input[] inputs = rain.GetInputs();
+      Assert(inputs.Length == 2 &&
+          ReferenceEquals(inputs[0], runtime.AudioInput) &&
+          ReferenceEquals(inputs[1], runtime.OrientationInput),
+        "Rain Chamber did not declare audio and wand inputs");
+      ((Visualizer)rain).Visualize();
+      Assert(rain.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
+        "Rain Chamber did not render its established rainfall state");
+    }
+
+    private static void TopographicDreamUsesEvolvingContours() {
+      LayerDefinition definition =
+        LayerCatalog.Default.Get("topographic-dream");
+      Assert(definition != null &&
+          definition.DisplayName == "Topographic Dream",
+        "Topographic Dream was not registered");
+
+      TopographicDreamLayerOptions defaults =
+        BuiltInOptions<TopographicDreamLayerOptions>(
+          Layer("topographic-dream", "topographic-defaults"));
+      AssertClose(2.2, defaults.TerrainScale,
+        "unexpected Topographic Dream terrain scale");
+      AssertClose(0.12, defaults.EvolutionSpeed,
+        "unexpected Topographic Dream evolution speed");
+      AssertClose(0.11, defaults.ContourInterval,
+        "unexpected Topographic Dream contour interval");
+      AssertClose(0.14, defaults.LineWidth,
+        "unexpected Topographic Dream line width");
+      AssertClose(0.42, defaults.SeaLevel,
+        "unexpected Topographic Dream sea level");
+      Assert(!defaults.BindToOrientation && defaults.Palette == 0,
+        "unexpected Topographic Dream orientation or palette default");
+
+      DomeLayerSettings configured = Layer(
+        "topographic-dream", "topographic-clamped");
+      configured.RendererParams = new Dictionary<string, double> {
+        ["terrainScale"] = 99,
+        ["evolutionSpeed"] = -1,
+        ["contourInterval"] = 0,
+        ["lineWidth"] = 99,
+        ["seaLevel"] = -1,
+        ["bindOrientation"] = 1,
+        ["palette"] = 99,
+      };
+      TopographicDreamLayerOptions clamped =
+        BuiltInOptions<TopographicDreamLayerOptions>(configured);
+      Assert(clamped.TerrainScale == 6 &&
+          clamped.EvolutionSpeed == 0 &&
+          clamped.ContourInterval == 0.04 &&
+          clamped.LineWidth == 0.45 && clamped.SeaLevel == 0 &&
+          clamped.BindToOrientation &&
+          clamped.Palette == PaletteService.MaxPalettes - 1,
+        "Topographic Dream controls did not clamp");
+
+      AssertClose(0.42,
+        LEDDomeTopographicDreamVisualizer.EffectiveSeaLevel(0.42, 0),
+        "quiet audio changed Topographic Dream's configured sea level");
+      AssertClose(0.70,
+        LEDDomeTopographicDreamVisualizer.EffectiveSeaLevel(0.42, 1),
+        "full audio did not raise Topographic Dream's sea level");
+      AssertClose(1,
+        LEDDomeTopographicDreamVisualizer.EffectiveSeaLevel(0.95, 4),
+        "Topographic Dream sea level did not clamp");
+
+      Vector3 sample = Vector3.Normalize(
+        new Vector3(0.45f, -0.21f, 0.87f));
+      double baseElevation =
+        LEDDomeTopographicDreamVisualizer.ElevationField(
+          sample, 2.2, 0);
+      double scaledDirectionElevation =
+        LEDDomeTopographicDreamVisualizer.ElevationField(
+          sample * 5, 2.2, 0);
+      AssertClose(baseElevation, scaledDirectionElevation,
+        "Topographic Dream depended on vector length rather than direction");
+      double evolvedElevation =
+        LEDDomeTopographicDreamVisualizer.ElevationField(
+          sample, 2.2, 2);
+      double rescaledElevation =
+        LEDDomeTopographicDreamVisualizer.ElevationField(
+          sample, 4.4, 0);
+      Assert(Math.Abs(baseElevation - evolvedElevation) > 0.005,
+        "Topographic Dream terrain did not evolve");
+      Assert(Math.Abs(baseElevation - rescaledElevation) > 0.005,
+        "Topographic Dream terrain scale did not change its field");
+      for (int index = 0; index < 32; index++) {
+        double angle = 2 * Math.PI * index / 32;
+        Vector3 direction = Vector3.Normalize(new Vector3(
+          (float)Math.Cos(angle), (float)Math.Sin(angle),
+          (float)(0.05 + 0.95 * ((index % 7) / 6.0))));
+        double elevation =
+          LEDDomeTopographicDreamVisualizer.ElevationField(
+            direction, 6, index * 0.13);
+        Assert(elevation >= 0 && elevation <= 1,
+          "Topographic Dream elevation escaped its normalized range");
+      }
+
+      AssertClose(1,
+        LEDDomeTopographicDreamVisualizer.ContourStrength(
+          0.44, 0.11, 0.14),
+        "Topographic Dream missed an exact contour interval");
+      AssertClose(0,
+        LEDDomeTopographicDreamVisualizer.ContourStrength(
+          0.4675, 0.11, 0.14),
+        "narrow Topographic Dream contour flooded an interline region");
+      Assert(
+        LEDDomeTopographicDreamVisualizer.ContourStrength(
+          0.455, 0.11, 0.30) >
+        LEDDomeTopographicDreamVisualizer.ContourStrength(
+          0.455, 0.11, 0.08),
+        "Topographic Dream line width did not broaden contours");
+      AssertClose(1,
+        LEDDomeTopographicDreamVisualizer.CoastlineStrength(
+          0.42, 0.42, 0.02),
+        "Topographic Dream missed its coastline");
+      AssertClose(0,
+        LEDDomeTopographicDreamVisualizer.CoastlineStrength(
+          0.46, 0.42, 0.02),
+        "Topographic Dream coastline flooded distant terrain");
+
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> {
+          Layer("topographic-dream", "topographic-inputs"),
+        },
+      };
+      SetPaletteColors(config, color => 0x183050 + color * 0x181208);
+      var runtime = new global::Spectrum.Operator(config);
+      DomeLayerVisualizer topographic = null;
+      foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
+        if (visualizer is DomeLayerVisualizer layer &&
+            layer.LayerKey == "topographic-dream") {
+          topographic = layer;
+          break;
+        }
+      }
+      Assert(topographic != null,
+        "Topographic Dream renderer was not created");
+      Input[] inputs = topographic.GetInputs();
+      Assert(inputs.Length == 2 &&
+          ReferenceEquals(inputs[0], runtime.AudioInput) &&
+          ReferenceEquals(inputs[1], runtime.OrientationInput),
+        "Topographic Dream did not declare audio and orientation inputs");
+      ((Visualizer)topographic).Visualize();
+      Assert(topographic.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
+        "Topographic Dream rendered an empty field");
+      Assert(topographic.LayerBuffer.pixels
+          .Select(pixel => pixel.color).Distinct().Count() > 8,
+        "Topographic Dream did not produce varied terrain shading");
+      Assert(topographic.LayerBuffer.pixels.Any(pixel => pixel.a > 0.5) &&
+          topographic.LayerBuffer.pixels.Any(pixel => pixel.a < 0.25),
+        "Topographic Dream did not separate contour and fill coverage");
+    }
+
+    private static void OrbitalGardenUsesSphericalOrbits() {
+      LayerDefinition definition = LayerCatalog.Default.Get("orbital-garden");
+      Assert(definition != null && definition.DisplayName == "Orbital Garden",
+        "Orbital Garden was not registered");
+
+      OrbitalGardenLayerOptions defaults =
+        BuiltInOptions<OrbitalGardenLayerOptions>(
+          Layer("orbital-garden", "orbital-defaults"));
+      Assert(defaults.BodyCount == 28,
+        "unexpected Orbital Garden body count");
+      AssertClose(1.6, defaults.Gravity,
+        "unexpected Orbital Garden gravity");
+      AssertClose(0.12, defaults.OrbitalDamping,
+        "unexpected Orbital Garden damping");
+      Assert(defaults.CollisionBehavior == 2,
+        "unexpected Orbital Garden collision behavior");
+      AssertClose(0.8, defaults.TrailLength,
+        "unexpected Orbital Garden trail length");
+      AssertClose(0.05, defaults.BodySize,
+        "unexpected Orbital Garden body size");
+      Assert(defaults.Palette == 0,
+        "unexpected Orbital Garden palette");
+
+      DomeLayerSettings configured = Layer(
+        "orbital-garden", "orbital-clamped");
+      configured.RendererParams = new Dictionary<string, double> {
+        ["bodyCount"] = 999,
+        ["gravity"] = -1,
+        ["orbitalDamping"] = 99,
+        ["collisionBehavior"] = 99,
+        ["trailLength"] = 99,
+        ["bodySize"] = 0,
+        ["palette"] = 99,
+      };
+      OrbitalGardenLayerOptions clamped =
+        BuiltInOptions<OrbitalGardenLayerOptions>(configured);
+      Assert(clamped.BodyCount == 96 && clamped.Gravity == 0 &&
+          clamped.OrbitalDamping == 3 &&
+          clamped.CollisionBehavior == 2 &&
+          clamped.TrailLength == 4 && clamped.BodySize == 0.015 &&
+          clamped.Palette == PaletteService.MaxPalettes - 1,
+        "Orbital Garden controls did not clamp");
+
+      var garden = new OrbitalGardenState(20, 17);
+      Assert(garden.Bodies.Count == 20,
+        "Orbital Garden did not create its requested body count");
+      foreach (OrbitalBody body in garden.Bodies) {
+        Assert(body.Position.Z >= 0 &&
+            Math.Abs(body.Position.Length() - 1) < 0.000001,
+          "Orbital Garden initialized off the visible unit hemisphere");
+        Assert(Math.Abs(Vector3.Dot(
+            body.Position, body.Velocity)) < 0.000001,
+          "Orbital Garden initialized non-tangent velocity");
+      }
+      Vector3 retainedBody = garden.Bodies[0].Position;
+      garden.Resize(31);
+      Assert(garden.Bodies.Count == 31 &&
+          garden.Bodies[0].Position == retainedBody,
+        "Orbital Garden did not grow its persistent body array in place");
+      garden.Resize(9);
+      Assert(garden.Bodies.Count == 9 &&
+          garden.Bodies[0].Position == retainedBody,
+        "Orbital Garden did not shrink its persistent body array in place");
+
+      var orbit = new OrbitalGardenState(1, 23);
+      Vector3 wellPosition = Vector3.UnitZ;
+      Vector3 orbitStart = Vector3.Normalize(
+        new Vector3(0.36f, 0, 0.93f));
+      orbit.SeedBody(0, orbitStart, Vector3.UnitY * 0.28f, 0);
+      var well = new[] { new OrbitalGravityWell(wellPosition, 5) };
+      for (int step = 0; step < 40; step++) {
+        orbit.Step(0.05, 1.6, 0.12, 0, 0.02, well);
+      }
+      OrbitalBody orbiter = orbit.Bodies[0];
+      double finalWellDistance = Math.Acos(Math.Clamp(
+        Vector3.Dot(orbiter.Position, wellPosition), -1, 1));
+      Assert(Math.Abs(orbiter.Position.Y) > 0.02 &&
+          finalWellDistance > 0.03 && finalWellDistance < 0.9,
+        "Orbital Garden did not sustain a curved orbit around its well");
+      Assert(orbiter.PaletteIndex == 5,
+        "Orbital Garden body did not inherit its strongest well color");
+      Assert(orbiter.Position.Z >= 0 &&
+          Math.Abs(orbiter.Position.Length() - 1) < 0.000001 &&
+          Math.Abs(Vector3.Dot(
+            orbiter.Position, orbiter.Velocity)) < 0.000001,
+        "Orbital Garden orbit escaped the tangent unit hemisphere");
+
+      var falling = new OrbitalGardenState(1, 29);
+      Vector3 fallingStart = Vector3.Normalize(
+        new Vector3(0.72f, 0, 0.69f));
+      falling.SeedBody(0, fallingStart, Vector3.Zero);
+      double beforePull = Math.Acos(Math.Clamp(
+        Vector3.Dot(fallingStart, wellPosition), -1, 1));
+      for (int step = 0; step < 10; step++) {
+        falling.Step(0.05, 2, 0, 0, 0.02, well);
+      }
+      double afterPull = Math.Acos(Math.Clamp(
+        Vector3.Dot(falling.Bodies[0].Position, wellPosition), -1, 1));
+      Assert(afterPull < beforePull,
+        "Orbital Garden gravity did not pull a body toward a wand well");
+
+      Vector3 collisionPoint = Vector3.Normalize(
+        new Vector3(0.2f, -0.1f, 0.97f));
+      var bounced = new OrbitalGardenState(2, 31);
+      bounced.SeedBody(0, collisionPoint, Vector3.Zero, 1);
+      bounced.SeedBody(1, collisionPoint, Vector3.Zero, 2);
+      bounced.Step(
+        0.01, 0, 0, 0, 0.1, Array.Empty<OrbitalGravityWell>());
+      Assert(bounced.Blooms.Count == 0 && bounced.Fragments.Count == 0 &&
+          Vector3.Distance(
+            bounced.Bodies[0].Velocity,
+            bounced.Bodies[1].Velocity) > 0.1,
+        "Orbital Garden bounce mode did not separate colliding bodies");
+
+      var bloomed = new OrbitalGardenState(2, 37);
+      bloomed.SeedBody(0, collisionPoint, Vector3.Zero, 1);
+      bloomed.SeedBody(1, collisionPoint, Vector3.Zero, 2);
+      bloomed.Step(
+        0.01, 0, 0, 1, 0.1, Array.Empty<OrbitalGravityWell>());
+      Assert(bloomed.Blooms.Count == 1 && bloomed.Fragments.Count == 0,
+        "Orbital Garden bloom mode did not emit only a bloom");
+
+      var fragmented = new OrbitalGardenState(2, 41);
+      fragmented.SeedBody(0, collisionPoint, Vector3.Zero, 3);
+      fragmented.SeedBody(1, collisionPoint, Vector3.Zero, 4);
+      fragmented.Step(
+        0.01, 0, 0, 2, 0.1, Array.Empty<OrbitalGravityWell>());
+      Assert(fragmented.Blooms.Count == 1 &&
+          fragmented.Fragments.Count == 4,
+        "Orbital Garden fragment mode did not launch collision debris");
+      Assert(OrbitalGardenState.BloomRadius(0.4) >
+          OrbitalGardenState.BloomRadius(0) &&
+          OrbitalGardenState.BloomEnvelope(0.4) <
+          OrbitalGardenState.BloomEnvelope(0) &&
+          OrbitalGardenState.FragmentEnvelope(0.4) <
+          OrbitalGardenState.FragmentEnvelope(0),
+        "Orbital Garden collision effects did not expand and decay");
+      fragmented.SeedBody(0, Vector3.UnitZ, Vector3.Zero);
+      fragmented.SeedBody(1, Vector3.UnitX, Vector3.Zero);
+      for (int step = 0; step < 10; step++) {
+        fragmented.Step(
+          0.1, 0, 0, 0, 0.02,
+          Array.Empty<OrbitalGravityWell>());
+      }
+      Assert(fragmented.Blooms.Count == 0 &&
+          fragmented.Fragments.Count == 0,
+        "Orbital Garden retained expired collision effects");
+
+      AssertClose(0,
+        LEDDomeOrbitalGardenVisualizer.TrailRetention(0, 0.1),
+        "zero Orbital Garden trail retained old light");
+      AssertClose(0.5,
+        LEDDomeOrbitalGardenVisualizer.TrailRetention(0.8, 0.8),
+        "Orbital Garden trail length is not a brightness half-life");
+
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> {
+          Layer("orbital-garden", "orbital-inputs"),
+        },
+      };
+      SetPaletteColors(config, color => 0xFFF0D0 - color * 0x0A0502);
+      var runtime = new global::Spectrum.Operator(config);
+      DomeLayerVisualizer orbital = null;
+      foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
+        if (visualizer is DomeLayerVisualizer layer &&
+            layer.LayerKey == "orbital-garden") {
+          orbital = layer;
+          break;
+        }
+      }
+      Assert(orbital != null,
+        "Orbital Garden renderer was not created");
+      Input[] inputs = orbital.GetInputs();
+      Assert(inputs.Length == 1 &&
+          ReferenceEquals(inputs[0], runtime.OrientationInput),
+        "Orbital Garden did not declare its wand input");
+      ((Visualizer)orbital).Visualize();
+      Assert(orbital.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
+        "Orbital Garden did not render its fallback solar system");
+    }
+
+    private static void LavaLampSkyUsesViscousThermalBlobs() {
+      LayerDefinition definition = LayerCatalog.Default.Get("lava-lamp-sky");
+      Assert(definition != null && definition.DisplayName == "Lava Lamp Sky",
+        "Lava Lamp Sky was not registered");
+
+      LavaLampSkyLayerOptions defaults =
+        BuiltInOptions<LavaLampSkyLayerOptions>(
+          Layer("lava-lamp-sky", "lava-defaults"));
+      Assert(defaults.BlobCount == 9,
+        "unexpected Lava Lamp Sky blob count");
+      AssertClose(1.8, defaults.Viscosity,
+        "unexpected Lava Lamp Sky viscosity");
+      AssertClose(0.8, defaults.Buoyancy,
+        "unexpected Lava Lamp Sky buoyancy");
+      AssertClose(1.35, defaults.SurfaceTension,
+        "unexpected Lava Lamp Sky surface tension");
+      AssertClose(0.35, defaults.Heat,
+        "unexpected Lava Lamp Sky heat");
+      Assert(defaults.BindGravity && defaults.Palette == 0,
+        "unexpected Lava Lamp Sky gravity binding or palette");
+
+      DomeLayerSettings configured = Layer(
+        "lava-lamp-sky", "lava-clamped");
+      configured.RendererParams = new Dictionary<string, double> {
+        ["blobCount"] = 999,
+        ["viscosity"] = -1,
+        ["buoyancy"] = 99,
+        ["surfaceTension"] = 99,
+        ["heat"] = 99,
+        ["bindGravity"] = 0,
+        ["palette"] = 99,
+      };
+      LavaLampSkyLayerOptions clamped =
+        BuiltInOptions<LavaLampSkyLayerOptions>(configured);
+      Assert(clamped.BlobCount == 24 && clamped.Viscosity == 0.2 &&
+          clamped.Buoyancy == 3 && clamped.SurfaceTension == 3 &&
+          clamped.Heat == 1 && !clamped.BindGravity &&
+          clamped.Palette == PaletteService.MaxPalettes - 1,
+        "Lava Lamp Sky controls did not clamp");
+
+      var state = new LavaLampSkyState(9, 17);
+      Assert(state.Blobs.Count == 9,
+        "Lava Lamp Sky did not create its requested blob count");
+      foreach (LavaLampBlob blob in state.Blobs) {
+        Assert(blob.Position.Z >= 0 &&
+            Math.Abs(blob.Position.Length() - 1) < 0.000001,
+          "Lava Lamp Sky initialized off the visible unit hemisphere");
+        Assert(Math.Abs(Vector3.Dot(
+            blob.Position, blob.Velocity)) < 0.000001,
+          "Lava Lamp Sky initialized non-tangent velocity");
+      }
+      Vector3 retained = state.Blobs[0].Position;
+      state.Resize(14);
+      Assert(state.Blobs.Count == 14 && state.Blobs[0].Position == retained,
+        "Lava Lamp Sky did not grow its persistent blob array in place");
+      state.Resize(5);
+      Assert(state.Blobs.Count == 5 && state.Blobs[0].Position == retained,
+        "Lava Lamp Sky did not shrink its persistent blob array in place");
+
+      AssertClose(1, LavaLampSkyState.EffectiveHeat(1, 0),
+        "configured Lava Lamp Sky heat changed at quiet audio");
+      Assert(LavaLampSkyState.EffectiveHeat(0.2, 1) >
+          LavaLampSkyState.EffectiveHeat(0.2, 0) &&
+          LavaLampSkyState.EffectiveBuoyancy(1, 1) >
+          LavaLampSkyState.EffectiveBuoyancy(1, 0) &&
+          LavaLampSkyState.SeparationResponse(0.2, 1) >
+          LavaLampSkyState.SeparationResponse(0.2, 0),
+        "audio did not raise Lava Lamp Sky heat, buoyancy, and separation");
+
+      Assert(LEDDomeLavaLampSkyVisualizer.GravityAxis(
+          Quaternion.Identity, false) == Vector3.UnitZ &&
+          Vector3.Distance(
+            LEDDomeLavaLampSkyVisualizer.GravityAxis(
+              Quaternion.Identity, true),
+            OrientationCenter.Spot) < 0.000001,
+        "Lava Lamp Sky did not tilt its gravity axis with orientation");
+
+      var rising = new LavaLampSkyState(1, 23);
+      Vector3 riseStart = Vector3.Normalize(
+        new Vector3(0.92f, 0, 0.39f));
+      rising.SeedBlob(0, riseStart, Vector3.Zero, 1.12);
+      for (int step = 0; step < 30; step++) {
+        rising.Step(0.05, 0.2, 2.5, 0, 0.8, 0, Vector3.UnitZ);
+      }
+      Assert(rising.Blobs[0].Position.Z > riseStart.Z + 0.02,
+        "a warm Lava Lamp Sky body did not rise through spherical buoyancy");
+
+      Vector3 movingPosition = Vector3.Normalize(
+        new Vector3(0.4f, 0, 0.9165f));
+      var thin = new LavaLampSkyState(1, 29);
+      var thick = new LavaLampSkyState(1, 29);
+      thin.SeedBlob(0, movingPosition, Vector3.UnitY * 0.35f, 0.58);
+      thick.SeedBlob(0, movingPosition, Vector3.UnitY * 0.35f, 0.58);
+      thin.Step(0.1, 0.2, 0, 0, 0, 0, Vector3.UnitZ);
+      thick.Step(0.1, 4, 0, 0, 0, 0, Vector3.UnitZ);
+      Assert(thick.Blobs[0].Velocity.Length() <
+          thin.Blobs[0].Velocity.Length(),
+        "Lava Lamp Sky viscosity did not damp body motion");
+
+      var merging = new LavaLampSkyState(2, 31);
+      Vector3 mergeA = Vector3.Normalize(new Vector3(-0.28f, 0, 0.96f));
+      Vector3 mergeB = Vector3.Normalize(new Vector3(0.28f, 0, 0.96f));
+      merging.SeedBlob(0, mergeA, Vector3.Zero, 0.58, 0.4);
+      merging.SeedBlob(1, mergeB, Vector3.Zero, 0.58, 0.4);
+      double distanceBefore = Math.Acos(Math.Clamp(
+        Vector3.Dot(mergeA, mergeB), -1, 1));
+      for (int step = 0; step < 25; step++) {
+        merging.Step(0.05, 0.2, 0, 2.5, 0, 0, Vector3.UnitZ);
+      }
+      double distanceAfter = Math.Acos(Math.Clamp(Vector3.Dot(
+        merging.Blobs[0].Position, merging.Blobs[1].Position), -1, 1));
+      Assert(distanceAfter < distanceBefore &&
+          (merging.Blobs[0].Stretch > 0.05 ||
+           merging.Blobs[1].Stretch > 0.05),
+        "Lava Lamp Sky surface tension did not merge and stretch neighbors");
+
+      var quiet = new LavaLampSkyState(1, 37);
+      var loud = new LavaLampSkyState(1, 37);
+      quiet.SeedBlob(0, riseStart, Vector3.Zero, 0.65);
+      loud.SeedBlob(0, riseStart, Vector3.Zero, 0.65);
+      for (int step = 0; step < 30; step++) {
+        quiet.Step(0.05, 1, 0, 0.1, 0.2, 0, Vector3.UnitZ);
+        loud.Step(0.05, 1, 0, 0.1, 0.2, 1, Vector3.UnitZ);
+      }
+      Assert(loud.Blobs[0].Split > quiet.Blobs[0].Split + 0.1,
+        "audio heat did not divide a Lava Lamp Sky body");
+
+      LavaLampBlob divided = loud.Blobs[0] with {
+        Position = Vector3.UnitZ,
+        ShapeAxis = Vector3.UnitX,
+        Radius = 0.4,
+        Stretch = 0,
+        Split = 1,
+      };
+      double pinch = LEDDomeLavaLampSkyVisualizer.BlobStrength(
+        Vector3.UnitZ, divided);
+      Vector3 lobePoint = Vector3.Normalize(
+        Vector3.UnitZ * (float)Math.Cos(0.31) +
+        Vector3.UnitX * (float)Math.Sin(0.31));
+      double lobe = LEDDomeLavaLampSkyVisualizer.BlobStrength(
+        lobePoint, divided);
+      Assert(lobe > 0.8 && lobe > pinch + 0.5,
+        "Lava Lamp Sky division did not form two pinched soft lobes");
+
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> {
+          Layer("lava-lamp-sky", "lava-inputs"),
+        },
+      };
+      SetPaletteColors(config, color => 0xFF8A22 + color * 0x000804);
+      var runtime = new global::Spectrum.Operator(config);
+      DomeLayerVisualizer lava = null;
+      foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
+        if (visualizer is DomeLayerVisualizer layer &&
+            layer.LayerKey == "lava-lamp-sky") {
+          lava = layer;
+          break;
+        }
+      }
+      Assert(lava != null, "Lava Lamp Sky renderer was not created");
+      Input[] inputs = lava.GetInputs();
+      Assert(inputs.Length == 2 &&
+          ReferenceEquals(inputs[0], runtime.AudioInput) &&
+          ReferenceEquals(inputs[1], runtime.OrientationInput),
+        "Lava Lamp Sky did not declare audio and orientation inputs");
+      ((Visualizer)lava).Visualize();
+      Assert(lava.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
+        "Lava Lamp Sky rendered an empty foundation");
+      Assert(lava.LayerBuffer.pixels.Any(pixel => pixel.a > 0.8) &&
+          lava.LayerBuffer.pixels.Any(pixel => pixel.a < 0.2),
+        "Lava Lamp Sky did not render soft separated silhouettes");
+    }
+
     private static void VortexUsesGlobalFade() {
       var config = new global::Spectrum.SpectrumConfiguration {
         domeGlobalFadeSpeed = 3,
@@ -1679,6 +3541,455 @@ namespace Spectrum.LayerPipeline.Tests {
       AssertClose(.2, iridescence.Spin, "iridescence spin default");
       Assert(!iridescence.FollowOrientation,
         "iridescence bool coercion failed");
+
+      HalftoneOptions halftone = (HalftoneOptions)
+        CompileOptions(DomeBlend.Halftone, new Dictionary<string, double> {
+          ["cellType"] = 99,
+          ["scale"] = double.NaN,
+          ["threshold"] = double.PositiveInfinity,
+          ["dotMin"] = -1,
+          ["dotMax"] = double.NaN,
+          ["rotation"] = double.PositiveInfinity,
+          ["palette"] = 99,
+        });
+      Assert(halftone.CellType == 2 &&
+          halftone.Palette == PaletteService.MaxPalettes - 1,
+        "halftone enum clamp failed");
+      AssertClose(.14, halftone.Scale, "halftone scale default");
+      AssertClose(.95, halftone.Threshold, "halftone threshold clamp");
+      AssertClose(0, halftone.DotMinimum, "halftone minimum clamp");
+      AssertClose(.94, halftone.DotMaximum, "halftone maximum default");
+      AssertClose(Math.PI, halftone.Rotation, "halftone rotation clamp");
+    }
+
+    private static void KaleidoscopeFoldsCompositeCoordinates() {
+      Assert(ReferenceEquals(
+          DomeBlend.FromId("Kaleidoscope"), DomeBlend.Kaleidoscope),
+        "Kaleidoscope was not registered");
+      Assert(DomeBlend.Kaleidoscope.Params.Count == 6 &&
+          DomeBlend.Kaleidoscope.Params.All(p => p.CompositorConsumed),
+        "Kaleidoscope controls are not compositor-owned");
+
+      KaleidoscopeOptions defaults = (KaleidoscopeOptions)
+        CompileOptions(DomeBlend.Kaleidoscope, null);
+      Assert(defaults.SectorCount == 8 && defaults.MirrorSectors &&
+          defaults.Spin == .05 && defaults.FocalAngle == 0 &&
+          defaults.FocalDistance == 0 && !defaults.FollowOrientation,
+        "unexpected Kaleidoscope defaults");
+
+      KaleidoscopeOptions clamped = (KaleidoscopeOptions)
+        CompileOptions(DomeBlend.Kaleidoscope,
+          new Dictionary<string, double> {
+            ["sectors"] = 99,
+            ["mirror"] = -1,
+            ["spin"] = double.PositiveInfinity,
+            ["focalAngle"] = double.NegativeInfinity,
+            ["focalDistance"] = 99,
+            ["follow"] = -1,
+          });
+      Assert(clamped.SectorCount == 24 && !clamped.MirrorSectors &&
+          clamped.Spin == 2 && clamped.FocalAngle == -Math.PI &&
+          clamped.FocalDistance == .8 && clamped.FollowOrientation,
+        "Kaleidoscope controls did not clamp or coerce");
+
+      DomeTopology topology = RingTopology(16, .6);
+      var lookupFrame = new DomeFrame(topology);
+      Assert(lookupFrame.NearestTopDownPixel(.8, .5) == 0,
+        "top-down lookup missed an exact projected pixel");
+      Assert(lookupFrame.NearestTopDownPixel(.79, .49) == 0,
+        "top-down lookup did not return the nearest projected pixel");
+
+      var repeatOptions = new KaleidoscopeOptions(
+        4, false, 0, 0, 0, false);
+      DomeFrame repeat = ExecuteKaleidoscope(
+        topology, repeatOptions, 1, 0, null);
+      var repeatExpected = new int[16];
+      for (int i = 0; i < repeatExpected.Length; i++) {
+        repeatExpected[i] = ((i % 4) + 1) << 16;
+      }
+      AssertColors("Kaleidoscope repeat", repeat, repeatExpected);
+
+      var mirrorOptions = repeatOptions with { MirrorSectors = true };
+      DomeFrame mirror = ExecuteKaleidoscope(
+        topology, mirrorOptions, 1, 0, null);
+      var mirrorExpected = new int[16];
+      for (int i = 0; i < mirrorExpected.Length; i++) {
+        int sector = i / 4;
+        int local = i % 4;
+        int sample = (sector & 1) == 0 ? local : 4 - local;
+        mirrorExpected[i] = (sample + 1) << 16;
+      }
+      AssertColors("Kaleidoscope mirror", mirror, mirrorExpected);
+      AssertClose(.25, mirror.pixels[7].a,
+        "Kaleidoscope changed destination coverage");
+      AssertClose(7 / 16d, mirror.pixels[7].hue,
+        "Kaleidoscope changed destination hue");
+
+      DomeFrame half = ExecuteKaleidoscope(
+        topology, repeatOptions, .5, 0, null);
+      for (int i = 0; i < half.pixels.Length; i++) {
+        double original = (i + 1) << 16;
+        double transformed = repeatExpected[i];
+        AssertClose(
+          (((int)original >> 16) + ((int)transformed >> 16)) / 2d,
+          half.pixels[i].r,
+          "Kaleidoscope opacity did not interpolate pixel " + i);
+      }
+
+      DomeFrame spun = ExecuteKaleidoscope(
+        topology, repeatOptions with { Spin = 1d / 16 }, 1, 1, null);
+      Assert(ColorSignature(spun) != ColorSignature(repeat),
+        "Kaleidoscope spin did not rotate the sectors");
+
+      var fixedFocal = repeatOptions with {
+        FocalAngle = Math.PI / 2, FocalDistance = .35,
+      };
+      DomeFrame fixedFocalFrame = ExecuteKaleidoscope(
+        topology, fixedFocal, 1, 0, null);
+      DomeFrame followedFocalFrame = ExecuteKaleidoscope(
+        topology,
+        fixedFocal with { FocalAngle = 0, FollowOrientation = true },
+        1, 0, new FixedOrientation(Math.PI / 2));
+      Assert(ColorSignature(fixedFocalFrame) ==
+          ColorSignature(followedFocalFrame),
+        "Kaleidoscope orientation did not replace the focal angle");
+      Assert(ColorSignature(fixedFocalFrame) != ColorSignature(repeat),
+        "Kaleidoscope focal point did not affect coordinate sampling");
+
+      var liveOrientation = new FixedOrientation(Math.PI / 2);
+      var bottom = new DomeFrame(topology);
+      var mask = new DomeFrame(topology);
+      for (int i = 0; i < bottom.pixels.Length; i++) {
+        bottom.pixels[i].color = (i + 1) << 16;
+        mask.pixels[i].color = 0xFFFFFF;
+      }
+      var livePlan = new RenderPlan(ImmutableArray.Create(
+        Compiled(
+          new FakeRenderer("kaleidoscope-bottom", bottom),
+          DomeBlend.Add, 1,
+          ImmutableDictionary<string, ParameterValue>.Empty),
+        Compiled(
+          new FakeRenderer("kaleidoscope-mask", mask),
+          DomeBlend.Kaleidoscope, 1,
+          Parameters(
+            ("sectors", 4), ("mirror", 0), ("spin", 0),
+            ("focalAngle", 0), ("focalDistance", .35),
+            ("follow", 1)))));
+      var liveCompositor = new DomeCompositor(
+        () => new DomeFrame(topology), liveOrientation,
+        elapsedSeconds: () => 0);
+      liveCompositor.Publish(livePlan);
+      liveCompositor.Compose();
+      Assert(liveOrientation.UpdateCount == 1,
+        "Kaleidoscope did not refresh standalone orientation state");
+    }
+
+    private static DomeFrame ExecuteKaleidoscope(
+      DomeTopology topology, KaleidoscopeOptions options,
+      double opacity, double seconds, OrientationAngleProvider orientation
+    ) {
+      var dest = new DomeFrame(topology);
+      var source = new DomeFrame(topology);
+      var snapshot = new DomeFrame(topology);
+      for (int i = 0; i < dest.pixels.Length; i++) {
+        dest.pixels[i].color = (i + 1) << 16;
+        dest.pixels[i].SetAlpha(.25);
+        dest.pixels[i].hue = i / 16d;
+        source.pixels[i].color = 0xFFFFFF;
+      }
+      snapshot.CopyFrom(dest);
+      DomeBlend.Kaleidoscope.Execute(new DomeBlendContext(
+        dest, source, snapshot, options, opacity, seconds, orientation));
+      return dest;
+    }
+
+    private static void EchoRetainsDelayedTransformedComposites() {
+      Assert(ReferenceEquals(DomeBlend.FromId("Echo"), DomeBlend.Echo),
+        "Echo was not registered");
+      Assert(DomeBlend.Echo.Params.Count == 9 &&
+          DomeBlend.Echo.Params.All(p => p.CompositorConsumed),
+        "Echo controls are not compositor-owned");
+      Assert((DomeBlend.Echo.Requirements &
+          CompositeRequirements.ReadsHistory) != 0,
+        "Echo did not declare retained history");
+
+      EchoOptions defaults = (EchoOptions)CompileOptions(DomeBlend.Echo, null);
+      Assert(defaults.CopyCount == 4 && defaults.Delay == .2 &&
+          defaults.Rotation == .12 && defaults.Scale == .94 &&
+          defaults.Drift == .025 && defaults.DriftDirection == 0 &&
+          defaults.Decay == .65 && defaults.HueShift == .04 &&
+          defaults.Saturation == 1,
+        "unexpected Echo defaults");
+      EchoOptions clamped = (EchoOptions)CompileOptions(
+        DomeBlend.Echo, new Dictionary<string, double> {
+          ["copies"] = double.NaN,
+          ["delay"] = double.NegativeInfinity,
+          ["rotation"] = double.PositiveInfinity,
+          ["scale"] = 99,
+          ["drift"] = -1,
+          ["direction"] = double.NegativeInfinity,
+          ["decay"] = 99,
+          ["hueShift"] = double.PositiveInfinity,
+          ["saturation"] = -1,
+        });
+      Assert(clamped.CopyCount == 4 && clamped.Delay == .05 &&
+          clamped.Rotation == Math.PI && clamped.Scale == 1.3 &&
+          clamped.Drift == 0 && clamped.DriftDirection == -Math.PI &&
+          clamped.Decay == 1 && clamped.HueShift == .5 &&
+          clamped.Saturation == 0,
+        "Echo controls did not clamp or coerce");
+
+      ImmutableDictionary<string, ParameterValue> neutral = Parameters(
+        ("copies", 1), ("delay", .1), ("rotation", 0),
+        ("scale", 1), ("drift", 0), ("direction", 0),
+        ("decay", 1), ("hueShift", 0));
+      Assert(((EchoOptions)DomeBlend.Echo.CompileOptions(neutral)).Saturation == 1,
+        "Echo changed legacy parameter bags that predate saturation control");
+      DomeTopology one = OnePixelTopology();
+      var bottom = new DomeFrame(one);
+      var mask = new DomeFrame(one);
+      bottom.pixels[0].color = 0xC00000;
+      bottom.pixels[0].hue = .37;
+      mask.pixels[0].color = 0xFFFFFF;
+      var firstPlan = new RenderPlan(ImmutableArray.Create(
+        Compiled(new FakeRenderer("echo-bottom", bottom), DomeBlend.Over, 1,
+          ImmutableDictionary<string, ParameterValue>.Empty),
+        Compiled(new FakeRenderer("echo-mask", mask), DomeBlend.Echo, 1,
+          neutral)));
+      var retained = new DomeCompositor(
+        () => new DomeFrame(one), elapsedSeconds: () => .1);
+      retained.Publish(firstPlan);
+      retained.Compose();
+      bottom.pixels[0].color = 0;
+      bottom.pixels[0].hue = .81;
+      // Recompile/publish the same stable layer IDs: history must belong to the
+      // compositor layer instance, not the transient compiled-plan objects.
+      var replacementPlan = new RenderPlan(ImmutableArray.Create(
+        Compiled(new FakeRenderer("echo-bottom", bottom), DomeBlend.Over, 1,
+          ImmutableDictionary<string, ParameterValue>.Empty),
+        Compiled(new FakeRenderer("echo-mask", mask), DomeBlend.Echo, 1,
+          neutral)));
+      retained.Publish(replacementPlan);
+      DomeFrame recalled = retained.Compose();
+      Assert(recalled.pixels[0].r == 192,
+        "Echo lost its delayed frame across plan replacement");
+      AssertClose(1, recalled.pixels[0].a,
+        "Echo changed destination coverage");
+      AssertClose(.81, recalled.pixels[0].hue,
+        "Echo changed destination published hue");
+
+      // Removing the operation must release its delay line; reusing the same
+      // ID later starts clean rather than resurrecting an old composition.
+      retained.Publish(new RenderPlan(ImmutableArray.Create(
+        Compiled(new FakeRenderer("echo-bottom", bottom), DomeBlend.Over, 1,
+          ImmutableDictionary<string, ParameterValue>.Empty))));
+      retained.Compose();
+      Assert(retained.HistoryStateCount == 0,
+        "Echo retained state after its layer was removed");
+      retained.Publish(replacementPlan);
+      Assert(retained.Compose().pixels[0].color == 0,
+        "Echo resurrected history after layer removal");
+
+      // Each duplicate Echo layer sees and retains the composite at its own
+      // stack position. A singleton-owned history would cross-contaminate them.
+      DomeTopology pair = TwoPixelTopology();
+      var pairBottom = new DomeFrame(pair);
+      var firstMask = new DomeFrame(pair);
+      var middle = new DomeFrame(pair);
+      var secondMask = new DomeFrame(pair);
+      pairBottom.pixels[0].color = 0xFF0000;
+      pairBottom.pixels[1].color = 0x0000FF;
+      firstMask.pixels[0].color = 0xFFFFFF;
+      middle.pixels[0].color = 0x00FF00;
+      middle.pixels[1].color = 0x00FF00;
+      secondMask.pixels[1].color = 0xFFFFFF;
+      var isolatedPlan = new RenderPlan(ImmutableArray.Create(
+        Compiled(new FakeRenderer("echo-pair-bottom", pairBottom),
+          DomeBlend.Add, 1, ImmutableDictionary<string, ParameterValue>.Empty),
+        Compiled(new FakeRenderer("echo-first-mask", firstMask),
+          DomeBlend.Echo, 1, neutral),
+        Compiled(new FakeRenderer("echo-middle", middle),
+          DomeBlend.Add, 1, ImmutableDictionary<string, ParameterValue>.Empty),
+        Compiled(new FakeRenderer("echo-second-mask", secondMask),
+          DomeBlend.Echo, 1, neutral)));
+      var isolated = new DomeCompositor(
+        () => new DomeFrame(pair), elapsedSeconds: () => .1);
+      isolated.Publish(isolatedPlan);
+      isolated.Compose();
+      pairBottom.ResetComposite();
+      middle.ResetComposite();
+      DomeFrame isolatedResult = isolated.Compose();
+      Assert(isolatedResult.pixels[0].color == 0xFF0000 &&
+          isolatedResult.pixels[1].color == 0x00FFFF,
+        "duplicate Echo layers shared or captured the wrong history");
+      Assert(isolated.HistoryStateCount == 2,
+        "duplicate Echo layers did not receive isolated history state");
+
+      // Rotation, scaling, and drift are cumulative per copy and resolve
+      // through the shared arbitrary top-down lookup.
+      AssertEchoMovesPoint(
+        RingTopology(4, .5), 0, 1,
+        Parameters(
+          ("copies", 1), ("delay", .1),
+          ("rotation", Math.PI / 2), ("scale", 1),
+          ("drift", 0), ("direction", 0),
+          ("decay", 1), ("hueShift", 0)),
+        "rotation");
+      AssertEchoMovesPoint(
+        ProjectedTopology((.5, 0), (.4, 0)), 0, 1,
+        Parameters(
+          ("copies", 1), ("delay", .1),
+          ("rotation", 0), ("scale", .8),
+          ("drift", 0), ("direction", 0),
+          ("decay", 1), ("hueShift", 0)),
+        "scale");
+      AssertEchoMovesPoint(
+        ProjectedTopology((0, 0), (.2, 0)), 0, 1,
+        Parameters(
+          ("copies", 1), ("delay", .1),
+          ("rotation", 0), ("scale", 1),
+          ("drift", .2), ("direction", 0),
+          ("decay", 1), ("hueShift", 0)),
+        "drift");
+
+      var colored = new DomeFrame(one);
+      var coloredMask = new DomeFrame(one);
+      coloredMask.pixels[0].color = 0xFFFFFF;
+      var coloredPlan = new RenderPlan(ImmutableArray.Create(
+        Compiled(new FakeRenderer("echo-colored-bottom", colored),
+          DomeBlend.Add, 1, ImmutableDictionary<string, ParameterValue>.Empty),
+        Compiled(new FakeRenderer("echo-colored-mask", coloredMask),
+          DomeBlend.Echo, 1,
+          Parameters(
+            ("copies", 2), ("delay", .1), ("rotation", 0),
+            ("scale", 1), ("drift", 0), ("direction", 0),
+            ("decay", .5), ("hueShift", 0)))));
+      var coloredEcho = new DomeCompositor(
+        () => new DomeFrame(one), elapsedSeconds: () => .1);
+      coloredEcho.Publish(coloredPlan);
+      colored.pixels[0].color = 0x640000;
+      coloredEcho.Compose();
+      colored.pixels[0].color = 0x006400;
+      coloredEcho.Compose();
+      colored.pixels[0].color = 0;
+      DomeFrame decayed = coloredEcho.Compose();
+      AssertClose(50, decayed.pixels[0].r,
+        "Echo did not decay the older copy");
+      AssertClose(100, decayed.pixels[0].g,
+        "Echo did not retain the newest delayed copy");
+
+      var hueOptions = Parameters(
+        ("copies", 1), ("delay", .1), ("rotation", 0),
+        ("scale", 1), ("drift", 0), ("direction", 0),
+        ("decay", 1), ("hueShift", 1d / 3));
+      DomeFrame hueShifted = TwoFrameEcho(
+        one, 0xFF0000, 0, hueOptions, 1, 1);
+      Assert(hueShifted.pixels[0].color == 0x00FF00,
+        "Echo did not apply cumulative hue shift");
+      var saturationOptions = Parameters(
+        ("copies", 1), ("delay", .1), ("rotation", 0),
+        ("scale", 1), ("drift", 0), ("direction", 0),
+        ("decay", 1), ("hueShift", 0), ("saturation", .5));
+      DomeFrame desaturated = TwoFrameEcho(
+        one, 0xFF0000, 0, saturationOptions, 1, 1);
+      AssertClose(255, desaturated.pixels[0].r,
+        "Echo saturation scaling changed HSV value");
+      AssertClose(127.5, desaturated.pixels[0].g,
+        "Echo did not scale the delayed copy's saturation");
+      AssertClose(127.5, desaturated.pixels[0].b,
+        "Echo saturation scaling did not preserve hue");
+
+      var compoundBottom = new DomeFrame(one);
+      var compoundMask = new DomeFrame(one);
+      compoundMask.pixels[0].color = 0xFFFFFF;
+      var compoundPlan = new RenderPlan(ImmutableArray.Create(
+        Compiled(new FakeRenderer("echo-compound-bottom", compoundBottom),
+          DomeBlend.Over, 1, ImmutableDictionary<string, ParameterValue>.Empty),
+        Compiled(new FakeRenderer("echo-compound-mask", compoundMask),
+          DomeBlend.Echo, 1,
+          Parameters(
+            ("copies", 2), ("delay", .1), ("rotation", 0),
+            ("scale", 1), ("drift", 0), ("direction", 0),
+            ("decay", 1), ("hueShift", 0), ("saturation", .5)))));
+      var compoundEcho = new DomeCompositor(
+        () => new DomeFrame(one), elapsedSeconds: () => .1);
+      compoundEcho.Publish(compoundPlan);
+      compoundBottom.pixels[0].color = 0xFF0000;
+      compoundEcho.Compose();
+      compoundBottom.pixels[0].color = 0;
+      compoundEcho.Compose();
+      compoundBottom.pixels[0].color = 0;
+      compoundBottom.pixels[0].hue = .73;
+      DomeFrame compounded = compoundEcho.Compose();
+      AssertClose(191.25, compounded.pixels[0].g,
+        "Echo did not compound saturation loss across older copies");
+      AssertClose(191.25, compounded.pixels[0].b,
+        "Echo compounded saturation unevenly");
+      AssertClose(1, compounded.pixels[0].a,
+        "Echo saturation scaling changed destination coverage");
+      AssertClose(.73, compounded.pixels[0].hue,
+        "Echo saturation scaling changed destination published hue");
+      DomeFrame masked = TwoFrameEcho(
+        one, 0xFF0000, 0, saturationOptions, .5, .5);
+      AssertClose(63.75, masked.pixels[0].r,
+        "Echo did not combine source alpha with layer opacity");
+      AssertClose(31.875, masked.pixels[0].g,
+        "Echo saturation scaling bypassed the combined mask");
+
+      // The RGB delay line stays bounded to the configured temporal horizon.
+      for (int i = 0; i < 100; i++) {
+        coloredEcho.Compose();
+      }
+      Assert(coloredEcho.RetainedHistoryFrameCount <= 4,
+        "Echo history grew beyond its configured delay horizon");
+    }
+
+    private static void AssertEchoMovesPoint(
+      DomeTopology topology, int sourceIndex, int targetIndex,
+      ImmutableDictionary<string, ParameterValue> options, string transform
+    ) {
+      var bottom = new DomeFrame(topology);
+      var mask = new DomeFrame(topology);
+      bottom.pixels[sourceIndex].color = 0xFF0000;
+      for (int i = 0; i < mask.pixels.Length; i++) {
+        mask.pixels[i].color = 0xFFFFFF;
+      }
+      var plan = new RenderPlan(ImmutableArray.Create(
+        Compiled(new FakeRenderer("echo-move-bottom-" + transform, bottom),
+          DomeBlend.Add, 1, ImmutableDictionary<string, ParameterValue>.Empty),
+        Compiled(new FakeRenderer("echo-move-mask-" + transform, mask),
+          DomeBlend.Echo, 1, options)));
+      var compositor = new DomeCompositor(
+        () => new DomeFrame(topology), elapsedSeconds: () => .1);
+      compositor.Publish(plan);
+      compositor.Compose();
+      bottom.ResetComposite();
+      DomeFrame moved = compositor.Compose();
+      Assert(moved.pixels[targetIndex].r == 255,
+        "Echo " + transform + " transformed the delayed copy incorrectly");
+    }
+
+    private static DomeFrame TwoFrameEcho(
+      DomeTopology topology, int firstColor, int secondColor,
+      ImmutableDictionary<string, ParameterValue> options,
+      double opacity, double maskAlpha
+    ) {
+      var bottom = new DomeFrame(topology);
+      var mask = new DomeFrame(topology);
+      bottom.pixels[0].color = firstColor;
+      mask.pixels[0].color = 0xFFFFFF;
+      mask.pixels[0].SetAlpha(maskAlpha);
+      var plan = new RenderPlan(ImmutableArray.Create(
+        Compiled(new FakeRenderer("echo-two-bottom", bottom),
+          DomeBlend.Add, 1, ImmutableDictionary<string, ParameterValue>.Empty),
+        Compiled(new FakeRenderer("echo-two-mask", mask),
+          DomeBlend.Echo, opacity, options)));
+      var compositor = new DomeCompositor(
+        () => new DomeFrame(topology), elapsedSeconds: () => .1);
+      compositor.Publish(plan);
+      compositor.Compose();
+      bottom.pixels[0].color = secondColor;
+      return compositor.Compose();
     }
 
     private static ICompositeOptions CompileOptions(
@@ -1693,9 +4004,89 @@ namespace Spectrum.LayerPipeline.Tests {
       return operation.CompileOptions(snapshot.Layers[0].OperationParameters);
     }
 
+    private static void HalftoneBuildsPaletteCells() {
+      Assert(ReferenceEquals(
+          DomeBlend.FromId("Halftone"), DomeBlend.Halftone),
+        "Halftone was not registered");
+      Assert(DomeBlend.Halftone.Params.Count == 7 &&
+          DomeBlend.Halftone.Params.All(p => p.CompositorConsumed),
+        "Halftone controls are not compositor-owned");
+
+      DomeTopology topology = ProjectedTopology(
+        (.10, .10), (.13, .10), (.19, .10));
+      var dest = new DomeFrame(topology);
+      var mask = new DomeFrame(topology);
+      for (int i = 0; i < dest.pixels.Length; i++) {
+        dest.pixels[i].color = 0x808080;
+        dest.pixels[i].SetAlpha(.25);
+        dest.pixels[i].hue = i / 10d;
+        mask.pixels[i].color = 0xFFFFFF;
+      }
+      var snapshot = new DomeFrame(topology);
+      snapshot.CopyFrom(dest);
+      var options = new HalftoneOptions(
+        0, .2, 0, 0, 1, 0, 3);
+      int paletteCalls = 0;
+      DomeBlend.Halftone.Execute(new DomeBlendContext(
+        dest, mask, snapshot, options, 1, 0, null,
+        paletteColor: (palette, position) => {
+          Assert(palette == 3, "Halftone used the wrong palette");
+          AssertClose(128d / 255, position,
+            "Halftone did not palette-map sampled brightness");
+          paletteCalls++;
+          return 0xFF0000;
+        }));
+      Assert(dest.pixels[0].r == 255 && dest.pixels[0].g == 0 &&
+          dest.pixels[0].b == 0,
+        "Halftone did not light the center of a dot");
+      Assert(dest.pixels[2].color == 0,
+        "Halftone did not replace the gap between dots with black");
+      Assert(dest.pixels[0].a == .25 && dest.pixels[0].hue == 0 &&
+          dest.pixels[1].hue == .1,
+        "Halftone changed destination side channels");
+      Assert(paletteCalls == 3,
+        "Halftone did not resolve one palette color per masked pixel");
+
+      DomeTopology triangleTopology = ProjectedTopology(
+        (.10, .2 / 3 * Math.Sqrt(3) / 2), (.19, .01));
+      var triangleDest = new DomeFrame(triangleTopology);
+      var triangleMask = new DomeFrame(triangleTopology);
+      for (int i = 0; i < triangleDest.pixels.Length; i++) {
+        triangleDest.pixels[i].color = 0x808080;
+        triangleMask.pixels[i].color = 0xFFFFFF;
+      }
+      var triangleSnapshot = new DomeFrame(triangleTopology);
+      triangleSnapshot.CopyFrom(triangleDest);
+      DomeBlend.Halftone.Execute(new DomeBlendContext(
+        triangleDest, triangleMask, triangleSnapshot,
+        options with { CellType = 1 }, 1, 0, null));
+      Assert(triangleDest.pixels[0].color == 0xFFFFFF &&
+          triangleDest.pixels[1].color == 0,
+        "Halftone did not size an equilateral triangle around its centroid");
+
+      // Exercise the topology-native mode on a short final segment: its sample
+      // must clamp to the physical strut rather than indexing beyond the frame.
+      DomeTopology strutTopology = LinearTopology(5);
+      var strutDest = new DomeFrame(strutTopology);
+      var strutMask = new DomeFrame(strutTopology);
+      for (int i = 0; i < strutDest.pixels.Length; i++) {
+        strutDest.pixels[i].color = 0x404040;
+        strutMask.pixels[i].color = 0xFFFFFF;
+      }
+      var strutSnapshot = new DomeFrame(strutTopology);
+      strutSnapshot.CopyFrom(strutDest);
+      DomeBlend.Halftone.Execute(new DomeBlendContext(
+        strutDest, strutMask, strutSnapshot,
+        options with { CellType = 2, Scale = .052 },
+        1, 0, null));
+      Assert(strutDest.pixels.Any(p => p.color != 0),
+        "Halftone strut segments produced no luminous cells");
+    }
+
     private static void SpatialRequirements() {
       foreach (DomeBlend operation in new[] {
         DomeBlend.ChromaticFringe, DomeBlend.EdgeSpectrum, DomeBlend.Refract,
+        DomeBlend.Kaleidoscope, DomeBlend.Echo, DomeBlend.Halftone,
       }) {
         Assert((operation.Requirements &
           CompositeRequirements.ReadsDestinationNeighbors) != 0,
@@ -2091,6 +4482,60 @@ namespace Spectrum.LayerPipeline.Tests {
       return new DomeTopology(pixels);
     }
 
+    private static DomeTopology GridTopology(
+      int width, int height, double spacing
+    ) {
+      var pixels = new DomeTopologyPixel[width * height];
+      double left = 0.5 - (width - 1) * spacing / 2;
+      double top = 0.5 - (height - 1) * spacing / 2;
+      for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+          int i = y * width + x;
+          pixels[i] = new DomeTopologyPixel(
+            0, i, left + x * spacing, top + y * spacing);
+        }
+      }
+      return new DomeTopology(pixels);
+    }
+
+    private static DomeTopology RingTopology(int count, double radius) {
+      var pixels = new DomeTopologyPixel[count];
+      for (int i = 0; i < count; i++) {
+        double angle = 2 * Math.PI * i / count;
+        double x = radius * Math.Cos(angle);
+        double y = radius * Math.Sin(angle);
+        pixels[i] = new DomeTopologyPixel(
+          0, i, (x + 1) * .5, (1 - y) * .5);
+      }
+      return new DomeTopology(pixels);
+    }
+
+    private static DomeTopology ProjectedTopology(
+      params (double X, double Y)[] points
+    ) {
+      var pixels = new DomeTopologyPixel[points.Length];
+      for (int i = 0; i < points.Length; i++) {
+        double topDownX = (points[i].X + 1) * .5;
+        double topDownY = (1 - points[i].Y) * .5;
+        pixels[i] = new DomeTopologyPixel(
+          i, 0, topDownX, topDownY, topDownX, topDownY);
+      }
+      return new DomeTopology(pixels);
+    }
+
+    private static void SetPaletteColors(
+      global::Spectrum.SpectrumConfiguration config,
+      Func<int, int> colorAt
+    ) {
+      var colors = new LEDColor[DomePalette.SlotCount];
+      for (int color = 0; color < colors.Length; color++) {
+        colors[color] = new LEDColor(colorAt(color));
+      }
+      config.domePalettes = new List<DomePalette> {
+        new DomePalette { Name = "Test", Colors = colors },
+      };
+    }
+
     private static void AssertColors(
       string name, DomeFrame frame, int[] expected
     ) {
@@ -2160,6 +4605,22 @@ namespace Spectrum.LayerPipeline.Tests {
         mutation();
         return Task.CompletedTask;
       }
+    }
+
+    private sealed class FixedOrientation : OrientationAngleProvider {
+      private readonly double angle;
+      public int UpdateCount { get; private set; }
+
+      public FixedOrientation(double angle) {
+        this.angle = angle;
+      }
+
+      public bool TryGetAngle(out double angle) {
+        angle = this.angle;
+        return true;
+      }
+
+      public void Update() => this.UpdateCount++;
     }
 
     private sealed class SwapSnapshotOperation : ICompositeOperation {

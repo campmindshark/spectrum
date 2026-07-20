@@ -50,6 +50,25 @@ namespace Spectrum {
         runtime, dome),
       ["vortex"] = runtime => new LEDDomeVortexVisualizer(
         environment, runtime, audio, beats, dome),
+      ["living-skin"] = runtime => new LEDDomeLivingSkinVisualizer(
+        environment, runtime, orientation, beats, dome),
+      ["arc-lightning"] = runtime => new LEDDomeArcLightningVisualizer(
+        environment, runtime, audio, orientation, beats, dome),
+      ["glass-mosaic"] = runtime => new LEDDomeGlassMosaicVisualizer(
+        environment, runtime, audio, orientation, beats, dome),
+      ["cellular-dome"] = runtime => new LEDDomeCellularDomeVisualizer(
+        environment, runtime, orientation, beats, dome),
+      ["firefly-swarm"] = runtime => new LEDDomeFireflySwarmVisualizer(
+        runtime, audio, orientation, dome),
+      ["rain-chamber"] = runtime => new LEDDomeRainChamberVisualizer(
+        runtime, audio, orientation, dome),
+      ["topographic-dream"] = runtime =>
+        new LEDDomeTopographicDreamVisualizer(
+          runtime, audio, orientation, orientationCenter, dome),
+      ["orbital-garden"] = runtime => new LEDDomeOrbitalGardenVisualizer(
+        runtime, orientation, dome),
+      ["lava-lamp-sky"] = runtime => new LEDDomeLavaLampSkyVisualizer(
+        runtime, audio, orientation, orientationCenter, dome),
       ["caustics"] = runtime => new LEDDomeCausticsVisualizer(
         runtime, dome),
       ["ripple-tank"] = runtime => new LEDDomeRippleTankVisualizer(
@@ -60,6 +79,9 @@ namespace Spectrum {
         environment, runtime, orientation, dome),
       ["gyroscope"] = runtime => new LEDDomeGyroscopeVisualizer(
         environment, runtime, orientation, orientationCenter, dome),
+      ["watchful-iris"] = runtime => new LEDDomeWatchfulIrisVisualizer(
+        environment, runtime, audio, orientation, orientationCenter,
+        beats, dome),
       ["ripple"] = runtime => new LEDDomeRippleVisualizer(
         environment, runtime, audio, orientation, orientationCenter,
         beats, dome),

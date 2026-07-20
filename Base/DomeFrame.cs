@@ -436,7 +436,7 @@ namespace Spectrum.Base {
     }
 
     // Arbitrary top-down resampling for coordinate-transform operations such
-    // as projection warps. Unlike the short fixed-radius neighbor table, this
+    // as Kaleidoscope. Unlike the short fixed-radius neighbor table, this
     // uniform spatial index can resolve any point in or near the projected
     // dome. Queries expand only until the current nearest candidate is closer
     // than every unvisited cell, so ordinary on-dome samples inspect a small
@@ -567,8 +567,9 @@ namespace Spectrum.Base {
     // nearest pixel to (x + r·cosθ, y + r·sinθ) over NeighborDirections evenly
     // spaced angles and NeighborRadii radius steps, flattened as
     // (pixel * NeighborRadii + radiusBin) * NeighborDirections + dirBin. Built
-    // lazily (EnsureNeighborTable) only on the buffer a spatial blend actually
-    // runs on — the composite buffer — so layer buffers never pay for it. Like
+    // lazily (EnsureNeighborTable) on the first spatial consumer. Prism blends
+    // normally reach it through the composite buffer; surface simulations such
+    // as Living Skin reuse the same topology cache through a layer buffer. Like
     // strutStartIndex it depends only on the shared x/y geometry. A tap that
     // finds no pixel near its target stores the pixel's own index, degrading to
     // an in-place read rather than smearing across a gap in the layout.
