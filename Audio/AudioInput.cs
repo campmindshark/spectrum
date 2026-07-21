@@ -12,6 +12,7 @@ namespace Spectrum.Audio {
     private int audioFormatSampleFrequency = 44100;
 
     private readonly Configuration config;
+    private readonly IRuntimeSettingsConfiguration runtimeSettings;
 
     private MMDevice recordingDevice;
     private WasapiCapture captureStream;
@@ -26,6 +27,9 @@ namespace Spectrum.Audio {
     // the Operator, not part of Configuration).
     public AudioInput(Configuration config, BeatBroadcaster beat) {
       this.config = config;
+      this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
+        throw new ArgumentException(
+          "AudioInput requires immutable runtime settings.", nameof(config));
       this.madmomHandler = new MadmomHandler(config, this, beat);
       this.proDjLinkHandler = new ProDjLinkHandler(config, beat);
     }
@@ -63,7 +67,9 @@ namespace Spectrum.Audio {
     }
 
     private void InitializeAudio() {
-      if (this.config.audioDeviceID == null) {
+      AudioSettingsSnapshot settings =
+        this.runtimeSettings.AudioSettingsSnapshot;
+      if (settings.DeviceId == null) {
         throw new Exception("audioDeviceID not set!");
       }
       MMDevice device = null;
@@ -73,7 +79,7 @@ namespace Spectrum.Audio {
           DeviceState.Active
         );
         foreach (var audioDevice in iterator) {
-          if (this.config.audioDeviceID == audioDevice.ID) {
+          if (settings.DeviceId == audioDevice.ID) {
             device = audioDevice;
             break;
           }
@@ -198,11 +204,13 @@ namespace Spectrum.Audio {
 
     public int CurrentAudioDeviceIndex {
       get {
-        if (this.config.audioDeviceID == null) {
+        string deviceId =
+          this.runtimeSettings.AudioSettingsSnapshot.DeviceId;
+        if (deviceId == null) {
           return -1;
         }
         foreach (var audioDevice in AudioInput.AudioDevices) {
-          if (audioDevice.id == this.config.audioDeviceID) {
+          if (audioDevice.id == deviceId) {
             return audioDevice.index;
           }
         }

@@ -22,7 +22,7 @@ namespace Spectrum.Base {
 
     private static readonly int tapTempoConclusionTime = 2000;
 
-    private readonly Configuration config;
+    private readonly IRuntimeSettingsConfiguration settings;
     // Guards all of the mutable beat/tap/driver state below, which is touched
     // from the Madmom output thread, the MIDI thread, the tap-tempo Timer
     // thread, the operator thread, and the UI thread. PropertyChanged is always
@@ -51,7 +51,10 @@ namespace Spectrum.Base {
     public event PropertyChangedEventHandler PropertyChanged;
 
     public BeatBroadcaster(Configuration config) {
-      this.config = config;
+      this.settings = config as IRuntimeSettingsConfiguration ??
+        throw new ArgumentException(
+          "BeatBroadcaster requires immutable runtime settings.",
+          nameof(config));
       this.tapTempoConclusionTimer.Elapsed += TapTempoConcluded;
     }
 
@@ -245,29 +248,17 @@ namespace Spectrum.Base {
 
     public bool CurrentlyFlashedOff {
       get {
-        return this.config.flashSpeed != 0.0 &&
-          this.ProgressThroughBeat(this.config.flashSpeed) >= 0.5;
+        BeatSettingsSnapshot snapshot = this.settings.BeatSettingsSnapshot;
+        return snapshot.FlashSpeed != 0.0 &&
+          this.ProgressThroughBeat(snapshot.FlashSpeed) >= 0.5;
       }
     }
 
-    private MidiLevelDriverPreset GetPresetForChannelIndex(int channelIndex) {
-      if (!this.config.channelToMidiLevelDriverPreset.ContainsKey(channelIndex)) {
-        return null;
-      }
-      string levelDriverPreset =
-        this.config.channelToMidiLevelDriverPreset[channelIndex];
-      if (
-        levelDriverPreset == null ||
-        !this.config.levelDriverPresets.ContainsKey(levelDriverPreset)
-      ) {
-        return null;
-      }
-      ILevelDriverPreset preset =
-        this.config.levelDriverPresets[levelDriverPreset];
-      return preset is MidiLevelDriverPreset
-        ? (MidiLevelDriverPreset)preset
-        : null;
-    }
+    private bool TryGetPresetForChannelIndex(
+      int channelIndex,
+      out MidiLevelDriverSettingsSnapshot preset
+    ) => this.settings.BeatSettingsSnapshot.TryGetMidiPreset(
+      channelIndex, out preset);
 
     public void MidiReleaseOnChannel(int channelIndex) {
       lock (this.beatLock) {
@@ -280,7 +271,8 @@ namespace Spectrum.Base {
     }
 
     public void MidiPress(MidiLevelDriverInstance newDriver) {
-      if (this.GetPresetForChannelIndex(newDriver.ChannelIndex) != null) {
+      if (this.TryGetPresetForChannelIndex(
+          newDriver.ChannelIndex, out _)) {
         lock (this.beatLock) {
           this.driversByChannel[newDriver.ChannelIndex] = newDriver;
           this.lastChannelInteractionTime = newDriver.PressTimestamp;
@@ -290,7 +282,7 @@ namespace Spectrum.Base {
 
     private double CurrentMidiLevelDriverValueWithoutReleaseForChannel(
       MidiLevelDriverInstance driver,
-      MidiLevelDriverPreset preset,
+      MidiLevelDriverSettingsSnapshot preset,
       long currentTime
     ) {
       long timeSincePress = currentTime - driver.PressTimestamp;
@@ -308,10 +300,11 @@ namespace Spectrum.Base {
     }
 
     public double? CurrentMidiLevelDriverValueForChannel(int channelIndex) {
-      var preset = this.GetPresetForChannelIndex(channelIndex);
+      bool hasPreset = this.TryGetPresetForChannelIndex(
+        channelIndex, out MidiLevelDriverSettingsSnapshot preset);
       lock (this.beatLock) {
         var driver = this.driversByChannel[channelIndex];
-        if (driver == null || preset == null) {
+        if (driver == null || !hasPreset) {
           return null;
         }
         long currentTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;

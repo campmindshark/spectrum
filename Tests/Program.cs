@@ -68,6 +68,12 @@ namespace Spectrum.LayerPipeline.Tests {
         InitialShowStateSseIsAtomic);
       Run("configuration mutations use the application-state dispatcher",
         ConfigurationMutationsUseStateDispatcher);
+      Run("web DTO reads use the application-state dispatcher",
+        WebReadsUseStateDispatcher);
+      Run("runtime settings publish complete immutable generations",
+        RuntimeSettingsPublishCompleteGenerations);
+      Run("control storms avoid plan reconciliation and frame allocation",
+        ControlStormAvoidsPlanWork);
       Run("MIDI configuration bindings publish state commands",
         MidiBindingsPublishStateCommands);
       Run("MIDI binding validation and deferred failures are contained",
@@ -1378,6 +1384,199 @@ namespace Spectrum.LayerPipeline.Tests {
           notifications == 1 &&
           notificationThread == Environment.CurrentManagedThreadId,
         "PropertyChanged was not delivered on the state-owner thread");
+    }
+
+    private static void RuntimeSettingsPublishCompleteGenerations() {
+      var config = new global::Spectrum.SpectrumConfiguration();
+      var source = (IRuntimeSettingsConfiguration)config;
+
+      var aliasedCounters = new Dictionary<string, int> {
+        ["immutable"] = 7,
+      };
+      config.domeLayerFireCounters = aliasedCounters;
+      DomeRuntimeFrameSnapshot retained = source.DomeRuntimeFrameSnapshot;
+      aliasedCounters["immutable"] = 99;
+      Assert(retained.FireGeneration("immutable") == 7,
+        "a published command snapshot retained its mutable source map");
+
+      var aliasedCableMapping = Enumerable.Range(
+        0, LEDDomeOutput.NumCables).ToArray();
+      config.domeCableMapping = aliasedCableMapping;
+      DomeOutputSettingsSnapshot retainedOutput =
+        source.DomeOutputSettingsSnapshot;
+      aliasedCableMapping[0] = 9;
+      Assert(retainedOutput.CableMapping[0] == 0,
+        "a published output snapshot retained its mutable source array");
+
+      Exception readerFailure = null;
+      int iterations = 1500;
+      Task writer = Task.Run(() => {
+        for (int generation = 1; generation <= iterations; generation++) {
+          var counters = new Dictionary<string, int>();
+          for (int layer = 0; layer < 16; layer++) {
+            counters["layer-" + layer] = generation;
+          }
+          config.domeLayerFireCounters = counters;
+          config.domeCableMapping = generation % 2 == 0
+            ? Enumerable.Range(0, LEDDomeOutput.NumCables).ToArray()
+            : Enumerable.Range(0, LEDDomeOutput.NumCables).Reverse().ToArray();
+        }
+      });
+
+      while (!writer.IsCompleted && readerFailure == null) {
+        try {
+          DomeRuntimeFrameSnapshot runtime =
+            source.DomeRuntimeFrameSnapshot;
+          if (runtime.FireGenerations.Count == 16) {
+            int expected = runtime.FireGenerations["layer-0"];
+            foreach (int value in runtime.FireGenerations.Values) {
+              Assert(value == expected,
+                "a reader observed a torn fire-counter generation");
+            }
+          }
+
+          var mapping = source.DomeOutputSettingsSnapshot.CableMapping;
+          if (mapping.Length == LEDDomeOutput.NumCables) {
+            bool identity = true;
+            bool reverse = true;
+            for (int i = 0; i < mapping.Length; i++) {
+              identity &= mapping[i] == i;
+              reverse &= mapping[i] == mapping.Length - 1 - i;
+            }
+            Assert(identity || reverse,
+              "a reader observed a torn cable-mapping generation");
+          }
+        } catch (Exception error) {
+          readerFailure = error;
+        }
+      }
+      writer.GetAwaiter().GetResult();
+      if (readerFailure != null) {
+        throw readerFailure;
+      }
+    }
+
+    private static void WebReadsUseStateDispatcher() {
+      var layer = Layer("background", "web-owner-read");
+      layer.RendererParams = new Dictionary<string, double> {
+        ["level"] = 0.4,
+      };
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = new List<DomeLayerSettings> { layer },
+      };
+      var dispatcher = new QueuedStateDispatcher();
+      config.AttachMutationDispatcher(dispatcher);
+      var controller = new global::Spectrum.Web.LayersController(
+        dispatcher, config);
+
+      Exception directReadError = null;
+      try {
+        Task.Run(() => config.domeLayerStack).GetAwaiter().GetResult();
+      } catch (Exception error) {
+        directReadError = error;
+      }
+      Assert(directReadError is InvalidOperationException,
+        "an off-owner serializer collection read was not rejected");
+
+      Task<global::Spectrum.Web.LayersController.LayersState> read =
+        Task.Run(controller.StateAsync);
+      Assert(SpinWait.SpinUntil(
+          () => dispatcher.PendingCount == 1,
+          TimeSpan.FromSeconds(2)) && !read.IsCompleted,
+        "a compound web read bypassed the state-owner dispatcher");
+      dispatcher.Drain();
+      var state = read.GetAwaiter().GetResult();
+      Assert(state.layers.Count == 1 &&
+          state.layers[0].instanceId == "web-owner-read",
+        "the owner-thread web projection returned the wrong layer state");
+      state.layers[0].rendererParams["level"] = 0.9;
+      Assert(Math.Abs(
+          config.domeLayerStack[0].RendererParams["level"] - 0.4) < 1e-9,
+        "a web DTO retained a mutable configuration alias");
+    }
+
+    private static void ControlStormAvoidsPlanWork() {
+      var layers = new List<DomeLayerSettings>();
+      for (int i = 0; i < StackValidator.MaxLayers; i++) {
+        layers.Add(Layer("background", "storm-" + i));
+      }
+      var config = new global::Spectrum.SpectrumConfiguration {
+        domeLayerStack = layers,
+        domePalettes = new List<DomePalette> {
+          new DomePalette {
+            Name = "Storm",
+            Colors = DomePalette.CopyColors(
+              new[] { new LEDColor(0x123456) }),
+          },
+        },
+      };
+      var runtime = new global::Spectrum.Operator(config);
+      var source = (IRuntimeSettingsConfiguration)config;
+      int reconciliations = runtime.LayerPlanReconciliationCount;
+      RenderPlan acceptedPlan = runtime.DomeOutput.RenderPlan;
+
+      DomeShowStateSnapshot beforeGlobal =
+        ((IDomeShowStateConfiguration)config).DomeShowStateSnapshot;
+      config.domeGlobalFadeSpeed = 1.25;
+      DomeShowStateSnapshot afterGlobal =
+        ((IDomeShowStateConfiguration)config).DomeShowStateSnapshot;
+      Assert(beforeGlobal.Palettes.Equals(afterGlobal.Palettes),
+        "a global-only edit recompiled the palette array");
+
+      for (int i = 0; i < 200; i++) {
+        config.domeBrightness = (i % 101) / 100.0;
+        config.domeMaxBrightness = ((i + 17) % 101) / 100.0;
+        config.orientationDeviceSpotlight = i % 9 - 2;
+        config.domeLayerFireCounters = new Dictionary<string, int> {
+          [layers[i % layers.Count].InstanceId] = i + 1,
+        };
+        config.domeLayerClearCounters = new Dictionary<string, int> {
+          [layers[(i + 1) % layers.Count].InstanceId] = i + 1,
+        };
+        config.domeGlobalFadeSpeed = (i % 31) / 10.0;
+        config.domeGlobalHueSpeed = (i % 29) / 10.0;
+        if (i % 20 == 0) {
+          config.domePalettes[0].ReplaceColors(new[] {
+            new LEDColor((0x010101 * i) & 0xFFFFFF),
+          });
+        }
+      }
+
+      Assert(runtime.LayerPlanReconciliationCount == reconciliations,
+        "control-only changes reconciled the layer plan");
+      Assert(ReferenceEquals(runtime.DomeOutput.RenderPlan, acceptedPlan),
+        "control-only changes replaced the accepted render plan");
+
+      var environment = new global::Spectrum.ConfigurationDomeLayerEnvironment();
+      var ids = layers.Select(
+        layer => new LayerInstanceId(layer.InstanceId)).ToArray();
+      DomeShowStateSnapshot show =
+        ((IDomeShowStateConfiguration)config).DomeShowStateSnapshot;
+      int checksum = 0;
+      for (int warmup = 0; warmup < 100; warmup++) {
+        DomeRuntimeFrameSnapshot frame = source.DomeRuntimeFrameSnapshot;
+        environment.BeginOperatorFrame(show, frame);
+        for (int layer = 0; layer < ids.Length; layer++) {
+          checksum += environment.FireGeneration(ids[layer]);
+          checksum += environment.ClearGeneration(ids[layer]);
+        }
+        checksum += environment.OutputBrightnessByte;
+      }
+      long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+      for (int frameIndex = 0; frameIndex < 1000; frameIndex++) {
+        DomeRuntimeFrameSnapshot frame = source.DomeRuntimeFrameSnapshot;
+        environment.BeginOperatorFrame(show, frame);
+        for (int layer = 0; layer < ids.Length; layer++) {
+          checksum += environment.FireGeneration(ids[layer]);
+          checksum += environment.ClearGeneration(ids[layer]);
+        }
+        checksum += environment.OutputBrightnessByte;
+      }
+      long allocated =
+        GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+      Assert(allocated == 0,
+        "runtime frame capture allocated " + allocated + " managed bytes");
+      GC.KeepAlive(checksum);
     }
 
     private static void MidiBindingsPublishStateCommands() {
@@ -5050,6 +5249,8 @@ namespace Spectrum.LayerPipeline.Tests {
         mutation();
         return Task.CompletedTask;
       }
+      public Task<T> InvokeAsync<T>(Func<T> read) =>
+        Task.FromResult(read());
     }
 
     private sealed class QueuedStateDispatcher :
@@ -5091,6 +5292,12 @@ namespace Spectrum.LayerPipeline.Tests {
           }
         });
         return completion.Task;
+      }
+
+      public async Task<T> InvokeAsync<T>(Func<T> read) {
+        T result = default;
+        await this.InvokeAsync((Action)(() => { result = read(); }));
+        return result;
       }
 
       public void Drain() {

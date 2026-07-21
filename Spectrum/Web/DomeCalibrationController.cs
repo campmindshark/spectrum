@@ -249,34 +249,26 @@ namespace Spectrum.Web {
         this.InitializeStripCandidateLocked();
       });
 
-    public async Task<(bool ok, string error, CalibrationState state)>
-      SaveAsync() {
-      int[] cables;
-      int[][] ports;
-      lock (this.gate) {
-        if (!this.IsSaveableLocked(out string error)) {
-          return (false, error, this.SnapshotLocked());
+    public Task<(bool ok, string error, CalibrationState state)> SaveAsync() =>
+      this.gateway.InvokeAsync(() => {
+        lock (this.gate) {
+          if (!this.IsSaveableLocked(out string error)) {
+            return (false, error, this.SnapshotLocked());
+          }
+          int[] cables = (int[])this.cableDraft.Clone();
+          var mappings = CloneMatrix(this.stripDraft)
+            .Select(ports => new DomePortMapping(ports)).ToArray();
+          // One dispatcher action makes the cable permutation and all five
+          // strip permutations visible as one committed calibration.
+          this.config.domeCableMapping = cables;
+          this.config.domePortMappings = mappings;
+          this.LoadSavedGuessesLocked();
+          this.ResetDraftLocked();
+          this.stage = IdleStage;
+          this.calibration.Deactivate();
+          return (true, (string)null, this.SnapshotLocked());
         }
-        cables = (int[])this.cableDraft.Clone();
-        ports = CloneMatrix(this.stripDraft);
-      }
-
-      var mappings = ports.Select(p => new DomePortMapping(p)).ToArray();
-      await this.gateway.InvokeAsync(() => {
-        // One dispatcher action makes the cable permutation and all five strip
-        // permutations visible as one committed calibration.
-        this.config.domeCableMapping = cables;
-        this.config.domePortMappings = mappings;
       });
-
-      lock (this.gate) {
-        this.LoadSavedGuessesLocked();
-        this.ResetDraftLocked();
-        this.stage = IdleStage;
-        this.calibration.Deactivate();
-        return (true, null, this.SnapshotLocked());
-      }
-    }
 
     public Task<CalibrationState> CancelAsync() => this.UpdateLocked(() => {
       this.LoadSavedGuessesLocked();
@@ -284,19 +276,23 @@ namespace Spectrum.Web {
       this.stage = IdleStage;
     });
 
-    public CalibrationState State() {
+    internal CalibrationState State() {
       lock (this.gate) {
         return this.SnapshotLocked();
       }
     }
 
-    private Task<CalibrationState> UpdateLocked(Action mutation) {
-      lock (this.gate) {
-        mutation();
-        this.DriveSelectionLocked();
-        return Task.FromResult(this.SnapshotLocked());
-      }
-    }
+    public Task<CalibrationState> StateAsync() =>
+      this.gateway.InvokeAsync(this.State);
+
+    private Task<CalibrationState> UpdateLocked(Action mutation) =>
+      this.gateway.InvokeAsync(() => {
+        lock (this.gate) {
+          mutation();
+          this.DriveSelectionLocked();
+          return this.SnapshotLocked();
+        }
+      });
 
     private void ConfirmCableLocked() {
       if (!CandidateAvailable(

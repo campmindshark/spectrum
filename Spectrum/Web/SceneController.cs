@@ -32,9 +32,12 @@ namespace Spectrum.Web {
       this.service = new SceneService(config, DomeLayerCatalog.Metadata);
     }
 
-    public ScenesState State() {
+    internal ScenesState State() {
       return new ScenesState { scenes = this.service.Names() };
     }
+
+    public Task<ScenesState> StateAsync() =>
+      this.gateway.InvokeAsync(this.State);
 
     // Save the current stack + globals under `name` (overwriting an existing
     // scene with that name). The whole save — reading the live stack and swapping

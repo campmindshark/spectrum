@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -172,6 +173,7 @@ namespace Spectrum.LEDs {
 
     private OPCAPI opcAPI;
     private readonly Configuration config;
+    private readonly IRuntimeSettingsConfiguration runtimeSettings;
     // Live counters, not config: the OPC send rate is reported here.
     private readonly RuntimeTelemetry telemetry;
     // The tempo service (owned by the Operator, not part of Configuration),
@@ -183,6 +185,14 @@ namespace Spectrum.LEDs {
     // Operator-thread-only frame capture. Visualizers, compositor palette
     // effects, and global hue all read through this same accepted generation.
     private DomeRenderGeneration frameRenderGeneration;
+    private DomeRuntimeFrameSnapshot frameRuntimeSettings =
+      DomeRuntimeFrameSnapshot.Empty;
+    private DomeOutputSettingsSnapshot frameOutputSettings =
+      DomeOutputSettingsSnapshot.Empty;
+    private bool operatorFrameActive;
+    private long appliedMappingGeneration;
+    private long appliedTransportGeneration;
+    private int outputSettingsPending;
     private static readonly int maxStripLength;
 
     // The dome is wired as 10 "cables": each of the 5 control boxes drives 8
@@ -255,6 +265,10 @@ namespace Spectrum.LEDs {
       OrientationAngleProvider orientationAngle = null
     ) {
       this.config = config;
+      this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
+        throw new ArgumentException(
+          "LEDDomeOutput requires immutable runtime settings.",
+          nameof(config));
       this.telemetry = telemetry;
       this.beat = beat;
       this.visualizers = new List<Visualizer>();
@@ -268,12 +282,22 @@ namespace Spectrum.LEDs {
       this.renderGeneration = new DomeRenderGeneration(
         RenderPlan.Empty, initialShowState);
       this.frameRenderGeneration = this.renderGeneration;
-      this.RebuildOutputMapping();
+      this.frameRuntimeSettings =
+        this.runtimeSettings.DomeRuntimeFrameSnapshot;
+      this.frameOutputSettings =
+        this.runtimeSettings.DomeOutputSettingsSnapshot;
+      this.RebuildOutputMapping(this.frameOutputSettings);
+      this.appliedMappingGeneration =
+        this.frameOutputSettings.MappingGeneration;
+      this.appliedTransportGeneration =
+        this.frameOutputSettings.TransportGeneration;
       this.config.PropertyChanged += ConfigUpdated;
     }
 
-    private static bool IsValidPermutation(int[] mapping, int count) {
-      if (mapping == null || mapping.Length != count) {
+    private static bool IsValidPermutation(
+      IReadOnlyList<int> mapping, int count
+    ) {
+      if (mapping == null || mapping.Count != count) {
         return false;
       }
       var seen = new bool[count];
@@ -294,8 +318,8 @@ namespace Spectrum.LEDs {
     // Missing, short, duplicated, or out-of-range permutations fall back to
     // identity independently, so a bad port setting cannot scramble cables (or
     // vice versa).
-    private void RebuildOutputMapping() {
-      int[] cableMapping = this.config.domeCableMapping;
+    private void RebuildOutputMapping(DomeOutputSettingsSnapshot settings) {
+      IReadOnlyList<int> cableMapping = settings.CableMapping;
       bool cableMappingValid =
         IsValidPermutation(cableMapping, NumCables);
       for (int controller = 0; controller < NumCables; controller++) {
@@ -305,15 +329,16 @@ namespace Spectrum.LEDs {
         this.controllerForEndpoint[endpoint] = controller;
       }
 
-      DomePortMapping[] configuredMappings =
-        this.config.domePortMappings;
+      ImmutableArray<ImmutableArray<int>> configuredMappings =
+        settings.PortMappings;
       bool hasPerBoxMappings =
-        configuredMappings?.Length == NumDomeBoxes;
+        configuredMappings.Length == NumDomeBoxes;
       for (int box = 0; box < NumDomeBoxes; box++) {
-        int[] portMapping = hasPerBoxMappings
-          ? configuredMappings[box]?.ports?.ToArray()
+        IReadOnlyList<int> portMapping = hasPerBoxMappings
+          ? configuredMappings[box]
           : null;
-        bool portMappingValid = IsValidPortMapping(portMapping);
+        bool portMappingValid =
+          IsValidPermutation(portMapping, NumPortsPerBox);
         for (int port = 0; port < NumPortsPerBox; port++) {
           int path = portMappingValid ? portMapping[port] : port;
           this.portForPath[box, path] = port;
@@ -354,37 +379,49 @@ namespace Spectrum.LEDs {
     }
 
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (
-        e.PropertyName == nameof(this.config.domeCableMapping) ||
-        e.PropertyName == nameof(this.config.domePortMappings)
-      ) {
-        this.RebuildOutputMapping();
-        return;
-      }
-      if (
-        e.PropertyName != "domeBeagleboneOPCAddress" &&
-        e.PropertyName != "domeOutputInSeparateThread" &&
-        e.PropertyName != "domeEnabled"
-      ) {
-        return;
-      }
-      if (this.opcAPI != null) {
-        this.opcAPI.Active = false;
-      }
-      if (this.active && this.config.domeEnabled) {
-        this.initializeOPCAPI();
+      if (e.PropertyName == nameof(this.config.domeCableMapping) ||
+          e.PropertyName == nameof(this.config.domePortMappings) ||
+          e.PropertyName == nameof(this.config.domeBeagleboneOPCAddress) ||
+          e.PropertyName == nameof(this.config.domeOutputInSeparateThread) ||
+          e.PropertyName == nameof(this.config.domeEnabled)) {
+        Interlocked.Exchange(ref this.outputSettingsPending, 1);
       }
     }
 
-    private void initializeOPCAPI() {
-      var opcAddress = this.config.domeBeagleboneOPCAddress;
+    // Configuration notifications only mark work. The output/operator caller
+    // that is about to address pixels or flush the transport owns the actual
+    // reconciliation, so OPC and mapping state are never rewritten from the
+    // WPF/Kestrel state-owner thread while a frame is using them.
+    private void EnsureOutputSettingsReconciled() {
+      if (Interlocked.Exchange(ref this.outputSettingsPending, 0) == 0) {
+        return;
+      }
+      DomeOutputSettingsSnapshot settings =
+        this.runtimeSettings.DomeOutputSettingsSnapshot;
+      if (settings.MappingGeneration != this.appliedMappingGeneration) {
+        this.RebuildOutputMapping(settings);
+        this.appliedMappingGeneration = settings.MappingGeneration;
+      }
+      if (settings.TransportGeneration != this.appliedTransportGeneration) {
+        this.appliedTransportGeneration = settings.TransportGeneration;
+        if (this.opcAPI != null) {
+          this.opcAPI.Active = false;
+        }
+        if (this.active && settings.Enabled) {
+          this.initializeOPCAPI(settings);
+        }
+      }
+    }
+
+    private void initializeOPCAPI(DomeOutputSettingsSnapshot settings) {
+      var opcAddress = settings.OpcAddress;
       string[] parts = opcAddress.Split(':');
       if (parts.Length < 3) {
         opcAddress += ":0"; // default to channel 0
       }
       this.opcAPI = new OPCAPI(
         opcAddress,
-        this.config.domeOutputInSeparateThread,
+        settings.OutputInSeparateThread,
         newFPS => this.telemetry.DomeBeagleboneOPCFPS = newFPS
       );
       this.opcAPI.Active = this.active;
@@ -400,8 +437,15 @@ namespace Spectrum.LEDs {
           return;
         }
         this.active = value;
-        if (value && this.config.domeEnabled) {
-          this.initializeOPCAPI();
+        if (value) {
+          Interlocked.Exchange(ref this.outputSettingsPending, 1);
+          this.EnsureOutputSettingsReconciled();
+          DomeOutputSettingsSnapshot settings =
+            this.runtimeSettings.DomeOutputSettingsSnapshot;
+          if (settings.Enabled &&
+              (this.opcAPI == null || !this.opcAPI.Active)) {
+            this.initializeOPCAPI(settings);
+          }
         } else if (this.opcAPI != null) {
           this.opcAPI.Active = false;
         }
@@ -410,12 +454,15 @@ namespace Spectrum.LEDs {
 
     public bool Enabled {
       get {
-        return this.config.domeEnabled || this.config.domeSimulationEnabled ||
+        DomeOutputSettingsSnapshot settings =
+          this.runtimeSettings.DomeOutputSettingsSnapshot;
+        return settings.Enabled || settings.SimulationEnabled ||
           this.WebSimulatorHasConsumer;
       }
     }
 
     public void OperatorUpdate() {
+      this.EnsureOutputSettingsReconciled();
       // Blend this frame's layer stack and push it to the wire/simulator BEFORE
       // opcAPI.OperatorUpdate() sends and before we invalidate the frame color
       // cache. The visualizers ran (into their own buffers) earlier this frame
@@ -439,6 +486,7 @@ namespace Spectrum.LEDs {
       // it. See EnsureFrameColorCache.
       this.frameColorCacheValid = false;
       this.frameRenderGeneration = null;
+      this.operatorFrameActive = false;
     }
 
     // The Operator accepts the compiled plan and every persisted value it can
@@ -454,10 +502,37 @@ namespace Spectrum.LEDs {
       this.compositor.Publish(generation.Plan);
     }
 
-    public DomeShowStateSnapshot BeginOperatorFrame() {
+    // Updates only the immutable show-state half while retaining the accepted
+    // plan. Compare/exchange prevents a concurrent plan reconciliation from
+    // being overwritten by a palette/global-only publication.
+    public void PublishShowState(DomeShowStateSnapshot showState) {
+      if (showState == null) {
+        throw new ArgumentNullException(nameof(showState));
+      }
+      while (true) {
+        DomeRenderGeneration current =
+          Volatile.Read(ref this.renderGeneration) ??
+            DomeRenderGeneration.Empty;
+        var updated = new DomeRenderGeneration(current.Plan, showState);
+        if (ReferenceEquals(
+            Interlocked.CompareExchange(
+              ref this.renderGeneration, updated, current), current)) {
+          return;
+        }
+      }
+    }
+
+    public DomeShowStateSnapshot BeginOperatorFrame(
+      DomeRuntimeFrameSnapshot runtimeSettings = null
+    ) {
       DomeRenderGeneration generation =
         Volatile.Read(ref this.renderGeneration) ?? DomeRenderGeneration.Empty;
       this.frameRenderGeneration = generation;
+      this.frameRuntimeSettings = runtimeSettings ??
+        this.runtimeSettings.DomeRuntimeFrameSnapshot;
+      this.frameOutputSettings =
+        this.runtimeSettings.DomeOutputSettingsSnapshot;
+      this.operatorFrameActive = true;
       this.frameColorCacheValid = false;
       return generation.ShowState;
     }
@@ -477,6 +552,17 @@ namespace Spectrum.LEDs {
     public DomeShowStateSnapshot ShowState =>
       (Volatile.Read(ref this.renderGeneration) ??
         DomeRenderGeneration.Empty).ShowState;
+
+    // Diagnostics execute on the operator thread and share this exact capture
+    // with normal layer renderers and output brightness calculation.
+    public DomeRuntimeFrameSnapshot RuntimeFrameSettings =>
+      this.operatorFrameActive
+        ? this.frameRuntimeSettings
+        : this.runtimeSettings.DomeRuntimeFrameSnapshot;
+    public DomeOutputSettingsSnapshot OutputSettings =>
+      this.operatorFrameActive
+        ? this.frameOutputSettings
+        : this.runtimeSettings.DomeOutputSettingsSnapshot;
 
     // Wall clock for the global hue rotation's per-frame increment. The
     // rotation is applied to the layers' own persistent buffers (which are
@@ -532,7 +618,8 @@ namespace Spectrum.LEDs {
       }
       this.frameFlashedOff = this.beat.CurrentlyFlashedOff;
       this.frameBrightness =
-        this.config.domeMaxBrightness * this.config.domeBrightness;
+        this.frameRuntimeSettings.MaxBrightness *
+        this.frameRuntimeSettings.Brightness;
       this.frameRenderGeneration ??=
         Volatile.Read(ref this.renderGeneration) ?? DomeRenderGeneration.Empty;
       this.frameColorCacheValid = true;
@@ -610,7 +697,7 @@ namespace Spectrum.LEDs {
     // the queue and normal rendering would keep cycling pooled frame buffers
     // with nobody displaying them.
     private bool ShouldEnqueueDomeCommand =>
-      this.config.domeSimulationEnabled && this.SimulatorHasConsumer;
+      this.OutputSettings.SimulationEnabled && this.SimulatorHasConsumer;
 
     private bool ShouldEnqueueWebDomeCommand => this.WebSimulatorHasConsumer;
 
@@ -648,7 +735,8 @@ namespace Spectrum.LEDs {
     private bool PublishSimulatorFrame(int[] frame) {
       int[] superseded = null;
       lock (this.simulatorFrameGate) {
-        if (!this.simulatorHasConsumer || !this.config.domeSimulationEnabled) {
+        if (!this.simulatorHasConsumer ||
+            !this.OutputSettings.SimulationEnabled) {
           return false;
         }
         superseded = this.latestSimulatorFrame;
@@ -764,6 +852,7 @@ namespace Spectrum.LEDs {
     // independent frames. Candidate navigation uses FlushSimulator without
     // touching OPC; changing the fixed physical selection uses FlushHardware.
     public void FlushHardware() {
+      this.EnsureOutputSettingsReconciled();
       if (this.opcAPI != null) {
         this.opcAPI.Flush();
       }
@@ -838,6 +927,7 @@ namespace Spectrum.LEDs {
     }
 
     public void SetPixel(int strutIndex, int ledIndex, int color) {
+      this.EnsureOutputSettingsReconciled();
       Tuple<int, int> deviceIndexes = this.GetDeviceIndexes(strutIndex, ledIndex);
       this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
 
@@ -863,6 +953,7 @@ namespace Spectrum.LEDs {
     public void SetPixelRawHardware(
       int strutIndex, int ledIndex, int color
     ) {
+      this.EnsureOutputSettingsReconciled();
       Tuple<int, int> deviceIndexes =
         this.GetDeviceIndexesRaw(strutIndex, ledIndex);
       this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
@@ -977,6 +1068,7 @@ namespace Spectrum.LEDs {
     }
 
     public void WriteBuffer(DomeFrame buffer) {
+      this.EnsureOutputSettingsReconciled();
       // Snapshot opcAPI once instead of null-checking + locking per pixel (P4).
       // The visualizers list is only mutated at registration time, so the
       // per-pixel lock in SetDevicePixel guarded nothing here.

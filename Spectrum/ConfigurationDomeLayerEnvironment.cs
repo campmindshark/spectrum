@@ -3,46 +3,48 @@ using System.Threading;
 
 namespace Spectrum {
 
-  // Adapts persisted application configuration to the live values layer
-  // renderers are allowed to observe. Dictionary publishers use copy-and-swap,
-  // so each generation read sees either the old or the new command snapshot.
+  // Adapts one immutable runtime-control generation to the live values layer
+  // renderers are allowed to observe.
   internal sealed class ConfigurationDomeLayerEnvironment
       : DomeLayerEnvironment {
-    private readonly Configuration config;
     private DomeShowStateSnapshot frameShowState =
       DomeShowStateSnapshot.Empty;
+    private DomeRuntimeFrameSnapshot frameRuntime =
+      DomeRuntimeFrameSnapshot.Empty;
 
-    public ConfigurationDomeLayerEnvironment(Configuration config) {
-      this.config = config;
-    }
-
-    public void BeginOperatorFrame(DomeShowStateSnapshot showState) =>
+    public void BeginOperatorFrame(
+      DomeShowStateSnapshot showState,
+      DomeRuntimeFrameSnapshot runtime
+    ) {
       Volatile.Write(
         ref this.frameShowState,
         showState ?? DomeShowStateSnapshot.Empty);
+      Volatile.Write(
+        ref this.frameRuntime,
+        runtime ?? DomeRuntimeFrameSnapshot.Empty);
+    }
 
     public double GlobalFadeSpeed =>
       Volatile.Read(ref this.frameShowState).GlobalFadeSpeed;
 
     // Preserve the historical multiplication and truncation order used by the
     // two random-color renderers.
-    public int OutputBrightnessByte => (int)(
-      0xFF * this.config.domeMaxBrightness * this.config.domeBrightness);
-
-    public int SpotlightDeviceId => this.config.orientationDeviceSpotlight;
-
-    public int FireGeneration(LayerInstanceId instanceId) {
-      int generation = 0;
-      this.config.domeLayerFireCounters?.TryGetValue(
-        instanceId.Value, out generation);
-      return generation;
+    public int OutputBrightnessByte {
+      get {
+        DomeRuntimeFrameSnapshot runtime =
+          Volatile.Read(ref this.frameRuntime);
+        return (int)(
+          0xFF * runtime.MaxBrightness * runtime.Brightness);
+      }
     }
 
-    public int ClearGeneration(LayerInstanceId instanceId) {
-      int generation = 0;
-      this.config.domeLayerClearCounters?.TryGetValue(
-        instanceId.Value, out generation);
-      return generation;
-    }
+    public int SpotlightDeviceId =>
+      Volatile.Read(ref this.frameRuntime).SpotlightDeviceId;
+
+    public int FireGeneration(LayerInstanceId instanceId) =>
+      Volatile.Read(ref this.frameRuntime).FireGeneration(instanceId.Value);
+
+    public int ClearGeneration(LayerInstanceId instanceId) =>
+      Volatile.Read(ref this.frameRuntime).ClearGeneration(instanceId.Value);
   }
 }

@@ -784,6 +784,8 @@ namespace Spectrum.LayerPipeline.Tests {
         mutation();
         return Task.CompletedTask;
       }
+      public Task<T> InvokeAsync<T>(Func<T> read) =>
+        Task.FromResult(read());
     }
 
     private static void IterateThroughStruts() {

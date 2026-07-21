@@ -54,10 +54,9 @@ namespace Spectrum.Web {
   }
 
   /**
-   * The bridge the REST/SignalR layer uses. Reads go straight against
-   * Configuration through descriptors (role-checked); writes are validated,
-   * role-checked, then serialized through the ApplicationStateDispatcher so they never
-   * touch Configuration off the UI/serialization thread.
+   * The bridge the REST/SignalR layer uses. Reads and writes are serialized
+   * through the ApplicationStateDispatcher so Kestrel never touches mutable
+   * Configuration or serializer DTO collections directly.
    *
    * This is the only web-side object that holds the Configuration reference,
    * the registry, and the gateway together.
@@ -80,8 +79,17 @@ namespace Spectrum.Web {
 
     public ParameterRegistry Registry => this.registry;
 
+    internal Task<T> CaptureAsync<T>(Func<T> read) =>
+      this.gateway.InvokeAsync(read);
+
+    public Task<List<ParameterView>> DescribeAsync(ControlRole role) =>
+      this.gateway.InvokeAsync(() => this.Describe(role));
+
+    public Task<ParameterView> ReadAsync(string key, ControlRole role) =>
+      this.gateway.InvokeAsync(() => this.Read(key, role));
+
     // All parameters visible to a caller with the given role, with values.
-    public List<ParameterView> Describe(ControlRole role) {
+    private List<ParameterView> Describe(ControlRole role) {
       var views = new List<ParameterView>();
       foreach (ParameterDescriptor d in this.registry.ForRole(role)) {
         views.Add(this.ToView(d));
@@ -91,7 +99,7 @@ namespace Spectrum.Web {
 
     // Read one parameter. Returns null if unknown or not visible to the role
     // (callers treat both as 404 to avoid leaking the maintenance key set).
-    public ParameterView Read(string key, ControlRole role) {
+    private ParameterView Read(string key, ControlRole role) {
       if (!this.registry.TryGet(key, out ParameterDescriptor d)) {
         return null;
       }

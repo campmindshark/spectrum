@@ -32,7 +32,10 @@ namespace Spectrum.Web {
       this.service = new PaletteService(config);
     }
 
-    public object State() => new { palettes = BuildPalettes(this.config) };
+    internal object State() => new { palettes = BuildPalettes(this.config) };
+
+    public Task<object> StateAsync() =>
+      this.gateway.InvokeAsync(this.State);
 
     public async Task<(bool ok, string error)> SetColorsAsync(
       string name, List<SlotDto> colors
@@ -78,7 +81,7 @@ namespace Spectrum.Web {
       return result;
     }
 
-    public static List<PaletteDto> BuildPalettes(Configuration config) {
+    internal static List<PaletteDto> BuildPalettes(Configuration config) {
       var result = new List<PaletteDto>();
       if (config.domePalettes != null) {
         foreach (DomePalette palette in config.domePalettes) {

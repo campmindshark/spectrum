@@ -50,6 +50,7 @@ namespace Spectrum.Web {
     private readonly OrientationInput orientation;
     private readonly ApplicationStateDispatcher gateway;
     private readonly Configuration config;
+    private readonly IRuntimeSettingsConfiguration runtimeSettings;
 
     public WandStatusController(
       OrientationInput orientation, ApplicationStateDispatcher gateway,
@@ -58,6 +59,10 @@ namespace Spectrum.Web {
       this.orientation = orientation;
       this.gateway = gateway;
       this.config = config;
+      this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
+        throw new System.ArgumentException(
+          "Wand status requires immutable runtime settings.",
+          nameof(config));
     }
 
     // Merges the device and stats snapshots into JSON rows, sorted by device id
@@ -66,6 +71,8 @@ namespace Spectrum.Web {
     public List<WandStatusRow> Snapshot() {
       var devices = this.orientation.DevicesSnapshot();
       var stats = this.orientation.ConnectionStatsSnapshot();
+      int spotlight = this.runtimeSettings.OrientationSettingsSnapshot
+        .SpotlightDeviceId;
       var rows = new List<WandStatusRow>(devices.Count);
       foreach (var kvp in devices.OrderBy(kvp => kvp.Key)) {
         var device = kvp.Value;
@@ -76,7 +83,7 @@ namespace Spectrum.Web {
           typeName = WandTypeNames.Of(device.deviceType),
           actionFlag = device.actionFlag,
           isMoving = device.isMoving,
-          isSpotlight = kvp.Key == this.config.orientationDeviceSpotlight,
+          isSpotlight = kvp.Key == spotlight,
           w = q.W, x = q.X, y = q.Y, z = q.Z,
           hasSpeed = device.hasSpeed,
           speed = device.avgDistanceShort,
@@ -100,7 +107,8 @@ namespace Spectrum.Web {
       var status = this.orientation.WandSerial.StatusSnapshot();
       return new {
         availablePorts = WandSerialReceiver.AvailablePorts(),
-        selectedPort = this.config.wandSerialPort,
+        selectedPort = this.runtimeSettings.OrientationSettingsSnapshot
+          .WandSerialPort,
         receiver = new {
           portOpen = status.PortOpen,
           millisSinceLastHeartbeat = status.MillisSinceLastHeartbeat,
@@ -121,11 +129,12 @@ namespace Spectrum.Web {
 
     // The current spotlight config value: -2 (idle — force the screen-saver and
     // ignore every wand), -1 (all wands render), or a device id. Read straight
-    // off the shared config; the row list alone can't tell -1 from -2 (neither
-    // matches a real device id), so the user surface needs this to reflect which
-    // radio is selected. A plain read of an int property — no lock needed.
+    // off the immutable orientation snapshot; the row list alone can't tell -1
+    // from -2 (neither matches a real device id), so the user surface needs this
+    // to reflect which radio is selected.
     public int CurrentSpotlight() {
-      return this.config.orientationDeviceSpotlight;
+      return this.runtimeSettings.OrientationSettingsSnapshot
+        .SpotlightDeviceId;
     }
 
     // Sets which wand is the orientation "spotlight" — the single device whose

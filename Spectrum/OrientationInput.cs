@@ -12,6 +12,7 @@ namespace Spectrum {
 
   public class OrientationInput : Input {
     private readonly Configuration config;
+    private readonly IRuntimeSettingsConfiguration runtimeSettings;
     private readonly ApplicationStateDispatcher stateDispatcher;
     private bool calibrationHandled;
     private int spotlightClearPending;
@@ -26,6 +27,8 @@ namespace Spectrum {
     private IReadOnlyDictionary<int, OrientationDevice> operatorFrameDevices =
       new Dictionary<int, OrientationDevice>();
     private long operatorFrameGeneration;
+    private DomeRuntimeFrameSnapshot operatorFrameRuntime =
+      DomeRuntimeFrameSnapshot.Empty;
     private long operatorSnapshotGeneration = -1;
     // Per-device connection-quality stats (arrival rate, jitter, packet count),
     // accumulated by the receive threads (UDP callback + serial worker),
@@ -67,6 +70,10 @@ namespace Spectrum {
       ApplicationStateDispatcher stateDispatcher
     ) {
       this.config = config;
+      this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
+        throw new ArgumentException(
+          "OrientationInput requires immutable runtime settings.",
+          nameof(config));
       this.stateDispatcher = stateDispatcher ??
         throw new ArgumentNullException(nameof(stateDispatcher));
       devices = new Dictionary<int, OrientationDevice>();
@@ -247,7 +254,9 @@ namespace Spectrum {
       }
     }
     public void OperatorUpdate() {
-      if (config.orientationCalibrate && !this.calibrationHandled) {
+      OrientationSettingsSnapshot settings =
+        this.runtimeSettings.OrientationSettingsSnapshot;
+      if (settings.Calibrate && !this.calibrationHandled) {
         this.calibrationHandled = true;
         // This is when the "Calibrate" button in the UI window is hit
         // Calibrates all devices at once
@@ -259,7 +268,7 @@ namespace Spectrum {
         }
         this.stateDispatcher.Post(
           () => config.orientationCalibrate = false);
-      } else if (!config.orientationCalibrate) {
+      } else if (!settings.Calibrate) {
         this.calibrationHandled = false;
       }
 
@@ -284,7 +293,7 @@ namespace Spectrum {
         // connected wand again rather than a device that is no longer present.
         // Done outside mLock so PropertyChanged isn't raised under the device
         // lock. -1/-2 never match a real device id, so idle/all stay untouched.
-        int disconnectedSpotlight = config.orientationDeviceSpotlight;
+        int disconnectedSpotlight = settings.SpotlightDeviceId;
         if (removedDevices.Contains(disconnectedSpotlight) &&
             Interlocked.CompareExchange(
               ref this.spotlightClearPending, 1, 0) == 0) {
@@ -292,7 +301,8 @@ namespace Spectrum {
             try {
               // Preserve a newer UI/web selection made while this command was
               // waiting on the dispatcher.
-              if (config.orientationDeviceSpotlight == disconnectedSpotlight) {
+              if (this.runtimeSettings.OrientationSettingsSnapshot
+                  .SpotlightDeviceId == disconnectedSpotlight) {
                 config.orientationDeviceSpotlight = -1;
               }
             } finally {
@@ -308,9 +318,14 @@ namespace Spectrum {
     // visualizer runs. The snapshot itself is created lazily so a scene with no
     // orientation consumers pays nothing; all consumers in a generation share
     // the same cloned devices.
-    public void BeginOperatorFrame() {
+    public void BeginOperatorFrame(DomeRuntimeFrameSnapshot runtime = null) {
+      this.operatorFrameRuntime = runtime ??
+        this.runtimeSettings.DomeRuntimeFrameSnapshot;
       this.operatorFrameGeneration++;
     }
+
+    public DomeRuntimeFrameSnapshot OperatorFrameRuntime =>
+      this.operatorFrameRuntime;
 
     public IReadOnlyDictionary<int, OrientationDevice> OperatorFrameDevices {
       get {

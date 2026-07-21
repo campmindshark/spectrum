@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using Spectrum.Base;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -7,7 +9,8 @@ using System.Threading;
 namespace Spectrum {
 
   public class SpectrumConfiguration : Configuration,
-      ILayerStackSnapshotSource, IDomeShowStateConfiguration {
+      ILayerStackSnapshotSource, IDomeShowStateConfiguration,
+      IRuntimeSettingsConfiguration {
 
     public event PropertyChangedEventHandler PropertyChanged;
 
@@ -57,6 +60,7 @@ namespace Spectrum {
     }
 
     private void SetField<T>(ref T field, T value,
+        Action publish = null,
         [CallerMemberName] string name = null) {
       if (this.DispatchMutationIfRequired(name, value)) {
         return;
@@ -65,7 +69,20 @@ namespace Spectrum {
         return;
       }
       field = value;
+      publish?.Invoke();
       this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
+
+    private void CheckSerializerCollectionReadAccess(
+      [CallerMemberName] string name = null
+    ) {
+      ApplicationStateDispatcher dispatcher =
+        Volatile.Read(ref this.mutationDispatcher);
+      if (dispatcher != null && !dispatcher.CheckAccess()) {
+        throw new InvalidOperationException(
+          "Serializer-facing configuration collection must be read on the " +
+          "application-state owner thread: " + name);
+      }
     }
 
     private void DomePalettePropertyChanged(
@@ -77,6 +94,7 @@ namespace Spectrum {
         dispatcher.Post(() => this.DomePalettePropertyChanged(sender, e));
         return;
       }
+      this.CompileDomePalettes();
       this.PublishDomeShowStateSnapshot();
       this.RaisePropertyChanged("domePalettes." + e.PropertyName);
       this.RaisePropertyChanged(
@@ -108,18 +126,21 @@ namespace Spectrum {
     private string _audioDeviceID = null;
     public string audioDeviceID {
       get => _audioDeviceID;
-      set => SetField(ref _audioDeviceID, value);
+      set => SetField(ref _audioDeviceID, value, this.PublishAudioSettings);
     }
 
     private bool _domeEnabled = false;
     public bool domeEnabled {
       get => _domeEnabled;
-      set => SetField(ref _domeEnabled, value);
+      set => SetField(
+        ref _domeEnabled, value, this.PublishDomeTransportSettings);
     }
     private bool _midiInputEnabled = false;
     public bool midiInputEnabled {
       get => _midiInputEnabled;
-      set => SetField(ref _midiInputEnabled, value);
+      set => SetField(
+        ref _midiInputEnabled, value,
+        this.PublishMidiEnabledSettings);
     }
 
     private bool _midiInputInSeparateThread = false;
@@ -130,19 +151,25 @@ namespace Spectrum {
     private bool _domeOutputInSeparateThread = false;
     public bool domeOutputInSeparateThread {
       get => _domeOutputInSeparateThread;
-      set => SetField(ref _domeOutputInSeparateThread, value);
+      set => SetField(
+        ref _domeOutputInSeparateThread, value,
+        this.PublishDomeTransportSettings);
     }
 
     private string _domeBeagleboneOPCAddress = "";
     public string domeBeagleboneOPCAddress {
       get => _domeBeagleboneOPCAddress;
-      set => SetField(ref _domeBeagleboneOPCAddress, value);
+      set => SetField(
+        ref _domeBeagleboneOPCAddress, value,
+        this.PublishDomeTransportSettings);
     }
 
     private bool _domeSimulationEnabled = false;
     public bool domeSimulationEnabled {
       get => _domeSimulationEnabled;
-      set => SetField(ref _domeSimulationEnabled, value);
+      set => SetField(
+        ref _domeSimulationEnabled, value,
+        this.PublishDomeOutputState);
     }
     private bool _webDomeSimulatorEnabled = true;
     public bool webDomeSimulatorEnabled {
@@ -152,17 +179,23 @@ namespace Spectrum {
     private double _domeMaxBrightness = 0.5;
     public double domeMaxBrightness {
       get => _domeMaxBrightness;
-      set => SetField(ref _domeMaxBrightness, value);
+      set => SetField(
+        ref _domeMaxBrightness, value,
+        this.PublishDomeRuntimeFrameSettings);
     }
     private double _domeBrightness = 0.1;
     public double domeBrightness {
       get => _domeBrightness;
-      set => SetField(ref _domeBrightness, value);
+      set => SetField(
+        ref _domeBrightness, value,
+        this.PublishDomeRuntimeFrameSettings);
     }
     private int _domeTestPattern = 0;
     public int domeTestPattern {
       get => _domeTestPattern;
-      set => SetField(ref _domeTestPattern, value);
+      set => SetField(
+        ref _domeTestPattern, value,
+        this.PublishDomeRuntimeFrameSettings);
     }
     // Left null by default (not a pre-filled list): XSerializer deserializes a
     // collection property by calling IList.Add on the *existing* instance, so a
@@ -173,7 +206,10 @@ namespace Spectrum {
     private LayerStackSnapshot _domeLayerStackSnapshot =
       LayerStackSnapshot.Empty;
     public List<DomeLayerSettings> domeLayerStack {
-      get => _domeLayerStack;
+      get {
+        this.CheckSerializerCollectionReadAccess();
+        return _domeLayerStack;
+      }
       set {
         if (this.DispatchMutationIfRequired(
             nameof(this.domeLayerStack), value)) {
@@ -237,7 +273,9 @@ namespace Spectrum {
     private int[] _domeCableMapping = null;
     public int[] domeCableMapping {
       get => CloneArray(_domeCableMapping);
-      set => SetField(ref _domeCableMapping, CloneArray(value));
+      set => SetField(
+        ref _domeCableMapping, CloneArray(value),
+        this.PublishDomeMappingSettings);
     }
     // Five independently owned mappings, one for each dome-side box. This is an
     // array of DTOs rather than a preinitialized jagged array so XSerializer can
@@ -246,7 +284,9 @@ namespace Spectrum {
     private DomePortMapping[] _domePortMappings = null;
     public DomePortMapping[] domePortMappings {
       get => ClonePortMappings(_domePortMappings);
-      set => SetField(ref _domePortMappings, ClonePortMappings(value));
+      set => SetField(
+        ref _domePortMappings, ClonePortMappings(value),
+        this.PublishDomeMappingSettings);
     }
 
     private static int[] CloneArray(int[] values) =>
@@ -309,8 +349,12 @@ namespace Spectrum {
     // the persisted scenes on load. Null reads as "no saved scenes."
     private List<DomeScene> _domeScenes = null;
     public List<DomeScene> domeScenes {
-      get => _domeScenes;
-      set => SetField(ref _domeScenes, value);
+      get {
+        this.CheckSerializerCollectionReadAccess();
+        return _domeScenes;
+      }
+      set => SetField(
+        ref _domeScenes, value, this.PublishSceneRetentionSettings);
     }
     // Left null by default for the same reason as domeScenes: XSerializer
     // deserializes a collection property by calling IList.Add on the *existing*
@@ -318,7 +362,10 @@ namespace Spectrum {
     // load. Null reads as "no saved palettes."
     private List<DomePalette> _domePalettes = null;
     public List<DomePalette> domePalettes {
-      get => _domePalettes;
+      get {
+        this.CheckSerializerCollectionReadAccess();
+        return _domePalettes;
+      }
       set {
         if (this.DispatchMutationIfRequired(
             nameof(this.domePalettes), value)) {
@@ -330,6 +377,7 @@ namespace Spectrum {
         this.UnsubscribePalettes(this._domePalettes);
         this._domePalettes = value;
         this.SubscribePalettes(this._domePalettes);
+        this.CompileDomePalettes();
         this.PublishDomeShowStateSnapshot();
         this.RaisePropertyChanged(nameof(this.domePalettes));
         this.RaisePropertyChanged(
@@ -338,6 +386,8 @@ namespace Spectrum {
     }
 
     private long domeShowStateGeneration;
+    private ImmutableArray<DomePaletteSnapshot> compiledDomePalettes =
+      ImmutableArray<DomePaletteSnapshot>.Empty;
     private DomeShowStateSnapshot _domeShowStateSnapshot =
       DomeShowStateSnapshot.Empty;
 
@@ -386,6 +436,7 @@ namespace Spectrum {
       this._domeScenes = update.Scenes;
       if (palettesChanged) {
         this.SubscribePalettes(this._domePalettes);
+        this.CompileDomePalettes();
       }
       Volatile.Write(ref this._domeLayerStackSnapshot, layerSnapshot);
       if (layersChanged || palettesChanged || fadeChanged || hueChanged) {
@@ -405,6 +456,7 @@ namespace Spectrum {
         this.RaisePropertyChanged(nameof(this.domeGlobalHueSpeed));
       }
       if (scenesChanged) {
+        this.PublishSceneRetentionSettings();
         this.RaisePropertyChanged(nameof(this.domeScenes));
       }
       if (layersChanged || palettesChanged || fadeChanged || hueChanged) {
@@ -420,10 +472,15 @@ namespace Spectrum {
         generation,
         Volatile.Read(ref this._domeLayerStackSnapshot) ??
           LayerStackSnapshot.Empty,
-        DomeShowStateSnapshot.CompilePalettes(this._domePalettes),
+        this.compiledDomePalettes,
         this._domeGlobalFadeSpeed,
         this._domeGlobalHueSpeed);
       Volatile.Write(ref this._domeShowStateSnapshot, snapshot);
+    }
+
+    private void CompileDomePalettes() {
+      this.compiledDomePalettes =
+        DomeShowStateSnapshot.CompilePalettes(this._domePalettes);
     }
 
     private void RaisePropertyChanged(string propertyName) {
@@ -436,8 +493,13 @@ namespace Spectrum {
     private Dictionary<string, int> _domeLayerFireCounters =
       new Dictionary<string, int>();
     public Dictionary<string, int> domeLayerFireCounters {
-      get => _domeLayerFireCounters;
-      set => SetField(ref _domeLayerFireCounters, value);
+      get {
+        this.CheckSerializerCollectionReadAccess();
+        return _domeLayerFireCounters;
+      }
+      set => SetField(
+        ref _domeLayerFireCounters, value,
+        this.PublishDomeRuntimeFrameSettings);
     }
 
     // Parallel to _domeLayerFireCounters (see the Configuration interface): the
@@ -446,8 +508,13 @@ namespace Spectrum {
     private Dictionary<string, int> _domeLayerClearCounters =
       new Dictionary<string, int>();
     public Dictionary<string, int> domeLayerClearCounters {
-      get => _domeLayerClearCounters;
-      set => SetField(ref _domeLayerClearCounters, value);
+      get {
+        this.CheckSerializerCollectionReadAccess();
+        return _domeLayerClearCounters;
+      }
+      set => SetField(
+        ref _domeLayerClearCounters, value,
+        this.PublishDomeRuntimeFrameSettings);
     }
 
     // maps from device ID to preset ID
@@ -458,52 +525,76 @@ namespace Spectrum {
     }
     private Dictionary<int, int> _midiDevices = new Dictionary<int, int>();
     public Dictionary<int, int> midiDevices {
-      get => _midiDevices;
-      set => SetField(ref _midiDevices, value);
+      get {
+        this.CheckSerializerCollectionReadAccess();
+        return _midiDevices;
+      }
+      set => SetField(
+        ref _midiDevices, value, this.PublishMidiDeviceSettings);
     }
     private Dictionary<int, MidiPreset> _midiPresets = new Dictionary<int, MidiPreset>();
     public Dictionary<int, MidiPreset> midiPresets {
-      get => _midiPresets;
-      set => SetField(ref _midiPresets, value);
+      get {
+        this.CheckSerializerCollectionReadAccess();
+        return _midiPresets;
+      }
+      set => SetField(
+        ref _midiPresets, value, this.PublishMidiBindingSettings);
     }
     private Dictionary<string, ILevelDriverPreset> _levelDriverPresets = new Dictionary<string, ILevelDriverPreset>();
     public Dictionary<string, ILevelDriverPreset> levelDriverPresets {
-      get => _levelDriverPresets;
-      set => SetField(ref _levelDriverPresets, value);
+      get {
+        this.CheckSerializerCollectionReadAccess();
+        return _levelDriverPresets;
+      }
+      set => SetField(
+        ref _levelDriverPresets, value, this.PublishBeatSettings);
     }
     private Dictionary<int, string> _channelToAudioLevelDriverPreset = new Dictionary<int, string>();
     public Dictionary<int, string> channelToAudioLevelDriverPreset {
-      get => _channelToAudioLevelDriverPreset;
+      get {
+        this.CheckSerializerCollectionReadAccess();
+        return _channelToAudioLevelDriverPreset;
+      }
       set => SetField(ref _channelToAudioLevelDriverPreset, value);
     }
     private Dictionary<int, string> _channelToMidiLevelDriverPreset = new Dictionary<int, string>();
     public Dictionary<int, string> channelToMidiLevelDriverPreset {
-      get => _channelToMidiLevelDriverPreset;
-      set => SetField(ref _channelToMidiLevelDriverPreset, value);
+      get {
+        this.CheckSerializerCollectionReadAccess();
+        return _channelToMidiLevelDriverPreset;
+      }
+      set => SetField(
+        ref _channelToMidiLevelDriverPreset, value,
+        this.PublishBeatSettings);
     }
 
     private double _flashSpeed = 0.0;
     public double flashSpeed {
       get => _flashSpeed;
-      set => SetField(ref _flashSpeed, value);
+      set => SetField(ref _flashSpeed, value, this.PublishBeatSettings);
     }
 
     // 0 = human, 1 = Madmom, 2 = Pro DJ Link
     private int _beatInput = 0;
     public int beatInput {
       get => _beatInput;
-      set => SetField(ref _beatInput, value);
+      set => SetField(ref _beatInput, value, this.PublishAudioSettings);
     }
 
     private int _orientationDeviceSpotlight = 0;
     public int orientationDeviceSpotlight {
       get => _orientationDeviceSpotlight;
-      set => SetField(ref _orientationDeviceSpotlight, value);
+      set => SetField(
+        ref _orientationDeviceSpotlight, value,
+        this.PublishOrientationAndFrameSettings);
     }
     private bool _orientationCalibrate = false;
     public bool orientationCalibrate {
       get => _orientationCalibrate;
-      set => SetField(ref _orientationCalibrate, value);
+      set => SetField(
+        ref _orientationCalibrate, value,
+        this.PublishOrientationSettings);
     }
     // Initialized to "" (not left null) so both the receiver's IsNullOrEmpty
     // check and StringParameter.Coerce/Get have a real string, and a
@@ -512,7 +603,227 @@ namespace Spectrum {
     private string _wandSerialPort = "";
     public string wandSerialPort {
       get => _wandSerialPort;
-      set => SetField(ref _wandSerialPort, value);
+      set => SetField(
+        ref _wandSerialPort, value, this.PublishOrientationSettings);
+    }
+
+    private long domeRuntimeFrameGeneration;
+    private DomeRuntimeFrameSnapshot _domeRuntimeFrameSnapshot =
+      DomeRuntimeFrameSnapshot.Empty;
+    private long audioSettingsGeneration;
+    private AudioSettingsSnapshot _audioSettingsSnapshot =
+      AudioSettingsSnapshot.Empty;
+    private long midiSettingsGeneration;
+    private long midiDeviceGeneration;
+    private long midiBindingGeneration;
+    private MidiSettingsSnapshot _midiSettingsSnapshot =
+      MidiSettingsSnapshot.Empty;
+    private long orientationSettingsGeneration;
+    private OrientationSettingsSnapshot _orientationSettingsSnapshot =
+      OrientationSettingsSnapshot.Empty;
+    private long domeOutputSettingsGeneration;
+    private long domeOutputMappingGeneration;
+    private long domeOutputTransportGeneration;
+    private DomeOutputSettingsSnapshot _domeOutputSettingsSnapshot =
+      DomeOutputSettingsSnapshot.Empty;
+    private long beatSettingsGeneration;
+    private BeatSettingsSnapshot _beatSettingsSnapshot =
+      BeatSettingsSnapshot.Empty;
+    private long sceneRetentionGeneration;
+    private SceneRetentionSnapshot _sceneRetentionSnapshot =
+      SceneRetentionSnapshot.Empty;
+
+    DomeRuntimeFrameSnapshot
+      IRuntimeSettingsConfiguration.DomeRuntimeFrameSnapshot =>
+        Volatile.Read(ref this._domeRuntimeFrameSnapshot);
+    AudioSettingsSnapshot
+      IRuntimeSettingsConfiguration.AudioSettingsSnapshot =>
+        Volatile.Read(ref this._audioSettingsSnapshot);
+    MidiSettingsSnapshot
+      IRuntimeSettingsConfiguration.MidiSettingsSnapshot =>
+        Volatile.Read(ref this._midiSettingsSnapshot);
+    OrientationSettingsSnapshot
+      IRuntimeSettingsConfiguration.OrientationSettingsSnapshot =>
+        Volatile.Read(ref this._orientationSettingsSnapshot);
+    DomeOutputSettingsSnapshot
+      IRuntimeSettingsConfiguration.DomeOutputSettingsSnapshot =>
+        Volatile.Read(ref this._domeOutputSettingsSnapshot);
+    BeatSettingsSnapshot
+      IRuntimeSettingsConfiguration.BeatSettingsSnapshot =>
+        Volatile.Read(ref this._beatSettingsSnapshot);
+    SceneRetentionSnapshot
+      IRuntimeSettingsConfiguration.SceneRetentionSnapshot =>
+        Volatile.Read(ref this._sceneRetentionSnapshot);
+
+    private void PublishDomeRuntimeFrameSettings() {
+      Volatile.Write(
+        ref this._domeRuntimeFrameSnapshot,
+        new DomeRuntimeFrameSnapshot(
+          Interlocked.Increment(ref this.domeRuntimeFrameGeneration),
+          this._domeTestPattern,
+          this._domeMaxBrightness,
+          this._domeBrightness,
+          this._orientationDeviceSpotlight,
+          this._domeLayerFireCounters == null
+            ? ImmutableDictionary<string, int>.Empty
+            : this._domeLayerFireCounters.ToImmutableDictionary(),
+          this._domeLayerClearCounters == null
+            ? ImmutableDictionary<string, int>.Empty
+            : this._domeLayerClearCounters.ToImmutableDictionary()));
+    }
+
+    private void PublishAudioSettings() {
+      Volatile.Write(
+        ref this._audioSettingsSnapshot,
+        new AudioSettingsSnapshot(
+          Interlocked.Increment(ref this.audioSettingsGeneration),
+          this._audioDeviceID,
+          this._beatInput));
+    }
+
+    private void PublishMidiEnabledSettings() =>
+      this.PublishMidiSettings(false, false);
+
+    private void PublishMidiDeviceSettings() =>
+      this.PublishMidiSettings(true, true);
+
+    private void PublishMidiBindingSettings() =>
+      this.PublishMidiSettings(false, true);
+
+    private void PublishMidiSettings(
+      bool devicesChanged,
+      bool bindingsChanged
+    ) {
+      var presets = ImmutableDictionary.CreateBuilder<int, MidiPreset>();
+      if (this._midiPresets != null) {
+        foreach (KeyValuePair<int, MidiPreset> pair in this._midiPresets) {
+          presets[pair.Key] = pair.Value == null
+            ? null
+            : (MidiPreset)pair.Value.Clone();
+        }
+      }
+      Volatile.Write(
+        ref this._midiSettingsSnapshot,
+        new MidiSettingsSnapshot(
+          Interlocked.Increment(ref this.midiSettingsGeneration),
+          devicesChanged
+            ? Interlocked.Increment(ref this.midiDeviceGeneration)
+            : Volatile.Read(ref this.midiDeviceGeneration),
+          bindingsChanged
+            ? Interlocked.Increment(ref this.midiBindingGeneration)
+            : Volatile.Read(ref this.midiBindingGeneration),
+          this._midiInputEnabled,
+          this._midiDevices == null
+            ? ImmutableDictionary<int, int>.Empty
+            : this._midiDevices.ToImmutableDictionary(),
+          presets.ToImmutable()));
+    }
+
+    private void PublishOrientationAndFrameSettings() {
+      this.PublishOrientationSettings();
+      this.PublishDomeRuntimeFrameSettings();
+    }
+
+    private void PublishOrientationSettings() {
+      Volatile.Write(
+        ref this._orientationSettingsSnapshot,
+        new OrientationSettingsSnapshot(
+          Interlocked.Increment(ref this.orientationSettingsGeneration),
+          this._orientationDeviceSpotlight,
+          this._orientationCalibrate,
+          this._wandSerialPort ?? ""));
+    }
+
+    private void PublishDomeOutputState() =>
+      this.PublishDomeOutputSettings(false, false);
+
+    private void PublishDomeMappingSettings() =>
+      this.PublishDomeOutputSettings(true, false);
+
+    private void PublishDomeTransportSettings() =>
+      this.PublishDomeOutputSettings(false, true);
+
+    private void PublishDomeOutputSettings(
+      bool mappingChanged,
+      bool transportChanged
+    ) {
+      ImmutableArray<int> cables = this._domeCableMapping == null
+        ? ImmutableArray<int>.Empty
+        : ImmutableArray.Create(this._domeCableMapping);
+      var ports = ImmutableArray.CreateBuilder<ImmutableArray<int>>(
+        this._domePortMappings?.Length ?? 0);
+      if (this._domePortMappings != null) {
+        foreach (DomePortMapping mapping in this._domePortMappings) {
+          ports.Add(mapping?.ports == null
+            ? ImmutableArray<int>.Empty
+            : ImmutableArray.CreateRange(mapping.ports));
+        }
+      }
+      Volatile.Write(
+        ref this._domeOutputSettingsSnapshot,
+        new DomeOutputSettingsSnapshot(
+          Interlocked.Increment(ref this.domeOutputSettingsGeneration),
+          mappingChanged
+            ? Interlocked.Increment(ref this.domeOutputMappingGeneration)
+            : Volatile.Read(ref this.domeOutputMappingGeneration),
+          transportChanged
+            ? Interlocked.Increment(ref this.domeOutputTransportGeneration)
+            : Volatile.Read(ref this.domeOutputTransportGeneration),
+          this._domeEnabled,
+          this._domeSimulationEnabled,
+          this._domeBeagleboneOPCAddress ?? "",
+          this._domeOutputInSeparateThread,
+          cables,
+          ports.MoveToImmutable()));
+    }
+
+    private void PublishBeatSettings() {
+      var presets = ImmutableDictionary.CreateBuilder<
+        string, MidiLevelDriverSettingsSnapshot>();
+      if (this._levelDriverPresets != null) {
+        foreach (KeyValuePair<string, ILevelDriverPreset> pair in
+            this._levelDriverPresets) {
+          if (pair.Key != null && pair.Value is MidiLevelDriverPreset preset) {
+            presets[pair.Key] = new MidiLevelDriverSettingsSnapshot(
+              preset.AttackTime,
+              preset.PeakLevel,
+              preset.DecayTime,
+              preset.SustainLevel,
+              preset.ReleaseTime);
+          }
+        }
+      }
+      Volatile.Write(
+        ref this._beatSettingsSnapshot,
+        new BeatSettingsSnapshot(
+          Interlocked.Increment(ref this.beatSettingsGeneration),
+          this._flashSpeed,
+          this._channelToMidiLevelDriverPreset == null
+            ? ImmutableDictionary<int, string>.Empty
+            : this._channelToMidiLevelDriverPreset.ToImmutableDictionary(),
+          presets.ToImmutable()));
+    }
+
+    private void PublishSceneRetentionSettings() {
+      var retained = ImmutableHashSet.CreateBuilder<string>();
+      if (this._domeScenes != null) {
+        foreach (DomeScene scene in this._domeScenes) {
+          if (scene?.Layers == null) {
+            continue;
+          }
+          foreach (DomeLayerSettings layer in scene.Layers) {
+            if (layer != null &&
+                !string.IsNullOrWhiteSpace(layer.InstanceId)) {
+              retained.Add(layer.InstanceId);
+            }
+          }
+        }
+      }
+      Volatile.Write(
+        ref this._sceneRetentionSnapshot,
+        new SceneRetentionSnapshot(
+          Interlocked.Increment(ref this.sceneRetentionGeneration),
+          retained.ToImmutable()));
     }
   }
 

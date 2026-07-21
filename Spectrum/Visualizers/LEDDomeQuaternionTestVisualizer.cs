@@ -7,7 +7,6 @@ using System.Numerics;
 namespace Spectrum.Visualizers {
   class LEDDomeQuaternionTestVisualizer : Visualizer {
 
-    private readonly Configuration config;
     private readonly OrientationInput orientation;
     private readonly LEDDomeOutput dome;
     private readonly DomeFrame buffer;
@@ -21,14 +20,14 @@ namespace Spectrum.Visualizers {
       OrientationInput orientation,
       LEDDomeOutput dome
     ) {
-      this.config = config;
       this.orientation = orientation;
       this.dome = dome;
       this.buffer = this.dome.MakeDomeFrame();
       this.pixelPositions = this.buffer.BakePixelPositions();
     }
 
-    public int Priority => this.config.domeTestPattern == 5 ? 1000 : 0;
+    public int Priority =>
+      this.dome.RuntimeFrameSettings.TestPattern == 5 ? 1000 : 0;
 
     public bool Enabled { get; set; }
 
@@ -42,7 +41,8 @@ namespace Spectrum.Visualizers {
         Vector3 pixelPoint = this.pixelPositions[i];
         Vector3 pixelPointQuat = Vector3.Transform(
           pixelPoint,
-          orientation.deviceRotation(this.config.orientationDeviceSpotlight));
+          orientation.deviceRotation(
+            this.orientation.OperatorFrameRuntime.SpotlightDeviceId));
         // Color maxes
         int maxIndex = MaxBy(pixelPointQuat);
         Color color = new Color(0, 0, 0);

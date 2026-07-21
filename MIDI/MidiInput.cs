@@ -36,11 +36,13 @@ namespace Spectrum.MIDI {
     };
 
     private readonly Configuration config;
+    private readonly IRuntimeSettingsConfiguration runtimeSettings;
     // The live tempo service, needed by tap-tempo/ADSR bindings (owned by the
     // Operator, not part of Configuration).
     private readonly BeatBroadcaster beat;
     private readonly ApplicationStateDispatcher stateDispatcher;
     private Dictionary<int, InputDevice> devices;
+    private long appliedDeviceGeneration = -1;
     private readonly ConcurrentQueue<MidiCommand> buffer;
     // Latest-value state has one deliberately chosen owner lock: driver
     // callbacks write under it and the operator/visualizers read under it.
@@ -64,6 +66,9 @@ namespace Spectrum.MIDI {
       ApplicationStateDispatcher stateDispatcher
     ) {
       this.config = config;
+      this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
+        throw new ArgumentException(
+          "MidiInput requires immutable runtime settings.", nameof(config));
       this.beat = beat;
       this.stateDispatcher = stateDispatcher ??
         throw new ArgumentNullException(nameof(stateDispatcher));
@@ -83,10 +88,12 @@ namespace Spectrum.MIDI {
     }
 
     private void SetBindings() {
+      MidiSettingsSnapshot settings =
+        this.runtimeSettings.MidiSettingsSnapshot;
       var nextBindings =
         new Dictionary<InnerBindingKey, List<Binding>>();
       KeyValuePair<int, int>[] configuredDevices =
-        (this.config.midiDevices ?? new Dictionary<int, int>()).ToArray();
+        settings.Devices.ToArray();
 
       foreach (KeyValuePair<int, int> configuredDevice in configuredDevices) {
         int deviceIndex = configuredDevice.Key;
@@ -126,8 +133,7 @@ namespace Spectrum.MIDI {
         );
       }
 
-      Dictionary<int, MidiPreset> presets = this.config.midiPresets ??
-        new Dictionary<int, MidiPreset>();
+      ImmutableDictionary<int, MidiPreset> presets = settings.Presets;
       foreach (KeyValuePair<int, int> pair in configuredDevices) {
         if (!presets.TryGetValue(pair.Value, out MidiPreset preset) ||
             preset?.Bindings == null) {
@@ -198,7 +204,8 @@ namespace Spectrum.MIDI {
           if (value) {
             // Sanford owns the callback threads. The retired optional worker
             // only spun around an empty Update method and never owned input.
-            this.InitializeMidi();
+            this.InitializeMidi(
+              this.runtimeSettings.MidiSettingsSnapshot);
           } else {
             this.TerminateMidi();
           }
@@ -215,13 +222,14 @@ namespace Spectrum.MIDI {
 
     public bool Enabled {
       get {
-        return this.config.midiInputEnabled;
+        return this.runtimeSettings.MidiSettingsSnapshot.Enabled;
       }
     }
 
-    private void InitializeMidi() {
+    private void InitializeMidi(MidiSettingsSnapshot settings) {
       this.devices = new Dictionary<int, InputDevice>();
-      foreach (var pair in this.config.midiDevices) {
+      this.appliedDeviceGeneration = settings.DeviceGeneration;
+      foreach (var pair in settings.Devices) {
         var device = new InputDevice(pair.Key);
         device.ChannelMessageReceived +=
           (sender, e) => ChannelMessageReceived(pair.Key, sender, e);
@@ -354,6 +362,24 @@ namespace Spectrum.MIDI {
     }
 
     public void OperatorUpdate() {
+      MidiSettingsSnapshot settings =
+        this.runtimeSettings.MidiSettingsSnapshot;
+      if (this.active &&
+          settings.DeviceGeneration != this.appliedDeviceGeneration) {
+        // Sanford callbacks keep feeding the concurrent command queue while
+        // the operator thread exclusively owns this device-set transition.
+        // Mark the generation before opening devices so a bad device is
+        // contained by Operator's input exception boundary instead of being
+        // retried hundreds of times per second.
+        this.appliedDeviceGeneration = settings.DeviceGeneration;
+        this.TerminateMidi();
+        try {
+          this.InitializeMidi(settings);
+        } catch {
+          this.TerminateMidi();
+          throw;
+        }
+      }
       int numMessages = this.buffer.Count;
       var commands = new MidiCommand[numMessages];
       for (int i = 0; i < numMessages; i++) {

@@ -56,6 +56,7 @@ namespace Spectrum {
     private const int MaxFrameBytes = 256;
 
     private readonly Configuration config;
+    private readonly IRuntimeSettingsConfiguration runtimeSettings;
     private readonly OrientationInput sink;
 
     // Desired state + all status fields are guarded by this lock. The worker
@@ -76,8 +77,13 @@ namespace Spectrum {
 
     public WandSerialReceiver(Configuration config, OrientationInput sink) {
       this.config = config;
+      this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
+        throw new ArgumentException(
+          "WandSerialReceiver requires immutable runtime settings.",
+          nameof(config));
       this.sink = sink;
-      this.targetPort = config.wandSerialPort;
+      this.targetPort =
+        this.runtimeSettings.OrientationSettingsSnapshot.WandSerialPort;
       this.config.PropertyChanged += this.ConfigUpdated;
 
       var worker = new Thread(this.WorkerLoop) {
@@ -93,7 +99,8 @@ namespace Spectrum {
       lock (this.stateLock) {
         this.desiredActive = value;
         // Refresh the target so an activate picks up the latest configured port.
-        this.targetPort = this.config.wandSerialPort;
+        this.targetPort =
+          this.runtimeSettings.OrientationSettingsSnapshot.WandSerialPort;
       }
       this.wake.Set();
     }
@@ -101,7 +108,8 @@ namespace Spectrum {
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
       if (e.PropertyName == nameof(this.config.wandSerialPort)) {
         lock (this.stateLock) {
-          this.targetPort = this.config.wandSerialPort;
+          this.targetPort =
+            this.runtimeSettings.OrientationSettingsSnapshot.WandSerialPort;
         }
         this.wake.Set();
       }

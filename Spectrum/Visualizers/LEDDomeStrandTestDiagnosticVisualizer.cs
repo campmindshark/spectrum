@@ -6,7 +6,6 @@ namespace Spectrum {
 
   class LEDDomeStrandTestDiagnosticVisualizer : Visualizer {
 
-    private readonly Configuration config;
     private readonly LEDDomeOutput dome;
     private readonly Stopwatch stopwatch;
     // 0: everything off, 1: everything on
@@ -16,7 +15,6 @@ namespace Spectrum {
       Configuration config,
       LEDDomeOutput dome
     ) {
-      this.config = config;
       this.dome = dome;
       this.stopwatch = new Stopwatch();
       this.stopwatch.Start();
@@ -24,7 +22,7 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return this.config.domeTestPattern == 3 ? 1000 : 0;
+        return this.dome.RuntimeFrameSettings.TestPattern == 3 ? 1000 : 0;
       }
     }
 
@@ -63,10 +61,9 @@ namespace Spectrum {
         return;
       }
 
+      DomeRuntimeFrameSnapshot runtime = this.dome.RuntimeFrameSettings;
       byte brightnessByte = (byte)(
-        0xFF * this.config.domeMaxBrightness *
-        this.config.domeBrightness
-      );
+        0xFF * runtime.MaxBrightness * runtime.Brightness);
       int color = brightnessByte << 16
         | brightnessByte << 8
         | brightnessByte;

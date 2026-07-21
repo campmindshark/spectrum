@@ -19,7 +19,6 @@ namespace Spectrum {
    */
   class LEDDomeStrutIterationDiagnosticVisualizer : Visualizer {
 
-    private readonly Configuration config;
     private readonly LEDDomeOutput dome;
     private readonly Stopwatch stopwatch;
     private int lastIndex = 37;
@@ -30,7 +29,6 @@ namespace Spectrum {
       Configuration config,
       LEDDomeOutput dome
     ) {
-      this.config = config;
       this.dome = dome;
       this.stopwatch = new Stopwatch();
       this.stopwatch.Start();
@@ -38,7 +36,7 @@ namespace Spectrum {
 
     public int Priority {
       get {
-        return this.config.domeTestPattern == 2 ? 1000 : 0;
+        return this.dome.RuntimeFrameSettings.TestPattern == 2 ? 1000 : 0;
       }
     }
 
@@ -77,10 +75,9 @@ namespace Spectrum {
     // tested without waiting more than three minutes.
     internal void AdvancePattern() {
       this.lastIndex++;
+      DomeRuntimeFrameSnapshot runtime = this.dome.RuntimeFrameSettings;
       byte brightnessByte = (byte)(
-        0xFF * this.config.domeMaxBrightness *
-        this.config.domeBrightness
-      );
+        0xFF * runtime.MaxBrightness * runtime.Brightness);
       int whiteColor = brightnessByte << 16
         | brightnessByte << 8
         | brightnessByte;

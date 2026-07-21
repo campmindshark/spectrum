@@ -23,5 +23,10 @@ namespace Spectrum.Base {
 
     // Queue a command and complete when it has executed (or faulted).
     Task InvokeAsync(Action mutation);
+
+    // Capture a serializer-facing projection on the owner thread. Web request
+    // handlers use this for DTO reads just as they use the Action overload for
+    // writes, so mutable configuration objects never cross into Kestrel.
+    Task<T> InvokeAsync<T>(Func<T> read);
   }
 }

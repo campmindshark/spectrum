@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -149,7 +150,7 @@ namespace Spectrum.Web {
     // visualizers. Best-effort; any failure is retried on the next tick.
     private async void ReconcileCalibrationLease(object _) {
       try {
-        var state = this.calibration.State();
+        var state = await this.calibration.StateAsync();
         if (!state.active) {
           return;
         }
@@ -193,11 +194,12 @@ namespace Spectrum.Web {
       });
 
       // ---- User scope ----
-      app.MapGet("/api/parameters", (HttpContext ctx) =>
-        Results.Json(this.controls.Describe(ControlRole.User)));
+      app.MapGet("/api/parameters", async (HttpContext ctx) =>
+        Results.Json(await this.controls.DescribeAsync(ControlRole.User)));
 
-      app.MapGet("/api/parameters/{key}", (string key) => {
-        ParameterView view = this.controls.Read(key, ControlRole.User);
+      app.MapGet("/api/parameters/{key}", async (string key) => {
+        ParameterView view = await this.controls.ReadAsync(
+          key, ControlRole.User);
         return view == null ? Results.NotFound() : Results.Json(view);
       });
 
@@ -208,12 +210,13 @@ namespace Spectrum.Web {
       // selector, which was user-level). Whole-stack last-write-wins: the client
       // always PUTs its full edited copy, so no advisory lease is needed. The
       // result is broadcast on the SSE "layers" frame, converging every client.
-      app.MapGet("/api/layers", () => Results.Json(this.layers.State()));
+      app.MapGet("/api/layers", async () =>
+        Results.Json(await this.layers.StateAsync()));
 
       app.MapPut("/api/layers", async (LayersBody body) => {
         (bool ok, string error) = await this.layers.ReplaceAsync(body?.layers);
         return ok
-          ? Results.Json(this.layers.State())
+          ? Results.Json(await this.layers.StateAsync())
           : Results.BadRequest(new { error });
       });
 
@@ -238,39 +241,41 @@ namespace Spectrum.Web {
       // broadcast on the SSE "scenes" frame; apply replaces the stack + globals,
       // which converge over the existing "layers" and parameter frames. Like the
       // layer stack, whole-list last-write-wins — no advisory lease. ----
-      app.MapGet("/api/scenes", () => Results.Json(this.scenes.State()));
+      app.MapGet("/api/scenes", async () =>
+        Results.Json(await this.scenes.StateAsync()));
 
       app.MapPost("/api/scenes", async (SceneBody body) => {
         (bool ok, string error) = await this.scenes.SaveAsync(body?.name);
         return ok
-          ? Results.Json(this.scenes.State())
+          ? Results.Json(await this.scenes.StateAsync())
           : Results.BadRequest(new { error });
       });
 
       app.MapPost("/api/scenes/{name}/apply", async (string name) => {
         (bool ok, string error) = await this.scenes.ApplyAsync(name);
         return ok
-          ? Results.Json(this.scenes.State())
+          ? Results.Json(await this.scenes.StateAsync())
           : Results.BadRequest(new { error });
       });
 
       app.MapDelete("/api/scenes/{name}", async (string name) => {
         (bool ok, string error) = await this.scenes.DeleteAsync(name);
         return ok
-          ? Results.Json(this.scenes.State())
+          ? Results.Json(await this.scenes.StateAsync())
           : Results.BadRequest(new { error });
       });
 
       // ---- Named live palettes (user scope). Layers select these entries
       // directly; edits update the selected entry and broadcast the whole list.
       // No separate live bank or Apply endpoint exists. ----
-      app.MapGet("/api/palettes", () => Results.Json(this.palettes.State()));
+      app.MapGet("/api/palettes", async () =>
+        Results.Json(await this.palettes.StateAsync()));
 
       app.MapPost("/api/palettes", async (PaletteBody body) => {
         (bool ok, string error) = await this.palettes.AddAsync(
           body?.name, body?.sourceName);
         return ok
-          ? Results.Json(this.palettes.State())
+          ? Results.Json(await this.palettes.StateAsync())
           : Results.BadRequest(new { error });
       });
 
@@ -280,7 +285,7 @@ namespace Spectrum.Web {
         (bool ok, string error) = await this.palettes.SetColorsAsync(
           name, body?.colors);
         return ok
-          ? Results.Json(this.palettes.State())
+          ? Results.Json(await this.palettes.StateAsync())
           : Results.BadRequest(new { error });
       });
 
@@ -290,14 +295,14 @@ namespace Spectrum.Web {
         (bool ok, string error) = await this.palettes.RenameAsync(
           name, body?.newName);
         return ok
-          ? Results.Json(this.palettes.State())
+          ? Results.Json(await this.palettes.StateAsync())
           : Results.BadRequest(new { error });
       });
 
       app.MapDelete("/api/palettes/{name}", async (string name) => {
         (bool ok, string error) = await this.palettes.DeleteAsync(name);
         return ok
-          ? Results.Json(this.palettes.State())
+          ? Results.Json(await this.palettes.StateAsync())
           : Results.BadRequest(new { error });
       });
 
@@ -328,11 +333,13 @@ namespace Spectrum.Web {
       });
 
       // ---- Maintenance scope (same host, just the full parameter set) ----
-      app.MapGet("/api/maintenance/parameters", (HttpContext ctx) =>
-        Results.Json(this.controls.Describe(ControlRole.Maintenance)));
+      app.MapGet("/api/maintenance/parameters", async (HttpContext ctx) =>
+        Results.Json(await this.controls.DescribeAsync(
+          ControlRole.Maintenance)));
 
-      app.MapGet("/api/maintenance/parameters/{key}", (string key) => {
-        ParameterView view = this.controls.Read(key, ControlRole.Maintenance);
+      app.MapGet("/api/maintenance/parameters/{key}", async (string key) => {
+        ParameterView view = await this.controls.ReadAsync(
+          key, ControlRole.Maintenance);
         return view == null ? Results.NotFound() : Results.Json(view);
       });
 
@@ -381,8 +388,8 @@ namespace Spectrum.Web {
       // IResult is written to the response (a lone-HttpContext handler returning
       // Task<IResult> would instead bind as a RequestDelegate and silently drop
       // the body — ASP0016).
-      app.MapGet("/api/maintenance/calibration", () =>
-        Results.Json(this.calibration.State()));
+      app.MapGet("/api/maintenance/calibration", async () =>
+        Results.Json(await this.calibration.StateAsync()));
 
       app.MapPost("/api/maintenance/calibration/start",
         ([FromHeader(Name = LockTokenHeader)] string token) =>
@@ -487,7 +494,10 @@ namespace Spectrum.Web {
       } catch (ArgumentException e) {
         // Return the unchanged state alongside the error so the client re-renders
         // the flow (diagram, picks) instead of collapsing to the start screen.
-        return Results.BadRequest(new { error = e.Message, state = this.calibration.State() });
+        return Results.BadRequest(new {
+          error = e.Message,
+          state = await this.calibration.StateAsync(),
+        });
       }
     }
 
@@ -507,7 +517,9 @@ namespace Spectrum.Web {
         // the current telemetry values (parameters get theirs from the initial
         // REST GET, but telemetry has no such GET).
         await ctx.Response.WriteAsync(": connected\n\n");
-        foreach (string frame in this.events.InitialStateFrames()) {
+        List<string> initialFrames = await this.controls.CaptureAsync(
+          this.events.InitialStateFrames);
+        foreach (string frame in initialFrames) {
           await ctx.Response.WriteAsync($"data: {frame}\n\n", ctx.RequestAborted);
         }
         await ctx.Response.Body.FlushAsync(ctx.RequestAborted);

@@ -34,5 +34,9 @@ namespace Spectrum {
     public Task InvokeAsync(Action mutation) {
       return this.dispatcher.InvokeAsync(mutation).Task;
     }
+
+    public Task<T> InvokeAsync<T>(Func<T> read) {
+      return this.dispatcher.InvokeAsync(read).Task;
+    }
   }
 }

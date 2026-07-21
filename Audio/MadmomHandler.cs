@@ -14,6 +14,7 @@ namespace Spectrum.Audio {
     private static readonly TimeSpan RestartDelay = TimeSpan.FromSeconds(2);
 
     private readonly Configuration config;
+    private readonly IRuntimeSettingsConfiguration runtimeSettings;
     private readonly AudioInput audio;
     // The tempo service detected beats are reported into (owned by the
     // Operator, not part of Configuration).
@@ -26,6 +27,10 @@ namespace Spectrum.Audio {
 
     public MadmomHandler(Configuration config, AudioInput audio, BeatBroadcaster beat) {
       this.config = config;
+      this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
+        throw new ArgumentException(
+          "MadmomHandler requires immutable runtime settings.",
+          nameof(config));
       this.audio = audio;
       this.beat = beat;
       this.config.PropertyChanged += ConfigUpdated;
@@ -118,7 +123,8 @@ namespace Spectrum.Audio {
     }
 
     private bool ShouldRunLocked() {
-      return this.active && this.config.beatInput == 1;
+      return this.active &&
+        this.runtimeSettings.AudioSettingsSnapshot.BeatInput == 1;
     }
 
     private void TryStartProcessLocked() {

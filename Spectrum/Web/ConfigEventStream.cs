@@ -217,7 +217,7 @@ namespace Spectrum.Web {
     // readouts and the correct Start/Stop label immediately. (Writable
     // parameters get their initial values from the REST GET, but telemetry and
     // operator state have no such GET on the change-fed pages.)
-    public List<string> InitialStateFrames() {
+    internal List<string> InitialStateFrames() {
       var frames = new List<string>();
       foreach (TelemetryItem item in TelemetryCatalog.Items) {
         frames.Add(Frame("telemetry", item.Key, SafeRead(item)));

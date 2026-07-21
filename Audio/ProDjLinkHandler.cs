@@ -53,6 +53,7 @@ namespace Spectrum.Audio {
     private const double MaxPlausibleBpm = 500.0;
 
     private readonly Configuration config;
+    private readonly IRuntimeSettingsConfiguration runtimeSettings;
     // The tempo service received beats are reported into (owned by the
     // Operator, not part of Configuration).
     private readonly BeatBroadcaster beat;
@@ -69,6 +70,10 @@ namespace Spectrum.Audio {
 
     public ProDjLinkHandler(Configuration config, BeatBroadcaster beat) {
       this.config = config;
+      this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
+        throw new ArgumentException(
+          "ProDjLinkHandler requires immutable runtime settings.",
+          nameof(config));
       this.beat = beat;
       this.config.PropertyChanged += ConfigUpdated;
     }
@@ -94,7 +99,8 @@ namespace Spectrum.Audio {
     }
 
     private void UpdateEnabled() {
-      bool shouldRun = this.active && this.config.beatInput == 2;
+      bool shouldRun = this.active &&
+        this.runtimeSettings.AudioSettingsSnapshot.BeatInput == 2;
       if (shouldRun == this.running) {
         return;
       }

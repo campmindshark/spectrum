@@ -71,7 +71,7 @@ namespace Spectrum.Visualizers {
       public double poiK;
     }
 
-    private readonly Configuration config;
+    private readonly IRuntimeSettingsConfiguration runtimeSettings;
     private readonly OrientationInput orientationInput;
     private readonly Random rand = new Random();
 
@@ -102,7 +102,10 @@ namespace Spectrum.Visualizers {
       Configuration config,
       OrientationInput orientationInput
     ) {
-      this.config = config;
+      this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
+        throw new ArgumentException(
+          "OrientationCenter requires immutable runtime settings.",
+          nameof(config));
       this.orientationInput = orientationInput;
     }
 
@@ -168,9 +171,11 @@ namespace Spectrum.Visualizers {
       }
 
       this.idle = this.movingDevices.Count == 0;
+      int configuredSpotlight =
+        this.orientationInput.OperatorFrameRuntime.SpotlightDeviceId;
 
       // Hack to temporarily ignore all wands if the spotlight ID is -2.
-      if (this.config.orientationDeviceSpotlight == -2) {
+      if (configuredSpotlight == -2) {
         this.idle = true;
       }
 
@@ -178,7 +183,7 @@ namespace Spectrum.Visualizers {
         DriftIdleOrientation(frameScale, level);
         this.spotlightId = -1;
       } else {
-        BuildActiveDevices();
+        BuildActiveDevices(configuredSpotlight);
       }
 
       this.currentCenter =
@@ -213,12 +218,11 @@ namespace Spectrum.Visualizers {
     // Resolve each moving wand's rotation and scaling once, and pick the
     // spotlight (the configured one if it's moving, else the first moving
     // wand seen). Only called when movingDevices is non-empty.
-    private void BuildActiveDevices() {
+    private void BuildActiveDevices(int spotlight) {
       // If a specific wand is spotlighted and it is currently moving, only
       // that wand contributes; every other device is ignored. When the
       // spotlight is -1 (or the chosen wand isn't moving), every moving wand
       // renders.
-      int spotlight = this.config.orientationDeviceSpotlight;
       bool spotlightMoving = false;
       if (spotlight >= 0) {
         foreach (var kvp in this.movingDevices) {
@@ -265,7 +269,7 @@ namespace Spectrum.Visualizers {
 
         this.activeDevices.Add(frame);
 
-        if (kvp.Key == this.config.orientationDeviceSpotlight
+        if (kvp.Key == spotlight
             || this.spotlightId == -1) {
           this.spotlightId = kvp.Key;
           this.spotlightCenter = frame.rotation;

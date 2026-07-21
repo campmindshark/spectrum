@@ -11,7 +11,6 @@ namespace Spectrum {
   // queues. Comparing those halves separately guarantees Previous/Next can
   // repaint the candidate without disturbing the physical output.
   class LEDDomeMappingCalibrationVisualizer : Visualizer {
-    private readonly Configuration config;
     private readonly DomeCalibrationState calibration;
     private readonly LEDDomeOutput dome;
     private DomeCalibrationSelection lastSelection;
@@ -23,7 +22,6 @@ namespace Spectrum {
       DomeCalibrationState calibration,
       LEDDomeOutput dome
     ) {
-      this.config = config;
       this.calibration = calibration;
       this.dome = dome;
     }
@@ -109,7 +107,8 @@ namespace Spectrum {
     }
 
     private int DiagnosticColor() {
-      double brightness = Math.Clamp(this.config.domeMaxBrightness, 0.0, 1.0);
+      double brightness = Math.Clamp(
+        this.dome.RuntimeFrameSettings.MaxBrightness, 0.0, 1.0);
       byte value = (byte)(0xFF * brightness);
       return value << 16 | value << 8 | value;
     }
@@ -149,10 +148,10 @@ namespace Spectrum {
     }
 
     private int[] EffectivePortMapping(int box) {
-      DomePortMapping[] perBox = this.config.domePortMappings;
-      if (perBox?.Length == LEDDomeOutput.NumDomeBoxes &&
+      var perBox = this.dome.OutputSettings.PortMappings;
+      if (perBox.Length == LEDDomeOutput.NumDomeBoxes &&
           box >= 0 && box < perBox.Length) {
-        int[] configured = perBox[box]?.ports?.ToArray();
+        int[] configured = perBox[box].ToArray();
         if (LEDDomeOutput.IsValidPortMapping(configured)) {
           return configured;
         }

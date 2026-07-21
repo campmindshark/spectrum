@@ -84,7 +84,7 @@ namespace Spectrum.Web {
       this.config = config;
     }
 
-    public LayersState State() {
+    internal LayersState State() {
       return new LayersState {
         layers = SerializeStack(this.config),
         visualizers = VisualizerOptions(this.config),
@@ -92,10 +92,13 @@ namespace Spectrum.Web {
       };
     }
 
+    public Task<LayersState> StateAsync() =>
+      this.gateway.InvokeAsync(this.State);
+
     // The current config stack as client DTOs, in stack order (index 0 =
     // background). Shared with ConfigEventStream so the SSE "layers" frame and the
     // GET response are identical in shape.
-    public static List<LayerDto> SerializeStack(Configuration config) {
+    internal static List<LayerDto> SerializeStack(Configuration config) {
       var list = new List<LayerDto>();
       List<DomeLayerSettings> stack = config.domeLayerStack;
       if (stack != null) {
@@ -262,18 +265,21 @@ namespace Spectrum.Web {
     // The counter (not a bool) is race-free across clients: each Fire just
     // increments, none resets a shared flag.
     public async Task<(bool ok, string error)> FireAsync(string instanceId) {
-      (DomeLayerSettings layer, string error) = ResolveTarget(instanceId);
-      if (error != null) {
-        return (false, error);
-      }
+      (bool ok, string error) result = (false, "not run");
       await this.gateway.InvokeAsync(() => {
+        (DomeLayerSettings layer, string error) = ResolveTarget(instanceId);
+        if (error != null) {
+          result = (false, error);
+          return;
+        }
         var counters = new Dictionary<string, int>(
           this.config.domeLayerFireCounters ?? new Dictionary<string, int>());
         counters.TryGetValue(layer.InstanceId, out int count);
         counters[layer.InstanceId] = count + 1;
         this.config.domeLayerFireCounters = counters;
+        result = (true, null);
       });
-      return (true, null);
+      return result;
     }
 
     // Manual clear, exactly parallel to FireAsync but bumping the layer's
@@ -281,18 +287,21 @@ namespace Spectrum.Web {
     // layer that holds accumulated live state (Shooting Star) edge-detects the
     // bump and drops it; layers with no such state ignore it (harmless no-op).
     public async Task<(bool ok, string error)> ClearAsync(string instanceId) {
-      (DomeLayerSettings layer, string error) = ResolveTarget(instanceId);
-      if (error != null) {
-        return (false, error);
-      }
+      (bool ok, string error) result = (false, "not run");
       await this.gateway.InvokeAsync(() => {
+        (DomeLayerSettings layer, string error) = ResolveTarget(instanceId);
+        if (error != null) {
+          result = (false, error);
+          return;
+        }
         var counters = new Dictionary<string, int>(
           this.config.domeLayerClearCounters ?? new Dictionary<string, int>());
         counters.TryGetValue(layer.InstanceId, out int count);
         counters[layer.InstanceId] = count + 1;
         this.config.domeLayerClearCounters = counters;
+        result = (true, null);
       });
-      return (true, null);
+      return result;
     }
 
     private (DomeLayerSettings layer, string error) ResolveTarget(string id) {
