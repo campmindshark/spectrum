@@ -133,11 +133,7 @@ namespace Spectrum.Web {
           label: "Wand receiver port",
           description: "USB receiver serial port; leave empty to disable it."),
 
-        // Threading flags (these trigger an Operator reboot in MainWindow)
-        new BoolParameter("midiInputInSeparateThread", maint,
-          c => c.midiInputInSeparateThread, (c, v) => c.midiInputInSeparateThread = v,
-          label: "Process MIDI on a separate thread",
-          description: "Advanced: restarts the engine when changed."),
+        // Threading flag (triggers an Operator reboot in MainWindow)
         new BoolParameter("domeOutputInSeparateThread", maint,
           c => c.domeOutputInSeparateThread, (c, v) => c.domeOutputInSeparateThread = v,
           label: "Send dome output on a separate thread",

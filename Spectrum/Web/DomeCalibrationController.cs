@@ -49,7 +49,7 @@ namespace Spectrum.Web {
       public string stripReadout { get; set; }
     }
 
-    private readonly ControlGateway gateway;
+    private readonly ApplicationStateDispatcher gateway;
     private readonly Configuration config;
     private readonly DomeCalibrationState calibration;
     private readonly int numCables;
@@ -72,7 +72,7 @@ namespace Spectrum.Web {
     private int selectedBox;
 
     public DomeCalibrationController(
-      ControlGateway gateway,
+      ApplicationStateDispatcher gateway,
       Configuration config,
       DomeCalibrationState calibration,
       int numCables

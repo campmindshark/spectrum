@@ -18,7 +18,7 @@ namespace Spectrum.Visualizers {
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly OrientationCenter orientationCenter;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly ImmutableArray<Vector3> pixelPositions;
     private readonly LavaLampSkyState state;
@@ -29,14 +29,13 @@ namespace Spectrum.Visualizers {
       AudioInput audio,
       OrientationInput orientationInput,
       OrientationCenter orientationCenter,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.orientationCenter = orientationCenter;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.pixelPositions = this.buffer.BakePixelPositions();
       this.state = new LavaLampSkyState(

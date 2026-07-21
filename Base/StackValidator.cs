@@ -36,7 +36,8 @@ namespace Spectrum.Base {
     // Validate and deep-copy `layers` into a publishable stack. Returns
     // (stack, null) on success or (null, error) on the first rule violation.
     public static (List<DomeLayerSettings> stack, string error) Validate(
-      IReadOnlyList<DomeLayerSettings> layers
+      IReadOnlyList<DomeLayerSettings> layers,
+      LayerCatalog catalog
     ) {
       if (layers == null) {
         return (null, "layers must not be null");
@@ -44,7 +45,7 @@ namespace Spectrum.Base {
       if (layers.Count > MaxLayers) {
         return (null, "too many layers (max " + MaxLayers + ")");
       }
-      return new LayerStackService().Normalize(layers);
+      return new LayerStackService(catalog).Normalize(layers);
     }
 
     // Sanitize a param bag against its owning schema: drop
@@ -54,9 +55,11 @@ namespace Spectrum.Base {
     // dropped so a client on a newer/older schema still applies what it
     // understands. Always allocates a fresh dictionary, never aliasing `raw`.
     public static Dictionary<string, double> SanitizeRendererParams(
-      string visualizerKey, IReadOnlyDictionary<string, double> raw
+      LayerCatalog catalog,
+      string visualizerKey,
+      IReadOnlyDictionary<string, double> raw
     ) => Sanitize(
-      LayerCatalog.Default.ParametersFor(visualizerKey), raw);
+      catalog.ParametersFor(visualizerKey), raw);
 
     public static Dictionary<string, double> SanitizeOperationParams(
       DomeBlend operation, IReadOnlyDictionary<string, double> raw

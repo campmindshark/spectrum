@@ -143,7 +143,7 @@ namespace Spectrum.LayerPipeline.Tests {
         OperationParams = parameters,
       };
       (LayerStackSnapshot snapshot, string error) =
-        new LayerStackService().CreateSnapshot(new[] { layer });
+        new LayerStackService(DomeLayerCatalog.Metadata).CreateSnapshot(new[] { layer });
       Assert(error == null, error);
       return (MotionEmbersOptions)DomeBlend.MotionEmbers.CompileOptions(
         snapshot.Layers[0].OperationParameters);

@@ -19,25 +19,31 @@ namespace Spectrum.Base {
       };
     }
 
-    public override Binding[] GetBindings(Configuration config, BeatBroadcaster beat) {
+    public override Binding[] GetBindings(
+      Configuration config,
+      BeatBroadcaster beat,
+      ApplicationStateDispatcher stateDispatcher
+    ) {
       Binding binding = new Binding();
       binding.key = new BindingKey(MidiCommandType.Note, -1);
       binding.config = this;
       binding.callback = (index, val) => {
         if (index < this.indexRangeStart || index > (this.indexRangeStart + 7)) {
-          return null;
+          return new BindingInvocation(null);
         }
         int channelIndex = index - this.indexRangeStart;
         if (val == 0.0) {
           beat.MidiReleaseOnChannel(channelIndex);
-          return "MIDI received release on channel index " + channelIndex;
+          return new BindingInvocation(
+            "MIDI received release on channel index " + channelIndex);
         } else {
           beat.MidiPress(new MidiLevelDriverInstance() {
             ChannelIndex = channelIndex,
             PressTimestamp = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond,
             PressVelocity = val,
           });
-          return "MIDI received press on channel index " + channelIndex;
+          return new BindingInvocation(
+            "MIDI received press on channel index " + channelIndex);
         }
       };
       return new Binding[] { binding };

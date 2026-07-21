@@ -12,6 +12,9 @@ namespace Spectrum {
 
   public class OrientationInput : Input {
     private readonly Configuration config;
+    private readonly ApplicationStateDispatcher stateDispatcher;
+    private bool calibrationHandled;
+    private int spotlightClearPending;
     private Dictionary<int, OrientationDevice> devices;
     private long lastCheckedDevices;
     private Dictionary<int, long> lastSeen;
@@ -59,8 +62,13 @@ namespace Spectrum {
     public const double WandMaxTransmitRateHz = 200.0;
     private const double WandMinSendIntervalMs = 1000.0 / WandMaxTransmitRateHz;
 
-    public OrientationInput(Configuration config) {
+    public OrientationInput(
+      Configuration config,
+      ApplicationStateDispatcher stateDispatcher
+    ) {
       this.config = config;
+      this.stateDispatcher = stateDispatcher ??
+        throw new ArgumentNullException(nameof(stateDispatcher));
       devices = new Dictionary<int, OrientationDevice>();
       lastCheckedDevices = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
       lastSeen = new Dictionary<int, long>();
@@ -239,7 +247,8 @@ namespace Spectrum {
       }
     }
     public void OperatorUpdate() {
-      if (config.orientationCalibrate) {
+      if (config.orientationCalibrate && !this.calibrationHandled) {
+        this.calibrationHandled = true;
         // This is when the "Calibrate" button in the UI window is hit
         // Calibrates all devices at once
         // Calibration target is 'forwards' in the y-direction
@@ -248,7 +257,10 @@ namespace Spectrum {
             device.calibrate();
           }
         }
-        config.orientationCalibrate = false;
+        this.stateDispatcher.Post(
+          () => config.orientationCalibrate = false);
+      } else if (!config.orientationCalibrate) {
+        this.calibrationHandled = false;
       }
 
       // Disabled device removal - can we run this less often?
@@ -272,8 +284,21 @@ namespace Spectrum {
         // connected wand again rather than a device that is no longer present.
         // Done outside mLock so PropertyChanged isn't raised under the device
         // lock. -1/-2 never match a real device id, so idle/all stay untouched.
-        if (removedDevices.Contains(config.orientationDeviceSpotlight)) {
-          config.orientationDeviceSpotlight = -1;
+        int disconnectedSpotlight = config.orientationDeviceSpotlight;
+        if (removedDevices.Contains(disconnectedSpotlight) &&
+            Interlocked.CompareExchange(
+              ref this.spotlightClearPending, 1, 0) == 0) {
+          this.stateDispatcher.Post(() => {
+            try {
+              // Preserve a newer UI/web selection made while this command was
+              // waiting on the dispatcher.
+              if (config.orientationDeviceSpotlight == disconnectedSpotlight) {
+                config.orientationDeviceSpotlight = -1;
+              }
+            } finally {
+              Volatile.Write(ref this.spotlightClearPending, 0);
+            }
+          });
         }
         lastCheckedDevices = currentTime;
       }

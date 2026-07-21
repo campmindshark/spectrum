@@ -27,7 +27,7 @@ namespace Spectrum.Visualizers {
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly BeatBroadcaster beat;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly LayerTrigger trigger;
 
@@ -39,7 +39,7 @@ namespace Spectrum.Visualizers {
       AudioInput audio,
       OrientationInput orientationInput,
       BeatBroadcaster beat,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
@@ -47,7 +47,6 @@ namespace Spectrum.Visualizers {
       this.orientationInput = orientationInput;
       this.beat = beat;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.trigger = new LayerTrigger(
         environment, orientationInput, runtime.InstanceId, beat, audio);

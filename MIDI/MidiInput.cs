@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Sanford.Multimedia.Midi;
 using Spectrum.Base;
 using System.Threading;
 using System.Collections.Concurrent;
 using System.ComponentModel;
+using System.Threading.Tasks;
 
 namespace Spectrum.MIDI {
 
@@ -39,20 +39,34 @@ namespace Spectrum.MIDI {
     // The live tempo service, needed by tap-tempo/ADSR bindings (owned by the
     // Operator, not part of Configuration).
     private readonly BeatBroadcaster beat;
+    private readonly ApplicationStateDispatcher stateDispatcher;
     private Dictionary<int, InputDevice> devices;
     private readonly ConcurrentQueue<MidiCommand> buffer;
+    // Latest-value state has one deliberately chosen owner lock: driver
+    // callbacks write under it and the operator/visualizers read under it.
+    private readonly object midiStateLock = new object();
     private readonly Dictionary<int, Dictionary<int, double>> knobValues;
     private readonly Dictionary<int, Dictionary<int, double>> noteVelocities;
     private MidiCommand[] commandsSinceLastTick;
-    private Dictionary<InnerBindingKey, List<Binding>> bindings;
+    // Callbacks capture exactly one fully compiled generation. SetBindings
+    // never publishes the mutable builder it uses during compilation.
+    private ImmutableDictionary<InnerBindingKey, ImmutableArray<Binding>>
+      bindings = ImmutableDictionary<
+        InnerBindingKey, ImmutableArray<Binding>>.Empty;
 
     // The rolling log of triggered bindings, owned here (its writer) and shown
     // by the VJ HUD; it raises its own PropertyChanged on append.
     public ObservableMidiLog MidiLog { get; } = new ObservableMidiLog();
 
-    public MidiInput(Configuration config, BeatBroadcaster beat) {
+    public MidiInput(
+      Configuration config,
+      BeatBroadcaster beat,
+      ApplicationStateDispatcher stateDispatcher
+    ) {
       this.config = config;
       this.beat = beat;
+      this.stateDispatcher = stateDispatcher ??
+        throw new ArgumentNullException(nameof(stateDispatcher));
       this.buffer = new ConcurrentQueue<MidiCommand>();
       this.knobValues = new Dictionary<int, Dictionary<int, double>>();
       this.noteVelocities = new Dictionary<int, Dictionary<int, double>>();
@@ -69,69 +83,107 @@ namespace Spectrum.MIDI {
     }
 
     private void SetBindings() {
-      this.bindings = new Dictionary<InnerBindingKey, List<Binding>>();
+      var nextBindings =
+        new Dictionary<InnerBindingKey, List<Binding>>();
+      KeyValuePair<int, int>[] configuredDevices =
+        (this.config.midiDevices ?? new Dictionary<int, int>()).ToArray();
 
-      foreach (int deviceIndex in this.config.midiDevices.Keys) {
-        if (!this.noteVelocities.ContainsKey(deviceIndex)) {
-          this.noteVelocities[deviceIndex] = new Dictionary<int, double>();
+      foreach (KeyValuePair<int, int> configuredDevice in configuredDevices) {
+        int deviceIndex = configuredDevice.Key;
+        lock (this.midiStateLock) {
+          if (!this.noteVelocities.ContainsKey(deviceIndex)) {
+            this.noteVelocities[deviceIndex] = new Dictionary<int, double>();
+          }
+          if (!this.knobValues.ContainsKey(deviceIndex)) {
+            this.knobValues[deviceIndex] = new Dictionary<int, double>();
+          }
         }
-        if (!this.knobValues.ContainsKey(deviceIndex)) {
-          this.knobValues[deviceIndex] = new Dictionary<int, double>();
-        }
-        this.AddBinding(
+        AddBinding(
+          nextBindings,
           new Binding() {
             key = new BindingKey(MidiCommandType.Note, -1),
             callback = (index, val) => {
-              this.noteVelocities[deviceIndex][index] = val;
-              return null;
+              lock (this.midiStateLock) {
+                this.noteVelocities[deviceIndex][index] = val;
+              }
+              return new BindingInvocation(null);
             },
           },
           deviceIndex
         );
-        this.AddBinding(
+        AddBinding(
+          nextBindings,
           new Binding() {
             key = new BindingKey(MidiCommandType.Knob, -1),
             callback = (index, val) => {
-              this.knobValues[deviceIndex][index] = val;
-              return null;
+              lock (this.midiStateLock) {
+                this.knobValues[deviceIndex][index] = val;
+              }
+              return new BindingInvocation(null);
             },
           },
           deviceIndex
         );
       }
 
-      var activePresets = this.config.midiDevices.ToDictionary(
-        (pair) => pair.Key,
-        (pair) => this.config.midiPresets[pair.Value]
-      );
-      foreach (var pair in activePresets) {
-        foreach (IMidiBindingConfig config in pair.Value.Bindings) {
-          Binding[] bindings = config.GetBindings(this.config, this.beat);
-          foreach (Binding binding in bindings) {
-            this.AddBinding(binding, pair.Key);
+      Dictionary<int, MidiPreset> presets = this.config.midiPresets ??
+        new Dictionary<int, MidiPreset>();
+      foreach (KeyValuePair<int, int> pair in configuredDevices) {
+        if (!presets.TryGetValue(pair.Value, out MidiPreset preset) ||
+            preset?.Bindings == null) {
+          this.MidiLog.Append(
+            "MIDI device " + pair.Key + " references missing preset " +
+            pair.Value + "; bindings skipped");
+          continue;
+        }
+        foreach (IMidiBindingConfig bindingConfig in preset.Bindings) {
+          Binding[] compiledBindings;
+          try {
+            if (bindingConfig == null) {
+              throw new InvalidOperationException(
+                "preset contains an empty binding");
+            }
+            compiledBindings = bindingConfig.GetBindings(
+              this.config, this.beat, this.stateDispatcher);
+          } catch (Exception error) {
+            this.MidiLog.Append(
+              "Binding \"" +
+              (bindingConfig?.BindingName ?? "unnamed") +
+              "\" skipped: " + error.Message);
+            continue;
+          }
+          foreach (Binding binding in compiledBindings) {
+            AddBinding(nextBindings, binding, pair.Key);
           }
         }
       }
+
+      ImmutableDictionary<InnerBindingKey, ImmutableArray<Binding>> published =
+        nextBindings.ToImmutableDictionary(
+          pair => pair.Key,
+          pair => pair.Value.ToImmutableArray());
+      Volatile.Write(ref this.bindings, published);
     }
 
-    private void AddBinding(Binding binding, int deviceIndex) {
+    private static void AddBinding(
+      Dictionary<InnerBindingKey, List<Binding>> target,
+      Binding binding,
+      int deviceIndex
+    ) {
       var innerBindingKey = new InnerBindingKey(
         deviceIndex,
         binding.key.Item1,
         binding.key.Item2
       );
-      if (!this.bindings.ContainsKey(innerBindingKey)) {
-        this.bindings.Add(innerBindingKey, new List<Binding>());
+      if (!target.TryGetValue(
+          innerBindingKey, out List<Binding> keyBindings)) {
+        keyBindings = new List<Binding>();
+        target.Add(innerBindingKey, keyBindings);
       }
-      this.bindings[innerBindingKey].Add(binding);
+      keyBindings.Add(binding);
     }
 
     private bool active;
-    private Thread inputThread;
-    // Signals MidiProcessingThread to exit its loop. Replaces the old
-    // Thread.Abort() teardown, which throws PlatformNotSupportedException on
-    // modern .NET.
-    private volatile bool stopRequested;
     public bool Active {
       get {
         lock (this.buffer) {
@@ -144,23 +196,11 @@ namespace Spectrum.MIDI {
             return;
           }
           if (value) {
-            if (this.config.midiInputInSeparateThread) {
-              this.stopRequested = false;
-              this.inputThread = new Thread(MidiProcessingThread) {
-                IsBackground = true,
-              };
-              this.inputThread.Start();
-            } else {
-              this.InitializeMidi();
-            }
+            // Sanford owns the callback threads. The retired optional worker
+            // only spun around an empty Update method and never owned input.
+            this.InitializeMidi();
           } else {
-            if (this.inputThread != null) {
-              this.stopRequested = true;
-              this.inputThread.Join();
-              this.inputThread = null;
-            } else {
-              this.TerminateMidi();
-            }
+            this.TerminateMidi();
           }
           this.active = value;
         }
@@ -244,28 +284,68 @@ namespace Spectrum.MIDI {
         return;
       }
       this.buffer.Enqueue(command);
+      _ = this.DispatchBindingsAsync(command);
+    }
 
-      List<Binding> triggered = new List<Binding>();
-      var genericKey = new InnerBindingKey(deviceIndex, command.type, -1);
-      if (this.bindings.ContainsKey(genericKey)) {
-        triggered.AddRange(this.bindings[genericKey]);
-      }
-      var key = new InnerBindingKey(deviceIndex, command.type, command.index);
-      if (this.bindings.ContainsKey(key)) {
-        triggered.AddRange(this.bindings[key]);
+    internal Task DispatchBindingsAsync(MidiCommand command) {
+      ImmutableDictionary<InnerBindingKey, ImmutableArray<Binding>> snapshot =
+        Volatile.Read(ref this.bindings);
+      var tasks = new List<Task>();
+      var genericKey = new InnerBindingKey(
+        command.deviceIndex, command.type, -1);
+      var key = new InnerBindingKey(
+        command.deviceIndex, command.type, command.index);
+      this.CollectBindingInvocations(snapshot, genericKey, command, tasks);
+      this.CollectBindingInvocations(snapshot, key, command, tasks);
+      return tasks.Count == 0 ? Task.CompletedTask : Task.WhenAll(tasks);
+    }
+
+    private void CollectBindingInvocations(
+      ImmutableDictionary<InnerBindingKey, ImmutableArray<Binding>> snapshot,
+      InnerBindingKey key,
+      MidiCommand command,
+      List<Task> tasks
+    ) {
+      if (!snapshot.TryGetValue(
+          key, out ImmutableArray<Binding> triggered)) {
+        return;
       }
       foreach (Binding binding in triggered) {
-        string message = binding.callback(command.index, command.value);
-        if (message != null) {
-          this.MidiLog.Append(
-            "Binding \"" + binding.config.BindingName +
-            "\" triggered: " + message
-          );
-        }
+        tasks.Add(this.InvokeBindingAsync(binding, command));
       }
     }
 
+    private async Task InvokeBindingAsync(
+      Binding binding, MidiCommand command
+    ) {
+      try {
+        BindingInvocation invocation =
+          binding.callback(command.index, command.value);
+        if (invocation.Completion != null) {
+          await invocation.Completion.ConfigureAwait(false);
+        }
+        if (invocation.Message != null) {
+          this.MidiLog.Append(
+            "Binding \"" + (binding.config?.BindingName ?? "unnamed") +
+            "\" triggered: " + invocation.Message);
+        }
+      } catch (Exception error) {
+        this.MidiLog.Append(
+          "Binding \"" + (binding.config?.BindingName ?? "unnamed") +
+          "\" failed: " + UnwrapInvocationError(error).Message);
+      }
+    }
+
+    private static Exception UnwrapInvocationError(Exception error) =>
+      error is System.Reflection.TargetInvocationException invocation &&
+          invocation.InnerException != null
+        ? invocation.InnerException
+        : error;
+
     private void TerminateMidi() {
+      if (this.devices == null) {
+        return;
+      }
       foreach (var pair in this.devices) {
         pair.Value.StopRecording();
         pair.Value.Dispose();
@@ -273,27 +353,7 @@ namespace Spectrum.MIDI {
       this.devices = null;
     }
 
-    private void Update() {
-      //lock (this.buffer) {
-      //}
-    }
-
-    private void MidiProcessingThread() {
-      this.InitializeMidi();
-      try {
-        while (!this.stopRequested) {
-          this.Update();
-        }
-      } finally {
-        this.TerminateMidi();
-      }
-    }
-
     public void OperatorUpdate() {
-      if (!this.config.midiInputInSeparateThread) {
-        this.Update();
-      }
-
       int numMessages = this.buffer.Count;
       var commands = new MidiCommand[numMessages];
       for (int i = 0; i < numMessages; i++) {
@@ -317,23 +377,25 @@ namespace Spectrum.MIDI {
     }
 
     public double GetKnobValue(int deviceIndex, int knob) {
-      if (
-        !this.knobValues.ContainsKey(deviceIndex) ||
-        !this.knobValues[deviceIndex].ContainsKey(knob)
-      ) {
-        return -1.0;
+      lock (this.midiStateLock) {
+        if (!this.knobValues.TryGetValue(
+            deviceIndex, out Dictionary<int, double> values) ||
+            !values.TryGetValue(knob, out double value)) {
+          return -1.0;
+        }
+        return value;
       }
-      return this.knobValues[deviceIndex][knob];
     }
 
     public double GetNoteVelocity(int deviceIndex, int note) {
-      if (
-        !this.noteVelocities.ContainsKey(deviceIndex) ||
-        !this.noteVelocities[deviceIndex].ContainsKey(note)
-      ) {
-        return 0.0;
+      lock (this.midiStateLock) {
+        if (!this.noteVelocities.TryGetValue(
+            deviceIndex, out Dictionary<int, double> values) ||
+            !values.TryGetValue(note, out double value)) {
+          return 0.0;
+        }
+        return value;
       }
-      return this.noteVelocities[deviceIndex][note];
     }
 
     public MidiCommand[] GetCommandsSinceLastTick() {

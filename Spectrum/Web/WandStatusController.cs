@@ -13,7 +13,7 @@ namespace Spectrum.Web {
    *
    * Snapshot() only reads the thread-safe snapshots OrientationInput exposes, so
    * it never races the UDP receive thread. The calibrate write goes through the
-   * ControlGateway, so it lands on the same thread a native GUI write would and
+   * application-state dispatcher, so it lands on the same thread a native GUI write would and
    * is picked up by OrientationInput.OperatorUpdate, which clears the flag.
    */
   public sealed class WandStatusController {
@@ -48,11 +48,12 @@ namespace Spectrum.Web {
     }
 
     private readonly OrientationInput orientation;
-    private readonly ControlGateway gateway;
+    private readonly ApplicationStateDispatcher gateway;
     private readonly Configuration config;
 
     public WandStatusController(
-      OrientationInput orientation, ControlGateway gateway, Configuration config
+      OrientationInput orientation, ApplicationStateDispatcher gateway,
+      Configuration config
     ) {
       this.orientation = orientation;
       this.gateway = gateway;

@@ -29,7 +29,7 @@ namespace Spectrum {
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly LayerTrigger trigger;
     private readonly ArcLightningGraph graph;
@@ -46,14 +46,13 @@ namespace Spectrum {
       AudioInput audio,
       OrientationInput orientationInput,
       BeatBroadcaster beats,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.trigger = new LayerTrigger(
         environment, orientationInput, runtime.InstanceId, beats, audio);

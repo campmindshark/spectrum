@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Numerics;
+using static Spectrum.MathUtil;
 
 namespace Spectrum.Visualizers {
 
@@ -27,7 +28,7 @@ namespace Spectrum.Visualizers {
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly OrientationCenter center;
     private readonly LayerTrigger trigger;
@@ -57,14 +58,13 @@ namespace Spectrum.Visualizers {
       AudioInput audio,
       OrientationInput orientationInput,
       OrientationCenter center,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.center = center;
       this.trigger = new LayerTrigger(
@@ -158,7 +158,7 @@ namespace Spectrum.Visualizers {
         // Crisp metaball: a hard cutoff at the threshold, always full value.
         if (potential - threshold > 0) {
           drawn = true;
-          best = new Color(metaballHue, metaballSaturation, 1).ToInt();
+          best = HsvToInt(metaballHue, metaballSaturation, 1);
           bestValue = 1;
         }
 
@@ -175,7 +175,7 @@ namespace Spectrum.Visualizers {
             double value = .8 - Math.Clamp(1 - contourBracket / 10, 0, .8);
             if (!drawn || value > bestValue) {
               drawn = true;
-              best = new Color(metaballHue, .4, value).ToInt();
+              best = HsvToInt(metaballHue, .4, value);
               bestValue = value;
             }
           }

@@ -64,7 +64,7 @@ namespace Spectrum.LayerPipeline.Tests {
     private static void ScenePaletteOwnership() {
       var config = DirectConfig(Palette("Blue hour", 0x102030));
       config.domeLayerStack = new List<DomeLayerSettings>();
-      var scenes = new SceneService(config);
+      var scenes = new SceneService(config, DomeLayerCatalog.Metadata);
       (bool saved, string saveError) = scenes.Save("Look");
       Assert(saved, saveError);
 

@@ -26,7 +26,6 @@ namespace Spectrum {
       this.config = config;
       this.calibration = calibration;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
     }
 
     public int Priority => this.calibration.ShouldOverride ? 10000 : 0;

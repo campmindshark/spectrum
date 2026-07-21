@@ -56,7 +56,7 @@ namespace Spectrum.Web {
   /**
    * The bridge the REST/SignalR layer uses. Reads go straight against
    * Configuration through descriptors (role-checked); writes are validated,
-   * role-checked, then serialized through the ControlGateway so they never
+   * role-checked, then serialized through the ApplicationStateDispatcher so they never
    * touch Configuration off the UI/serialization thread.
    *
    * This is the only web-side object that holds the Configuration reference,
@@ -65,12 +65,12 @@ namespace Spectrum.Web {
   public sealed class ControlService {
 
     private readonly ParameterRegistry registry;
-    private readonly ControlGateway gateway;
+    private readonly ApplicationStateDispatcher gateway;
     private readonly Configuration config;
 
     public ControlService(
       ParameterRegistry registry,
-      ControlGateway gateway,
+      ApplicationStateDispatcher gateway,
       Configuration config
     ) {
       this.registry = registry;

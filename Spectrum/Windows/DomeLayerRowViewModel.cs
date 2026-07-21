@@ -199,7 +199,7 @@ namespace Spectrum {
       BuildVisualizerOptions();
     private static List<DomeLayerVisualizerOption> BuildVisualizerOptions() {
       var options = new List<DomeLayerVisualizerOption>();
-      foreach (LayerDefinition definition in LayerCatalog.Default.Definitions) {
+      foreach (LayerDefinition definition in DomeLayerCatalog.Metadata.Definitions) {
         options.Add(new DomeLayerVisualizerOption {
           Key = definition.Id,
           Label = definition.DisplayName,
@@ -269,7 +269,7 @@ namespace Spectrum {
     }
 
     private LayerDefinition CurrentDefinition =>
-      LayerCatalog.Default.Get(this.visualizerKey);
+      DomeLayerCatalog.Metadata.Get(this.visualizerKey);
     private LayerActionDefinition FireAction =>
       this.CurrentDefinition?.FireAction;
     private LayerActionDefinition ClearAction =>
@@ -316,7 +316,7 @@ namespace Spectrum {
       }
       this.Params.Clear();
       AddParams(
-        LayerCatalog.Default.ParametersFor(this.visualizerKey),
+        DomeLayerCatalog.Metadata.ParametersFor(this.visualizerKey),
         rendererSeed, false);
       DomeBlend blend = DomeBlend.FromId(this.blendMode);
       if (blend != null) {

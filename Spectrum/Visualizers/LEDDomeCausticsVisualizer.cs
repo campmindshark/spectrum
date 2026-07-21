@@ -44,7 +44,7 @@ namespace Spectrum.Visualizers {
   class LEDDomeCausticsVisualizer : DomeLayerVisualizer {
 
     private readonly LayerRendererRuntime runtime;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
 
     // Wall-clock accumulator advanced by speed * elapsed each frame so the
@@ -64,11 +64,10 @@ namespace Spectrum.Visualizers {
 
     public LEDDomeCausticsVisualizer(
       LayerRendererRuntime runtime,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.runtime = runtime;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
     }
 

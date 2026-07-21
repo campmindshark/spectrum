@@ -55,7 +55,7 @@ namespace Spectrum {
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly ImmutableArray<Vector2> projectedPixels;
     private readonly OrientationCenter center;
@@ -83,7 +83,7 @@ namespace Spectrum {
       OrientationInput orientationInput,
       OrientationCenter center,
       BeatBroadcaster beat,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
@@ -91,7 +91,6 @@ namespace Spectrum {
       this.orientationInput = orientationInput;
       this.center = center;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.projectedPixels =
         DomeSurfaceGeometry.ProjectNormalsToStrip(this.buffer.Normals);

@@ -32,19 +32,13 @@
      */
     void OperatorUpdate();
 
-    /**
-     * Registers a Visualizer with this Output (to be returned via
-     * GetVisualizers).
-     */
+    /** Owner-only lifecycle publication after construction succeeds. */
     void RegisterVisualizer(Visualizer visualizer);
 
     /** Removes a previously registered Visualizer. */
     void UnregisterVisualizer(Visualizer visualizer);
 
-    /**
-     * Returns all the Visualizers that have called RegisterVisualizer on this
-     * Output.
-     */
+    /** Returns the Visualizers published by the owning Operator. */
     Visualizer[] GetVisualizers();
 
   }

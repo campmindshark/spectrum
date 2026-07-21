@@ -16,7 +16,7 @@ namespace Spectrum {
     private readonly AudioInput audio;
     private readonly MidiInput midi;
     private readonly BeatBroadcaster beat;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
 
     // Static per-pixel geometry, baked once in the constructor: the racer lookup
@@ -99,7 +99,7 @@ namespace Spectrum {
       // `palette` is the layer's chosen named palette; idx and the Multi
       // gradient remain relative color-slot indices within it.
       public int Color(
-        LEDDomeOutput dome, int palette, double loc_y, double loc_ang
+        DomeRenderContext dome, int palette, double loc_y, double loc_ang
       ) {
         if (conf.coloring == Coloring.Fade) {
           return LEDColor.ScaleColor(
@@ -215,7 +215,7 @@ namespace Spectrum {
      AudioInput audio,
      MidiInput midi,
      BeatBroadcaster beat,
-     LEDDomeOutput dome
+     DomeRenderContext dome
      ) {
       this.runtime = runtime;
       this.audio = audio;
@@ -232,7 +232,6 @@ namespace Spectrum {
       // This call is necessary to make sure the Operator considers this
       // Visualizer when comparing priorities for LEDDomeOutput. If you skip it
       // your Visualizer will never run
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
 
       // Bake each pixel's angle and height from its strut/LED identity once.

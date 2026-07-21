@@ -23,7 +23,7 @@ namespace Spectrum.Visualizers {
     private readonly LayerRendererRuntime runtime;
     private readonly OrientationInput orientationInput;
     private readonly OrientationCenter center;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly System.Diagnostics.Stopwatch frameTimer =
       new System.Diagnostics.Stopwatch();
@@ -82,14 +82,13 @@ namespace Spectrum.Visualizers {
       LayerRendererRuntime runtime,
       OrientationInput orientationInput,
       OrientationCenter center,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
       this.orientationInput = orientationInput;
       this.center = center;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.TankEnsureAllocated();
     }

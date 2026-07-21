@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Numerics;
+using static Spectrum.MathUtil;
 
 namespace Spectrum.Visualizers {
 
@@ -33,7 +34,7 @@ namespace Spectrum.Visualizers {
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly BeatBroadcaster beat;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly OrientationCenter center;
     private readonly LayerTrigger trigger;
@@ -58,7 +59,7 @@ namespace Spectrum.Visualizers {
       OrientationInput orientationInput,
       OrientationCenter center,
       BeatBroadcaster beat,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
@@ -66,7 +67,6 @@ namespace Spectrum.Visualizers {
       this.orientationInput = orientationInput;
       this.beat = beat;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.center = center;
       this.trigger = new LayerTrigger(
@@ -171,12 +171,12 @@ namespace Spectrum.Visualizers {
         if (this.stampEffect == 1) {
           // Evenly spaced grid of rings in surface angle.
           if (OrientationRingGeometry.StampGridContains(stampDot)) {
-            this.buffer.pixels[i].color = new Color(stampHue, .2, 1).ToInt();
+            this.buffer.pixels[i].color = HsvToInt(stampHue, .2, 1);
           }
         } else if (this.stampEffect == 2) {
           // Band that expands from the facing to the rim, sharpening as it goes.
           if (rhythmBand.ContainsDot(stampDot)) {
-            this.buffer.pixels[i].color = new Color(stampHue, .2, 1).ToInt();
+            this.buffer.pixels[i].color = HsvToInt(stampHue, .2, 1);
           }
         }
       }

@@ -41,7 +41,7 @@ namespace Spectrum.Base {
     public MidiLogMessage[] DequeueAllMessages() {
       lock (this.messages) {
         MidiLogMessage[] result = new MidiLogMessage[this.messages.Count];
-        for (int i = 0; i < this.messages.Count; i++) {
+        for (int i = 0; i < result.Length; i++) {
           // Curiously, Take() removes the item, but Take(1) does not
           result[i] = this.messages.Take();
         }

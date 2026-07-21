@@ -55,6 +55,9 @@ namespace Spectrum.Web {
         new TelemetryItem("domeOPCFPS", TelemetrySource.Runtime,
           nameof(RuntimeTelemetry.DomeBeagleboneOPCFPS),
           (t, b) => t.DomeBeagleboneOPCFPS),
+        new TelemetryItem("layerPlanError", TelemetrySource.Runtime,
+          nameof(RuntimeTelemetry.LayerPlanError),
+          (t, b) => t.LayerPlanError),
         new TelemetryItem("bpm", TelemetrySource.Beat,
           "BPMString", (t, b) => b.BPMString),
       };

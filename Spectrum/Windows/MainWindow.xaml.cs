@@ -65,7 +65,6 @@ namespace Spectrum {
     }
 
     private static readonly HashSet<string> configPropertiesToRebootOn = new HashSet<string>() {
-      nameof(SpectrumConfiguration.midiInputInSeparateThread),
       nameof(SpectrumConfiguration.domeOutputInSeparateThread),
     };
     // Property changes that never warrant a config save, derived from the one
@@ -89,6 +88,7 @@ namespace Spectrum {
 
     private Operator op;
     private SpectrumConfiguration config;
+    private ApplicationStateDispatcher applicationStateDispatcher;
     public static bool LoadingConfig { get; set; } = false;
     private List<int> midiDeviceIndices;
     private List<int> midiPresetIndices;
@@ -135,12 +135,9 @@ namespace Spectrum {
     }
 
     private void StartWebServer() {
-      // All web-originated mutations funnel through this gateway, which marshals
-      // onto the WPF Dispatcher so they behave exactly like native GUI writes.
-      var gateway = new Web.DispatcherControlGateway(
-        System.Windows.Application.Current.Dispatcher);
       var registry = Web.SpectrumParameters.BuildRegistry();
-      var controls = new Web.ControlService(registry, gateway, this.config);
+      var controls = new Web.ControlService(
+        registry, this.applicationStateDispatcher, this.config);
       // The event stream subscribes to config.PropertyChanged (and the
       // Operator's EnabledChanged) and fans changes out to connected browsers
       // over SSE.
@@ -155,31 +152,37 @@ namespace Spectrum {
       // lease. Persisted config writes go through the same gateway; the
       // transient cable selection is the Operator's shared calibration state.
       this.domeCalibrationController = new Web.DomeCalibrationController(
-        gateway, this.config, this.op.DomeCalibration,
+        this.applicationStateDispatcher, this.config,
+        this.op.DomeCalibration,
         LEDs.LEDDomeOutput.NumCables);
       // Read-only wand/orientation-device diagnostics (the web port of
       // WandStatusWindow), plus its Calibrate All action through the gateway.
       var wands = new Web.WandStatusController(
-        this.op.OrientationInput, gateway, this.config);
+        this.op.OrientationInput, this.applicationStateDispatcher, this.config);
       // The global Start/Stop button: toggles the Operator's runtime Enabled
       // flag (the same engine switch the native power button drives) through the
       // gateway.
-      var operatorControl = new Web.OperatorController(this.op, gateway);
+      var operatorControl = new Web.OperatorController(
+        this.op, this.applicationStateDispatcher);
       // The maintenance "Tap" tempo button: applies a browser-computed BPM as
       // the human tap tempo (and switches the source to Human) through the
       // gateway, the same as a native tap.
       var tempo = new Web.TempoController(
-        this.config, this.op.BeatBroadcaster, gateway);
+        this.config, this.op.BeatBroadcaster,
+        this.applicationStateDispatcher);
       // The dome layer stack: whole-stack last-write-wins through the same
       // gateway (replaces the old domeActiveVis dropdown, broadcast over SSE).
-      var layers = new Web.LayersController(gateway, this.config);
+      var layers = new Web.LayersController(
+        this.applicationStateDispatcher, this.config);
       // Saved dome scenes: named snapshots of the stack + globals, saved/recalled
       // through the same gateway and broadcast over the SSE "scenes" frame.
-      var scenes = new Web.SceneController(gateway, this.config);
+      var scenes = new Web.SceneController(
+        this.applicationStateDispatcher, this.config);
       // The color palette: the live eight-slot palette (whole-palette
       // last-write-wins, broadcast over the SSE "palette" frame) plus named
       // presets (parallel to scenes, broadcast over the "palettes" frame).
-      var palettes = new Web.PaletteController(gateway, this.config);
+      var palettes = new Web.PaletteController(
+        this.applicationStateDispatcher, this.config);
       // Startup-only feature flag: when disabled no simulator service is
       // constructed and WebServer maps no simulator routes.
       var domeSimulator = this.config.webDomeSimulatorEnabled
@@ -385,14 +388,17 @@ namespace Spectrum {
       if (this.config == null) {
         this.config = new SpectrumConfiguration();
       }
-      this.op = new Operator(this.config);
+      this.applicationStateDispatcher =
+        new DispatcherApplicationStateDispatcher(
+          this.Dispatcher);
+      this.config.AttachMutationDispatcher(this.applicationStateDispatcher);
+      this.op = new Operator(this.config, this.applicationStateDispatcher);
 
       this.RefreshAudioDevices(null, null);
       this.RefreshMidiDevices(null, null);
       this.LoadPresets();
 
       this.Bind(nameof(this.config.midiInputEnabled), this.midiEnabled, CheckBox.IsCheckedProperty);
-      this.Bind(nameof(this.config.midiInputInSeparateThread), this.midiThreadCheckbox, CheckBox.IsCheckedProperty);
       this.Bind(nameof(this.config.domeOutputInSeparateThread), this.domeThreadCheckbox, CheckBox.IsCheckedProperty);
       // FPS counters are runtime telemetry, not config — bind to the Operator's
       // RuntimeTelemetry (WPF marshals its background-thread notifications).
@@ -1181,6 +1187,12 @@ namespace Spectrum {
           this.midiContinuousKnobPropertyName.Focus();
           return;
         }
+        if (MidiBindingConfig.ConfigurationPropertyError(
+            configPropertyName, typeof(double)) != null) {
+          this.midiContinuousKnobPropertyName.Text = "";
+          this.midiContinuousKnobPropertyName.Focus();
+          return;
+        }
         int knobIndex;
         try {
           knobIndex = Convert.ToInt32(this.midiContinuousKnobIndex.Text.Trim());
@@ -1223,6 +1235,12 @@ namespace Spectrum {
           this.midiDiscreteKnobPropertyName.Focus();
           return;
         }
+        if (MidiBindingConfig.ConfigurationPropertyError(
+            configPropertyName, typeof(int)) != null) {
+          this.midiDiscreteKnobPropertyName.Text = "";
+          this.midiDiscreteKnobPropertyName.Focus();
+          return;
+        }
         int knobIndex, numPossibleValues;
         try {
           knobIndex = Convert.ToInt32(this.midiDiscreteKnobIndex.Text.Trim());
@@ -1247,6 +1265,12 @@ namespace Spectrum {
       } else if (this.midiBindingType.SelectedIndex == 3) {
         string configPropertyName = this.midiLogarithmicKnobPropertyName.Text.Trim();
         if (String.IsNullOrEmpty(configPropertyName)) {
+          this.midiLogarithmicKnobPropertyName.Text = "";
+          this.midiLogarithmicKnobPropertyName.Focus();
+          return;
+        }
+        if (MidiBindingConfig.ConfigurationPropertyError(
+            configPropertyName, typeof(double)) != null) {
           this.midiLogarithmicKnobPropertyName.Text = "";
           this.midiLogarithmicKnobPropertyName.Focus();
           return;
@@ -1471,7 +1495,8 @@ namespace Spectrum {
 
     private void MidiContinuousKnobPropertyNameLostFocus(object sender, RoutedEventArgs e) {
       var configPropertyName = this.midiContinuousKnobPropertyName.Text;
-      if (typeof(Configuration).GetProperty(configPropertyName) == null) {
+      if (MidiBindingConfig.ConfigurationPropertyError(
+          configPropertyName, typeof(double)) != null) {
         this.midiContinuousKnobPropertyName.Text = "";
       }
     }
@@ -1526,7 +1551,8 @@ namespace Spectrum {
 
     private void MidiDiscreteKnobPropertyNameLostFocus(object sender, RoutedEventArgs e) {
       var configPropertyName = this.midiDiscreteKnobPropertyName.Text;
-      if (typeof(Configuration).GetProperty(configPropertyName) == null) {
+      if (MidiBindingConfig.ConfigurationPropertyError(
+          configPropertyName, typeof(int)) != null) {
         this.midiDiscreteKnobPropertyName.Text = "";
       }
     }
@@ -1549,7 +1575,8 @@ namespace Spectrum {
 
     private void MidiLogarithmicKnobPropertyNameLostFocus(object sender, RoutedEventArgs e) {
       var configPropertyName = this.midiLogarithmicKnobPropertyName.Text;
-      if (typeof(Configuration).GetProperty(configPropertyName) == null) {
+      if (MidiBindingConfig.ConfigurationPropertyError(
+          configPropertyName, typeof(double)) != null) {
         this.midiLogarithmicKnobPropertyName.Text = "";
       }
     }

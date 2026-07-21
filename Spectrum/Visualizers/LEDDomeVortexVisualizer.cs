@@ -17,7 +17,7 @@ namespace Spectrum.Visualizers {
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly BeatBroadcaster beats;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
 
     // Static projected polar geometry. The vortex is intentionally viewed
@@ -43,14 +43,13 @@ namespace Spectrum.Visualizers {
       LayerRendererRuntime runtime,
       AudioInput audio,
       BeatBroadcaster beats,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.beats = beats;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
 
       int count = this.buffer.pixels.Length;

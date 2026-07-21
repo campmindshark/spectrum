@@ -10,7 +10,7 @@ namespace Spectrum.Web {
    * Enabled is live Operator state, not a persisted Configuration property, so
    * it rides its own tiny endpoint rather than the field-level LWW path.
    *
-   * The write is marshaled through the ControlGateway so it lands on the same
+   * The write is marshaled through the application-state dispatcher so it lands on the same
    * thread a native power-button click would (the Enabled setter spawns/joins
    * the OperatorThread and touches WPF-affine state). ConfigEventStream watches
    * Operator.EnabledChanged and broadcasts every flip, so a client's button
@@ -19,9 +19,11 @@ namespace Spectrum.Web {
   public sealed class OperatorController {
 
     private readonly Operator op;
-    private readonly ControlGateway gateway;
+    private readonly ApplicationStateDispatcher gateway;
 
-    public OperatorController(Operator op, ControlGateway gateway) {
+    public OperatorController(
+      Operator op, ApplicationStateDispatcher gateway
+    ) {
       this.op = op;
       this.gateway = gateway;
     }

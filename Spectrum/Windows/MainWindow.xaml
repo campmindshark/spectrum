@@ -230,11 +230,6 @@
                 </StackPanel>
               </Border>
 
-              <Expander Header="Advanced MIDI processing" Margin="0,2,8,8" Foreground="{StaticResource TextBrush}">
-                <Border Style="{StaticResource SectionCard}" Margin="0,8,0,0">
-                  <CheckBox x:Name="midiThreadCheckbox" Content="Process MIDI on a separate thread" />
-                </Border>
-              </Expander>
             </StackPanel>
 
             <StackPanel Grid.Column="1">

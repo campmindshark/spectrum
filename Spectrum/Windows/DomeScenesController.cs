@@ -18,7 +18,7 @@ namespace Spectrum {
   // layer rows automatically — this controller only manages the scene list.
   //
   // Every mutation runs on the UI thread (native GUI writes always do), so it
-  // calls SceneService directly rather than through the web ControlGateway.
+  // calls SceneService directly on the application-state dispatcher thread.
   public class DomeScenesController {
     private readonly Configuration config;
     private readonly SceneService service;
@@ -38,7 +38,7 @@ namespace Spectrum {
       ButtonBase saveButton, ButtonBase loadButton, ButtonBase deleteButton
     ) {
       this.config = config;
-      this.service = new SceneService(config);
+      this.service = new SceneService(config, DomeLayerCatalog.Metadata);
       this.dispatcher = sceneCombo.Dispatcher;
       this.sceneCombo = sceneCombo;
       this.nameBox = nameBox;

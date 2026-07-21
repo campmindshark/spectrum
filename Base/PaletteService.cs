@@ -13,9 +13,14 @@ namespace Spectrum.Base {
     public const string LayerParameterKey = "palette";
 
     private readonly Configuration config;
+    private readonly IDomeShowStateConfiguration showState;
 
     public PaletteService(Configuration config) {
       this.config = config;
+      this.showState = config as IDomeShowStateConfiguration ??
+        throw new ArgumentException(
+          "Palette configuration must support atomic show-state updates.",
+          nameof(config));
     }
 
     public IReadOnlyList<string> Names() => Names(this.config);
@@ -105,10 +110,12 @@ namespace Spectrum.Base {
         return (false, "at least one palette is required");
       }
       current.RemoveAt(removed);
-      this.config.domePalettes = current;
-      this.config.domeLayerStack = RemapStack(
-        this.config.domeLayerStack, removed);
-      this.config.domeScenes = RemapScenes(this.config.domeScenes, removed);
+      this.showState.ApplyDomeShowState(new DomeShowStateUpdate(
+        RemapStack(this.config.domeLayerStack, removed),
+        current,
+        this.config.domeGlobalFadeSpeed,
+        this.config.domeGlobalHueSpeed,
+        RemapScenes(this.config.domeScenes, removed)));
       return (true, null);
     }
 

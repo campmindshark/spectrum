@@ -66,7 +66,7 @@ namespace Spectrum.Base {
     public abstract object Coerce(object raw);
 
     // Apply an already-Coerce()d value to the Configuration. Must only be
-    // called on the serialization thread (via a ControlGateway).
+    // called on the serialization thread (via ApplicationStateDispatcher).
     public abstract void Set(Configuration config, object coerced);
 
     // Optional UI-generation metadata; null when not applicable.

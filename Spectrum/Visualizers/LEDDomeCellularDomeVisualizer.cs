@@ -31,7 +31,7 @@ namespace Spectrum {
     private readonly LayerRendererRuntime runtime;
     private readonly OrientationInput orientationInput;
     private readonly BeatBroadcaster beats;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly LayerTrigger actionTrigger;
     private readonly GlassMosaicTopology topology;
@@ -52,14 +52,13 @@ namespace Spectrum {
       LayerRendererRuntime runtime,
       OrientationInput orientationInput,
       BeatBroadcaster beats,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
       this.orientationInput = orientationInput;
       this.beats = beats;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.actionTrigger = new LayerTrigger(
         environment, null, runtime.InstanceId);

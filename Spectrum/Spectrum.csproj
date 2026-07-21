@@ -9,6 +9,7 @@
     <!-- ColorPicker uses System.Windows.Forms.ColorDialog / DialogResult,
          MainWindow uses System.Windows.Forms.Timer. -->
     <UseWindowsForms>true</UseWindowsForms>
+    <DefineConstants>$(DefineConstants);SPECTRUM_FEATURES</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -45,6 +46,15 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Feature schemas and typed options compile into the application host,
+         while Base compiles only their reusable contracts from these sources. -->
+    <Compile Include="..\Base\DomeLayerSettings.cs"
+             Link="Features\BuiltInLayerSchemas.cs" />
+    <Compile Include="..\Base\LayerRendererOptions.cs"
+             Link="Features\BuiltInLayerOptions.cs" />
   </ItemGroup>
 
   <ItemGroup>

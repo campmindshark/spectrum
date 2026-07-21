@@ -3,10 +3,13 @@ using System.Collections.Immutable;
 
 namespace Spectrum.Base {
 
+#if !SPECTRUM_FEATURES
   // Marker for immutable renderer options compiled from the serializer-facing
   // parameter bag. Renderers consume the concrete records below; string keys
   // are confined to the stack-compilation boundary.
   public interface ILayerRendererOptions { }
+
+#else
 
   public sealed record EmptyLayerRendererOptions : ILayerRendererOptions {
     public static EmptyLayerRendererOptions Instance { get; } = new();
@@ -447,4 +450,5 @@ namespace Spectrum.Base {
       Double(v, "speed"), Double(v, "damping"), Double(v, "sharpness"),
       Double(v, "brightness"), Integer(v, "color"));
   }
+#endif
 }

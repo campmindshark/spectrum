@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Spectrum.Base;
 using System.ComponentModel;
@@ -13,7 +14,7 @@ namespace Spectrum.LEDs {
 
   enum LEDDomeStrutTypes { Yellow, Red, Blue, Green, Purple, Orange };
 
-  public class LEDDomeOutput : Output {
+  public class LEDDomeOutput : Output, DomeRenderContext {
 
     // There are 8 strands coming out of each control box. For each of these
     // strands, this variable represents the sequence of strut types
@@ -178,6 +179,10 @@ namespace Spectrum.LEDs {
     private readonly BeatBroadcaster beat;
     private readonly List<Visualizer> visualizers;
     private readonly DomeCompositor compositor;
+    private DomeRenderGeneration renderGeneration;
+    // Operator-thread-only frame capture. Visualizers, compositor palette
+    // effects, and global hue all read through this same accepted generation.
+    private DomeRenderGeneration frameRenderGeneration;
     private static readonly int maxStripLength;
 
     // The dome is wired as 10 "cables": each of the 5 control boxes drives 8
@@ -257,6 +262,12 @@ namespace Spectrum.LEDs {
         this.MakeDomeFrame, orientationAngle,
         paletteColor: (palette, position) => this.GetGradientBetweenColors(
           0, 7, position, 0, false, palette));
+      DomeShowStateSnapshot initialShowState =
+        (config as IDomeShowStateConfiguration)?.DomeShowStateSnapshot ??
+          DomeShowStateSnapshot.Empty;
+      this.renderGeneration = new DomeRenderGeneration(
+        RenderPlan.Empty, initialShowState);
+      this.frameRenderGeneration = this.renderGeneration;
       this.RebuildOutputMapping();
       this.config.PropertyChanged += ConfigUpdated;
     }
@@ -411,11 +422,13 @@ namespace Spectrum.LEDs {
       // with the cache still valid; Composite reads only their buffers, so the
       // ordering composite -> opc send -> cache invalidate is required. See the
       // GetGradientColor cache note in EnsureFrameColorCache.
-      DomeFrame completed = this.compositor.Compose();
+      DomeRenderGeneration frameGeneration =
+        this.frameRenderGeneration ?? Volatile.Read(ref this.renderGeneration);
+      DomeFrame completed = this.compositor.Compose(frameGeneration.Plan);
       if (completed != null) {
         this.WriteBuffer(completed);
         this.Flush();
-        this.ApplyGlobalHueRotation();
+        this.ApplyGlobalHueRotation(frameGeneration);
       }
       if (this.opcAPI != null) {
          this.opcAPI.OperatorUpdate();
@@ -425,14 +438,45 @@ namespace Spectrum.LEDs {
       // the per-frame color snapshot so the next frame's first pixel recomputes
       // it. See EnsureFrameColorCache.
       this.frameColorCacheValid = false;
+      this.frameRenderGeneration = null;
     }
 
-    // The Operator publishes the exact compiled plan it used for scheduling;
-    // the output never resolves renderers or re-reads persisted configuration.
-    public void PublishRenderPlan(RenderPlan plan) =>
-      this.compositor.Publish(plan);
+    // The Operator accepts the compiled plan and every persisted value it can
+    // consume with one reference write. A failed candidate leaves the complete
+    // previous generation live.
+    public void PublishRenderGeneration(DomeRenderGeneration generation) {
+      if (generation == null) {
+        throw new ArgumentNullException(nameof(generation));
+      }
+      Volatile.Write(ref this.renderGeneration, generation);
+      // Preserve DomeCompositor's standalone Plan/Compose API for diagnostics
+      // and tests; production composition receives the captured frame plan.
+      this.compositor.Publish(generation.Plan);
+    }
 
-    public RenderPlan RenderPlan => this.compositor.Plan;
+    public DomeShowStateSnapshot BeginOperatorFrame() {
+      DomeRenderGeneration generation =
+        Volatile.Read(ref this.renderGeneration) ?? DomeRenderGeneration.Empty;
+      this.frameRenderGeneration = generation;
+      this.frameColorCacheValid = false;
+      return generation.ShowState;
+    }
+
+    // Compatibility helper for direct compositor/output tests.
+    public void PublishRenderPlan(RenderPlan plan) {
+      DomeRenderGeneration current =
+        Volatile.Read(ref this.renderGeneration) ?? DomeRenderGeneration.Empty;
+      this.PublishRenderGeneration(new DomeRenderGeneration(
+        plan ?? RenderPlan.Empty, current.ShowState));
+    }
+
+    public RenderPlan RenderPlan =>
+      (Volatile.Read(ref this.renderGeneration) ??
+        DomeRenderGeneration.Empty).Plan;
+
+    public DomeShowStateSnapshot ShowState =>
+      (Volatile.Read(ref this.renderGeneration) ??
+        DomeRenderGeneration.Empty).ShowState;
 
     // Wall clock for the global hue rotation's per-frame increment. The
     // rotation is applied to the layers' own persistent buffers (which are
@@ -456,17 +500,18 @@ namespace Spectrum.LEDs {
     // and written. The layer buffers are faded, not cleared, so the per-frame
     // increments accumulate naturally — older trail pixels have rotated
     // further than fresh ones, restoring the along-trail hue gradient.
-    private void ApplyGlobalHueRotation() {
+    private void ApplyGlobalHueRotation(DomeRenderGeneration generation) {
       // Tick every frame (even when off) so re-enabling doesn't jump.
       double frameScale = this.hueClock.Tick();
-      if (this.config.domeGlobalHueSpeed <= 0) {
+      double hueSpeed = generation.ShowState.GlobalHueSpeed;
+      if (hueSpeed <= 0) {
         return;
       }
-      double rate = Math.Pow(10, -this.config.domeGlobalHueSpeed);
+      double rate = Math.Pow(10, -hueSpeed);
       double p = this.beat.ProgressThroughMeasure;
       double mod = 3 * p * p - 3 * p + 1;
       double delta = rate * mod * frameScale;
-      this.compositor.AdvancePostFrameHue(delta);
+      this.compositor.AdvancePostFrameHue(generation.Plan, delta);
     }
 
     // Per-frame snapshot of the beat/brightness state that every GetSingleColor /
@@ -488,6 +533,8 @@ namespace Spectrum.LEDs {
       this.frameFlashedOff = this.beat.CurrentlyFlashedOff;
       this.frameBrightness =
         this.config.domeMaxBrightness * this.config.domeBrightness;
+      this.frameRenderGeneration ??=
+        Volatile.Read(ref this.renderGeneration) ?? DomeRenderGeneration.Empty;
       this.frameColorCacheValid = true;
     }
 
@@ -1022,6 +1069,8 @@ namespace Spectrum.LEDs {
       return strutPositions.Length;
     }
 
+    public int StrutCount => strutPositions.Length;
+
     public static int GetNumLEDs(int strutIndex) {
       var strutPosition = strutPositions[strutIndex];
       int strutsLeft = strutPosition.Item2;
@@ -1040,7 +1089,8 @@ namespace Spectrum.LEDs {
       if (this.frameFlashedOff) {
         return 0x000000;
       }
-      DomePalette palette = PaletteService.Resolve(this.config, paletteIndex);
+      DomePaletteSnapshot palette =
+        this.frameRenderGeneration.ShowState.ResolvePalette(paletteIndex);
       return LEDColor.ScaleColor(
         palette == null ? 0x000000 : palette.GetSingleColor(index),
         this.frameBrightness
@@ -1058,15 +1108,16 @@ namespace Spectrum.LEDs {
       if (this.frameFlashedOff) {
         return 0x000000;
       }
-      DomePalette palette = PaletteService.Resolve(this.config, paletteIndex);
+      DomePaletteSnapshot palette =
+        this.frameRenderGeneration.ShowState.ResolvePalette(paletteIndex);
       if (
-        palette?.Colors == null ||
+        palette == null ||
         index < 0 || index >= palette.Colors.Length ||
         palette.Colors[index] == null
       ) {
         return 0x000000;
       }
-      if (!palette.Colors[index].IsGradient) {
+      if (!palette.Colors[index].Value.IsGradient) {
         return LEDColor.ScaleColor(
           palette.GetSingleColor(index),
           this.frameBrightness
@@ -1128,9 +1179,10 @@ namespace Spectrum.LEDs {
       } else if (scaledPixelPos > 1) {
         scaledPixelPos = 1;
       }
-      DomePalette palette = PaletteService.Resolve(this.config, paletteIndex);
+      DomePaletteSnapshot palette =
+        this.frameRenderGeneration.ShowState.ResolvePalette(paletteIndex);
       if (
-        palette?.Colors == null ||
+        palette == null ||
         palette.Colors.Length <= minColorIdx ||
         palette.Colors[minColorIdx] == null
       ) {
@@ -1142,16 +1194,17 @@ namespace Spectrum.LEDs {
       ) {
         return 0x000000;
       }
-      if (!palette.Colors[minColorIdx].IsGradient) {
+      if (!palette.Colors[minColorIdx].Value.IsGradient) {
         return this.GetSingleColor(minColorIdx, paletteIndex);
       }
       // Blend Color1 of the two adjacent slots. Read the palette directly
       // (unscaled) and apply frameBrightness exactly once at the end — routing
       // the endpoints through this.GetSingleColor would pre-scale each by
       // frameBrightness, making the result quadratic in the brightness slider.
-      LEDColor color = new LEDColor(
+      var color = new DomeColorSnapshot(
         palette.GetSingleColor(minColorIdx),
-        palette.GetSingleColor(maxColorIdx));
+        palette.GetSingleColor(maxColorIdx),
+        true);
       return LEDColor.ScaleColor(
         color.GradientColor(scaledPixelPos, focusPos, wrap),
         this.frameBrightness

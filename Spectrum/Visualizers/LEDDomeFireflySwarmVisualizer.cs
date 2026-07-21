@@ -19,7 +19,7 @@ namespace Spectrum.Visualizers {
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly ImmutableArray<Vector3> pixelPositions;
     private readonly FireflySwarmState swarm;
@@ -32,13 +32,12 @@ namespace Spectrum.Visualizers {
       LayerRendererRuntime runtime,
       AudioInput audio,
       OrientationInput orientationInput,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.pixelPositions = this.buffer.BakePixelPositions();
       int population = this.runtime

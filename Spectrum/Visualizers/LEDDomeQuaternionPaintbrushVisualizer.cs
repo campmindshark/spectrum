@@ -51,7 +51,7 @@ namespace Spectrum.Visualizers {
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
     private readonly BeatBroadcaster beat;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly Random rand;
 
@@ -93,7 +93,7 @@ namespace Spectrum.Visualizers {
       OrientationInput orientationInput,
       OrientationCenter center,
       BeatBroadcaster beat,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
@@ -101,7 +101,6 @@ namespace Spectrum.Visualizers {
       this.orientationInput = orientationInput;
       this.beat = beat;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.rand = new Random();
       this.center = center;
@@ -265,7 +264,7 @@ namespace Spectrum.Visualizers {
         if (potential - threshold > 0) {
           drawn = true;
           if (1 > bestValue) {
-            best = new Color(metaballHue, metaballSaturation, 1).ToInt();
+            best = HsvToInt(metaballHue, metaballSaturation, 1);
             bestValue = 1;
           }
         }
@@ -275,7 +274,8 @@ namespace Spectrum.Visualizers {
         if (rippleBand.Contains(ripplePoint, spot)) {
           drawn = true;
           if (rippleValue > bestValue) {
-            best = new Color(metaballHue, rippleSaturation, rippleValue).ToInt();
+            best = HsvToInt(
+              metaballHue, rippleSaturation, rippleValue);
             bestValue = rippleValue;
           }
         }
@@ -289,14 +289,14 @@ namespace Spectrum.Visualizers {
           if (stampEffect == 1) {
             // Evenly spaced grid of rings in surface angle.
             if (OrientationRingGeometry.StampGridContains(stampDot)) {
-              best = new Color(stampHue, .2, 1).ToInt();
+              best = HsvToInt(stampHue, .2, 1);
               bestValue = 1;
               drawn = true;
             }
           } else if (stampEffect == 2) {
             // Time-delayed band that contracts to the beat.
             if (stampBand.ContainsDot(stampDot)) {
-              best = new Color(stampHue, .2, 1).ToInt();
+              best = HsvToInt(stampHue, .2, 1);
               bestValue = 1;
               drawn = true;
             }

@@ -8,14 +8,27 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.ComponentModel;
 using System.Collections.Immutable;
+using System.Threading.Tasks;
 using Spectrum.Visualizers;
 
 namespace Spectrum {
 
   public class Operator {
 
+    // Keeps the existing headless/test construction path synchronous. The WPF
+    // host supplies its real dispatcher through the overload below.
+    private sealed class ImmediateApplicationStateDispatcher :
+      ApplicationStateDispatcher {
+      public bool CheckAccess() => true;
+      public void Post(Action mutation) => mutation();
+      public Task InvokeAsync(Action mutation) {
+        mutation();
+        return Task.CompletedTask;
+      }
+    }
+
     private readonly Configuration config;
-    private readonly ILayerStackSnapshotSource layerStackSource;
+    private readonly IDomeShowStateConfiguration showStateSource;
     private readonly List<Input> inputs;
     private readonly List<Output> outputs;
     private readonly List<Visualizer> visualizers;
@@ -25,8 +38,10 @@ namespace Spectrum {
     private readonly LayerRendererStore layerRendererStore;
     private readonly RenderPlanCompiler renderPlanCompiler =
       new RenderPlanCompiler();
-    private LayerStackSnapshot publishedLayerStack = LayerStackSnapshot.Empty;
+    private DomeShowStateSnapshot publishedShowState =
+      DomeShowStateSnapshot.Empty;
     private int layerReconcilePending;
+    private readonly ConfigurationDomeLayerEnvironment layerEnvironment;
 
     // Exposed so diagnostic windows (e.g. the wand status display) can read the
     // live orientation-device state. Stable for the Operator's lifetime — Reboot
@@ -91,11 +106,21 @@ namespace Spectrum {
     private readonly HashSet<Input> inputActivationFailures = new HashSet<Input>();
     private readonly HashSet<Output> outputActivationFailures = new HashSet<Output>();
 
-    public Operator(Configuration config) {
+    public Operator(Configuration config) : this(
+      config, new ImmediateApplicationStateDispatcher()) {
+    }
+
+    public Operator(
+      Configuration config,
+      ApplicationStateDispatcher stateDispatcher
+    ) {
+      if (stateDispatcher == null) {
+        throw new ArgumentNullException(nameof(stateDispatcher));
+      }
       this.config = config;
-      this.layerStackSource = config as ILayerStackSnapshotSource ??
+      this.showStateSource = config as IDomeShowStateConfiguration ??
         throw new ArgumentException(
-          "Operator configuration must publish immutable layer snapshots.",
+          "Operator configuration must publish immutable show-state snapshots.",
           nameof(config));
       this.BeatBroadcaster = new BeatBroadcaster(config);
       this.Telemetry = new RuntimeTelemetry();
@@ -109,17 +134,18 @@ namespace Spectrum {
       var audio = new AudioInput(config, this.BeatBroadcaster);
       this.AudioInput = audio;
       this.inputs.Add(audio);
-      var midi = new MidiInput(config, this.BeatBroadcaster);
+      var midi = new MidiInput(
+        config, this.BeatBroadcaster, stateDispatcher);
       this.inputs.Add(midi);
       this.MidiLog = midi.MidiLog;
-      var orientation = new OrientationInput(config);
+      var orientation = new OrientationInput(config, stateDispatcher);
       this.inputs.Add(orientation);
       this.OrientationInput = orientation;
       // Shared by every orientation-driven dome layer (Paintbrush, Ripple,
       // Stamp, Metaball, Magnetic Field) so they idle-drift around the same
       // wandering point instead of each running its own independent random walk.
       var orientationCenter = new OrientationCenter(config, orientation);
-      var layerEnvironment = new ConfigurationDomeLayerEnvironment(config);
+      this.layerEnvironment = new ConfigurationDomeLayerEnvironment(config);
 
       this.outputs = new List<Output>();
       // orientationCenter doubles as the prism blends' live wand-angle source
@@ -131,39 +157,41 @@ namespace Spectrum {
       this.DomeOutput = dome;
 
       this.visualizers = new List<Visualizer>();
-      this.visualizers.Add(new LEDDomeStrutIterationDiagnosticVisualizer(
+      this.AddVisualizer(new LEDDomeStrutIterationDiagnosticVisualizer(
         this.config,
         dome
       ));
-      this.visualizers.Add(new LEDDomeFlashColorsDiagnosticVisualizer(
+      this.AddVisualizer(new LEDDomeFlashColorsDiagnosticVisualizer(
         this.config,
         dome
       ));
-      this.visualizers.Add(new LEDDomeStrandTestDiagnosticVisualizer(
+      this.AddVisualizer(new LEDDomeStrandTestDiagnosticVisualizer(
         this.config,
         dome
       ));
-      this.visualizers.Add(new LEDDomeMappingCalibrationVisualizer(
+      this.AddVisualizer(new LEDDomeMappingCalibrationVisualizer(
         this.config,
         this.DomeCalibration,
         dome
       ));
-      this.visualizers.Add(new LEDDomeFullColorFlashDiagnosticVisualizer(
+      this.AddVisualizer(new LEDDomeFullColorFlashDiagnosticVisualizer(
         this.config,
         dome
       ));
-      this.visualizers.Add(new LEDDomeQuaternionTestVisualizer(
+      this.AddVisualizer(new LEDDomeQuaternionTestVisualizer(
         this.config,
         orientation,
         dome
       ));
       this.layerCatalog = DomeLayerCatalog.Create(
-        layerEnvironment, audio, midi, orientation, orientationCenter,
+        this.layerEnvironment, audio, midi, orientation, orientationCenter,
         this.BeatBroadcaster, dome);
       this.layerRendererStore = new LayerRendererStore(this.layerCatalog);
       this.config.PropertyChanged += this.OnLayerConfigurationChanged;
-      this.CapturePublishedLayerStack();
+      this.CapturePublishedShowState();
       this.ReconcileLayerVisualizers();
+      this.layerEnvironment.BeginOperatorFrame(
+        this.DomeOutput.BeginOperatorFrame());
       Interlocked.Exchange(ref this.layerReconcilePending, 0);
     }
 
@@ -174,47 +202,84 @@ namespace Spectrum {
     private void OnLayerConfigurationChanged(
       object sender, PropertyChangedEventArgs e
     ) {
-      if (e.PropertyName == nameof(this.config.domeLayerStack)) {
-        // SpectrumConfiguration compiled this immutable value before raising
-        // PropertyChanged; ReconcileLayerVisualizers never reads serializer
-        // DTOs.
-        this.CapturePublishedLayerStack();
+      if (e.PropertyName == DomeShowStateSnapshot.NotificationPropertyName) {
+        // SpectrumConfiguration compiled this complete immutable generation
+        // before raising PropertyChanged. Reconciliation and frames never
+        // reconstruct a look from serializer DTOs.
+        this.CapturePublishedShowState();
         Interlocked.Exchange(ref this.layerReconcilePending, 1);
+        if (!this.Enabled) {
+          this.ReconcileLayerVisualizers();
+          this.layerEnvironment.BeginOperatorFrame(
+            this.DomeOutput.BeginOperatorFrame());
+          Interlocked.Exchange(ref this.layerReconcilePending, 0);
+        }
       } else if (e.PropertyName == nameof(this.config.domeScenes)) {
         Interlocked.Exchange(ref this.layerReconcilePending, 1);
       }
     }
 
-    private void CapturePublishedLayerStack() {
-      LayerStackSnapshot snapshot =
-        this.layerStackSource.DomeLayerStackSnapshot;
+    private void CapturePublishedShowState() {
+      DomeShowStateSnapshot snapshot =
+        this.showStateSource.DomeShowStateSnapshot;
       Volatile.Write(
-        ref this.publishedLayerStack, snapshot ?? LayerStackSnapshot.Empty);
+        ref this.publishedShowState,
+        snapshot ?? DomeShowStateSnapshot.Empty);
     }
 
-    private void ReconcileLayerVisualizers() {
-      LayerStackSnapshot snapshot = Volatile.Read(
-        ref this.publishedLayerStack) ?? LayerStackSnapshot.Empty;
-      foreach (LayerSnapshot layer in snapshot.Layers) {
-        LayerRendererBinding binding = this.layerRendererStore.Resolve(layer);
-        if (binding.ReplacedRenderer != null) {
-          this.ReleaseLayerRenderer(binding.ReplacedRenderer);
-        }
-        if (binding.Created) {
-          if (binding.Renderer is not Visualizer visualizer) {
+    private bool ReconcileLayerVisualizers() {
+      DomeShowStateSnapshot showState = Volatile.Read(
+        ref this.publishedShowState) ?? DomeShowStateSnapshot.Empty;
+      LayerStackSnapshot snapshot = showState.LayerStack;
+      try {
+        using LayerRendererStore.Transaction candidate =
+          this.layerRendererStore.Prepare(snapshot);
+        foreach (LayerRendererBinding binding in candidate.Bindings) {
+          if (binding.Created && binding.Renderer is not Visualizer) {
             throw new InvalidOperationException(
-              "Layer renderer must implement Visualizer: " + layer.RendererId);
+              "Layer renderer must implement Visualizer: " +
+              binding.Renderer?.RendererId);
           }
-          this.visualizers.Add(visualizer);
         }
+        RenderPlan plan = this.renderPlanCompiler.Compile(
+          snapshot, candidate.Get);
+
+        // Everything that can invoke a feature compiler or renderer factory
+        // has succeeded. Publish this generation as one owner-side commit.
+        candidate.Commit();
+        foreach (LayerRendererBinding binding in candidate.Bindings) {
+          if (binding.Created) {
+            this.AddVisualizer((Visualizer)binding.Renderer);
+          }
+        }
+        this.DomeOutput.PublishRenderGeneration(
+          new DomeRenderGeneration(plan, showState));
+        foreach (LayerRendererBinding binding in candidate.Bindings) {
+          if (binding.ReplacedRenderer != null) {
+            this.ReleaseLayerRenderer(binding.ReplacedRenderer);
+          }
+        }
+        foreach (ILayerRenderer retired in this.layerRendererStore.Retain(
+          this.RetainedLayerInstanceIds(snapshot))) {
+          this.ReleaseLayerRenderer(retired);
+        }
+        this.Telemetry.LayerPlanError = null;
+        return true;
+      } catch (Exception error) {
+        // Keep the last published compositor plan and live renderer store.
+        // A bad extension/layer is observable but cannot terminate the engine.
+        this.Telemetry.LayerPlanError = error.Message;
+        Debug.WriteLine("Layer plan rejected: " + error);
+        return false;
       }
-      RenderPlan plan = this.renderPlanCompiler.Compile(
-        snapshot, this.layerRendererStore.Get);
-      this.DomeOutput.PublishRenderPlan(plan);
-      foreach (ILayerRenderer retired in this.layerRendererStore.Retain(
-        this.RetainedLayerInstanceIds(snapshot))) {
-        this.ReleaseLayerRenderer(retired);
+    }
+
+    private void AddVisualizer(Visualizer visualizer) {
+      if (visualizer == null) {
+        throw new ArgumentNullException(nameof(visualizer));
       }
+      this.visualizers.Add(visualizer);
+      this.DomeOutput.RegisterVisualizer(visualizer);
     }
 
     private HashSet<LayerInstanceId> RetainedLayerInstanceIds(
@@ -324,6 +389,13 @@ namespace Spectrum {
         if (Interlocked.Exchange(ref this.layerReconcilePending, 0) != 0) {
           this.ReconcileLayerVisualizers();
         }
+
+        // One accepted object supplies this frame's plan, palettes, and global
+        // effects. A concurrently published configuration generation cannot be
+        // observed until the next reconciliation/frame boundary.
+        DomeShowStateSnapshot frameShowState =
+          this.DomeOutput.BeginOperatorFrame();
+        this.layerEnvironment.BeginOperatorFrame(frameShowState);
 
         // Compile once before scheduling. These are the same renderer objects
         // and immutable layer snapshots DomeCompositor will consume below.

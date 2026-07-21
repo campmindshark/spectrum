@@ -23,7 +23,7 @@ namespace Spectrum.Visualizers {
     private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly OrientationInput orientationInput;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly LayerTrigger trigger;
 
@@ -41,13 +41,12 @@ namespace Spectrum.Visualizers {
       DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
       OrientationInput orientationInput,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
       this.orientationInput = orientationInput;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.trigger = new LayerTrigger(
         environment, orientationInput, runtime.InstanceId);

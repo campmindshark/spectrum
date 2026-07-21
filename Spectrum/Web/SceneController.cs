@@ -6,12 +6,11 @@ namespace Spectrum.Web {
 
   /**
    * The web control for saved dome scenes, mirroring LayersController: every
-   * mutation funnels through the ControlGateway so the read of the live stack
+   * mutation funnels through the application-state dispatcher so the read of the live stack
    * (on save) and the config writes land on the serialization thread, exactly
    * like a native GUI write. The scene *list* is broadcast on the SSE "scenes"
-   * frame so every client's dropdown converges; applying a scene needs no special
-   * SSE handling — it replaces domeLayerStack and the two globals, which already
-   * broadcast via the existing "layers" and parameter frames.
+   * frame so every client's dropdown converges; applying a scene broadcasts one
+   * versioned "show" frame containing the stack, palettes, and both globals.
    *
    * The actual logic lives in the shared SceneService (Base), so this surface and
    * the native DomeScenesController can't diverge.
@@ -23,12 +22,14 @@ namespace Spectrum.Web {
       public IReadOnlyList<string> scenes { get; set; }
     }
 
-    private readonly ControlGateway gateway;
+    private readonly ApplicationStateDispatcher gateway;
     private readonly SceneService service;
 
-    public SceneController(ControlGateway gateway, Configuration config) {
+    public SceneController(
+      ApplicationStateDispatcher gateway, Configuration config
+    ) {
       this.gateway = gateway;
-      this.service = new SceneService(config);
+      this.service = new SceneService(config, DomeLayerCatalog.Metadata);
     }
 
     public ScenesState State() {

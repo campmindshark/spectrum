@@ -14,7 +14,7 @@ namespace Spectrum.Web {
    *
    * Like OperatorController this is deliberately NOT a ParameterRegistry entry —
    * it's a momentary action against live BeatBroadcaster state, not a persisted
-   * field. The mutation is marshaled through the ControlGateway so PropertyChanged
+   * field. The mutation is marshaled through the application-state dispatcher so PropertyChanged
    * ("beatInput", "BPMString") fires on the UI thread exactly as a native tap
    * would, keeping the source dropdown, BPM telemetry, and other clients coherent.
    */
@@ -22,10 +22,11 @@ namespace Spectrum.Web {
 
     private readonly Configuration config;
     private readonly BeatBroadcaster beat;
-    private readonly ControlGateway gateway;
+    private readonly ApplicationStateDispatcher gateway;
 
     public TempoController(
-      Configuration config, BeatBroadcaster beat, ControlGateway gateway
+      Configuration config, BeatBroadcaster beat,
+      ApplicationStateDispatcher gateway
     ) {
       this.config = config;
       this.beat = beat;

@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 
 namespace Spectrum.Base {
@@ -8,9 +10,19 @@ namespace Spectrum.Base {
 
   public enum MidiCommandType : byte { Knob, Note, Program }
 
+  public readonly struct BindingInvocation {
+    public string Message { get; }
+    public Task Completion { get; }
+
+    public BindingInvocation(string message, Task completion = null) {
+      this.Message = message;
+      this.Completion = completion;
+    }
+  }
+
   public struct Binding {
     public BindingKey key;
-    public delegate string bindingCallback(int index, double val);
+    public delegate BindingInvocation bindingCallback(int index, double val);
     public bindingCallback callback;
     public IMidiBindingConfig config;
   }
@@ -45,7 +57,10 @@ namespace Spectrum.Base {
 
     // `beat` is the live tempo service (owned by the Operator, not part of
     // Configuration); only the tap-tempo and ADSR bindings use it.
-    Binding[] GetBindings(Configuration config, BeatBroadcaster beat);
+    Binding[] GetBindings(
+      Configuration config,
+      BeatBroadcaster beat,
+      ApplicationStateDispatcher stateDispatcher);
 
   }
 
@@ -56,7 +71,43 @@ namespace Spectrum.Base {
 
     public abstract object Clone();
 
-    public abstract Binding[] GetBindings(Configuration config, BeatBroadcaster beat);
+    public abstract Binding[] GetBindings(
+      Configuration config,
+      BeatBroadcaster beat,
+      ApplicationStateDispatcher stateDispatcher);
+
+    public static string ConfigurationPropertyError(
+      string propertyName, Type assignedType
+    ) {
+      if (string.IsNullOrWhiteSpace(propertyName)) {
+        return "configuration property name is required";
+      }
+      PropertyInfo property = typeof(Configuration).GetProperty(propertyName);
+      if (property == null) {
+        return "config property \"" + propertyName +
+          "\" no longer exists; rebind this knob";
+      }
+      if (!property.CanWrite) {
+        return "config property \"" + propertyName +
+          "\" is read-only; rebind this knob";
+      }
+      if (property.PropertyType != assignedType) {
+        return "config property \"" + propertyName + "\" has type " +
+          property.PropertyType.Name + ", but this binding assigns " +
+          assignedType.Name;
+      }
+      return null;
+    }
+
+    protected static PropertyInfo ResolveConfigurationProperty(
+      string propertyName, Type assignedType
+    ) {
+      string error = ConfigurationPropertyError(propertyName, assignedType);
+      if (error != null) {
+        throw new InvalidOperationException(error);
+      }
+      return typeof(Configuration).GetProperty(propertyName);
+    }
 
   }
 

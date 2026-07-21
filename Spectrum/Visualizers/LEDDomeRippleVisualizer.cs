@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Numerics;
+using static Spectrum.MathUtil;
 
 namespace Spectrum.Visualizers {
 
@@ -30,7 +31,7 @@ namespace Spectrum.Visualizers {
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly OrientationInput orientationInput;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly OrientationCenter center;
     private readonly LayerTrigger trigger;
@@ -54,14 +55,13 @@ namespace Spectrum.Visualizers {
       OrientationInput orientationInput,
       OrientationCenter center,
       BeatBroadcaster beat,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.orientationInput = orientationInput;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.center = center;
       this.trigger = new LayerTrigger(
@@ -160,7 +160,7 @@ namespace Spectrum.Visualizers {
           double hue = OrientationCenter.HueFromColorCenter(
             this.center.ColorCenterAt(pixelPoint));
           this.buffer.pixels[i].color =
-            new Color(hue, rippleSaturation, rippleValue).ToInt();
+            HsvToInt(hue, rippleSaturation, rippleValue);
         }
       }
     }

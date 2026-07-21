@@ -26,7 +26,7 @@ namespace Spectrum.Visualizers {
     private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
     private readonly OrientationInput orientationInput;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly ImmutableArray<Vector3> pixelPositions;
     private readonly LivingSkinSimulation simulation;
@@ -40,13 +40,12 @@ namespace Spectrum.Visualizers {
       LayerRendererRuntime runtime,
       OrientationInput orientationInput,
       BeatBroadcaster beats,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
       this.orientationInput = orientationInput;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.pixelPositions = this.buffer.BakePixelPositions();
       this.simulation = new LivingSkinSimulation(this.buffer);

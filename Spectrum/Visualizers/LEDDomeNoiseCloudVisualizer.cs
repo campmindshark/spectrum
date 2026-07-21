@@ -47,7 +47,7 @@ namespace Spectrum.Visualizers {
   class LEDDomeNoiseCloudVisualizer : DomeLayerVisualizer {
 
     private readonly LayerRendererRuntime runtime;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
 
     // Baked once: the unit-sphere position of every pixel, so the noise samples
@@ -74,11 +74,10 @@ namespace Spectrum.Visualizers {
 
     public LEDDomeNoiseCloudVisualizer(
       LayerRendererRuntime runtime,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.runtime = runtime;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.positions = this.buffer.BakePixelPositions();
       this.noiseField = new double[this.buffer.pixels.Length];

@@ -164,7 +164,7 @@ namespace Spectrum {
     private void AddLayer() {
       var vm = new DomeLayerRowViewModel(
         PaletteService.Names(this.config)) {
-        VisualizerKey = LayerCatalog.Default.Definitions[0].Id,
+        VisualizerKey = DomeLayerCatalog.Metadata.Definitions[0].Id,
         BlendMode = DomeBlend.Default.Id,
         Opacity = 1.0,
         LayerEnabled = true,

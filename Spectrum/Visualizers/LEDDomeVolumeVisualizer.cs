@@ -16,7 +16,7 @@ namespace Spectrum {
     private readonly LayerRendererRuntime runtime;
     private readonly AudioInput audio;
     private readonly BeatBroadcaster beat;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private int animationSize;
     private int centerOffset;
@@ -37,7 +37,7 @@ namespace Spectrum {
     // For color-from-part-and-spoke mode, maps each part/spoke to a color
     private readonly int[] partAndSpokeColors = new int[5];
     // For color-from-random mode, maps each strut to a color
-    private readonly int[] randomStrutColors = new int[LEDDomeOutput.GetNumStruts()];
+    private readonly int[] randomStrutColors;
     private readonly Random random = new Random();
     private bool wipeStrutsNextCycle = false;
 
@@ -46,14 +46,14 @@ namespace Spectrum {
       LayerRendererRuntime runtime,
       AudioInput audio,
       BeatBroadcaster beat,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.beat = beat;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
+      this.randomStrutColors = new int[dome.StrutCount];
       this.buffer = this.dome.MakeDomeFrame();
       this.animationSize = 0;
       this.centerOffset = 0;
@@ -160,7 +160,7 @@ namespace Spectrum {
 
     public void Visualize() {
       if (this.wipeStrutsNextCycle) {
-        for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
+        for (int i = 0; i < this.dome.StrutCount; i++) {
           Strut strut = Strut.FromIndex(i);
           for (int j = 0; j < strut.Length; j++) {
             // Erase (transparent), not opaque black: an unlit strut should

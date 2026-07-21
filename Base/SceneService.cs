@@ -6,7 +6,7 @@ namespace Spectrum.Base {
    * The shared, thread-agnostic core behind saving and recalling dome scenes.
    * Both surfaces call into it so the logic can't diverge: the native
    * DomeScenesController (already on the UI thread) calls it directly; the web
-   * SceneController wraps each call in ControlGateway.InvokeAsync. Every method
+   * SceneController wraps each call in ApplicationStateDispatcher.InvokeAsync. Every method
    * therefore assumes it runs on the serialization thread (UI/Dispatcher) — it
    * reads and writes Configuration properties directly, exactly like a native GUI
    * write, so the PropertyChanged events land where every subscriber expects.
@@ -31,9 +31,17 @@ namespace Spectrum.Base {
     public const int MaxNameLength = 64;
 
     private readonly Configuration config;
+    private readonly IDomeShowStateConfiguration showState;
+    private readonly LayerCatalog layerCatalog;
 
-    public SceneService(Configuration config) {
+    public SceneService(Configuration config, LayerCatalog layerCatalog) {
       this.config = config;
+      this.layerCatalog = layerCatalog ??
+        throw new System.ArgumentNullException(nameof(layerCatalog));
+      this.showState = config as IDomeShowStateConfiguration ??
+        throw new System.ArgumentException(
+          "Scene configuration must support atomic show-state updates.",
+          nameof(config));
     }
 
     // The saved scene names, in stored order. Never null.
@@ -96,10 +104,8 @@ namespace Spectrum.Base {
     }
 
     // Recall the named scene: deep-copy its layers (preserving instance IDs),
-    // run them through the shared validator, then set domeLayerStack + the two
-    // globals. Three config writes => three PropertyChanged events (order
-    // irrelevant); every subscriber (native layer rows, SSE frames, the
-    // operator) converges through the existing whole-stack plumbing.
+    // run them through the shared validator, then publish the stack and both
+    // globals as one immutable show-state generation.
     public (bool ok, string error) Apply(string name) {
       DomeScene scene = Find(this.config.domeScenes, name);
       if (scene == null) {
@@ -109,13 +115,16 @@ namespace Spectrum.Base {
       // parameter bags) without mutating its input, so the published stack never
       // aliases the stored scene — no separate deep copy needed here.
       (List<DomeLayerSettings> stack, string error) =
-        StackValidator.Validate(scene.Layers);
+        StackValidator.Validate(scene.Layers, this.layerCatalog);
       if (error != null) {
         return (false, error);
       }
-      this.config.domeLayerStack = stack;
-      this.config.domeGlobalFadeSpeed = scene.GlobalFadeSpeed;
-      this.config.domeGlobalHueSpeed = scene.GlobalHueSpeed;
+      this.showState.ApplyDomeShowState(new DomeShowStateUpdate(
+        stack,
+        this.config.domePalettes,
+        scene.GlobalFadeSpeed,
+        scene.GlobalHueSpeed,
+        this.config.domeScenes));
       return (true, null);
     }
 

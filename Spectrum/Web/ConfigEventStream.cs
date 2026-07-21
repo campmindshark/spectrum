@@ -2,7 +2,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Channels;
 using Spectrum.Base;
 
@@ -28,19 +30,113 @@ namespace Spectrum.Web {
    */
   public sealed class ConfigEventStream : IDisposable {
 
+    internal const int SubscriberCapacity = 256;
+
     public sealed class Subscriber {
+      private readonly record struct FrameKey(string Kind, string Key);
+      private sealed record PendingFrame(FrameKey Key, string Payload);
+
       public ControlRole Role { get; }
-      public ChannelReader<string> Reader => this.channel.Reader;
-      internal ChannelWriter<string> Writer => this.channel.Writer;
-      private readonly Channel<string> channel;
+      public SubscriberReader Reader { get; }
+      private readonly object gate = new object();
+      private readonly LinkedList<PendingFrame> pending =
+        new LinkedList<PendingFrame>();
+      private readonly Dictionary<FrameKey, LinkedListNode<PendingFrame>> byKey =
+        new Dictionary<FrameKey, LinkedListNode<PendingFrame>>();
+      // A single token means "the queue may be readable." The payloads remain
+      // in the locked coalescing queue, so signals never grow with traffic.
+      private readonly Channel<bool> readable = Channel.CreateBounded<bool>(
+        new BoundedChannelOptions(1) {
+          SingleReader = true,
+          SingleWriter = false,
+          FullMode = BoundedChannelFullMode.DropWrite,
+          AllowSynchronousContinuations = false,
+        });
+      private bool completed;
 
       internal Subscriber(ControlRole role) {
         this.Role = role;
-        // Unbounded but drop-oldest would be nicer; a slow phone just gets a
-        // backlog it drains. Config-change volume is low (human slider drags),
-        // so unbounded is fine here.
-        this.channel = Channel.CreateUnbounded<string>(
-          new UnboundedChannelOptions { SingleReader = true });
+        this.Reader = new SubscriberReader(this);
+      }
+
+      internal void Write(string kind, string key, string payload) {
+        bool signal = false;
+        lock (this.gate) {
+          if (this.completed) {
+            return;
+          }
+          var frameKey = new FrameKey(kind, key);
+          if (this.byKey.TryGetValue(
+              frameKey, out LinkedListNode<PendingFrame> existing)) {
+            existing.Value = new PendingFrame(frameKey, payload);
+            return;
+          }
+
+          signal = this.pending.Count == 0;
+          if (this.pending.Count >= SubscriberCapacity) {
+            // More distinct replaceable keys than the bounded state window can
+            // represent. A reset is itself retained state and forces the client
+            // to re-fetch before it can edit from a stale local model.
+            this.pending.Clear();
+            this.byKey.Clear();
+            frameKey = new FrameKey("reset", "reset");
+            payload = Frame(
+              "reset", "reset", new { reason = "subscriber-overflow" });
+          }
+          LinkedListNode<PendingFrame> node = this.pending.AddLast(
+            new PendingFrame(frameKey, payload));
+          this.byKey[frameKey] = node;
+        }
+        if (signal) {
+          this.readable.Writer.TryWrite(true);
+        }
+      }
+
+      private bool TryRead(out string payload) {
+        lock (this.gate) {
+          LinkedListNode<PendingFrame> first = this.pending.First;
+          if (first == null) {
+            payload = null;
+            return false;
+          }
+          this.pending.RemoveFirst();
+          this.byKey.Remove(first.Value.Key);
+          payload = first.Value.Payload;
+          return true;
+        }
+      }
+
+      internal void Complete() {
+        lock (this.gate) {
+          this.completed = true;
+        }
+        this.readable.Writer.TryComplete();
+      }
+
+      public sealed class SubscriberReader {
+        private readonly Subscriber subscriber;
+
+        internal SubscriberReader(Subscriber subscriber) {
+          this.subscriber = subscriber;
+        }
+
+        public bool TryRead(out string payload) =>
+          this.subscriber.TryRead(out payload);
+
+        public async IAsyncEnumerable<string> ReadAllAsync(
+          [EnumeratorCancellation] CancellationToken cancellationToken = default
+        ) {
+          ChannelReader<bool> signalReader = this.subscriber.readable.Reader;
+          while (await signalReader.WaitToReadAsync(cancellationToken)) {
+            while (signalReader.TryRead(out _)) { }
+            while (this.subscriber.TryRead(out string payload)) {
+              yield return payload;
+            }
+          }
+          while (this.subscriber.TryRead(out string payload)) {
+            yield return payload;
+          }
+        }
       }
     }
 
@@ -62,16 +158,24 @@ namespace Spectrum.Web {
       new Dictionary<string, TelemetryItem>();
     private readonly ConcurrentDictionary<Guid, Subscriber> subscribers =
       new ConcurrentDictionary<Guid, Subscriber>();
+    private readonly Action<DomeShowStateSnapshot> showSnapshotCaptured;
 
     public ConfigEventStream(
       ParameterRegistry registry, Configuration config, Operator op,
       RuntimeTelemetry telemetry, BeatBroadcaster beat
+    ) : this(registry, config, op, telemetry, beat, null) { }
+
+    internal ConfigEventStream(
+      ParameterRegistry registry, Configuration config, Operator op,
+      RuntimeTelemetry telemetry, BeatBroadcaster beat,
+      Action<DomeShowStateSnapshot> showSnapshotCaptured
     ) {
       this.registry = registry;
       this.config = config;
       this.op = op;
       this.telemetry = telemetry;
       this.beat = beat;
+      this.showSnapshotCaptured = showSnapshotCaptured;
       foreach (TelemetryItem item in TelemetryCatalog.Items) {
         switch (item.Source) {
           case TelemetrySource.Runtime:
@@ -103,7 +207,7 @@ namespace Spectrum.Web {
 
     public void Unsubscribe(Guid id) {
       if (this.subscribers.TryRemove(id, out Subscriber sub)) {
-        sub.Writer.TryComplete();
+        sub.Complete();
       }
     }
 
@@ -121,15 +225,13 @@ namespace Spectrum.Web {
       if (this.op != null) {
         frames.Add(Frame("operator", "enabled", this.op.Enabled));
       }
-      // Seed the current layer stack so a client that opens the stream before its
-      // initial GET (or without one) still renders the panel from server truth.
-      frames.Add(
-        Frame("layers", "layers", LayersController.SerializeStack(this.config)));
+      // Seed the complete look as one message. The browser applies layers,
+      // palette choices, and globals inside one event callback and therefore
+      // never paints a cross-generation scene recall.
+      frames.Add(this.ShowStateFrame());
       // Likewise seed the saved-scene list so the scenes dropdown is correct
       // immediately.
       frames.Add(Frame("scenes", "scenes", SceneNames(this.config)));
-      frames.Add(Frame(
-        "palettes", "palettes", PaletteController.BuildPalettes(this.config)));
       return frames;
     }
 
@@ -140,9 +242,22 @@ namespace Spectrum.Web {
       if (e.PropertyName == null) {
         return;
       }
+      if (e.PropertyName == DomeShowStateSnapshot.NotificationPropertyName) {
+        this.Fan("show", "show", this.ShowStateValue(), null);
+        return;
+      }
+      bool hasAtomicShowState =
+        this.config is IDomeShowStateConfiguration;
+      if (hasAtomicShowState && IsShowStateProperty(e.PropertyName)) {
+        // SpectrumConfiguration raises these compatibility notifications only
+        // after committing every field, then follows with the one generation
+        // notification handled above. Do not expose the compatibility sequence
+        // as several browser-visible states.
+        return;
+      }
       if (this.registry.TryGet(e.PropertyName, out ParameterDescriptor d)) {
         object value = d.Get(this.config);
-        this.Fan(Frame("param", d.Key, value), d);
+        this.Fan("param", d.Key, value, d);
         return;
       }
       // The layer stack is compound state (not in the ParameterRegistry), so it
@@ -150,17 +265,15 @@ namespace Spectrum.Web {
       // replaced the user-level visualizer selector, and the stack leaks
       // nothing. Any writer (native panel, web PUT) triggers this.
       if (e.PropertyName == nameof(this.config.domeLayerStack)) {
-        this.Fan(
-          Frame("layers", "layers", LayersController.SerializeStack(this.config)),
-          null
-        );
+        this.Fan("layers", "layers",
+          LayersController.SerializeStack(this.config), null);
         return;
       }
       // The saved-scene list is likewise compound state outside the registry;
       // its own frame carries just the names so every client's dropdown stays in
       // sync. Not role-gated — the names leak nothing.
       if (e.PropertyName == nameof(this.config.domeScenes)) {
-        this.Fan(Frame("scenes", "scenes", SceneNames(this.config)), null);
+        this.Fan("scenes", "scenes", SceneNames(this.config), null);
         return;
       }
       // Named palettes are live compound state. List mutations and in-place
@@ -168,10 +281,33 @@ namespace Spectrum.Web {
       // and layer palette dropdown converges.
       if (e.PropertyName == nameof(this.config.domePalettes) ||
           e.PropertyName.StartsWith("domePalettes.")) {
-        this.Fan(
-          Frame("palettes", "palettes", PaletteController.BuildPalettes(this.config)),
-          null);
+        this.Fan("palettes", "palettes",
+          PaletteController.BuildPalettes(this.config), null);
       }
+    }
+
+    private static bool IsShowStateProperty(string propertyName) =>
+      propertyName == nameof(Configuration.domeLayerStack) ||
+      propertyName == nameof(Configuration.domePalettes) ||
+      propertyName.StartsWith("domePalettes.") ||
+      propertyName == nameof(Configuration.domeGlobalFadeSpeed) ||
+      propertyName == nameof(Configuration.domeGlobalHueSpeed);
+
+    private string ShowStateFrame() =>
+      Frame("show", "show", this.ShowStateValue());
+
+    private object ShowStateValue() {
+      DomeShowStateSnapshot snapshot =
+        (this.config as IDomeShowStateConfiguration)?
+          .DomeShowStateSnapshot ?? DomeShowStateSnapshot.Empty;
+      this.showSnapshotCaptured?.Invoke(snapshot);
+      return new {
+        generation = snapshot.Generation,
+        layers = LayersController.SerializeStack(snapshot.LayerStack),
+        palettes = PaletteController.BuildPalettes(snapshot.Palettes),
+        globalFadeSpeed = snapshot.GlobalFadeSpeed,
+        globalHueSpeed = snapshot.GlobalHueSpeed,
+      };
     }
 
     // The saved-scene names, in stored order — the payload of every "scenes"
@@ -194,14 +330,14 @@ namespace Spectrum.Web {
     private void OnTelemetryChanged(object sender, PropertyChangedEventArgs e) {
       if (e.PropertyName != null &&
           this.runtimeTelemetry.TryGetValue(e.PropertyName, out TelemetryItem item)) {
-        this.Fan(Frame("telemetry", item.Key, SafeRead(item)), null);
+        this.Fan("telemetry", item.Key, SafeRead(item), null);
       }
     }
 
     private void OnBeatChanged(object sender, PropertyChangedEventArgs e) {
       if (e.PropertyName != null &&
           this.beatTelemetry.TryGetValue(e.PropertyName, out TelemetryItem item)) {
-        this.Fan(Frame("telemetry", item.Key, SafeRead(item)), null);
+        this.Fan("telemetry", item.Key, SafeRead(item), null);
       }
     }
 
@@ -209,16 +345,19 @@ namespace Spectrum.Web {
     // button). Broadcast to everyone — like telemetry, on/off state leaks
     // nothing and is not role-gated.
     private void OnOperatorEnabledChanged(bool enabled) {
-      this.Fan(Frame("operator", "enabled", enabled), null);
+      this.Fan("operator", "enabled", enabled, null);
     }
 
     // Fan a frame to subscribers. When gate is non-null the frame is a
     // role-gated parameter change (maintenance-only params only reach
     // maintenance subscribers); a null gate is telemetry, sent to everyone.
-    private void Fan(string payload, ParameterDescriptor gate) {
+    private void Fan(
+      string kind, string key, object value, ParameterDescriptor gate
+    ) {
+      string payload = Frame(kind, key, value);
       foreach (Subscriber sub in this.subscribers.Values) {
         if (gate == null || ParameterRegistry.RoleCanAccess(sub.Role, gate)) {
-          sub.Writer.TryWrite(payload);
+          sub.Write(kind, key, payload);
         }
       }
     }
@@ -248,7 +387,7 @@ namespace Spectrum.Web {
         this.op.EnabledChanged -= this.OnOperatorEnabledChanged;
       }
       foreach (Subscriber sub in this.subscribers.Values) {
-        sub.Writer.TryComplete();
+        sub.Complete();
       }
       this.subscribers.Clear();
     }

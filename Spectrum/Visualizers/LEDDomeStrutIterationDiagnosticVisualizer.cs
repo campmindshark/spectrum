@@ -32,7 +32,6 @@ namespace Spectrum {
     ) {
       this.config = config;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.stopwatch = new Stopwatch();
       this.stopwatch.Start();
     }

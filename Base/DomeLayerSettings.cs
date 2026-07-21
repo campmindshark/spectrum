@@ -4,6 +4,8 @@ using System.Globalization;
 
 namespace Spectrum.Base {
 
+#if !SPECTRUM_FEATURES
+
   // The value type of a per-layer parameter. Values live in the bag as double
   // regardless: Bool is 0/1, Enum is the index into DomeLayerParam.Options,
   // Color is a packed 0xRRGGBB int and Date is yyyyMMdd, both reinterpreted as
@@ -186,6 +188,8 @@ namespace Spectrum.Base {
 
   }
 
+#endif
+#if SPECTRUM_FEATURES
   // ---- Per-layer parameter schemas ---------------------------------------
   // Definitions are kept outside the serializer-facing layer DTO and are
   // attached explicitly to LayerCatalog registrations.
@@ -1481,5 +1485,7 @@ namespace Spectrum.Base {
       };
 
   }
+
+#endif
 
 }

@@ -24,7 +24,6 @@ namespace Spectrum.Visualizers {
       this.config = config;
       this.orientation = orientation;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.pixelPositions = this.buffer.BakePixelPositions();
     }

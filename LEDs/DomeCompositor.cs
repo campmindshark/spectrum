@@ -56,8 +56,12 @@ namespace Spectrum.LEDs {
     // Returns null when no scheduled renderer contributed, preserving the old
     // "hold last frame / leave diagnostic output alone" contract.
     public DomeFrame Compose() {
+      return this.Compose(this.Plan);
+    }
+
+    public DomeFrame Compose(RenderPlan current) {
       this.seconds += Math.Max(0, this.elapsedSeconds());
-      RenderPlan current = this.Plan;
+      current ??= RenderPlan.Empty;
       bool hasAvailableLayer = false;
       bool orientationUpdated = false;
       this.activeHistories.Clear();
@@ -123,11 +127,15 @@ namespace Spectrum.LEDs {
     // completed destination has been written. Shared renderer frames rotate
     // at most once.
     public void AdvancePostFrameHue(double delta) {
+      this.AdvancePostFrameHue(this.Plan, delta);
+    }
+
+    public void AdvancePostFrameHue(RenderPlan current, double delta) {
       if (delta == 0) {
         return;
       }
       var seen = new HashSet<ILayerRenderer>();
-      RenderPlan current = this.Plan;
+      current ??= RenderPlan.Empty;
       foreach (CompiledLayer layer in current.Layers) {
         if (layer.Renderer.IsAvailable && seen.Add(layer.Renderer)) {
           layer.Renderer.Frame.HueRotate(delta);

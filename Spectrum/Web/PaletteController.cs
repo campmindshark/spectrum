@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Spectrum.Base;
 
@@ -19,11 +20,13 @@ namespace Spectrum.Web {
       public List<SlotDto> colors { get; set; }
     }
 
-    private readonly ControlGateway gateway;
+    private readonly ApplicationStateDispatcher gateway;
     private readonly Configuration config;
     private readonly PaletteService service;
 
-    public PaletteController(ControlGateway gateway, Configuration config) {
+    public PaletteController(
+      ApplicationStateDispatcher gateway, Configuration config
+    ) {
       this.gateway = gateway;
       this.config = config;
       this.service = new PaletteService(config);
@@ -87,6 +90,38 @@ namespace Spectrum.Web {
             colors = ToSlots(palette.Colors),
           });
         }
+      }
+      return result;
+    }
+
+    public static List<PaletteDto> BuildPalettes(
+      ImmutableArray<DomePaletteSnapshot> palettes
+    ) {
+      var result = new List<PaletteDto>();
+      if (palettes.IsDefaultOrEmpty) {
+        return result;
+      }
+      foreach (DomePaletteSnapshot palette in palettes) {
+        if (palette == null || string.IsNullOrWhiteSpace(palette.Name)) {
+          continue;
+        }
+        var colors = new List<SlotDto>(DomePalette.SlotCount);
+        for (int i = 0; i < DomePalette.SlotCount; i++) {
+          DomeColorSnapshot? color =
+            i < palette.Colors.Length ? palette.Colors[i] : null;
+          colors.Add(color == null
+            ? new SlotDto { start = null, end = null }
+            : new SlotDto {
+                start = ToHex(color.Value.Color1),
+                end = color.Value.IsGradient
+                  ? ToHex(color.Value.Color2)
+                  : null,
+              });
+        }
+        result.Add(new PaletteDto {
+          name = palette.Name,
+          colors = colors,
+        });
       }
       return result;
     }

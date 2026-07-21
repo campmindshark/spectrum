@@ -598,6 +598,7 @@
   // ---- Change feed ----------------------------------------------------------
 
   let eventSource = null;
+  let latestShowGeneration = -1;
   function openEventStream() {
     if (eventSource) eventSource.close();
     const url = scope === "maintenance" ? "/api/maintenance/events" : "/api/events";
@@ -609,12 +610,37 @@
           applyTelemetry(frame.key, frame.value);
         } else if (frame.kind === "operator") {
           applyOperator(frame.value);
+        } else if (frame.kind === "show") {
+          // One server generation: update every dependent local model inside
+          // this event turn so the browser cannot paint a recalled stack with
+          // the previous palettes or global effects.
+          const show = frame.value || {};
+          const generation = Number(show.generation);
+          if (Number.isFinite(generation)) {
+            if (generation < latestShowGeneration) return;
+            latestShowGeneration = generation;
+          }
+          if (window.spectrumApplyPalettes) {
+            window.spectrumApplyPalettes(show.palettes || []);
+          }
+          if (window.spectrumApplyLayers) {
+            window.spectrumApplyLayers(show.layers || []);
+          }
+          applyPush("domeGlobalFadeSpeed", show.globalFadeSpeed);
+          applyPush("domeGlobalHueSpeed", show.globalHueSpeed);
         } else if (frame.kind === "layers") {
           if (window.spectrumApplyLayers) window.spectrumApplyLayers(frame.value);
         } else if (frame.kind === "scenes") {
           if (window.spectrumApplyScenes) window.spectrumApplyScenes(frame.value);
         } else if (frame.kind === "palettes") {
           if (window.spectrumApplyPalettes) window.spectrumApplyPalettes(frame.value);
+        } else if (frame.kind === "reset") {
+          // This subscriber exceeded the number of distinct state keys the
+          // bounded queue can retain. Reload every REST snapshot before the
+          // editor is allowed to send another whole-state update.
+          eventSource.close();
+          setConnection("Resyncing", "error");
+          window.location.reload();
         } else {
           applyPush(frame.key, frame.value);
         }
@@ -622,6 +648,9 @@
     };
     eventSource.onerror = () => setConnection("Reconnecting", "error");
     eventSource.onopen = () => {
+      // A reconnect may follow a server restart whose generations begin again.
+      // The initial show seed arrives after onopen and establishes the new floor.
+      latestShowGeneration = -1;
       setConnection("Live", "live");
       if (statusEl && statusEl.classList.contains("pending")) {
         setStatus("Controls are live.");

@@ -39,7 +39,7 @@ namespace Spectrum.Visualizers {
     private readonly LayerRendererRuntime runtime;
     private readonly OrientationInput orientation;
     private readonly OrientationCenter orientationCenter;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
 
     // Unit-sphere position of every LED, baked once (guarded z on the rim).
@@ -60,14 +60,13 @@ namespace Spectrum.Visualizers {
       LayerRendererRuntime runtime,
       OrientationInput orientation,
       OrientationCenter orientationCenter,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
       this.orientation = orientation;
       this.orientationCenter = orientationCenter;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.pixelPositions = this.buffer.BakePixelPositions();
     }
@@ -90,15 +89,23 @@ namespace Spectrum.Visualizers {
       double rotorRate = options.RotorRate; // highlight orbit, rev/s
       int selectedPalette = options.Palette;
 
-      // Per-ring colors (outer/middle/inner), pulled from the selected palette's
-      // first three relative slots and decoded once per frame. Kept as Color so
-      // the render loop reads their H/S and scales V by the ring's cross-section
-      // falloff — indexed to match n[0]=outer, n[1]=middle, n[2]=inner.
-      Color[] ringColor = {
-        new Color(this.dome.GetSingleColor(0, selectedPalette)),
-        new Color(this.dome.GetSingleColor(1, selectedPalette)),
-        new Color(this.dome.GetSingleColor(2, selectedPalette)),
-      };
+      // Decode the three palette slots into value locals once per frame. Arrays
+      // and Color instances here would both allocate on every render tick.
+      MathUtil.HsvFromInt(
+        this.dome.GetSingleColor(0, selectedPalette),
+        out double ringHue0,
+        out double ringSaturation0,
+        out double ringValue0);
+      MathUtil.HsvFromInt(
+        this.dome.GetSingleColor(1, selectedPalette),
+        out double ringHue1,
+        out double ringSaturation1,
+        out double ringValue1);
+      MathUtil.HsvFromInt(
+        this.dome.GetSingleColor(2, selectedPalette),
+        out double ringHue2,
+        out double ringSaturation2,
+        out double ringValue2);
 
       // Advance the shared idle-drift/spotlight resolver and take this frame's
       // driving orientation: a moving wand's rotation, else the idle pointer.
@@ -122,7 +129,6 @@ namespace Spectrum.Visualizers {
       Vector3 n0 = Vector3.Normalize(Vector3.Transform(Vector3.UnitX, f0));
       Vector3 n1 = Vector3.Normalize(Vector3.Transform(Vector3.UnitZ, f1));
       Vector3 n2 = Vector3.Normalize(Vector3.Transform(Vector3.UnitY, q));
-      Vector3[] n = { n0, n1, n2 };
 
       // Rotor: a disc whose axle is the inner gimbal's +Z; its rim is the great
       // circle perpendicular to that axle, with a highlight spinning fast. ru/rv
@@ -141,19 +147,15 @@ namespace Spectrum.Visualizers {
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         Vector3 p = this.pixelPositions[i];
+        int color = this.buffer.pixels[i].color;
 
         // Three gimbal rings.
-        for (int r = 0; r < 3; r++) {
-          double d = Math.Abs(Vector3.Dot(p, n[r]));
-          if (d >= ringWidth) {
-            continue;
-          }
-          double bright = 1.0 - d / ringWidth; // ring cross-section falloff
-          Color rc = ringColor[r];
-          Color c = new Color(rc.H, rc.S, rc.V * bright);
-          this.buffer.pixels[i].color = Color.BlendLightPaint(
-            new Color(this.buffer.pixels[i].color), c).ToInt();
-        }
+        PaintRing(ref color, p, n0, ringWidth,
+          ringHue0, ringSaturation0, ringValue0);
+        PaintRing(ref color, p, n1, ringWidth,
+          ringHue1, ringSaturation1, ringValue1);
+        PaintRing(ref color, p, n2, ringWidth,
+          ringHue2, ringSaturation2, ringValue2);
 
         // Rotor rim + chasing highlight (the flywheel).
         double rd = Math.Abs(Vector3.Dot(p, rotorAxis));
@@ -165,10 +167,38 @@ namespace Spectrum.Visualizers {
           if (da < 0.5) {
             bright = Math.Min(1.0, bright + (1.0 - da / 0.5)); // ...bright chase
           }
-          Color c = new Color(0.13, 0.15, bright); // near-white flywheel
-          this.buffer.pixels[i].color = Color.BlendLightPaint(
-            new Color(this.buffer.pixels[i].color), c).ToInt();
+          // Near-white flywheel. Light-paint compares the packed maximum RGB
+          // channel, which is the HSV value, and keeps the brighter color.
+          int candidate = MathUtil.HsvToInt(0.13, 0.15, bright);
+          LightPaint(ref color, candidate);
         }
+        this.buffer.pixels[i].color = color;
+      }
+    }
+
+    private static void PaintRing(
+      ref int color,
+      Vector3 pixel,
+      Vector3 normal,
+      double ringWidth,
+      double hue,
+      double saturation,
+      double value
+    ) {
+      double distance = Math.Abs(Vector3.Dot(pixel, normal));
+      if (distance >= ringWidth) {
+        return;
+      }
+      double brightness = 1.0 - distance / ringWidth;
+      int candidate = MathUtil.HsvToInt(
+        hue, saturation, value * brightness);
+      LightPaint(ref color, candidate);
+    }
+
+    private static void LightPaint(ref int color, int candidate) {
+      if (MathUtil.MaxChannelFromInt(candidate) >
+          MathUtil.MaxChannelFromInt(color)) {
+        color = candidate;
       }
     }
 

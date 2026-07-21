@@ -11,16 +11,15 @@ namespace Spectrum.Visualizers {
   class LEDDomeBackgroundVisualizer : DomeLayerVisualizer {
 
     private readonly LayerRendererRuntime runtime;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
 
     public LEDDomeBackgroundVisualizer(
       LayerRendererRuntime runtime,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.runtime = runtime;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
     }
 

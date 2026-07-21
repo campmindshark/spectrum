@@ -15,7 +15,7 @@ namespace Spectrum {
     private readonly LayerRendererRuntime runtime;
     private AudioInput audio;
     private BeatBroadcaster beat;
-    private LEDDomeOutput dome;
+    private DomeRenderContext dome;
     private DomeFrame buffer;
 
     private double currentAngle;
@@ -28,14 +28,13 @@ namespace Spectrum {
       LayerRendererRuntime runtime,
       AudioInput audio,
       BeatBroadcaster beat,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
       this.audio = audio;
       this.beat = beat;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
     }
 

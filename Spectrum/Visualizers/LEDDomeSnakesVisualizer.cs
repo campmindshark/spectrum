@@ -14,7 +14,7 @@ namespace Spectrum {
     private const int snakeLength = 7;
 
     private readonly LayerRendererRuntime runtime;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly Random random = new Random();
     private readonly Queue<TriangleSegment>[] snakes = new Queue<TriangleSegment>[] { new Queue<TriangleSegment>(), new Queue<TriangleSegment>() };
@@ -26,12 +26,11 @@ namespace Spectrum {
 
     public LEDDomeSnakesVisualizer(
       LayerRendererRuntime runtime,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.runtime = runtime;
       this.dome = dome;
 
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
 
       var triangleFactory = new TriangleSegmentFactory();

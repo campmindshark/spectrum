@@ -19,7 +19,7 @@ namespace Spectrum.Visualizers {
 
     private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly Random rand;
 
@@ -35,12 +35,11 @@ namespace Spectrum.Visualizers {
     public LEDDomeTwinkleVisualizer(
       DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.runtime = runtime;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.rand = new Random();
 

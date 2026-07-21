@@ -10,18 +10,17 @@ namespace Spectrum {
   class LEDDomeTVStaticVisualizer : DomeLayerVisualizer {
 
     private readonly DomeLayerEnvironment environment;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
 
     private Random random = new Random();
 
     public LEDDomeTVStaticVisualizer(
       DomeLayerEnvironment environment,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.environment = environment;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
     }
 

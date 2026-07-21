@@ -6,12 +6,61 @@ using System.Threading;
 
 namespace Spectrum {
 
-  public class SpectrumConfiguration : Configuration, ILayerStackSnapshotSource {
+  public class SpectrumConfiguration : Configuration,
+      ILayerStackSnapshotSource, IDomeShowStateConfiguration {
 
     public event PropertyChangedEventHandler PropertyChanged;
 
+    // Set once by the application composition root after deserialization.
+    // Tests and serializer-only callers may leave it unset and use the
+    // configuration synchronously on their own thread.
+    private ApplicationStateDispatcher mutationDispatcher;
+
+    public void AttachMutationDispatcher(
+      ApplicationStateDispatcher dispatcher
+    ) {
+      if (dispatcher == null) {
+        throw new System.ArgumentNullException(nameof(dispatcher));
+      }
+      if (!dispatcher.CheckAccess()) {
+        throw new System.InvalidOperationException(
+          "The configuration dispatcher must be attached on its owner thread.");
+      }
+      ApplicationStateDispatcher existing = Interlocked.CompareExchange(
+        ref this.mutationDispatcher, dispatcher, null);
+      if (existing != null && !ReferenceEquals(existing, dispatcher)) {
+        throw new System.InvalidOperationException(
+          "A configuration dispatcher is already attached.");
+      }
+    }
+
+    private bool DispatchMutationIfRequired<T>(
+      string propertyName, T value
+    ) {
+      ApplicationStateDispatcher dispatcher =
+        Volatile.Read(ref this.mutationDispatcher);
+      if (dispatcher == null || dispatcher.CheckAccess()) {
+        return false;
+      }
+
+      // Property setters converge here even when a future producer forgets to
+      // use the dispatcher explicitly. Resolve the setter before queueing so a
+      // programming error is reported on the calling thread.
+      System.Reflection.PropertyInfo property =
+        this.GetType().GetProperty(propertyName);
+      if (property == null || !property.CanWrite) {
+        throw new System.InvalidOperationException(
+          "Configuration property is not writable: " + propertyName);
+      }
+      dispatcher.Post(() => property.SetValue(this, value));
+      return true;
+    }
+
     private void SetField<T>(ref T field, T value,
         [CallerMemberName] string name = null) {
+      if (this.DispatchMutationIfRequired(name, value)) {
+        return;
+      }
       if (EqualityComparer<T>.Default.Equals(field, value)) {
         return;
       }
@@ -22,10 +71,16 @@ namespace Spectrum {
     private void DomePalettePropertyChanged(
       object sender, PropertyChangedEventArgs e
     ) {
-      this.PropertyChanged?.Invoke(
-        this,
-        new PropertyChangedEventArgs("domePalettes." + e.PropertyName)
-      );
+      ApplicationStateDispatcher dispatcher =
+        Volatile.Read(ref this.mutationDispatcher);
+      if (dispatcher != null && !dispatcher.CheckAccess()) {
+        dispatcher.Post(() => this.DomePalettePropertyChanged(sender, e));
+        return;
+      }
+      this.PublishDomeShowStateSnapshot();
+      this.RaisePropertyChanged("domePalettes." + e.PropertyName);
+      this.RaisePropertyChanged(
+        DomeShowStateSnapshot.NotificationPropertyName);
     }
 
     private void SubscribePalettes(List<DomePalette> palettes) {
@@ -113,37 +168,51 @@ namespace Spectrum {
     // collection property by calling IList.Add on the *existing* instance, so a
     // non-null default would double up the persisted entries on load.
     private List<DomeLayerSettings> _domeLayerStack = null;
-    private static readonly LayerStackService layerStackService = new();
+    private static readonly LayerStackService layerStackService =
+      new LayerStackService(DomeLayerCatalog.Metadata);
     private LayerStackSnapshot _domeLayerStackSnapshot =
       LayerStackSnapshot.Empty;
     public List<DomeLayerSettings> domeLayerStack {
       get => _domeLayerStack;
       set {
-        List<DomeLayerSettings> published = value;
-        if (NeedsLayerInstanceIds(value)) {
-          (List<DomeLayerSettings> normalized, string error) =
-            new LayerStackService().Normalize(value);
-          if (error == null) {
-            published = normalized;
-          }
+        if (this.DispatchMutationIfRequired(
+            nameof(this.domeLayerStack), value)) {
+          return;
         }
+        (List<DomeLayerSettings> published, LayerStackSnapshot snapshot) =
+          this.PrepareLayerStack(value);
         if (EqualityComparer<List<DomeLayerSettings>>.Default.Equals(
               this._domeLayerStack, published)) {
           return;
         }
-        (LayerStackSnapshot snapshot, string snapshotError) =
-          layerStackService.CreateSnapshot(published);
-        if (snapshotError != null) {
-          snapshot = LayerStackSnapshot.Empty;
-        }
         this._domeLayerStack = published;
         Volatile.Write(ref this._domeLayerStackSnapshot, snapshot);
-        this.PropertyChanged?.Invoke(
-          this, new PropertyChangedEventArgs(nameof(this.domeLayerStack)));
+        this.PublishDomeShowStateSnapshot();
+        this.RaisePropertyChanged(nameof(this.domeLayerStack));
+        this.RaisePropertyChanged(
+          DomeShowStateSnapshot.NotificationPropertyName);
       }
     }
     LayerStackSnapshot ILayerStackSnapshotSource.DomeLayerStackSnapshot =>
       Volatile.Read(ref this._domeLayerStackSnapshot);
+
+    private (List<DomeLayerSettings> published, LayerStackSnapshot snapshot)
+      PrepareLayerStack(List<DomeLayerSettings> value) {
+      List<DomeLayerSettings> published = value;
+      if (NeedsLayerInstanceIds(value)) {
+        (List<DomeLayerSettings> normalized, string error) =
+            layerStackService.Normalize(value);
+        if (error == null) {
+          published = normalized;
+        }
+      }
+      (LayerStackSnapshot snapshot, string snapshotError) =
+        layerStackService.CreateSnapshot(published);
+      if (snapshotError != null) {
+        snapshot = LayerStackSnapshot.Empty;
+      }
+      return (published, snapshot);
+    }
 
     private static bool NeedsLayerInstanceIds(
       IReadOnlyList<DomeLayerSettings> layers
@@ -201,12 +270,38 @@ namespace Spectrum {
     private double _domeGlobalFadeSpeed = 0;
     public double domeGlobalFadeSpeed {
       get => _domeGlobalFadeSpeed;
-      set => SetField(ref _domeGlobalFadeSpeed, value);
+      set {
+        if (this.DispatchMutationIfRequired(
+            nameof(this.domeGlobalFadeSpeed), value)) {
+          return;
+        }
+        if (this._domeGlobalFadeSpeed == value) {
+          return;
+        }
+        this._domeGlobalFadeSpeed = value;
+        this.PublishDomeShowStateSnapshot();
+        this.RaisePropertyChanged(nameof(this.domeGlobalFadeSpeed));
+        this.RaisePropertyChanged(
+          DomeShowStateSnapshot.NotificationPropertyName);
+      }
     }
     private double _domeGlobalHueSpeed = 1;
     public double domeGlobalHueSpeed {
       get => _domeGlobalHueSpeed;
-      set => SetField(ref _domeGlobalHueSpeed, value);
+      set {
+        if (this.DispatchMutationIfRequired(
+            nameof(this.domeGlobalHueSpeed), value)) {
+          return;
+        }
+        if (this._domeGlobalHueSpeed == value) {
+          return;
+        }
+        this._domeGlobalHueSpeed = value;
+        this.PublishDomeShowStateSnapshot();
+        this.RaisePropertyChanged(nameof(this.domeGlobalHueSpeed));
+        this.RaisePropertyChanged(
+          DomeShowStateSnapshot.NotificationPropertyName);
+      }
     }
     // Left null by default (not a pre-filled list) for the same reason as
     // domeLayerStack: XSerializer deserializes a collection property by calling
@@ -225,15 +320,115 @@ namespace Spectrum {
     public List<DomePalette> domePalettes {
       get => _domePalettes;
       set {
+        if (this.DispatchMutationIfRequired(
+            nameof(this.domePalettes), value)) {
+          return;
+        }
         if (ReferenceEquals(this._domePalettes, value)) {
           return;
         }
         this.UnsubscribePalettes(this._domePalettes);
         this._domePalettes = value;
         this.SubscribePalettes(this._domePalettes);
-        this.PropertyChanged?.Invoke(
-          this, new PropertyChangedEventArgs(nameof(domePalettes)));
+        this.PublishDomeShowStateSnapshot();
+        this.RaisePropertyChanged(nameof(this.domePalettes));
+        this.RaisePropertyChanged(
+          DomeShowStateSnapshot.NotificationPropertyName);
       }
+    }
+
+    private long domeShowStateGeneration;
+    private DomeShowStateSnapshot _domeShowStateSnapshot =
+      DomeShowStateSnapshot.Empty;
+
+    DomeShowStateSnapshot
+      IDomeShowStateConfiguration.DomeShowStateSnapshot =>
+        Volatile.Read(ref this._domeShowStateSnapshot);
+
+    void IDomeShowStateConfiguration.ApplyDomeShowState(
+      DomeShowStateUpdate update
+    ) => this.ApplyDomeShowState(update);
+
+    private void ApplyDomeShowState(DomeShowStateUpdate update) {
+      if (update == null) {
+        throw new System.ArgumentNullException(nameof(update));
+      }
+      ApplicationStateDispatcher dispatcher =
+        Volatile.Read(ref this.mutationDispatcher);
+      if (dispatcher != null && !dispatcher.CheckAccess()) {
+        dispatcher.Post(() => this.ApplyDomeShowState(update));
+        return;
+      }
+
+      (List<DomeLayerSettings> layers, LayerStackSnapshot layerSnapshot) =
+        this.PrepareLayerStack(update.Layers);
+      bool layersChanged = !ReferenceEquals(this._domeLayerStack, layers);
+      bool palettesChanged = !ReferenceEquals(
+        this._domePalettes, update.Palettes);
+      bool fadeChanged = this._domeGlobalFadeSpeed != update.GlobalFadeSpeed;
+      bool hueChanged = this._domeGlobalHueSpeed != update.GlobalHueSpeed;
+      bool scenesChanged = !ReferenceEquals(this._domeScenes, update.Scenes);
+      if (!layersChanged && !palettesChanged && !fadeChanged &&
+          !hueChanged && !scenesChanged) {
+        return;
+      }
+
+      // Assign every persisted field and compile the deep immutable generation
+      // before the first notification. Subscribers can read any combination of
+      // these properties without observing the transaction halfway through.
+      if (palettesChanged) {
+        this.UnsubscribePalettes(this._domePalettes);
+      }
+      this._domeLayerStack = layers;
+      this._domePalettes = update.Palettes;
+      this._domeGlobalFadeSpeed = update.GlobalFadeSpeed;
+      this._domeGlobalHueSpeed = update.GlobalHueSpeed;
+      this._domeScenes = update.Scenes;
+      if (palettesChanged) {
+        this.SubscribePalettes(this._domePalettes);
+      }
+      Volatile.Write(ref this._domeLayerStackSnapshot, layerSnapshot);
+      if (layersChanged || palettesChanged || fadeChanged || hueChanged) {
+        this.PublishDomeShowStateSnapshot();
+      }
+
+      if (layersChanged) {
+        this.RaisePropertyChanged(nameof(this.domeLayerStack));
+      }
+      if (palettesChanged) {
+        this.RaisePropertyChanged(nameof(this.domePalettes));
+      }
+      if (fadeChanged) {
+        this.RaisePropertyChanged(nameof(this.domeGlobalFadeSpeed));
+      }
+      if (hueChanged) {
+        this.RaisePropertyChanged(nameof(this.domeGlobalHueSpeed));
+      }
+      if (scenesChanged) {
+        this.RaisePropertyChanged(nameof(this.domeScenes));
+      }
+      if (layersChanged || palettesChanged || fadeChanged || hueChanged) {
+        this.RaisePropertyChanged(
+          DomeShowStateSnapshot.NotificationPropertyName);
+      }
+    }
+
+    private void PublishDomeShowStateSnapshot() {
+      long generation = Interlocked.Increment(
+        ref this.domeShowStateGeneration);
+      var snapshot = new DomeShowStateSnapshot(
+        generation,
+        Volatile.Read(ref this._domeLayerStackSnapshot) ??
+          LayerStackSnapshot.Empty,
+        DomeShowStateSnapshot.CompilePalettes(this._domePalettes),
+        this._domeGlobalFadeSpeed,
+        this._domeGlobalHueSpeed);
+      Volatile.Write(ref this._domeShowStateSnapshot, snapshot);
+    }
+
+    private void RaisePropertyChanged(string propertyName) {
+      this.PropertyChanged?.Invoke(
+        this, new PropertyChangedEventArgs(propertyName));
     }
     // Non-null default, matching midiDevices/channelToMidiLevelDriverPreset
     // (Dictionary properties round-trip fine through XSerializer, unlike

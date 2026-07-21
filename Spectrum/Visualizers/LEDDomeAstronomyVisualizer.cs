@@ -31,7 +31,7 @@ namespace Spectrum.Visualizers {
     internal const double MaxInterpolationFramesPerSecond = 60;
 
     private readonly LayerRendererRuntime runtime;
-    private readonly LEDDomeOutput dome;
+    private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private DomeFrame interpolationStart;
     private DomeFrame interpolationEnd;
@@ -58,11 +58,10 @@ namespace Spectrum.Visualizers {
     public LEDDomeAstronomyVisualizer(
       DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
-      LEDDomeOutput dome
+      DomeRenderContext dome
     ) {
       this.runtime = runtime;
       this.dome = dome;
-      this.dome.RegisterVisualizer(this);
       this.buffer = this.dome.MakeDomeFrame();
       this.interpolationStart = new DomeFrame(this.buffer.Topology);
       this.interpolationEnd = new DomeFrame(this.buffer.Topology);

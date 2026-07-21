@@ -51,7 +51,7 @@ namespace Spectrum.Base {
   // before scheduling a changed stack; visualizers therefore read validated
   // values directly without walking Configuration.domeLayerStack each frame.
   public sealed class LayerRendererRuntime {
-    private sealed record RuntimeState(
+    internal sealed record RuntimeState(
       LayerSnapshot Snapshot, ILayerRendererOptions Options
     );
 
@@ -91,6 +91,10 @@ namespace Spectrum.Base {
     }
 
     public void Publish(LayerSnapshot next) {
+      this.PublishPrepared(this.Prepare(next));
+    }
+
+    internal RuntimeState Prepare(LayerSnapshot next) {
       if (next == null) {
         throw new ArgumentNullException(nameof(next));
       }
@@ -99,7 +103,19 @@ namespace Spectrum.Base {
         throw new InvalidOperationException(
           "A layer runtime cannot change instance or renderer identity.");
       }
-      Volatile.Write(ref this.state, this.Compile(next));
+      return this.Compile(next);
+    }
+
+    internal void PublishPrepared(RuntimeState prepared) {
+      if (prepared == null) {
+        throw new ArgumentNullException(nameof(prepared));
+      }
+      if (prepared.Snapshot.Id != this.InstanceId ||
+          prepared.Snapshot.RendererId != this.RendererId) {
+        throw new InvalidOperationException(
+          "Prepared renderer state belongs to a different runtime.");
+      }
+      Volatile.Write(ref this.state, prepared);
     }
 
     private RuntimeState Compile(LayerSnapshot snapshot) {
@@ -223,167 +239,13 @@ namespace Spectrum.Base {
       }));
     }
 
-    private static LayerDefinition BuiltIn(
-      string id, string label, IReadOnlyList<DomeLayerParam> parameters,
-      Func<ImmutableDictionary<string, ParameterValue>,
-        ILayerRendererOptions> compileOptions,
-      LayerActionDefinition fireAction = null,
-      LayerActionDefinition clearAction = null
-    ) => new LayerDefinition(
-      id, label, null, parameters, compileOptions, fireAction, clearAction);
-
-    private static readonly LayerActionDefinition FireAction =
-      new LayerActionDefinition("Fire", "Fire manual trigger");
-    private static readonly LayerActionDefinition BlinkAction =
-      new LayerActionDefinition("Blink", "Blink the eye");
-    private static readonly LayerActionDefinition ClearAction =
-      new LayerActionDefinition("Clear", "Clear this layer's live state");
-    private static readonly LayerActionDefinition PlayAction =
-      new LayerActionDefinition(
-        "Play", "Play the one-week astronomy timeline");
-    private static readonly LayerActionDefinition StopAction =
-      new LayerActionDefinition(
-        "Stop", "Stop astronomy playback at the current time");
-
-    // Stable ordering is part of both picker contracts.
-    public static LayerCatalog Default { get; } = new LayerCatalog(new[] {
-      BuiltIn(
-        "volume", "Volume (OG)", LayerParameterSchemas.VolumeParams,
-        LayerRendererOptionsCompiler.Volume),
-      BuiltIn(
-        "radial", "Radial Effects", LayerParameterSchemas.RadialParams,
-        LayerRendererOptionsCompiler.Radial),
-      BuiltIn(
-        "race", "Race", LayerParameterSchemas.RaceParams,
-        LayerRendererOptionsCompiler.Race),
-      BuiltIn(
-        "snakes", "Snakes", LayerParameterSchemas.SnakesParams,
-        LayerRendererOptionsCompiler.Palette),
-      BuiltIn(
-        "splat", "Splat Effect", LayerParameterSchemas.SplatParams,
-        LayerRendererOptionsCompiler.Palette),
-      BuiltIn(
-        "quaternion-paintbrush", "Quaternion Paintbrush",
-        LayerParameterSchemas.PaintbrushParams,
-        LayerRendererOptionsCompiler.Paintbrush),
-      BuiltIn(
-        "tv-static", "TV Static", LayerParameterSchemas.NoParams,
-        LayerRendererOptionsCompiler.Empty),
-      BuiltIn(
-        "twinkle", "Twinkle", LayerParameterSchemas.TwinkleParams,
-        LayerRendererOptionsCompiler.Twinkle),
-      BuiltIn(
-        "flash", "Flash", LayerParameterSchemas.FlashParams,
-        LayerRendererOptionsCompiler.Flash, fireAction: FireAction),
-      BuiltIn(
-        "background", "Background", LayerParameterSchemas.BackgroundParams,
-        LayerRendererOptionsCompiler.Background),
-      BuiltIn(
-        "earth", "Earth", LayerParameterSchemas.EarthParams,
-        LayerRendererOptionsCompiler.Earth),
-      BuiltIn(
-        "astronomy", "Astronomy", LayerParameterSchemas.AstronomyParams,
-        LayerRendererOptionsCompiler.Astronomy,
-        fireAction: PlayAction, clearAction: StopAction),
-      BuiltIn(
-        "wave", "Wave", LayerParameterSchemas.WaveParams,
-        LayerRendererOptionsCompiler.Wave, fireAction: FireAction),
-      BuiltIn(
-        "ripple", "Ripple", LayerParameterSchemas.RippleParams,
-        LayerRendererOptionsCompiler.Ripple, fireAction: FireAction),
-      BuiltIn(
-        "stamp", "Stamp", LayerParameterSchemas.StampParams,
-        LayerRendererOptionsCompiler.Stamp, fireAction: FireAction),
-      BuiltIn(
-        "tunnel", "Tunnel", LayerParameterSchemas.TunnelParams,
-        LayerRendererOptionsCompiler.Tunnel),
-      BuiltIn(
-        "metaball", "Metaball", LayerParameterSchemas.MetaballParams,
-        LayerRendererOptionsCompiler.Metaball, fireAction: FireAction),
-      BuiltIn(
-        "magnetic-field", "Magnetic Field",
-        LayerParameterSchemas.MagneticFieldParams,
-        LayerRendererOptionsCompiler.MagneticField),
-      BuiltIn(
-        "point-cloud", "Point Cloud", LayerParameterSchemas.PointCloudParams,
-        LayerRendererOptionsCompiler.PointCloud),
-      BuiltIn(
-        "gyroscope", "Gyroscope", LayerParameterSchemas.GyroscopeParams,
-        LayerRendererOptionsCompiler.Gyroscope),
-      BuiltIn(
-        "watchful-iris", "Watchful Iris",
-        LayerParameterSchemas.WatchfulIrisParams,
-        LayerRendererOptionsCompiler.WatchfulIris,
-        fireAction: BlinkAction),
-      BuiltIn(
-        "shooting-star", "Shooting Star",
-        LayerParameterSchemas.ShootingStarParams,
-        LayerRendererOptionsCompiler.ShootingStar,
-        fireAction: FireAction, clearAction: ClearAction),
-      BuiltIn(
-        "sparkler", "Sparkler", LayerParameterSchemas.SparklerParams,
-        LayerRendererOptionsCompiler.Sparkler,
-        fireAction: FireAction, clearAction: ClearAction),
-      BuiltIn(
-        "noise-cloud", "Noise Cloud", LayerParameterSchemas.NoiseCloudParams,
-        LayerRendererOptionsCompiler.NoiseCloud),
-      BuiltIn(
-        "caustics", "Caustics", LayerParameterSchemas.CausticsParams,
-        LayerRendererOptionsCompiler.Caustics),
-      BuiltIn(
-        "ripple-tank", "Ripple Tank", LayerParameterSchemas.RippleTankParams,
-        LayerRendererOptionsCompiler.RippleTank, clearAction: ClearAction),
-      BuiltIn(
-        "vortex", "Vortex", LayerParameterSchemas.VortexParams,
-        LayerRendererOptionsCompiler.Vortex),
-      BuiltIn(
-        "living-skin", "Living Skin",
-        LayerParameterSchemas.LivingSkinParams,
-        LayerRendererOptionsCompiler.LivingSkin,
-        fireAction: FireAction, clearAction: ClearAction),
-      BuiltIn(
-        "arc-lightning", "Arc Lightning",
-        LayerParameterSchemas.ArcLightningParams,
-        LayerRendererOptionsCompiler.ArcLightning,
-        fireAction: FireAction, clearAction: ClearAction),
-      BuiltIn(
-        "glass-mosaic", "Glass Mosaic",
-        LayerParameterSchemas.GlassMosaicParams,
-        LayerRendererOptionsCompiler.GlassMosaic,
-        fireAction: FireAction, clearAction: ClearAction),
-      BuiltIn(
-        "cellular-dome", "Cellular Dome",
-        LayerParameterSchemas.CellularDomeParams,
-        LayerRendererOptionsCompiler.CellularDome,
-        fireAction: FireAction, clearAction: ClearAction),
-      BuiltIn(
-        "firefly-swarm", "Firefly Swarm",
-        LayerParameterSchemas.FireflySwarmParams,
-        LayerRendererOptionsCompiler.FireflySwarm),
-      BuiltIn(
-        "rain-chamber", "Rain Chamber",
-        LayerParameterSchemas.RainChamberParams,
-        LayerRendererOptionsCompiler.RainChamber),
-      BuiltIn(
-        "topographic-dream", "Topographic Dream",
-        LayerParameterSchemas.TopographicDreamParams,
-        LayerRendererOptionsCompiler.TopographicDream),
-      BuiltIn(
-        "orbital-garden", "Orbital Garden",
-        LayerParameterSchemas.OrbitalGardenParams,
-        LayerRendererOptionsCompiler.OrbitalGarden),
-      BuiltIn(
-        "lava-lamp-sky", "Lava Lamp Sky",
-        LayerParameterSchemas.LavaLampSkyParams,
-        LayerRendererOptionsCompiler.LavaLampSky),
-    });
   }
 
   public sealed class LayerStackService {
     private readonly LayerCatalog catalog;
 
-    public LayerStackService(LayerCatalog catalog = null) {
-      this.catalog = catalog ?? LayerCatalog.Default;
+    public LayerStackService(LayerCatalog catalog) {
+      this.catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
     }
 
     public (LayerStackSnapshot snapshot, string error) CreateSnapshot(
@@ -455,7 +317,7 @@ namespace Spectrum.Base {
           Enabled = layer.Enabled,
           Notes = notes,
           RendererParams = StackValidator.SanitizeRendererParams(
-            layer.VisualizerKey, layer.RendererParams),
+            this.catalog, layer.VisualizerKey, layer.RendererParams),
           OperationParams = StackValidator.SanitizeOperationParams(
             operation, layer.OperationParams),
         });
@@ -528,6 +390,13 @@ namespace Spectrum.Base {
         return new LayerRendererBinding(existing.Renderer, false, null);
       }
 
+      Entry created = this.CreateEntry(layer);
+      ILayerRenderer replaced = existing?.Renderer;
+      this.entries[layer.Id] = created;
+      return new LayerRendererBinding(created.Renderer, true, replaced);
+    }
+
+    private Entry CreateEntry(LayerSnapshot layer) {
       LayerDefinition definition = this.catalog.Get(layer.RendererId) ??
         throw new InvalidOperationException(
           "Unknown layer renderer: " + layer.RendererId);
@@ -535,7 +404,6 @@ namespace Spectrum.Base {
         throw new InvalidOperationException(
           "No renderer factory registered for layer " + layer.RendererId);
       }
-
       var runtime = new LayerRendererRuntime(
         layer, definition.CompileOptions);
       ILayerRenderer renderer = definition.CreateRenderer(runtime);
@@ -543,10 +411,109 @@ namespace Spectrum.Base {
         throw new InvalidOperationException(
           "Renderer factory returned null for layer " + layer.RendererId);
       }
-      ILayerRenderer replaced = existing?.Renderer;
-      this.entries[layer.Id] = new Entry(
-        layer.RendererId, renderer, runtime);
-      return new LayerRendererBinding(renderer, true, replaced);
+      return new Entry(layer.RendererId, renderer, runtime);
+    }
+
+    /**
+     * Builds one candidate renderer generation without mutating the live store
+     * or publishing option updates to retained renderer instances. The owner
+     * compiles its complete RenderPlan against Get, then calls Commit only
+     * after every renderer and operation has succeeded.
+     */
+    public Transaction Prepare(LayerStackSnapshot snapshot) {
+      if (snapshot == null) {
+        throw new ArgumentNullException(nameof(snapshot));
+      }
+      var transaction = new Transaction(this);
+      try {
+        foreach (LayerSnapshot layer in snapshot.Layers) {
+          transaction.Resolve(layer);
+        }
+        return transaction;
+      } catch {
+        transaction.Dispose();
+        throw;
+      }
+    }
+
+    public sealed class Transaction : IDisposable {
+      private readonly LayerRendererStore owner;
+      private readonly Dictionary<LayerInstanceId, Entry> resolved = new();
+      private readonly List<LayerRendererBinding> bindings = new();
+      private readonly List<(
+        LayerRendererRuntime Runtime,
+        LayerRendererRuntime.RuntimeState State)> updates = new();
+      private readonly List<ILayerRenderer> created = new();
+      private bool committed;
+      private bool disposed;
+
+      internal Transaction(LayerRendererStore owner) {
+        this.owner = owner;
+      }
+
+      public IReadOnlyList<LayerRendererBinding> Bindings => this.bindings;
+
+      internal void Resolve(LayerSnapshot layer) {
+        if (this.owner.entries.TryGetValue(
+            layer.Id, out Entry existing) &&
+            existing.RendererId == layer.RendererId) {
+          LayerRendererRuntime.RuntimeState prepared =
+            existing.Runtime.Prepare(layer);
+          this.updates.Add((existing.Runtime, prepared));
+          this.resolved.Add(layer.Id, existing);
+          this.bindings.Add(new LayerRendererBinding(
+            existing.Renderer, false, null));
+          return;
+        }
+
+        Entry candidate = this.owner.CreateEntry(layer);
+        this.resolved.Add(layer.Id, candidate);
+        this.created.Add(candidate.Renderer);
+        this.bindings.Add(new LayerRendererBinding(
+          candidate.Renderer, true, existing?.Renderer));
+      }
+
+      public ILayerRenderer Get(LayerSnapshot layer) {
+        if (layer == null) {
+          return null;
+        }
+        return this.resolved.TryGetValue(layer.Id, out Entry entry) &&
+          entry.RendererId == layer.RendererId
+            ? entry.Renderer
+            : null;
+      }
+
+      public void Commit() {
+        if (this.disposed) {
+          throw new ObjectDisposedException(nameof(Transaction));
+        }
+        if (this.committed) {
+          throw new InvalidOperationException(
+            "Renderer transaction has already been committed.");
+        }
+        foreach (var update in this.updates) {
+          update.Runtime.PublishPrepared(update.State);
+        }
+        foreach (KeyValuePair<LayerInstanceId, Entry> pair in this.resolved) {
+          this.owner.entries[pair.Key] = pair.Value;
+        }
+        this.committed = true;
+      }
+
+      public void Dispose() {
+        if (this.disposed) {
+          return;
+        }
+        this.disposed = true;
+        if (this.committed) {
+          return;
+        }
+        foreach (ILayerRenderer renderer in this.created) {
+          if (renderer is IDisposable disposable) {
+            disposable.Dispose();
+          }
+        }
+      }
     }
 
     public ILayerRenderer Get(LayerSnapshot layer) {

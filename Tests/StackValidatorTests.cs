@@ -44,7 +44,8 @@ namespace Spectrum.LayerPipeline.Tests {
       DomeLayerSettings opaque = ValidLayer("opaque");
       opaque.Opacity = 1;
       (List<DomeLayerSettings> boundaryStack, string boundaryError) =
-        StackValidator.Validate(new[] { transparent, opaque });
+        StackValidator.Validate(
+          new[] { transparent, opaque }, DomeLayerCatalog.Metadata);
       Assert(boundaryError == null && boundaryStack.Count == 2,
         "valid opacity boundaries were rejected: " + boundaryError);
 
@@ -61,7 +62,7 @@ namespace Spectrum.LayerPipeline.Tests {
       var source = new List<DomeLayerSettings> { input };
 
       (List<DomeLayerSettings> validated, string error) =
-        StackValidator.Validate(source);
+        StackValidator.Validate(source, DomeLayerCatalog.Metadata);
       Assert(error == null, error);
       DomeLayerSettings output = validated[0];
 
@@ -113,7 +114,8 @@ namespace Spectrum.LayerPipeline.Tests {
         },
       };
 
-      (bool applied, string error) = new SceneService(config).Apply("Broken");
+      (bool applied, string error) = new SceneService(
+        config, DomeLayerCatalog.Metadata).Apply("Broken");
       Assert(!applied && error != null,
         "invalid scene was accepted");
       Assert(ReferenceEquals(config.domeLayerStack, liveStack) &&
@@ -147,7 +149,7 @@ namespace Spectrum.LayerPipeline.Tests {
       IReadOnlyList<DomeLayerSettings> input, string expectedError
     ) {
       (List<DomeLayerSettings> stack, string error) =
-        StackValidator.Validate(input);
+        StackValidator.Validate(input, DomeLayerCatalog.Metadata);
       Assert(stack == null, "invalid stack produced normalized output");
       Assert(error != null && error.Contains(
           expectedError, StringComparison.OrdinalIgnoreCase),

@@ -24,24 +24,24 @@ namespace Spectrum.Base {
       };
     }
 
-    public override Binding[] GetBindings(Configuration config, BeatBroadcaster beat) {
+    public override Binding[] GetBindings(
+      Configuration config,
+      BeatBroadcaster beat,
+      ApplicationStateDispatcher stateDispatcher
+    ) {
+      PropertyInfo property = ResolveConfigurationProperty(
+        this.configPropertyName, typeof(int));
       Binding binding = new Binding();
       binding.key = new BindingKey(MidiCommandType.Knob, this.knobIndex);
       binding.config = this;
       binding.callback = (index, val) => {
         int transformedValue = DiscretizeKnob(val, this.numPossibleValues);
-        PropertyInfo myPropInfo =
-          typeof(Configuration).GetProperty(this.configPropertyName);
-        // A preset can outlive the property it binds (e.g. tuning knobs retired
-        // into per-layer params). This callback runs on the MIDI driver thread,
-        // where a throw kills the process — log and drop instead.
-        if (myPropInfo == null) {
-          return "config property \"" + this.configPropertyName +
-            "\" no longer exists; rebind this knob";
-        }
-        myPropInfo.SetValue(config, transformedValue, null);
-        return "config property \"" + this.configPropertyName +
-          "\" updated to " + transformedValue.ToString();
+        System.Threading.Tasks.Task completion = stateDispatcher.InvokeAsync(
+          () => property.SetValue(config, transformedValue, null));
+        return new BindingInvocation(
+          "config property \"" + this.configPropertyName +
+            "\" updated to " + transformedValue.ToString(),
+          completion);
       };
       return new Binding[] { binding };
     }

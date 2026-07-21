@@ -1,4 +1,5 @@
 using Spectrum.Base;
+using System.Threading;
 
 namespace Spectrum {
 
@@ -8,12 +9,20 @@ namespace Spectrum {
   internal sealed class ConfigurationDomeLayerEnvironment
       : DomeLayerEnvironment {
     private readonly Configuration config;
+    private DomeShowStateSnapshot frameShowState =
+      DomeShowStateSnapshot.Empty;
 
     public ConfigurationDomeLayerEnvironment(Configuration config) {
       this.config = config;
     }
 
-    public double GlobalFadeSpeed => this.config.domeGlobalFadeSpeed;
+    public void BeginOperatorFrame(DomeShowStateSnapshot showState) =>
+      Volatile.Write(
+        ref this.frameShowState,
+        showState ?? DomeShowStateSnapshot.Empty);
+
+    public double GlobalFadeSpeed =>
+      Volatile.Read(ref this.frameShowState).GlobalFadeSpeed;
 
     // Preserve the historical multiplication and truncation order used by the
     // two random-color renderers.

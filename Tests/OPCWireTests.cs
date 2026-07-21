@@ -777,7 +777,8 @@ namespace Spectrum.LayerPipeline.Tests {
       return lit;
     }
 
-    private sealed class ImmediateGateway : ControlGateway {
+    private sealed class ImmediateGateway : ApplicationStateDispatcher {
+      public bool CheckAccess() => true;
       public void Post(Action mutation) => mutation();
       public Task InvokeAsync(Action mutation) {
         mutation();

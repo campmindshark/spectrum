@@ -10,7 +10,7 @@ namespace Spectrum.Web {
    * The web control for the dome layer stack. Whole-stack last-write-wins (the
    * client always sends its full edited copy), so — unlike the modal dome
    * calibration — it needs no advisory lease: it simply replaces
-   * config.domeLayerStack through the ControlGateway, exactly like a native GUI
+   * config.domeLayerStack through the application-state dispatcher, exactly like a native GUI
    * write. The full stack is broadcast on the SSE feed (frame kind "layers") so
    * every client and the native UI converge.
    *
@@ -75,9 +75,11 @@ namespace Spectrum.Web {
       public IReadOnlyList<OperationOptionDto> operations { get; set; }
     }
 
-    private readonly ControlGateway gateway;
+    private readonly ApplicationStateDispatcher gateway;
     private readonly Configuration config;
-    public LayersController(ControlGateway gateway, Configuration config) {
+    public LayersController(
+      ApplicationStateDispatcher gateway, Configuration config
+    ) {
       this.gateway = gateway;
       this.config = config;
     }
@@ -121,11 +123,48 @@ namespace Spectrum.Web {
       return list;
     }
 
+    // Immutable show-state projection used by SSE. Unlike the serializer DTO
+    // overload above, every field here comes from the same published
+    // generation, so request-thread snapshots cannot mix a newly committed
+    // stack with prior globals or palettes.
+    public static List<LayerDto> SerializeStack(LayerStackSnapshot snapshot) {
+      var list = new List<LayerDto>();
+      if (snapshot?.Layers.IsDefaultOrEmpty != false) {
+        return list;
+      }
+      foreach (LayerSnapshot layer in snapshot.Layers) {
+        list.Add(new LayerDto {
+          instanceId = layer.Id.Value,
+          visualizerKey = layer.RendererId,
+          blendMode = layer.OperationId,
+          opacity = layer.Opacity,
+          enabled = layer.Enabled,
+          notes = layer.Notes,
+          rendererParams = SnapshotParameters(layer.RendererParameters),
+          operationParams = SnapshotParameters(layer.OperationParameters),
+        });
+      }
+      return list;
+    }
+
+    private static Dictionary<string, double> SnapshotParameters(
+      IReadOnlyDictionary<string, ParameterValue> parameters
+    ) {
+      var values = new Dictionary<string, double>();
+      if (parameters == null) {
+        return values;
+      }
+      foreach (KeyValuePair<string, ParameterValue> pair in parameters) {
+        values[pair.Key] = pair.Value.Value;
+      }
+      return values;
+    }
+
     private static List<VisualizerOptionDto> VisualizerOptions(
       Configuration config
     ) {
       var options = new List<VisualizerOptionDto>();
-      foreach (LayerDefinition definition in LayerCatalog.Default.Definitions) {
+      foreach (LayerDefinition definition in DomeLayerCatalog.Metadata.Definitions) {
         options.Add(new VisualizerOptionDto {
           key = definition.Id,
           label = definition.DisplayName,
@@ -207,7 +246,7 @@ namespace Spectrum.Web {
         });
       }
       (List<DomeLayerSettings> newStack, string error) =
-        StackValidator.Validate(parsed);
+        StackValidator.Validate(parsed, DomeLayerCatalog.Metadata);
       if (error != null) {
         return (false, error);
       }

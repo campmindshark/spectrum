@@ -23,10 +23,12 @@ namespace Spectrum.Base {
     bool domeEnabled { get; set; }
     bool midiInputEnabled { get; set; }
 
-    // If this is true, we will poll the input/output APIs in a thread separate
-    // to the one running the visualizers. If it is false, a single thread will
-    // first poll the input/output APIs and then run the visualizers.
+    // Legacy serialized setting retained so older configuration files continue
+    // to round-trip. Sanford delivers MIDI on its own callbacks; the retired
+    // worker behind this flag performed no work, so the runtime ignores it.
     bool midiInputInSeparateThread { get; set; }
+
+    // If true, dome output is polled separately from the visualizer thread.
     bool domeOutputInSeparateThread { get; set; }
 
     string domeBeagleboneOPCAddress { get; set; }
