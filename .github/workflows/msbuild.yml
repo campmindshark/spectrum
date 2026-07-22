@@ -183,6 +183,22 @@ jobs:
         curl --fail --silent \
           "http://127.0.0.1:${port}/api/operator" >/dev/null
 
+        missing_wand_port="/dev/serial/by-id/SPECTRUM_CI_MISSING"
+        curl --fail --silent \
+          --request PUT \
+          --header 'Content-Type: application/json' \
+          --data "{\"value\":\"${missing_wand_port}\"}" \
+          "http://127.0.0.1:${port}/api/maintenance/parameters/wandSerialPort" \
+          >/dev/null
+        sleep 1
+        wand_state=$(curl --fail --silent \
+          "http://127.0.0.1:${port}/api/maintenance/wands/serial")
+        grep --fixed-strings \
+          '"selectedPort":"/dev/serial/by-id/SPECTRUM_CI_MISSING"' \
+          <<<"$wand_state"
+        curl --fail --silent \
+          "http://127.0.0.1:${port}/api/operator" >/dev/null
+
         write_pids=()
         for value in {101..140}; do
           curl --fail --silent \
@@ -222,6 +238,9 @@ jobs:
           "$data_dir/spectrum_config.xml"
         grep --fixed-strings \
           "<audioDeviceID>hw:SPECTRUM_CI_MISSING,0</audioDeviceID>" \
+          "$data_dir/spectrum_config.xml"
+        grep --fixed-strings \
+          "<wandSerialPort>/dev/serial/by-id/SPECTRUM_CI_MISSING</wandSerialPort>" \
           "$data_dir/spectrum_config.xml"
 
     - name: Archive the Linux headless host

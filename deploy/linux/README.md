@@ -98,6 +98,11 @@ usermod -aG dialout spectrum
 systemctl restart spectrum.service
 ```
 
+The maintenance page prefers persistent `/dev/serial/by-id/...` device names.
+When a receiver does not publish a hardware serial number it falls back to a
+`/dev/serial/by-path/...` name, then to transient kernel names such as
+`/dev/ttyACM0`. Select a persistent alias when one is offered so reconnects and
+reboots do not silently redirect the saved setting to a different USB device.
 
 ## Operations
 

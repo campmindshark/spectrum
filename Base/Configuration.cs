@@ -103,8 +103,9 @@ namespace Spectrum.Base {
     int orientationDeviceSpotlight { get; set; }
     bool orientationCalibrate { get; set; }
 
-    // COM port of the USB-CDC ESP-NOW wand receiver, "" = no serial input.
-    // The receiver reacts live to changes; not in configPropertiesToRebootOn.
+    // Port of the USB-CDC ESP-NOW wand receiver (COM name on Windows, stable
+    // /dev/serial alias on Linux), "" = no serial input. The receiver reacts
+    // live to changes; not in configPropertiesToRebootOn.
     string wandSerialPort { get; set; }
   }
 

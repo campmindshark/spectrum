@@ -46,6 +46,8 @@ namespace Spectrum.Portability.Tests {
         LinuxMadmomPcmInput);
       Run("Linux Madmom process consumes PCM and publishes beats",
         LinuxMadmomProcessLifecycle);
+      Run("Linux serial discovery prefers stable device aliases",
+        LinuxSerialPortDiscovery);
       Run("portable Pro DJ Link input receives UDP beats",
         PortableProDjLinkInput);
       Run("portable core compiles built-in layer configuration",
@@ -983,6 +985,32 @@ namespace Spectrum.Portability.Tests {
       Assert(fallbackPaths.PrimaryPath == Path.Combine(
             homeDirectory, ".config", "spectrum", "spectrum_config.xml"),
         "the Linux host did not fall back to ~/.config/spectrum");
+    }
+
+    private static void LinuxSerialPortDiscovery() {
+      string byIdWand = "/dev/serial/by-id/usb-spectrum-wand";
+      string byPathWand = "/dev/serial/by-path/pci-wand";
+      string byPathBridge = "/dev/serial/by-path/pci-bridge";
+      string[] ports = WandSerialReceiver.MergeLinuxPortNames(
+        new[] {
+          "/dev/ttyUSB0",
+          "/dev/ttyACM0",
+          "/dev/ttyUSB0",
+          "",
+        },
+        new[] {
+          new KeyValuePair<string, string>(byIdWand, "/dev/ttyACM0"),
+          new KeyValuePair<string, string>(byPathWand, "/dev/ttyACM0"),
+          new KeyValuePair<string, string>(byPathBridge, "/dev/ttyUSB1"),
+        });
+
+      string[] expected = {
+        byIdWand,
+        byPathBridge,
+        "/dev/ttyUSB0",
+      };
+      Assert(ports.AsSpan().SequenceEqual(expected),
+        "stable aliases did not replace transient or duplicate Linux ports");
     }
 
     private static void OpcWireFrame() {

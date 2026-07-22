@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
+using System.Linq;
 using System.Threading;
 using Spectrum.Base;
 
@@ -119,7 +121,119 @@ namespace Spectrum {
       // On Windows GetPortNames() can return stale registry entries; harmless
       // here — a stale pick just fails to open and the worker retries — but it's
       // why the UI keeps a configured-but-absent port as a "(missing)" item.
-      return SerialPort.GetPortNames();
+      string[] nativePorts;
+      try {
+        nativePorts = SerialPort.GetPortNames();
+      } catch (Exception e) when (
+          e is IOException ||
+          e is UnauthorizedAccessException ||
+          e is Win32Exception ||
+          e is PlatformNotSupportedException ||
+          e is System.Security.SecurityException) {
+        // Keep the maintenance endpoint available if the platform enumerator
+        // cannot inspect its registry/dev tree. Linux stable aliases below may
+        // still be usable, and a configured port remains visible separately.
+        nativePorts = Array.Empty<string>();
+      }
+      if (!OperatingSystem.IsLinux()) {
+        return nativePorts
+          .Distinct(StringComparer.OrdinalIgnoreCase)
+          .OrderBy(port => port, StringComparer.OrdinalIgnoreCase)
+          .ToArray();
+      }
+
+      // Linux kernel names such as /dev/ttyACM0 depend on discovery order and
+      // can move after a reboot or reconnect. udev's by-id aliases follow the
+      // physical receiver; by-path is the next-best identity for hardware that
+      // exposes no serial number. Prefer those aliases and suppress duplicate
+      // aliases/native names that resolve to the same device.
+      return MergeLinuxPortNames(nativePorts, EnumerateLinuxPortAliases(
+        "/dev/serial/by-id", "/dev/serial/by-path"));
+    }
+
+    internal static string[] MergeLinuxPortNames(
+      IEnumerable<string> nativePorts,
+      IEnumerable<KeyValuePair<string, string>> aliases
+    ) {
+      var result = new List<string>();
+      var seenNames = new HashSet<string>(StringComparer.Ordinal);
+      var representedTargets = new HashSet<string>(StringComparer.Ordinal);
+
+      foreach (var alias in aliases) {
+        string aliasName = NormalizeDevicePath(alias.Key);
+        string target = NormalizeDevicePath(alias.Value);
+        if (string.IsNullOrEmpty(aliasName) ||
+            (!string.IsNullOrEmpty(target) &&
+              !representedTargets.Add(target))) {
+          continue;
+        }
+        if (seenNames.Add(aliasName)) {
+          result.Add(aliasName);
+        }
+      }
+
+      foreach (string nativePort in nativePorts
+          .Where(port => !string.IsNullOrWhiteSpace(port))
+          .OrderBy(port => port, StringComparer.Ordinal)) {
+        string normalized = NormalizeDevicePath(nativePort);
+        if (representedTargets.Contains(normalized) ||
+            !seenNames.Add(normalized)) {
+          continue;
+        }
+        result.Add(nativePort);
+      }
+      return result.ToArray();
+    }
+
+    private static IEnumerable<KeyValuePair<string, string>>
+      EnumerateLinuxPortAliases(params string[] directories) {
+      foreach (string directory in directories) {
+        string[] entries;
+        try {
+          entries = Directory.EnumerateFileSystemEntries(directory)
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+        } catch (Exception e) when (
+            e is IOException ||
+            e is UnauthorizedAccessException ||
+            e is System.Security.SecurityException) {
+          continue;
+        }
+
+        foreach (string entry in entries) {
+          string target = null;
+          try {
+            target = File.ResolveLinkTarget(entry, returnFinalTarget: true)
+              ?.FullName;
+          } catch (Exception e) when (
+              e is IOException ||
+              e is UnauthorizedAccessException ||
+              e is System.Security.SecurityException) {
+            // Keep the visible alias even when its target cannot be inspected;
+            // opening it remains safely contained by the serial worker.
+          }
+          yield return new KeyValuePair<string, string>(entry, target);
+        }
+      }
+    }
+
+    private static string NormalizeDevicePath(string path) {
+      if (string.IsNullOrWhiteSpace(path)) {
+        return "";
+      }
+      // Preserve Unix paths when this pure merge policy is exercised by the
+      // portable regression runner on Windows.
+      if (path.StartsWith("/", StringComparison.Ordinal)) {
+        return path;
+      }
+      try {
+        return Path.IsPathRooted(path) ? Path.GetFullPath(path) : path;
+      } catch (Exception e) when (
+          e is ArgumentException ||
+          e is NotSupportedException ||
+          e is PathTooLongException) {
+        return path;
+      }
     }
 
     public WandSerialStatus StatusSnapshot() {

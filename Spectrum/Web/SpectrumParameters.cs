@@ -133,7 +133,7 @@ namespace Spectrum.Web {
           description: "Controller address in host:port or host:port:channel format.",
           normalize: NormalizeOpcAddress),
 
-        // Wand USB-CDC receiver COM port ("" = no serial input). The receiver
+        // Wand USB-CDC receiver serial port ("" = no serial input). The receiver
         // reacts live via PropertyChanged; the port list is served separately by
         // GET /api/maintenance/wands/serial.
         new StringParameter("wandSerialPort", maint,

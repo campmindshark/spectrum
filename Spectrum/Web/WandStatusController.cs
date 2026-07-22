@@ -99,10 +99,11 @@ namespace Spectrum.Web {
     }
 
     // Serial-receiver read model for the maintenance "Wand receiver" row: the
-    // available COM ports, the configured selection, and a compact status of the
-    // USB-CDC ESP-NOW receiver. Uses only thread-safe snapshots, so it never
-    // races the serial worker thread. The millis-since fields are large finite
-    // sentinels (never ∞) when the event hasn't been seen, so they serialize.
+    // available platform serial ports, the configured selection, and a compact
+    // status of the USB-CDC ESP-NOW receiver. Uses only thread-safe snapshots,
+    // so it never races the serial worker thread. The millis-since fields are
+    // large finite sentinels (never ∞) when the event hasn't been seen, so
+    // they serialize.
     public object SerialInfo() {
       var status = this.orientation.WandSerial.StatusSnapshot();
       return new {
