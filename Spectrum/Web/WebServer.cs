@@ -194,7 +194,10 @@ namespace Spectrum.Web {
       });
 
       // ---- User scope ----
-      app.MapGet("/api/parameters", async (HttpContext ctx) =>
+      // These handlers intentionally take no HttpContext argument. A lone
+      // HttpContext async lambda binds to the RequestDelegate overload, which
+      // discards its returned IResult and sends an empty 200 response.
+      app.MapGet("/api/parameters", async () =>
         Results.Json(await this.controls.DescribeAsync(ControlRole.User)));
 
       app.MapGet("/api/parameters/{key}", async (string key) => {
@@ -333,7 +336,7 @@ namespace Spectrum.Web {
       });
 
       // ---- Maintenance scope (same host, just the full parameter set) ----
-      app.MapGet("/api/maintenance/parameters", async (HttpContext ctx) =>
+      app.MapGet("/api/maintenance/parameters", async () =>
         Results.Json(await this.controls.DescribeAsync(
           ControlRole.Maintenance)));
 
