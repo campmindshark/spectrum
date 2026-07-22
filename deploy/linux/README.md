@@ -6,8 +6,15 @@ use different readiness levels: native ALSA audio-level capture is available,
 while MIDI remains disabled. The browser simulator, OPC output, UDP orientation
 input, and USB serial wand input remain available.
 
+The archive also includes a relocatable CPython 3.11 Madmom runtime with the
+Linux Cython extensions and PyAudio under `Madmom/runtime`. The runtime is
+packaged and file-input qualified, but the headless host does not start it yet:
+the stable ALSA PCM selected for level capture still needs a reliable mapping
+to Madmom's PortAudio device identity.
+
 The self-contained .NET archive still uses the distribution's ALSA shared
-library and C++ runtime. Ensure `libasound.so.2` and `libstdc++.so.6` with
+library and C++ runtime. The packaged Python audio adapter also uses
+`libportaudio.so.2`. Ensure those libraries and `libstdc++.so.6` with
 `GLIBCXX_3.4.22` or newer are installed before starting the service. Stock
 Ubuntu 16.04 does not meet this loader requirement.
 
@@ -15,8 +22,11 @@ On Ubuntu 24.04, install the ALSA runtime with:
 
 ```shell
 apt-get update
-apt-get install libasound2t64
+apt-get install libasound2t64 libportaudio2
 ```
+
+`ffmpeg` is optional for live capture but required to run Madmom against audio
+files, including its packaged smoke-test workflow.
 
 ## Install
 
@@ -43,6 +53,20 @@ for the unprivileged `spectrum` user.
 
 Open `http://<host>:8080` from the trusted lighting network. Spectrum currently
 has no authentication, so do not expose this port directly to the Internet.
+
+## Target qualification
+
+On a clean systemd host, the packaged qualification script installs the exact
+unit and release tree temporarily, verifies HTTP readiness, a persisted clean
+restart, `Restart=on-failure` after `SIGKILL`, and a clean `SIGTERM` stop, then
+removes its test-owned service account, unit, install tree, and state. It
+refuses to run if any production path, account, or port is already in use.
+
+From an extracted release directory, run:
+
+```shell
+sudo bash deploy/linux/qualify-systemd.sh "$PWD"
+```
 
 ## Hardware permissions
 

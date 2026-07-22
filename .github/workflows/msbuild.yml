@@ -30,6 +30,16 @@ jobs:
       with:
         python-version: '3.11'
 
+    - name: Install Linux Madmom build dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install --yes --no-install-recommends \
+          build-essential \
+          ffmpeg \
+          portaudio19-dev
+        python -m pip install uv==0.11.26
+
     - name: Verify portable Madmom host-API selection
       run: python Madmom/tests/test_audio_host_api.py
 
@@ -71,6 +81,37 @@ jobs:
         --self-contained true
         -p:PublishSingleFile=false
         -o "${{ runner.temp }}/Spectrum-linux-x64"
+
+    - name: Build and stage the Linux Madmom runtime
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        environment_dir="${GITHUB_WORKSPACE}/artifacts/madmom-linux-build-env"
+        wheel_dir="${GITHUB_WORKSPACE}/artifacts/wheels/linux-x64"
+        runtime_dir="${GITHUB_WORKSPACE}/artifacts/madmom-linux-runtime"
+        publish_madmom_dir="${RUNNER_TEMP}/Spectrum-linux-x64/Madmom"
+
+        bash Madmom/scripts/build.sh \
+          --python "$(command -v python)" \
+          --environment-directory "$environment_dir" \
+          --wheel-directory "$wheel_dir" \
+          --portable-runtime-directory "$runtime_dir"
+
+        mkdir -p "$publish_madmom_dir"
+        cp -a "$runtime_dir" "$publish_madmom_dir/runtime"
+
+        test -x "$publish_madmom_dir/runtime/bin/python"
+        test -f "$publish_madmom_dir/runtime/bin/DBNBeatTracker"
+        bash Madmom/scripts/verify-linux-runtime.sh \
+          "$publish_madmom_dir/runtime"
+
+    - name: Upload the Linux Madmom wheel
+      uses: actions/upload-artifact@v4
+      with:
+        name: madmom-linux-x64-${{ github.sha }}
+        path: artifacts/wheels/linux-x64/*.whl
+        if-no-files-found: error
 
     - name: Stress HTTP writes and repeated SIGTERM shutdown
       shell: bash

@@ -1,9 +1,10 @@
 # Spectrum
 
-Spectrum is a lighting-control application written in C#. Its desktop frontend,
-MIDI adapter, and beat-tracking package are Windows-only. The lighting engine,
-browser controller, simulator, OPC output, orientation inputs, ALSA audio-level
-capture, and a headless host build as portable .NET 10 code for Linux.
+Spectrum is a lighting-control application written in C#. Its desktop frontend
+and MIDI adapter are Windows-only. The lighting engine, browser controller,
+simulator, OPC output, orientation inputs, ALSA audio-level capture, and
+headless host run on Linux. The Linux release also carries a native Madmom
+runtime, though live Madmom capture is not wired to the host yet.
 
 ## Installation
 
@@ -65,13 +66,29 @@ retries when an interface is absent or unplugged.
 `Ctrl+C` and `SIGTERM` perform an ordered shutdown and flush pending changes.
 
 The host is not yet at full Linux show-hardware parity: ALSA audio-level capture
-is implemented, but Linux Madmom beat tracking and MIDI remain to be packaged or
-implemented, and capture still needs hardware latency/permission qualification.
+and a native Linux Madmom runtime are packaged, but live Madmom capture is not
+wired to the host, MIDI is deliberately deferred, and capture still needs
+hardware latency/permission qualification.
 The portable regression suite runs with:
 
 ```shell
 dotnet run --project Tests/Portability/Spectrum.Portability.Tests.csproj -c Release
 ```
+
+To reproduce the Linux Madmom wheel and relocatable runtime on an x86-64 Linux
+host, install `build-essential`, `ffmpeg`, and `portaudio19-dev`, install
+`uv==0.11.26`, then run:
+
+```shell
+bash Madmom/scripts/build.sh \
+  --environment-directory artifacts/madmom-linux-build-env \
+  --wheel-directory artifacts/wheels/linux-x64 \
+  --portable-runtime-directory artifacts/madmom-linux-runtime
+```
+
+The script provisions managed CPython 3.11.15, runs the Madmom suite, checks the
+four Cython `.so` modules and PyAudio, runs the DBN tracker against its sample
+audio, and repeats the smoke test after relocating the staged runtime.
 
 To create the same self-contained `linux-x64` directory used by CI and tagged
 releases:
