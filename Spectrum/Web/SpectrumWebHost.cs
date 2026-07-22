@@ -44,6 +44,7 @@ namespace Spectrum.Web {
         LEDDomeOutput.NumCables);
       var wands = new WandStatusController(
         runtime.OrientationInput, stateDispatcher, config);
+      var audio = new AudioDeviceController(runtime.AudioInput, config);
       var operatorControl = new OperatorController(
         runtime, stateDispatcher);
       var tempo = new TempoController(
@@ -57,7 +58,7 @@ namespace Spectrum.Web {
       this.server = new WebServer(
         controls, this.eventStream, this.AdvisoryLocks,
         this.DomeCalibration, wands, operatorControl, tempo, layers,
-        scenes, palettes, domeSimulator, port);
+        scenes, palettes, audio, domeSimulator, port);
     }
 
     public AdvisoryLockManager AdvisoryLocks { get; }

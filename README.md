@@ -1,9 +1,9 @@
 # Spectrum
 
-Spectrum is a lighting-control application written in C#. Its desktop frontend
-and physical audio/MIDI adapters are Windows-only. The lighting engine, browser
-controller, simulator, OPC output, orientation inputs, and a headless host now
-build as portable .NET 10 code for Linux.
+Spectrum is a lighting-control application written in C#. Its desktop frontend,
+MIDI adapter, and beat-tracking package are Windows-only. The lighting engine,
+browser controller, simulator, OPC output, orientation inputs, ALSA audio-level
+capture, and a headless host build as portable .NET 10 code for Linux.
 
 ## Installation
 
@@ -47,20 +47,27 @@ For a faster developer/CI build that omits the portable application, run
 ### Linux headless host and portable verification
 
 The `Spectrum.Host` console application runs the engine and browser controller
-with audio and MIDI disabled. With the .NET 10 SDK installed:
+with ALSA audio-level capture on Linux and MIDI disabled. The target must provide
+`libasound.so.2` and `libstdc++.so.6` with `GLIBCXX_3.4.22` or newer; stock
+Ubuntu 16.04 is too old for the self-contained .NET 10 host. With those
+libraries and the .NET 10 SDK installed:
 
 ```shell
 dotnet run --project Host/Spectrum.Host.csproj -c Release -- --data-dir ./spectrum-data
 ```
 
 Open `http://localhost:8080` to use the controller or browser dome simulator.
+The maintenance page enumerates ALSA capture devices, persists the selected PCM
+name, shows the live peak level, and reports capture errors. The capture worker
+retries when an interface is absent or unplugged.
 `--port` changes the listener port. Without `--data-dir`, configuration follows
 `SPECTRUM_DATA_DIR`, `XDG_CONFIG_HOME/spectrum`, then `~/.config/spectrum`.
 `Ctrl+C` and `SIGTERM` perform an ordered shutdown and flush pending changes.
 
-The host is an OPC/simulator MVP, not full Linux show-hardware parity: Linux
-audio, beat tracking, and MIDI backends remain to be implemented. The portable
-regression suite runs with:
+The host is not yet at full Linux show-hardware parity: ALSA audio-level capture
+is implemented, but Linux Madmom beat tracking and MIDI remain to be packaged or
+implemented, and capture still needs hardware latency/permission qualification.
+The portable regression suite runs with:
 
 ```shell
 dotnet run --project Tests/Portability/Spectrum.Portability.Tests.csproj -c Release

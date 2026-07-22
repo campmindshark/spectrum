@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Spectrum.Base;
 using Spectrum.LEDs;
+using Spectrum.Platform.Linux;
 using Spectrum.Visualizers;
 using Spectrum.Web;
 
@@ -36,6 +37,8 @@ namespace Spectrum.Portability.Tests {
         HeadlessConfigurationPaths);
       Run("Madmom runtime discovery supports Windows and Unix layouts",
         MadmomRuntimeDiscovery);
+      Run("Linux ALSA input discovers devices and publishes PCM peak level",
+        LinuxAlsaAudioInput);
       Run("portable core compiles built-in layer configuration",
         PortableCoreLayerConfiguration);
       Run("portable runtime assembly has no Windows desktop dependencies",
@@ -299,6 +302,46 @@ namespace Spectrum.Portability.Tests {
         "the portable built-in catalog did not compile typed layer options");
     }
 
+    private static void LinuxAlsaAudioInput() {
+      var config = new global::Spectrum.SpectrumConfiguration {
+        audioDeviceID = "hw:test,0",
+      };
+      var api = new FakeAlsaApi();
+      using var input = new AlsaAudioLevelInput(
+        config, api, TimeSpan.FromMilliseconds(5));
+
+      IReadOnlyList<AudioCaptureDevice> devices =
+        input.GetAvailableDevices();
+      Assert(devices.Count == 1 &&
+          devices[0].Id == "hw:test,0" &&
+          devices[0].Name == "Test capture",
+        "the ALSA device identity was not exposed unchanged");
+
+      input.Active = true;
+      Assert(SpinWait.SpinUntil(
+          () => input.Volume > 0.99f,
+          TimeSpan.FromSeconds(2)),
+        "signed 16-bit PCM did not publish a normalized peak level");
+      Assert(api.OpenCount > 0 && input.LastError == null,
+        "the ALSA worker did not open the configured device cleanly");
+      input.Active = false;
+      Assert(input.Volume == 0,
+        "stopping ALSA capture left a stale peak level");
+
+      api.FailOpen = true;
+      using var failing = new AlsaAudioLevelInput(
+        config, api, TimeSpan.FromMilliseconds(5));
+      failing.Active = true;
+      Assert(SpinWait.SpinUntil(
+          () => failing.LastError?.Contains("test device unavailable") == true,
+          TimeSpan.FromSeconds(2)),
+        "an ALSA open failure was not reported");
+      failing.GetAvailableDevices();
+      Assert(failing.LastError?.Contains("test device unavailable") == true,
+        "device polling erased the active ALSA capture failure");
+      failing.Active = false;
+    }
+
     private static void PortableRuntimeAssemblyBoundary() {
       var assembly = typeof(global::Spectrum.Operator).Assembly;
       var forbidden = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
@@ -368,6 +411,24 @@ namespace Spectrum.Portability.Tests {
           .GetAwaiter().GetResult();
         Assert(response.Contains("\"enabled\":false"),
           "the operator API returned an unexpected response: " + response);
+        string audioResponse = client.GetStringAsync(
+          "http://127.0.0.1:" + port + "/api/maintenance/audio")
+          .GetAwaiter().GetResult();
+        Assert(audioResponse.Contains("\"backend\":\"Disabled\"") &&
+            audioResponse.Contains("\"availableDevices\":[]"),
+          "the audio setup API returned an unexpected response: " +
+          audioResponse);
+        using var audioWrite = new StringContent(
+          "{\"value\":\"hw:test,0\"}",
+          Encoding.UTF8,
+          "application/json");
+        HttpResponseMessage audioWriteResponse = client.PutAsync(
+          "http://127.0.0.1:" + port +
+            "/api/maintenance/parameters/audioDeviceID",
+          audioWrite).GetAwaiter().GetResult();
+        Assert(audioWriteResponse.IsSuccessStatusCode &&
+            config.audioDeviceID == "hw:test,0",
+          "the browser audio selection did not reach configuration");
       } finally {
         web.StopAsync().GetAwaiter().GetResult();
       }
@@ -467,6 +528,41 @@ namespace Spectrum.Portability.Tests {
         this.RebootCount++;
         this.lifecycle.Add("runtime-reboot");
       }
+    }
+
+    private sealed class FakeAlsaApi : IAlsaApi {
+      public int OpenCount { get; private set; }
+      public bool FailOpen { get; set; }
+
+      public IReadOnlyList<AudioCaptureDevice> GetCaptureDevices() =>
+        new[] { new AudioCaptureDevice("hw:test,0", "Test capture") };
+
+      public IAlsaCapture OpenCapture(
+        string deviceId,
+        int sampleRate,
+        int framesPerRead
+      ) {
+        Assert(deviceId == "hw:test,0" && sampleRate == 44100,
+          "the ALSA worker opened the wrong device or sample rate");
+        this.OpenCount++;
+        if (this.FailOpen) {
+          throw new InvalidOperationException("test device unavailable");
+        }
+        return new FakeAlsaCapture();
+      }
+    }
+
+    private sealed class FakeAlsaCapture : IAlsaCapture {
+      public int Channels => 2;
+
+      public int Read(short[] samples) {
+        Array.Clear(samples, 0, samples.Length);
+        samples[0] = short.MinValue;
+        Thread.Yield();
+        return samples.Length;
+      }
+
+      public void Dispose() { }
     }
 
     private sealed class FakeHostService :

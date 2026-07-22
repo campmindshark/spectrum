@@ -680,6 +680,7 @@
       if (locksEl) { pollForeignLocks(); setInterval(pollForeignLocks, 3000); }
       if (window.spectrumCalibrationInit) window.spectrumCalibrationInit();
       if (window.spectrumWandsInit) window.spectrumWandsInit();
+      if (window.spectrumAudioInit) window.spectrumAudioInit();
       if (window.spectrumLayersInit) window.spectrumLayersInit();
       if (window.spectrumScenesInit) window.spectrumScenesInit();
       if (window.spectrumPaletteInit) window.spectrumPaletteInit();

@@ -8,6 +8,7 @@
     <ProjectReference Include="..\..\Base\Base.csproj" />
     <ProjectReference Include="..\..\Core\Spectrum.Core.csproj" />
     <ProjectReference Include="..\..\LEDs\LEDs.csproj" />
+    <ProjectReference Include="..\..\Platform.Linux\Spectrum.Platform.Linux.csproj" />
   </ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Spectrum.Base {
@@ -19,11 +21,16 @@ namespace Spectrum.Base {
       ApplicationStateDispatcher stateDispatcher
     ) => new DisabledMidiControlInput();
 
-    private sealed class DisabledAudioLevelInput : IAudioLevelInput {
+    private sealed class DisabledAudioLevelInput :
+      IAudioLevelInput, IAudioDeviceProvider {
       public bool Active { get; set; }
       public bool AlwaysActive => true;
       public bool Enabled => true;
       public float Volume => 0;
+      public string BackendName => "Disabled";
+      public string LastError => null;
+      public IReadOnlyList<AudioCaptureDevice> GetAvailableDevices() =>
+        Array.Empty<AudioCaptureDevice>();
       public void OperatorUpdate() { }
     }
 

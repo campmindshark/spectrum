@@ -117,6 +117,31 @@ jobs:
           exit 1
         fi
 
+        audio_state=$(curl --fail --silent \
+          "http://127.0.0.1:${port}/api/maintenance/audio")
+        grep --fixed-strings '"backend":"ALSA"' <<<"$audio_state"
+        if grep --quiet --fixed-strings \
+            'Unable to load shared library' <<<"$audio_state"; then
+          echo "The published host could not load libasound.so.2" >&2
+          exit 1
+        fi
+
+        missing_audio_device="hw:SPECTRUM_CI_MISSING,0"
+        curl --fail --silent \
+          --request PUT \
+          --header 'Content-Type: application/json' \
+          --data "{\"value\":\"${missing_audio_device}\"}" \
+          "http://127.0.0.1:${port}/api/maintenance/parameters/audioDeviceID" \
+          >/dev/null
+        sleep 1
+        audio_state=$(curl --fail --silent \
+          "http://127.0.0.1:${port}/api/maintenance/audio")
+        grep --fixed-strings \
+          '"selectedDeviceId":"hw:SPECTRUM_CI_MISSING,0"' \
+          <<<"$audio_state"
+        curl --fail --silent \
+          "http://127.0.0.1:${port}/api/operator" >/dev/null
+
         write_pids=()
         for value in {101..140}; do
           curl --fail --silent \
@@ -153,6 +178,9 @@ jobs:
           "Stopping Spectrum headless host..." "$log_file"
         grep --fixed-strings \
           "<domeGlobalFadeSpeed>0.125</domeGlobalFadeSpeed>" \
+          "$data_dir/spectrum_config.xml"
+        grep --fixed-strings \
+          "<audioDeviceID>hw:SPECTRUM_CI_MISSING,0</audioDeviceID>" \
           "$data_dir/spectrum_config.xml"
 
     - name: Archive the Linux headless host

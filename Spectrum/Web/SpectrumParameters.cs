@@ -107,6 +107,12 @@ namespace Spectrum.Web {
           c => c.midiInputEnabled, (c, v) => c.midiInputEnabled = v,
           label: "Enable MIDI input",
           description: "Listen to configured MIDI devices."),
+        new StringParameter("audioDeviceID", maint,
+          c => c.audioDeviceID ?? "", (c, v) => c.audioDeviceID = v,
+          label: "Audio capture device",
+          description:
+            "Stable platform capture-device identifier; empty disables capture.",
+          normalize: value => value.Trim()),
         new BoolParameter("vjHUDEnabled", maint,
           c => c.vjHUDEnabled, (c, v) => c.vjHUDEnabled = v,
           label: "Show performance HUD",

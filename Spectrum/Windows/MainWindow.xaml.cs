@@ -62,6 +62,7 @@ namespace Spectrum {
     }
 
     private static readonly HashSet<string> ConfigPropertiesToRebootOn = new HashSet<string>() {
+      nameof(SpectrumConfiguration.audioDeviceID),
       nameof(SpectrumConfiguration.domeOutputInSeparateThread),
     };
     private Operator op;
@@ -570,7 +571,6 @@ namespace Spectrum {
         return;
       }
       this.config.audioDeviceID = ((AudioDevice)this.audioDevices.SelectedItem).id;
-      this.op.Reboot();
     }
 
     // Refresh the list of available devices for the "Add device" panel

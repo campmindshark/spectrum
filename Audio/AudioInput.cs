@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using Spectrum.Base;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
 namespace Spectrum.Audio {
 
-  public class AudioInput : IAudioLevelInput {
+  public class AudioInput : IAudioLevelInput, IAudioDeviceProvider {
 
     private int audioFormatSampleFrequency = 44100;
 
@@ -20,6 +21,9 @@ namespace Spectrum.Audio {
 
     private volatile float volume;
     public float Volume => this.volume;
+    private string lastError;
+    public string BackendName => "WASAPI";
+    public string LastError => Volatile.Read(ref this.lastError);
 
     private readonly MadmomHandler madmomHandler;
     private readonly ProDjLinkHandler proDjLinkHandler;
@@ -56,7 +60,13 @@ namespace Spectrum.Audio {
         }
         if (value) {
           if (this.connectHardware) {
-            this.InitializeAudio();
+            try {
+              this.InitializeAudio();
+              Volatile.Write(ref this.lastError, null);
+            } catch (Exception error) {
+              Volatile.Write(ref this.lastError, error.Message);
+              throw;
+            }
           }
         } else {
           this.TerminateAudio();
@@ -216,6 +226,10 @@ namespace Spectrum.Audio {
         return audioDeviceList;
       }
     }
+
+    public IReadOnlyList<AudioCaptureDevice> GetAvailableDevices() =>
+      AudioDevices.ConvertAll(device =>
+        new AudioCaptureDevice(device.id, device.name));
 
     public int CurrentAudioDeviceIndex {
       get {

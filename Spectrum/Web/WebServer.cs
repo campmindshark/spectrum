@@ -35,6 +35,7 @@ namespace Spectrum.Web {
     private readonly LayersController layers;
     private readonly SceneController scenes;
     private readonly PaletteController palettes;
+    private readonly AudioDeviceController audio;
     private readonly WebDomeSimulator domeSimulator;
     private readonly int port;
     private WebApplication app;
@@ -70,6 +71,7 @@ namespace Spectrum.Web {
       LayersController layers,
       SceneController scenes,
       PaletteController palettes,
+      AudioDeviceController audio,
       WebDomeSimulator domeSimulator,
       int port
     ) {
@@ -83,6 +85,7 @@ namespace Spectrum.Web {
       this.layers = layers;
       this.scenes = scenes;
       this.palettes = palettes;
+      this.audio = audio;
       this.domeSimulator = domeSimulator;
       this.port = port;
     }
@@ -349,6 +352,12 @@ namespace Spectrum.Web {
 
       app.MapPut("/api/maintenance/parameters/{key}", (string key, HttpContext ctx) =>
         this.HandleWrite(key, ctx, ControlRole.Maintenance));
+
+      // Capture-device discovery and health. Selection is written through the
+      // audioDeviceID parameter so persistence and runtime reboot policy stay
+      // on the same serialized configuration path as every other setting.
+      app.MapGet("/api/maintenance/audio", () =>
+        Results.Json(this.audio.State()));
 
       // ---- Advisory locks for modal ops ----
       app.MapGet("/api/maintenance/locks", () =>

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Spectrum.Base {
@@ -8,6 +9,20 @@ namespace Spectrum.Base {
    */
   public interface IAudioLevelInput : Input {
     float Volume { get; }
+  }
+
+  /** Stable platform capture-device identity exposed to setup surfaces. */
+  public sealed record AudioCaptureDevice(string Id, string Name);
+
+  /**
+   * Optional discovery and health surface implemented by hardware audio
+   * backends. Device IDs are persisted verbatim in Configuration, so a backend
+   * must return identifiers that survive process restarts.
+   */
+  public interface IAudioDeviceProvider {
+    string BackendName { get; }
+    string LastError { get; }
+    IReadOnlyList<AudioCaptureDevice> GetAvailableDevices();
   }
 
   /** A normalized MIDI message emitted by any platform backend. */
