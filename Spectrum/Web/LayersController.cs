@@ -77,11 +77,16 @@ namespace Spectrum.Web {
 
     private readonly ApplicationStateDispatcher gateway;
     private readonly Configuration config;
+    private readonly ConfigurationEditor editor;
     public LayersController(
       ApplicationStateDispatcher gateway, Configuration config
     ) {
       this.gateway = gateway;
       this.config = config;
+      this.editor = config as ConfigurationEditor ??
+        throw new ArgumentException(
+          "Layer configuration must support collection edits.",
+          nameof(config));
     }
 
     internal LayersState State() {
@@ -100,9 +105,9 @@ namespace Spectrum.Web {
     // GET response are identical in shape.
     internal static List<LayerDto> SerializeStack(Configuration config) {
       var list = new List<LayerDto>();
-      List<DomeLayerSettings> stack = config.domeLayerStack;
-      if (stack != null) {
-        foreach (DomeLayerSettings layer in stack) {
+      var stack = config.domeLayerStack;
+      if (!stack.IsDefaultOrEmpty) {
+        foreach (DomeLayerView layer in stack) {
           if (layer == null) {
             continue;
           }
@@ -114,10 +119,10 @@ namespace Spectrum.Web {
             enabled = layer.Enabled,
             notes = layer.Notes,
             // Copy so the wire DTO never aliases the config's live bag.
-            rendererParams = layer.RendererParams == null
+            rendererParams = layer.RendererParams.IsEmpty
               ? null
               : new Dictionary<string, double>(layer.RendererParams),
-            operationParams = layer.OperationParams == null
+            operationParams = layer.OperationParams.IsEmpty
               ? null
               : new Dictionary<string, double>(layer.OperationParams),
           });
@@ -253,7 +258,8 @@ namespace Spectrum.Web {
       if (error != null) {
         return (false, error);
       }
-      await this.gateway.InvokeAsync(() => this.config.domeLayerStack = newStack);
+      await this.gateway.InvokeAsync(
+        () => this.editor.ReplaceDomeLayerStack(newStack));
       return (true, null);
     }
 
@@ -267,16 +273,16 @@ namespace Spectrum.Web {
     public async Task<(bool ok, string error)> FireAsync(string instanceId) {
       (bool ok, string error) result = (false, "not run");
       await this.gateway.InvokeAsync(() => {
-        (DomeLayerSettings layer, string error) = ResolveTarget(instanceId);
+        (DomeLayerView layer, string error) = ResolveTarget(instanceId);
         if (error != null) {
           result = (false, error);
           return;
         }
         var counters = new Dictionary<string, int>(
-          this.config.domeLayerFireCounters ?? new Dictionary<string, int>());
+          this.config.domeLayerFireCounters);
         counters.TryGetValue(layer.InstanceId, out int count);
         counters[layer.InstanceId] = count + 1;
-        this.config.domeLayerFireCounters = counters;
+        this.editor.ReplaceDomeLayerFireCounters(counters);
         result = (true, null);
       });
       return result;
@@ -289,27 +295,28 @@ namespace Spectrum.Web {
     public async Task<(bool ok, string error)> ClearAsync(string instanceId) {
       (bool ok, string error) result = (false, "not run");
       await this.gateway.InvokeAsync(() => {
-        (DomeLayerSettings layer, string error) = ResolveTarget(instanceId);
+        (DomeLayerView layer, string error) = ResolveTarget(instanceId);
         if (error != null) {
           result = (false, error);
           return;
         }
         var counters = new Dictionary<string, int>(
-          this.config.domeLayerClearCounters ?? new Dictionary<string, int>());
+          this.config.domeLayerClearCounters);
         counters.TryGetValue(layer.InstanceId, out int count);
         counters[layer.InstanceId] = count + 1;
-        this.config.domeLayerClearCounters = counters;
+        this.editor.ReplaceDomeLayerClearCounters(counters);
         result = (true, null);
       });
       return result;
     }
 
-    private (DomeLayerSettings layer, string error) ResolveTarget(string id) {
-      List<DomeLayerSettings> stack = this.config.domeLayerStack;
-      DomeLayerSettings byInstance = DomeLayerSettings.ForInstance(stack, id);
-      return byInstance != null
-        ? (byInstance, null)
-        : (null, "unknown layer instance: " + id);
+    private (DomeLayerView layer, string error) ResolveTarget(string id) {
+      foreach (DomeLayerView layer in this.config.domeLayerStack) {
+        if (layer != null && layer.InstanceId == id) {
+          return (layer, null);
+        }
+      }
+      return (null, "unknown layer instance: " + id);
     }
   }
 }

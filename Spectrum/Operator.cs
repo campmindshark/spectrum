@@ -55,6 +55,7 @@ namespace Spectrum {
     // live orientation-device state. Stable for the Operator's lifetime — Reboot
     // only toggles threads, it doesn't rebuild this instance.
     public OrientationInput OrientationInput { get; }
+    internal MidiInput MidiInput { get; }
     // Live runtime state and services, split off Configuration (which carries
     // only persisted settings — arch_issues item 5). All stable for the
     // Operator's lifetime, like OrientationInput above:
@@ -74,6 +75,10 @@ namespace Spectrum {
     public LEDDomeOutput DomeOutput { get; }
     private readonly Stopwatch frameRateStopwatch;
     private int completedFramesInWindow;
+    private int allocationMeasurementEnabled;
+    private int allocationMeasurementWriters;
+    private long measuredFrames;
+    private long measuredAllocatedBytes;
 
     // Global rate cap: the operator loop runs no faster than 400Hz, i.e. at
     // least this many Stopwatch ticks per frame (2.5ms). Stopwatch.Frequency
@@ -121,6 +126,16 @@ namespace Spectrum {
     public Operator(
       Configuration config,
       ApplicationStateDispatcher stateDispatcher
+    ) : this(config, stateDispatcher, true) {
+    }
+
+    // Production construction connects the physical adapters. The internal
+    // overload gives the integrated concurrency test deterministic, in-memory
+    // hardware boundaries while running this same operator loop.
+    internal Operator(
+      Configuration config,
+      ApplicationStateDispatcher stateDispatcher,
+      bool connectHardware
     ) {
       if (stateDispatcher == null) {
         throw new ArgumentNullException(nameof(stateDispatcher));
@@ -143,14 +158,17 @@ namespace Spectrum {
       this.completedFramesInWindow = 0;
 
       this.inputs = new List<Input>();
-      var audio = new AudioInput(config, this.BeatBroadcaster);
+      var audio = new AudioInput(
+        config, this.BeatBroadcaster, connectHardware);
       this.AudioInput = audio;
       this.inputs.Add(audio);
       var midi = new MidiInput(
-        config, this.BeatBroadcaster, stateDispatcher);
+        config, this.BeatBroadcaster, stateDispatcher, connectHardware);
       this.inputs.Add(midi);
+      this.MidiInput = midi;
       this.MidiLog = midi.MidiLog;
-      var orientation = new OrientationInput(config, stateDispatcher);
+      var orientation = new OrientationInput(
+        config, stateDispatcher, connectHardware);
       this.inputs.Add(orientation);
       this.OrientationInput = orientation;
       // Shared by every orientation-driven dome layer (Paintbrush, Ripple,
@@ -423,6 +441,13 @@ namespace Spectrum {
       long nextFrameTimestamp = Stopwatch.GetTimestamp();
       while (!this.operatorThreadStop) {
         ThrottleFrame(ref nextFrameTimestamp);
+        bool measureAllocation = Volatile.Read(
+          ref this.allocationMeasurementEnabled) != 0;
+        long allocatedBefore = 0;
+        if (measureAllocation) {
+          Interlocked.Increment(ref this.allocationMeasurementWriters);
+          allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        }
 
         if (Interlocked.Exchange(ref this.layerReconcilePending, 0) != 0) {
           this.ReconcileLayerVisualizers();
@@ -471,18 +496,19 @@ namespace Spectrum {
           this.alwaysRunVisualizers.Clear();
           foreach (var visualizer in output.GetVisualizers()) {
             bool isLayerVisualizer = visualizer is DomeLayerVisualizer;
-            IReadOnlyList<Input> requiredInputs;
             if (isLayerVisualizer) {
               if (!this.plannedLayerInputs.TryGetValue(
                     visualizer, out ImmutableArray<Input> plannedInputs)) {
                 continue;
               }
-              requiredInputs = plannedInputs;
-            } else {
-              requiredInputs = visualizer.GetInputs();
-            }
-            // We can only consider a visualizer if all its inputs are enabled
-            if (!AllInputsEnabled(requiredInputs)) {
+              // Keep ImmutableArray strongly typed. Converting it to
+              // IReadOnlyList boxes the struct once per layer, per frame.
+              if (!AllInputsEnabled(plannedInputs)) {
+                continue;
+              }
+            } else if (!AllInputsEnabled(visualizer.GetInputs())) {
+              // We can only consider a visualizer if all its inputs are
+              // enabled.
               continue;
             }
             // Skip visualizers that have been quarantined for throwing too
@@ -513,17 +539,24 @@ namespace Spectrum {
           if (this.topPriVisualizers.Count != 0) {
             this.activeOutputs.Add(output);
           }
-          this.activeVisualizers.UnionWith(this.topPriVisualizers);
+          // HashSet.UnionWith receives IEnumerable<T>, which boxes List<T>'s
+          // struct enumerator. Add by index to keep scheduling allocation-free.
+          for (int i = 0; i < this.topPriVisualizers.Count; i++) {
+            this.activeVisualizers.Add(this.topPriVisualizers[i]);
+          }
         }
 
         this.activeInputs.Clear();
         foreach (var visualizer in this.activeVisualizers) {
-          IReadOnlyList<Input> requiredInputs =
-            this.plannedLayerInputs.TryGetValue(
-              visualizer, out ImmutableArray<Input> plannedInputs)
-                ? plannedInputs : visualizer.GetInputs();
-          foreach (var input in requiredInputs) {
-            this.activeInputs.Add(input);
+          if (this.plannedLayerInputs.TryGetValue(
+              visualizer, out ImmutableArray<Input> plannedInputs)) {
+            for (int i = 0; i < plannedInputs.Length; i++) {
+              this.activeInputs.Add(plannedInputs[i]);
+            }
+          } else {
+            foreach (Input input in visualizer.GetInputs()) {
+              this.activeInputs.Add(input);
+            }
           }
         }
         foreach (var input in this.inputs) {
@@ -585,6 +618,13 @@ namespace Spectrum {
         // in-progress frame appear complete and reported a raw frame count as
         // FPS even when the measurement window stretched well past a second.
         this.completedFramesInWindow++;
+        if (measureAllocation) {
+          Interlocked.Add(
+            ref this.measuredAllocatedBytes,
+            GC.GetAllocatedBytesForCurrentThread() - allocatedBefore);
+          Interlocked.Increment(ref this.measuredFrames);
+          Interlocked.Decrement(ref this.allocationMeasurementWriters);
+        }
         if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
           double elapsedSeconds =
             this.frameRateStopwatch.Elapsed.TotalSeconds;
@@ -596,6 +636,22 @@ namespace Spectrum {
           this.frameRateStopwatch.Restart();
         }
       }
+    }
+
+    internal void BeginAllocationMeasurement() {
+      Interlocked.Exchange(ref this.measuredFrames, 0);
+      Interlocked.Exchange(ref this.measuredAllocatedBytes, 0);
+      Volatile.Write(ref this.allocationMeasurementEnabled, 1);
+    }
+
+    internal (long Frames, long Bytes) EndAllocationMeasurement() {
+      Volatile.Write(ref this.allocationMeasurementEnabled, 0);
+      SpinWait.SpinUntil(
+        () => Volatile.Read(ref this.allocationMeasurementWriters) == 0,
+        TimeSpan.FromSeconds(2));
+      return (
+        Volatile.Read(ref this.measuredFrames),
+        Volatile.Read(ref this.measuredAllocatedBytes));
     }
 
     // Tracks a visualizer throw and quarantines the visualizer once it has
@@ -708,6 +764,15 @@ namespace Spectrum {
     // diagnostics continue to declare theirs directly on the visualizer.
     private static bool AllInputsEnabled(IReadOnlyList<Input> inputs) {
       for (int i = 0; i < inputs.Count; i++) {
+        if (!inputs[i].Enabled) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    private static bool AllInputsEnabled(ImmutableArray<Input> inputs) {
+      for (int i = 0; i < inputs.Length; i++) {
         if (!inputs[i].Enabled) {
           return false;
         }

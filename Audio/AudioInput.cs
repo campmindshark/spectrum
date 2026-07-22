@@ -13,6 +13,7 @@ namespace Spectrum.Audio {
 
     private readonly Configuration config;
     private readonly IRuntimeSettingsConfiguration runtimeSettings;
+    private readonly bool connectHardware;
 
     private MMDevice recordingDevice;
     private WasapiCapture captureStream;
@@ -25,11 +26,21 @@ namespace Spectrum.Audio {
 
     // `beat` is the tempo service the two beat detectors report into (owned by
     // the Operator, not part of Configuration).
-    public AudioInput(Configuration config, BeatBroadcaster beat) {
+    public AudioInput(Configuration config, BeatBroadcaster beat) : this(
+      config, beat, true) {
+    }
+
+    // The application host uses the public constructor above. The internal
+    // switch lets Spectrum's integrated operator test run the complete input
+    // schedule without opening a Windows audio endpoint or helper process.
+    internal AudioInput(
+      Configuration config, BeatBroadcaster beat, bool connectHardware
+    ) {
       this.config = config;
       this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
         throw new ArgumentException(
           "AudioInput requires immutable runtime settings.", nameof(config));
+      this.connectHardware = connectHardware;
       this.madmomHandler = new MadmomHandler(config, this, beat);
       this.proDjLinkHandler = new ProDjLinkHandler(config, beat);
     }
@@ -44,13 +55,17 @@ namespace Spectrum.Audio {
           return;
         }
         if (value) {
-          this.InitializeAudio();
+          if (this.connectHardware) {
+            this.InitializeAudio();
+          }
         } else {
           this.TerminateAudio();
         }
         this.active = value;
-        this.madmomHandler.Active = value;
-        this.proDjLinkHandler.Active = value;
+        if (this.connectHardware) {
+          this.madmomHandler.Active = value;
+          this.proDjLinkHandler.Active = value;
+        }
       }
     }
 

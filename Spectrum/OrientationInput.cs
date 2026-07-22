@@ -14,6 +14,7 @@ namespace Spectrum {
     private readonly Configuration config;
     private readonly IRuntimeSettingsConfiguration runtimeSettings;
     private readonly ApplicationStateDispatcher stateDispatcher;
+    private readonly bool connectHardware;
     private bool calibrationHandled;
     private int spotlightClearPending;
     private Dictionary<int, OrientationDevice> devices;
@@ -68,6 +69,15 @@ namespace Spectrum {
     public OrientationInput(
       Configuration config,
       ApplicationStateDispatcher stateDispatcher
+    ) : this(config, stateDispatcher, true) {
+    }
+
+    // Keeps UDP and serial disconnected for the integrated operator test while
+    // retaining the normal datagram parser and operator-frame snapshot path.
+    internal OrientationInput(
+      Configuration config,
+      ApplicationStateDispatcher stateDispatcher,
+      bool connectHardware
     ) {
       this.config = config;
       this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
@@ -76,6 +86,7 @@ namespace Spectrum {
           nameof(config));
       this.stateDispatcher = stateDispatcher ??
         throw new ArgumentNullException(nameof(stateDispatcher));
+      this.connectHardware = connectHardware;
       devices = new Dictionary<int, OrientationDevice>();
       lastCheckedDevices = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
       lastSeen = new Dictionary<int, long>();
@@ -100,15 +111,17 @@ namespace Spectrum {
             return;
           }
           active = value;
-          if (value) {
-            StartListening();
-          } else {
-            StopListening();
+          if (this.connectHardware) {
+            if (value) {
+              StartListening();
+            } else {
+              StopListening();
+            }
+            // The serial receiver follows Active too. This is only a flag write
+            // + signal (never a blocking port call), so it's safe under
+            // lifecycleLock.
+            WandSerial.SetActive(value);
           }
-          // The serial receiver follows Active too. This is only a flag write +
-          // signal (never a blocking port call), so it's safe under
-          // lifecycleLock.
-          WandSerial.SetActive(value);
         }
       }
     }

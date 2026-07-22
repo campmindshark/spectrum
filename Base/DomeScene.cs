@@ -11,9 +11,7 @@ namespace Spectrum.Base {
   // An XML-serializable POCO persisted inside config.domeScenes. Layers reuses
   // DomeLayerSettings directly, so XSerializer already handles it — the same
   // shape it serializes inside config.domeLayerStack. Deliberately narrow: only
-  // the state that defines a "look" is captured (see docs/scenes.md). It can be
-  // widened later without a migration — an older file simply lacks the new
-  // elements, which deserialize to their defaults.
+  // the state that defines a "look" is captured (see docs/scenes.md).
   //
   // Instances are treated as immutable once stored: SceneService always deep
   // copies on both save (so a scene never aliases the live stack) and apply (so

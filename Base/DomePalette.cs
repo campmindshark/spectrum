@@ -4,9 +4,9 @@ using System.Xml.Serialization;
 
 namespace Spectrum.Base {
 
-  // One named, live palette. Layers select an entry in Configuration.domePalettes
-  // directly; there is no separate bank or preset-apply step. Colors always
-  // represents the eight relative color slots consumed by palette-aware layers.
+  // Mutable document/edit DTO for one named palette. Configuration compiles it
+  // to DomePaletteSnapshot before exposing it to callers or renderers. Colors
+  // represents the eight relative slots consumed by palette-aware layers.
   public class DomePalette : INotifyPropertyChanged {
     public const int SlotCount = 8;
 
@@ -14,8 +14,8 @@ namespace Spectrum.Base {
 
     public string Name { get; set; }
 
-    // Public for XML serialization. Mutating callers should use the indexer or
-    // ReplaceColors so native bindings and web clients receive one change event.
+    // Public for XML serialization and detached editing. Live configuration
+    // changes publish the edited DTO through ConfigurationEditor.
     public LEDColor[] Colors { get; set; }
 
     public int GetSingleColor(int index) {

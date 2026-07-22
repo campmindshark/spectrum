@@ -42,6 +42,31 @@ namespace Spectrum.Base {
     string Name,
     ImmutableArray<DomeColorSnapshot?> Colors
   ) {
+    public DomePalette ToPalette() {
+      var colors = new LEDColor[DomePalette.SlotCount];
+      for (int i = 0; i < colors.Length; i++) {
+        DomeColorSnapshot? color = i < this.Colors.Length
+          ? this.Colors[i]
+          : null;
+        colors[i] = !color.HasValue
+          ? null
+          : color.Value.IsGradient
+            ? new LEDColor(color.Value.Color1, color.Value.Color2)
+            : new LEDColor(color.Value.Color1);
+      }
+      return new DomePalette { Name = this.Name, Colors = colors };
+    }
+
+    public static List<DomePalette> ToPalettes(
+      ImmutableArray<DomePaletteSnapshot> palettes
+    ) {
+      var result = new List<DomePalette>(palettes.Length);
+      foreach (DomePaletteSnapshot palette in palettes) {
+        result.Add(palette?.ToPalette());
+      }
+      return result;
+    }
+
     public int GetSingleColor(int index) {
       DomeColorSnapshot? color = this.ColorAt(index);
       return color?.Color1 ?? 0x000000;
@@ -133,16 +158,19 @@ namespace Spectrum.Base {
     }
   }
 
-  // A short-lived owner-thread command. The lists are serializer DTOs on the
-  // command side; SpectrumConfiguration compiles the immutable render snapshot
-  // before publishing any of them.
+  // A short-lived owner-thread command. The lists use detached document DTOs;
+  // SpectrumConfiguration compiles the immutable render snapshot before
+  // publishing any of them.
   public sealed record DomeShowStateUpdate(
     List<DomeLayerSettings> Layers,
     List<DomePalette> Palettes,
     double GlobalFadeSpeed,
     double GlobalHueSpeed,
     List<DomeScene> Scenes
-  );
+  ) {
+    public bool PalettesChanged { get; init; } = true;
+    public bool ScenesChanged { get; init; } = true;
+  }
 
   public interface IDomeShowStateConfiguration {
     DomeShowStateSnapshot DomeShowStateSnapshot { get; }

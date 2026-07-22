@@ -249,10 +249,10 @@ namespace Spectrum.Web {
       bool hasAtomicShowState =
         this.config is IDomeShowStateConfiguration;
       if (hasAtomicShowState && IsShowStateProperty(e.PropertyName)) {
-        // SpectrumConfiguration raises these compatibility notifications only
-        // after committing every field, then follows with the one generation
-        // notification handled above. Do not expose the compatibility sequence
-        // as several browser-visible states.
+        // SpectrumConfiguration raises component notifications only after
+        // committing every field, then follows with the one generation
+        // notification handled above. Do not expose that sequence as several
+        // browser-visible states.
         return;
       }
       if (this.registry.TryGet(e.PropertyName, out ParameterDescriptor d)) {
@@ -276,9 +276,8 @@ namespace Spectrum.Web {
         this.Fan("scenes", "scenes", SceneNames(this.config), null);
         return;
       }
-      // Named palettes are live compound state. List mutations and in-place
-      // native color edits both publish the full ordered list so every editor
-      // and layer palette dropdown converges.
+      // Named palettes are compound state. Explicit replacement operations
+      // publish the full ordered list so every editor and dropdown converges.
       if (e.PropertyName == nameof(this.config.domePalettes) ||
           e.PropertyName.StartsWith("domePalettes.")) {
         this.Fan("palettes", "palettes",
@@ -314,9 +313,8 @@ namespace Spectrum.Web {
     // frame (shared by InitialStateFrames and the change notification).
     private static List<string> SceneNames(Configuration config) {
       var names = new List<string>();
-      List<DomeScene> scenes = config.domeScenes;
-      if (scenes != null) {
-        foreach (DomeScene scene in scenes) {
+      if (!config.domeScenes.IsDefaultOrEmpty) {
+        foreach (DomeSceneView scene in config.domeScenes) {
           if (scene != null && scene.Name != null) {
             names.Add(scene.Name);
           }

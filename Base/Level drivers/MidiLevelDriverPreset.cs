@@ -1,6 +1,7 @@
 ﻿namespace Spectrum.Base {
 
-  public class MidiLevelDriverPreset : LevelDriverPreset {
+  // Persisted ADSR envelope for one MIDI level-driver channel.
+  public class MidiLevelDriverPreset : System.ICloneable {
 
     // Times in ms; levels from 0-1
     public int AttackTime { get; set; }
@@ -9,13 +10,8 @@
     public double SustainLevel { get; set; }
     public int ReleaseTime { get; set; }
 
-    public MidiLevelDriverPreset() {
-      this.Source = LevelDriverSource.Midi;
-    }
-
-    public override object Clone() {
+    public object Clone() {
       return new MidiLevelDriverPreset() {
-        Name = this.Name,
         AttackTime = this.AttackTime,
         PeakLevel = this.PeakLevel,
         DecayTime = this.DecayTime,

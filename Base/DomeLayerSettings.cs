@@ -8,8 +8,8 @@ namespace Spectrum.Base {
 
   // The value type of a per-layer parameter. Values live in the bag as double
   // regardless: Bool is 0/1, Enum is the index into DomeLayerParam.Options,
-  // Color is a packed 0xRRGGBB int and Date is yyyyMMdd, both reinterpreted as
-  // doubles so existing serializer-facing parameter bags stay compatible.
+  // Color is a packed 0xRRGGBB int and Date is yyyyMMdd, both represented as
+  // doubles so one parameter bag can store every supported type.
   public enum DomeLayerParamType { Double, Bool, Enum, Color, Date }
 
   // Static schema for one tunable on a layer (or on a blend mode). The bag on a
@@ -137,17 +137,15 @@ namespace Spectrum.Base {
   // UI/web writers always replace the whole domeLayerStack list (snapshot swap)
   // rather than mutating an existing settings object in place.
   public class DomeLayerSettings {
-    // Stable identity of this configured occurrence. Older XML omits it; the
-    // LayerStackService assigns one during normalization and every writer then
-    // persists it. Renderer IDs identify kinds, instance IDs identify layers.
+    // Stable identity of this configured occurrence. LayerStackService assigns
+    // one when a caller omits it, and every writer then persists it. Renderer
+    // IDs identify kinds; instance IDs identify layers.
     public string InstanceId { get; set; }
     // Stable string id of the layerable visualizer, e.g. "radial".
     public string VisualizerKey { get; set; }
     // The DomeBlend.Id of how this layer combines with the composite below
-    // it. A string (not the blend object) because it's the persisted form —
-    // XSerializer writes it verbatim, exactly the names the retired
-    // DomeBlendMode enum used to serialize, so old config/scene files load
-    // unchanged. Resolve with DomeBlend.FromId; consumers cache the result.
+    // it. A string (not the blend object) because it is the persisted stable ID.
+    // Resolve with DomeBlend.FromId; consumers cache the result.
     public string BlendMode { get; set; } = DomeBlend.Default.Id;
     // 0..1, applied before the blend.
     public double Opacity { get; set; } = 1.0;

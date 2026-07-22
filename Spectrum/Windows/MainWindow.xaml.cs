@@ -315,9 +315,9 @@ namespace Spectrum {
         // swaps it atomically and creates the recovery backup in the same step.
         using (FileStream stream = new FileStream(
             TemporaryConfigPath, FileMode.Create)) {
-          new XmlSerializer<SpectrumConfiguration>().Serialize(
+          new XmlSerializer<SpectrumConfigurationDocument>().Serialize(
             stream,
-            this.config
+            SpectrumConfigurationDocument.FromConfiguration(this.config)
           );
           stream.Flush(true);
         }
@@ -374,8 +374,8 @@ namespace Spectrum {
         }
         try {
           using (FileStream stream = File.OpenRead(candidate)) {
-            this.config = new XmlSerializer<SpectrumConfiguration>(
-            ).Deserialize(stream);
+            this.config = new XmlSerializer<SpectrumConfigurationDocument>(
+            ).Deserialize(stream).ToConfiguration();
           }
           loadFile = candidate;
           break;
@@ -766,7 +766,7 @@ namespace Spectrum {
       foreach (var pair in this.config.midiPresets) {
         var midiPreset = pair.Value;
         this.midiNewDevicePreset.Items.Add(midiPreset.Name);
-        this.midiPresetIndices.Add(midiPreset.id);
+        this.midiPresetIndices.Add(midiPreset.Id);
         this.midiPresetList.Items.Add(midiPreset.Name);
       }
       this.midiNewDevicePreset.Items.Add("New preset");
@@ -832,9 +832,7 @@ namespace Spectrum {
     }
 
     private void AddMidiPreset(MidiPreset preset) {
-      var newMidiPresets = new Dictionary<int, MidiPreset>(this.config.midiPresets);
-      newMidiPresets[preset.id] = preset;
-      this.config.midiPresets = newMidiPresets;
+      this.config.UpsertMidiPreset(preset.id, preset);
       this.midiNewDevicePreset.Items.Insert(
         this.midiNewDevicePreset.Items.Count - 1,
         preset.Name
@@ -884,7 +882,7 @@ namespace Spectrum {
       });
       var newDevices = new Dictionary<int, int>(this.config.midiDevices);
       newDevices.Add(deviceID, presetID);
-      this.config.midiDevices = newDevices;
+      this.config.ReplaceMidiDevices(newDevices);
       this.midiDeviceIndices.RemoveAt(this.midiDevices.SelectedIndex);
       this.midiDevices.Items.RemoveAt(this.midiDevices.SelectedIndex);
       this.midiDevices.SelectedIndex = -1;
@@ -917,7 +915,7 @@ namespace Spectrum {
       MidiDeviceEntry item = selected;
       var presetIndex = newDevices[item.DeviceID];
       newDevices.Remove(item.DeviceID);
-      this.config.midiDevices = newDevices;
+      this.config.ReplaceMidiDevices(newDevices);
       this.midiDeviceList.Items.RemoveAt(this.midiDeviceList.SelectedIndex);
       this.RefreshMidiDevices(null, null);
 
@@ -951,10 +949,10 @@ namespace Spectrum {
           this.midiNewPresetName.Focus();
           return;
         }
-        // We don't need to reset the whole midiPresets var to trigger observers since nobody
-        // cares what presets are named
-        this.config.midiPresets[this.currentlyEditingPreset.Value].Name = newPresetName;
-        this.SaveConfig();
+        int presetId = this.currentlyEditingPreset.Value;
+        MidiPreset renamed = this.config.midiPresets[presetId].ToPreset();
+        renamed.Name = newPresetName;
+        this.config.UpsertMidiPreset(presetId, renamed);
         var presetIndex = this.midiPresetIndices[this.currentlyEditingPreset.Value];
         this.LoadMidiDevices();
         this.midiPresetList.Items[presetIndex] = newPresetName;
@@ -983,9 +981,7 @@ namespace Spectrum {
         return;
       }
       var presetID = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
-      var newPresets = new Dictionary<int, MidiPreset>(this.config.midiPresets);
-      newPresets.Remove(presetID);
-      this.config.midiPresets = newPresets;
+      this.config.RemoveMidiPreset(presetID);
       this.midiPresetIndices.RemoveAt(this.midiPresetList.SelectedIndex);
       this.midiNewDevicePreset.Items.RemoveAt(this.midiPresetList.SelectedIndex);
       this.midiPresetList.Items.RemoveAt(this.midiPresetList.SelectedIndex);
@@ -1034,7 +1030,7 @@ namespace Spectrum {
         return;
       }
       var presetID = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
-      MidiPreset clonedPreset = (MidiPreset)this.config.midiPresets[presetID].Clone();
+      MidiPreset clonedPreset = this.config.midiPresets[presetID].ToPreset();
       clonedPreset.id = this.getNextMidiPresetID();
 
       string newName = clonedPreset.Name + " (clone)";
@@ -1322,14 +1318,16 @@ namespace Spectrum {
         return;
       }
 
-      var newMidiPresets = new Dictionary<int, MidiPreset>(this.config.midiPresets);
-      var midiPreset = newMidiPresets[this.midiPresetIndices[this.midiPresetList.SelectedIndex]];
+      int editedPresetId =
+        this.midiPresetIndices[this.midiPresetList.SelectedIndex];
+      MidiPreset midiPreset =
+        this.config.midiPresets[editedPresetId].ToPreset();
       if (editing) {
         midiPreset.Bindings[this.currentlyEditingBinding.Value] = newBinding;
       } else {
         midiPreset.Bindings.Add(newBinding);
       }
-      this.config.midiPresets = newMidiPresets;
+      this.config.UpsertMidiPreset(editedPresetId, midiPreset);
 
       if (this.midiBindingType.SelectedIndex == 0) {
         this.midiTapTempoButtonType.SelectedIndex = -1;
@@ -1401,9 +1399,9 @@ namespace Spectrum {
         return;
       }
       var bindingID = this.midiBindingList.SelectedIndex;
-      var newMidiPresets = new Dictionary<int, MidiPreset>(this.config.midiPresets);
-      newMidiPresets[presetID].Bindings.RemoveAt(bindingID);
-      this.config.midiPresets = newMidiPresets;
+      MidiPreset editedPreset = this.config.midiPresets[presetID].ToPreset();
+      editedPreset.Bindings.RemoveAt(bindingID);
+      this.config.UpsertMidiPreset(presetID, editedPreset);
       this.midiBindingList.Items.RemoveAt(bindingID);
     }
 
@@ -1429,29 +1427,29 @@ namespace Spectrum {
 
       this.midiBindingType.SelectedIndex = bindingConfig.BindingType;
       if (bindingConfig.BindingType == 0) {
-        var config = (TapTempoMidiBindingConfig)bindingConfig;
-        this.midiTapTempoButtonType.SelectedIndex = indexFromCommandType(config.buttonType);
-        this.midiTapTempoButtonIndex.Text = config.buttonIndex.ToString();
+        var config = (TapTempoMidiBindingView)bindingConfig;
+        this.midiTapTempoButtonType.SelectedIndex = indexFromCommandType(config.ButtonType);
+        this.midiTapTempoButtonIndex.Text = config.ButtonIndex.ToString();
       } else if (this.midiBindingType.SelectedIndex == 1) {
-        var config = (ContinuousKnobMidiBindingConfig)bindingConfig;
-        this.midiContinuousKnobIndex.Text = config.knobIndex.ToString();
-        this.midiContinuousKnobPropertyName.Text = config.configPropertyName;
-        this.midiContinuousKnobStartValue.Text = config.startValue.ToString();
-        this.midiContinuousKnobEndValue.Text = config.endValue.ToString();
+        var config = (ContinuousKnobMidiBindingView)bindingConfig;
+        this.midiContinuousKnobIndex.Text = config.KnobIndex.ToString();
+        this.midiContinuousKnobPropertyName.Text = config.ConfigPropertyName;
+        this.midiContinuousKnobStartValue.Text = config.StartValue.ToString();
+        this.midiContinuousKnobEndValue.Text = config.EndValue.ToString();
       } else if (this.midiBindingType.SelectedIndex == 2) {
-        var config = (DiscreteKnobMidiBindingConfig)bindingConfig;
-        this.midiDiscreteKnobIndex.Text = config.knobIndex.ToString();
-        this.midiDiscreteKnobPropertyName.Text = config.configPropertyName;
-        this.midiDiscreteKnobNumPossibleValues.Text = config.numPossibleValues.ToString();
+        var config = (DiscreteKnobMidiBindingView)bindingConfig;
+        this.midiDiscreteKnobIndex.Text = config.KnobIndex.ToString();
+        this.midiDiscreteKnobPropertyName.Text = config.ConfigPropertyName;
+        this.midiDiscreteKnobNumPossibleValues.Text = config.NumPossibleValues.ToString();
       } else if (this.midiBindingType.SelectedIndex == 3) {
-        var config = (DiscreteLogarithmicKnobMidiBindingConfig)bindingConfig;
-        this.midiLogarithmicKnobIndex.Text = config.knobIndex.ToString();
-        this.midiLogarithmicKnobPropertyName.Text = config.configPropertyName;
-        this.midiLogarithmicKnobNumPossibleValues.Text = config.numPossibleValues.ToString();
-        this.midiLogarithmicKnobStartValue.Text = config.startValue.ToString();
+        var config = (DiscreteLogarithmicKnobMidiBindingView)bindingConfig;
+        this.midiLogarithmicKnobIndex.Text = config.KnobIndex.ToString();
+        this.midiLogarithmicKnobPropertyName.Text = config.ConfigPropertyName;
+        this.midiLogarithmicKnobNumPossibleValues.Text = config.NumPossibleValues.ToString();
+        this.midiLogarithmicKnobStartValue.Text = config.StartValue.ToString();
       } else if (this.midiBindingType.SelectedIndex == 4) {
-        var config = (AdsrLevelDriverMidiBindingConfig)bindingConfig;
-        this.midiAdsrLevelDriverIndexRangeStart.Text = config.indexRangeStart.ToString();
+        var config = (AdsrLevelDriverMidiBindingView)bindingConfig;
+        this.midiAdsrLevelDriverIndexRangeStart.Text = config.IndexRangeStart.ToString();
       }
     }
 

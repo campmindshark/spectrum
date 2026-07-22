@@ -153,10 +153,10 @@ namespace Spectrum.LayerPipeline.Tests {
       config = new global::Spectrum.SpectrumConfiguration {
         domeMaxBrightness = 1,
         domeBrightness = 1,
-        domePalettes = new List<DomePalette> {
-          new DomePalette { Name = "Allocation fixture", Colors = colors },
-        },
       };
+      config.ReplaceDomePalettes(new List<DomePalette> {
+        new DomePalette { Name = "Allocation fixture", Colors = colors },
+      });
       return new LEDDomeOutput(
         config, new RuntimeTelemetry(), new BeatBroadcaster(config));
     }

@@ -60,7 +60,8 @@ namespace Spectrum.Web {
     ) {
       (bool ok, string error) result = (false, "not run");
       await this.gateway.InvokeAsync(() => {
-        LEDColor[] colors = Find(this.config.domePalettes, sourceName)?.Colors;
+        LEDColor[] colors = Find(
+          this.config.domePalettes, sourceName)?.ToPalette().Colors;
         result = this.service.Add(name, colors);
       });
       return result;
@@ -81,21 +82,8 @@ namespace Spectrum.Web {
       return result;
     }
 
-    internal static List<PaletteDto> BuildPalettes(Configuration config) {
-      var result = new List<PaletteDto>();
-      if (config.domePalettes != null) {
-        foreach (DomePalette palette in config.domePalettes) {
-          if (palette == null || string.IsNullOrWhiteSpace(palette.Name)) {
-            continue;
-          }
-          result.Add(new PaletteDto {
-            name = palette.Name,
-            colors = ToSlots(palette.Colors),
-          });
-        }
-      }
-      return result;
-    }
+    internal static List<PaletteDto> BuildPalettes(Configuration config) =>
+      BuildPalettes(config.domePalettes);
 
     public static List<PaletteDto> BuildPalettes(
       ImmutableArray<DomePaletteSnapshot> palettes
@@ -129,13 +117,13 @@ namespace Spectrum.Web {
       return result;
     }
 
-    private static DomePalette Find(
-      List<DomePalette> palettes, string name
+    private static DomePaletteSnapshot Find(
+      ImmutableArray<DomePaletteSnapshot> palettes, string name
     ) {
-      if (palettes == null || name == null) {
+      if (name == null) {
         return null;
       }
-      foreach (DomePalette palette in palettes) {
+      foreach (DomePaletteSnapshot palette in palettes) {
         if (palette != null && string.Equals(
               palette.Name, name, StringComparison.OrdinalIgnoreCase)) {
           return palette;

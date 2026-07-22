@@ -18,6 +18,7 @@ namespace Spectrum.LEDs {
       histories = new();
     private readonly HashSet<CompositeHistoryKey> activeHistories = new();
     private readonly List<CompositeHistoryKey> staleHistories = new();
+    private readonly HashSet<ILayerRenderer> hueAdvancedRenderers = new();
     private RenderPlan plan = RenderPlan.Empty;
     private DomeFrame destination;
     private DomeFrame scratch;
@@ -134,10 +135,11 @@ namespace Spectrum.LEDs {
       if (delta == 0) {
         return;
       }
-      var seen = new HashSet<ILayerRenderer>();
+      this.hueAdvancedRenderers.Clear();
       current ??= RenderPlan.Empty;
       foreach (CompiledLayer layer in current.Layers) {
-        if (layer.Renderer.IsAvailable && seen.Add(layer.Renderer)) {
+        if (layer.Renderer.IsAvailable &&
+            this.hueAdvancedRenderers.Add(layer.Renderer)) {
           layer.Renderer.Frame.HueRotate(delta);
         }
       }

@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Spectrum.LayerPipeline.Tests" />
+    <InternalsVisibleTo Include="Spectrum" />
   </ItemGroup>
 
 </Project>

@@ -98,24 +98,17 @@ namespace Spectrum.Base {
   public sealed record BeatSettingsSnapshot(
     long Generation,
     double FlashSpeed,
-    ImmutableDictionary<int, string> ChannelPresets,
-    ImmutableDictionary<string, MidiLevelDriverSettingsSnapshot> Presets
+    ImmutableDictionary<int, MidiLevelDriverSettingsSnapshot> MidiChannels
   ) {
     public static BeatSettingsSnapshot Empty { get; } =
       new BeatSettingsSnapshot(
         0, 0,
-        ImmutableDictionary<int, string>.Empty,
-        ImmutableDictionary<string, MidiLevelDriverSettingsSnapshot>.Empty);
+        ImmutableDictionary<int, MidiLevelDriverSettingsSnapshot>.Empty);
 
     public bool TryGetMidiPreset(
       int channelIndex,
       out MidiLevelDriverSettingsSnapshot preset
-    ) {
-      preset = default;
-      return this.ChannelPresets.TryGetValue(
-          channelIndex, out string presetName) &&
-        presetName != null && this.Presets.TryGetValue(presetName, out preset);
-    }
+    ) => this.MidiChannels.TryGetValue(channelIndex, out preset);
   }
 
   public sealed record SceneRetentionSnapshot(
@@ -126,9 +119,9 @@ namespace Spectrum.Base {
       new SceneRetentionSnapshot(0, ImmutableHashSet<string>.Empty);
   }
 
-  // Runtime consumers depend on these typed views instead of reading the
-  // serializer-facing Configuration object. SpectrumConfiguration publishes a
-  // new reference only for the affected subsystem.
+  // Runtime consumers depend on these typed views instead of repeatedly
+  // reading the live Configuration API. SpectrumConfiguration publishes a new
+  // reference only for the affected subsystem.
   public interface IRuntimeSettingsConfiguration {
     DomeRuntimeFrameSnapshot DomeRuntimeFrameSnapshot { get; }
     AudioSettingsSnapshot AudioSettingsSnapshot { get; }

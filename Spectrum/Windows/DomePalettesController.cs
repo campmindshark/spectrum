@@ -48,11 +48,17 @@ namespace Spectrum {
       this.paletteList.SelectedItem as DomePalette;
 
     private void OnConfigChanged(object sender, PropertyChangedEventArgs e) {
-      // In-place color edits raise domePalettes.Item[] and are already reflected
-      // by the selected object. Only rebuild for ordered-list mutations.
       if (e.PropertyName == nameof(this.config.domePalettes)) {
         this.dispatcher.BeginInvoke(new Action(this.Refresh));
       }
+    }
+
+    private void OnPaletteEdited(object sender, PropertyChangedEventArgs e) {
+      if (this.refreshing || e.PropertyName != "Item[]" ||
+          sender is not DomePalette palette) {
+        return;
+      }
+      this.service.ReplaceColors(palette.Name, palette.Colors);
     }
 
     private void OnSelectionChanged(object sender, SelectionChangedEventArgs e) {
@@ -70,9 +76,11 @@ namespace Spectrum {
       string selectedName = this.Selected?.Name;
       this.refreshing = true;
       this.Palettes.Clear();
-      if (this.config.domePalettes != null) {
-        foreach (DomePalette palette in this.config.domePalettes) {
+      if (!this.config.domePalettes.IsDefaultOrEmpty) {
+        foreach (DomePaletteSnapshot snapshot in this.config.domePalettes) {
+          DomePalette palette = snapshot?.ToPalette();
           if (palette != null && !string.IsNullOrWhiteSpace(palette.Name)) {
+            palette.PropertyChanged += this.OnPaletteEdited;
             this.Palettes.Add(palette);
           }
         }

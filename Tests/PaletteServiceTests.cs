@@ -16,12 +16,12 @@ namespace Spectrum.LayerPipeline.Tests {
         Palette("Warm", 0xAA1100),
         Palette("Cool", 0x0011AA),
         Palette("Mono", 0x777777));
-      config.domeLayerStack = new List<DomeLayerSettings> {
+      config.ReplaceDomeLayerStack(new List<DomeLayerSettings> {
         LayerWithPalette("warm", 0),
         LayerWithPalette("cool", 1),
         LayerWithPalette("mono", 2),
-      };
-      config.domeScenes = new List<DomeScene> {
+      });
+      config.ReplaceDomeScenes(new List<DomeScene> {
         new DomeScene {
           Name = "Look",
           Layers = new List<DomeLayerSettings> {
@@ -29,18 +29,18 @@ namespace Spectrum.LayerPipeline.Tests {
             LayerWithPalette("saved-mono", 2),
           },
         },
-      };
+      });
       var service = new PaletteService(config);
 
       (bool added, string addError) = service.Add(
-        "Warm variation", config.domePalettes[0].Colors);
+        "Warm variation", config.domePalettes[0].ToPalette().Colors);
       Assert(added, addError);
-      Assert(config.domePalettes.Count == 4 &&
+      Assert(config.domePalettes.Length == 4 &&
           config.domePalettes[3].Name == "Warm variation",
         "palette copy was not appended");
-      Assert(!ReferenceEquals(
-          config.domePalettes[0].Colors[0], config.domePalettes[3].Colors[0]),
-        "palette copy aliases its source colors");
+      Assert(config.domePalettes[0].Colors[0] ==
+          config.domePalettes[3].Colors[0],
+        "palette copy changed its source colors");
 
       (bool renamed, string renameError) = service.Rename("Cool", "Ocean");
       Assert(renamed, renameError);
@@ -49,7 +49,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
       (bool deleted, string deleteError) = service.Delete("Ocean");
       Assert(deleted, deleteError);
-      Assert(config.domePalettes.Count == 3 &&
+      Assert(config.domePalettes.Length == 3 &&
           config.domePalettes[1].Name == "Mono",
         "deleted palette remained in the ordered list");
       Assert(config.domeLayerStack[0].RendererParams["palette"] == 0 &&
@@ -63,12 +63,14 @@ namespace Spectrum.LayerPipeline.Tests {
 
     private static void ScenePaletteOwnership() {
       var config = DirectConfig(Palette("Blue hour", 0x102030));
-      config.domeLayerStack = new List<DomeLayerSettings>();
+      config.ReplaceDomeLayerStack(new List<DomeLayerSettings>());
       var scenes = new SceneService(config, DomeLayerCatalog.Metadata);
       (bool saved, string saveError) = scenes.Save("Look");
       Assert(saved, saveError);
 
-      config.domePalettes[0][0, 0] = 0x13579B;
+      (bool replaced, string replaceError) = new PaletteService(config)
+        .ReplaceColors("Blue hour", new[] { new LEDColor(0x13579B) });
+      Assert(replaced, replaceError);
       (bool applied, string applyError) = scenes.Apply("Look");
       Assert(applied, applyError);
       Assert(config.domePalettes[0].GetSingleColor(0) == 0x13579B,
@@ -77,9 +79,11 @@ namespace Spectrum.LayerPipeline.Tests {
 
     private static global::Spectrum.SpectrumConfiguration DirectConfig(
       params DomePalette[] palettes
-    ) => new global::Spectrum.SpectrumConfiguration {
-      domePalettes = new List<DomePalette>(palettes),
-    };
+    ) {
+      var config = new global::Spectrum.SpectrumConfiguration();
+      config.ReplaceDomePalettes(new List<DomePalette>(palettes));
+      return config;
+    }
 
     private static DomePalette Palette(string name, int firstColor) {
       var colors = new LEDColor[DomePalette.SlotCount];

@@ -2,7 +2,6 @@
 <SpectrumConfiguration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <domeEnabled>true</domeEnabled>
   <midiInputEnabled>false</midiInputEnabled>
-  <midiInputInSeparateThread>false</midiInputInSeparateThread>
   <domeOutputInSeparateThread>true</domeOutputInSeparateThread>
   <domeBeagleboneOPCAddress>192.168.1.69:7890</domeBeagleboneOPCAddress>
   <domeSimulationEnabled>false</domeSimulationEnabled>
@@ -107,67 +106,18 @@
       </Value>
     </Item>
   </midiPresets>
-  <levelDriverPresets>
+  <midiLevelDriverChannels>
     <Item>
-      <Key>full spectrum</Key>
-      <Value xsi:type="AudioLevelDriverPreset">
-        <FilterRangeStart>0</FilterRangeStart>
-        <FilterRangeEnd>1</FilterRangeEnd>
-        <Name>full spectrum</Name>
-        <Source>Audio</Source>
-      </Value>
-    </Item>
-    <Item>
-      <Key>10% bass</Key>
-      <Value xsi:type="AudioLevelDriverPreset">
-        <FilterRangeStart>0</FilterRangeStart>
-        <FilterRangeEnd>0.2</FilterRangeEnd>
-        <Name>10% bass</Name>
-        <Source>Audio</Source>
-      </Value>
-    </Item>
-    <Item>
-      <Key>midi test</Key>
-      <Value xsi:type="MidiLevelDriverPreset">
+      <Key>0</Key>
+      <Value>
         <AttackTime>10</AttackTime>
         <PeakLevel>1</PeakLevel>
         <DecayTime>20</DecayTime>
         <SustainLevel>0.8</SustainLevel>
         <ReleaseTime>10</ReleaseTime>
-        <Name>midi test</Name>
-        <Source>Midi</Source>
       </Value>
     </Item>
-    <Item>
-      <Key>90% treble</Key>
-      <Value xsi:type="AudioLevelDriverPreset">
-        <FilterRangeStart>0.1</FilterRangeStart>
-        <FilterRangeEnd>1</FilterRangeEnd>
-        <Name>90% treble</Name>
-        <Source>Audio</Source>
-      </Value>
-    </Item>
-  </levelDriverPresets>
-  <channelToAudioLevelDriverPreset>
-    <Item>
-      <Key>0</Key>
-      <Value>full spectrum</Value>
-    </Item>
-    <Item>
-      <Key>1</Key>
-      <Value>full spectrum</Value>
-    </Item>
-    <Item>
-      <Key>2</Key>
-      <Value>full spectrum</Value>
-    </Item>
-  </channelToAudioLevelDriverPreset>
-  <channelToMidiLevelDriverPreset>
-    <Item>
-      <Key>0</Key>
-      <Value>midi test</Value>
-    </Item>
-  </channelToMidiLevelDriverPreset>
+  </midiLevelDriverChannels>
   <domePalettes>
     <DomePalette>
       <Name>Palette 1</Name>

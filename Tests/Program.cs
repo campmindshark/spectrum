@@ -74,6 +74,8 @@ namespace Spectrum.LayerPipeline.Tests {
         RuntimeSettingsPublishCompleteGenerations);
       Run("control storms avoid plan reconciliation and frame allocation",
         ControlStormAvoidsPlanWork);
+      Run("enabled operator isolates concurrent web and device generations",
+        EnabledOperatorConcurrentSettingsAreIsolated);
       Run("MIDI configuration bindings publish state commands",
         MidiBindingsPublishStateCommands);
       Run("MIDI binding validation and deferred failures are contained",
@@ -134,6 +136,12 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("prism frames are deterministic", PrismFixtures);
       Run("compositor replaces plans and holds on empty", PlanReplacement);
       Run("configuration with layers serializes", ConfigurationSerializes);
+      Run("configuration collection edits isolate nested aliases",
+        ConfigurationCollectionsIsolateNestedAliases);
+      Run("configuration collection edits publish exact notifications",
+        ConfigurationCollectionNotificationsAreExact);
+      Run("live configuration exposes no mutable collection types",
+        ConfigurationSurfaceRejectsMutableCollections);
       Run("web layer contract exposes namespaced bags and operation descriptors",
         WebLayerContract);
       Run("SSE subscribers coalesce state by key and resync on overflow",
@@ -903,9 +911,7 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(texture != null && texture.Length > 0,
         "the Earth texture was not embedded in the application");
 
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> { layer },
-      };
+      var config = ConfigurationWithLayers(layer);
       var runtime = new global::Spectrum.Operator(config);
       DomeLayerVisualizer earth = null;
       foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
@@ -1029,9 +1035,7 @@ namespace Spectrum.LayerPipeline.Tests {
       playbackLayer.RendererParams = new Dictionary<string, double> {
         ["timeOffsetHours"] = 10,
       };
-      var playbackConfig = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> { playbackLayer },
-      };
+      var playbackConfig = ConfigurationWithLayers(playbackLayer);
       var playbackRuntime = new global::Spectrum.Operator(playbackConfig);
       LEDDomeAstronomyVisualizer playbackVisualizer = null;
       foreach (
@@ -1045,25 +1049,28 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(playbackVisualizer != null,
         "astronomy playback visualizer was not created");
       playbackVisualizer.Visualize();
-      playbackConfig.domeLayerFireCounters = new Dictionary<string, int> {
+      playbackConfig.ReplaceDomeLayerFireCounters(
+        new Dictionary<string, int> {
         [playbackLayer.InstanceId] = 1,
-      };
+      });
       playbackVisualizer.Visualize();
       Assert(playbackVisualizer.PlaybackActive,
         "astronomy Play did not start playback");
       System.Threading.Thread.Sleep(20);
-      playbackConfig.domeLayerClearCounters = new Dictionary<string, int> {
+      playbackConfig.ReplaceDomeLayerClearCounters(
+        new Dictionary<string, int> {
         [playbackLayer.InstanceId] = 1,
-      };
+      });
       playbackVisualizer.Visualize();
       Assert(!playbackVisualizer.PlaybackActive,
         "astronomy Stop did not halt playback");
       double stoppedOffset = playbackVisualizer.PlaybackStartOffset;
       Assert(stoppedOffset > 10.001,
         "astronomy Stop did not retain the current playback offset");
-      playbackConfig.domeLayerFireCounters = new Dictionary<string, int> {
+      playbackConfig.ReplaceDomeLayerFireCounters(
+        new Dictionary<string, int> {
         [playbackLayer.InstanceId] = 2,
-      };
+      });
       playbackVisualizer.Visualize();
       Assert(playbackVisualizer.PlaybackActive &&
           Math.Abs(
@@ -1162,42 +1169,40 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     private static void ConfigurationPublishesSnapshot() {
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("background", null),
-        },
-      };
+      var config = ConfigurationWithLayers(Layer("background", null));
       var source = (ILayerStackSnapshotSource)config;
       LayerStackSnapshot published = source.DomeLayerStackSnapshot;
-      DomeLayerSettings dto = config.domeLayerStack[0];
+      DomeLayerView dto = config.domeLayerStack[0];
 
       Assert(!string.IsNullOrWhiteSpace(dto.InstanceId),
         "the publication boundary did not assign an instance ID");
       Assert(published.Layers[0].Id.Value == dto.InstanceId,
         "the DTO and immutable snapshot received different identities");
-      dto.Enabled = false;
-      Assert(published.Layers[0].Enabled,
-        "the published snapshot retained a mutable DTO");
+      DomeLayerView changed = dto with { Enabled = false };
+      Assert(published.Layers[0].Enabled &&
+          config.domeLayerStack[0].Enabled && !changed.Enabled,
+        "the published snapshot retained a mutable view");
     }
 
     private static void ShowStateTransactionsAreAtomic() {
       var colors = new LEDColor[DomePalette.SlotCount];
       colors[0] = new LEDColor(0x112233, 0x445566);
       var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("background", "old-layer"),
-        },
-        domePalettes = new List<DomePalette> {
-          new DomePalette { Name = "Live", Colors = colors },
-        },
         domeGlobalFadeSpeed = 0.25,
         domeGlobalHueSpeed = 0.5,
       };
+      config.ReplaceDomeLayerStack(new[] {
+        Layer("background", "old-layer"),
+      });
+      config.ReplaceDomePalettes(new[] {
+        new DomePalette { Name = "Live", Colors = colors },
+      });
       var source = (IDomeShowStateConfiguration)config;
       DomeShowStateSnapshot beforePaletteEdit =
         source.DomeShowStateSnapshot;
 
-      config.domePalettes[0][0, 0] = 0xAABBCC;
+      new PaletteService(config).ReplaceColors(
+        "Live", new[] { new LEDColor(0xAABBCC) });
       DomeShowStateSnapshot afterPaletteEdit = source.DomeShowStateSnapshot;
       Assert(afterPaletteEdit.Generation > beforePaletteEdit.Generation,
         "an in-place palette edit did not publish a new generation");
@@ -1205,7 +1210,7 @@ namespace Spectrum.LayerPipeline.Tests {
           afterPaletteEdit.Palettes[0].GetSingleColor(0) == 0xAABBCC,
         "a show-state snapshot retained mutable palette objects");
 
-      config.domeScenes = new List<DomeScene> {
+      config.ReplaceDomeScenes(new List<DomeScene> {
         new DomeScene {
           Name = "Next",
           Layers = new List<DomeLayerSettings> {
@@ -1214,7 +1219,7 @@ namespace Spectrum.LayerPipeline.Tests {
           GlobalFadeSpeed = 0.75,
           GlobalHueSpeed = 1.5,
         },
-      };
+      });
       int generationNotifications = 0;
       int compatibilityNotifications = 0;
       config.PropertyChanged += (sender, e) => {
@@ -1250,28 +1255,28 @@ namespace Spectrum.LayerPipeline.Tests {
 
     private static void ShowStateSseIsAtomic() {
       var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("background", "sse-old"),
-        },
-        domePalettes = new List<DomePalette> {
-          new DomePalette {
-            Name = "SSE",
-            Colors = new[] { new LEDColor(0x123456) },
-          },
-        },
         domeGlobalFadeSpeed = 0.1,
         domeGlobalHueSpeed = 0.2,
-        domeScenes = new List<DomeScene> {
-          new DomeScene {
-            Name = "SSE Next",
-            Layers = new List<DomeLayerSettings> {
-              Layer("background", "sse-new"),
-            },
-            GlobalFadeSpeed = 0.8,
-            GlobalHueSpeed = 1.2,
-          },
-        },
       };
+      config.ReplaceDomeLayerStack(new[] {
+        Layer("background", "sse-old"),
+      });
+      config.ReplaceDomePalettes(new[] {
+        new DomePalette {
+          Name = "SSE",
+          Colors = new[] { new LEDColor(0x123456) },
+        },
+      });
+      config.ReplaceDomeScenes(new[] {
+        new DomeScene {
+          Name = "SSE Next",
+          Layers = new List<DomeLayerSettings> {
+            Layer("background", "sse-new"),
+          },
+          GlobalFadeSpeed = 0.8,
+          GlobalHueSpeed = 1.2,
+        },
+      });
       using var stream = new global::Spectrum.Web.ConfigEventStream(
         global::Spectrum.Web.SpectrumParameters.BuildRegistry(),
         config, null, null, null);
@@ -1299,15 +1304,15 @@ namespace Spectrum.LayerPipeline.Tests {
       var oldColors = new LEDColor[DomePalette.SlotCount];
       oldColors[0] = new LEDColor(0x112233);
       var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("background", "initial-old"),
-        },
-        domePalettes = new List<DomePalette> {
-          new DomePalette { Name = "Old", Colors = oldColors },
-        },
         domeGlobalFadeSpeed = 0.125,
         domeGlobalHueSpeed = 0.25,
       };
+      config.ReplaceDomeLayerStack(new[] {
+        Layer("background", "initial-old"),
+      });
+      config.ReplaceDomePalettes(new[] {
+        new DomePalette { Name = "Old", Colors = oldColors },
+      });
       DomeShowStateSnapshot captured = null;
       int captureCount = 0;
       using var snapshotCaptured = new ManualResetEventSlim();
@@ -1345,7 +1350,7 @@ namespace Spectrum.LayerPipeline.Tests {
           },
           0.75,
           1.5,
-          config.domeScenes));
+          DomeSceneView.ToScenes(config.domeScenes)));
       continueSerialization.Set();
 
       string show = initialFrames.GetAwaiter().GetResult().Single(
@@ -1393,7 +1398,7 @@ namespace Spectrum.LayerPipeline.Tests {
       var aliasedCounters = new Dictionary<string, int> {
         ["immutable"] = 7,
       };
-      config.domeLayerFireCounters = aliasedCounters;
+      config.ReplaceDomeLayerFireCounters(aliasedCounters);
       DomeRuntimeFrameSnapshot retained = source.DomeRuntimeFrameSnapshot;
       aliasedCounters["immutable"] = 99;
       Assert(retained.FireGeneration("immutable") == 7,
@@ -1401,7 +1406,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
       var aliasedCableMapping = Enumerable.Range(
         0, LEDDomeOutput.NumCables).ToArray();
-      config.domeCableMapping = aliasedCableMapping;
+      config.ReplaceDomeCableMapping(aliasedCableMapping);
       DomeOutputSettingsSnapshot retainedOutput =
         source.DomeOutputSettingsSnapshot;
       aliasedCableMapping[0] = 9;
@@ -1416,10 +1421,11 @@ namespace Spectrum.LayerPipeline.Tests {
           for (int layer = 0; layer < 16; layer++) {
             counters["layer-" + layer] = generation;
           }
-          config.domeLayerFireCounters = counters;
-          config.domeCableMapping = generation % 2 == 0
+          config.ReplaceDomeLayerFireCounters(counters);
+          config.ReplaceDomeCableMapping(generation % 2 == 0
             ? Enumerable.Range(0, LEDDomeOutput.NumCables).ToArray()
-            : Enumerable.Range(0, LEDDomeOutput.NumCables).Reverse().ToArray();
+            : Enumerable.Range(
+                0, LEDDomeOutput.NumCables).Reverse().ToArray());
         }
       });
 
@@ -1461,9 +1467,7 @@ namespace Spectrum.LayerPipeline.Tests {
       layer.RendererParams = new Dictionary<string, double> {
         ["level"] = 0.4,
       };
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> { layer },
-      };
+      var config = ConfigurationWithLayers(layer);
       var dispatcher = new QueuedStateDispatcher();
       config.AttachMutationDispatcher(dispatcher);
       var controller = new global::Spectrum.Web.LayersController(
@@ -1475,8 +1479,8 @@ namespace Spectrum.LayerPipeline.Tests {
       } catch (Exception error) {
         directReadError = error;
       }
-      Assert(directReadError is InvalidOperationException,
-        "an off-owner serializer collection read was not rejected");
+      Assert(directReadError == null,
+        "an immutable off-owner configuration read was rejected");
 
       Task<global::Spectrum.Web.LayersController.LayersState> read =
         Task.Run(controller.StateAsync);
@@ -1500,16 +1504,15 @@ namespace Spectrum.LayerPipeline.Tests {
       for (int i = 0; i < StackValidator.MaxLayers; i++) {
         layers.Add(Layer("background", "storm-" + i));
       }
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = layers,
-        domePalettes = new List<DomePalette> {
-          new DomePalette {
-            Name = "Storm",
-            Colors = DomePalette.CopyColors(
-              new[] { new LEDColor(0x123456) }),
-          },
+      var config = new global::Spectrum.SpectrumConfiguration();
+      config.ReplaceDomeLayerStack(layers);
+      config.ReplaceDomePalettes(new List<DomePalette> {
+        new DomePalette {
+          Name = "Storm",
+          Colors = DomePalette.CopyColors(
+            new[] { new LEDColor(0x123456) }),
         },
-      };
+      });
       var runtime = new global::Spectrum.Operator(config);
       var source = (IRuntimeSettingsConfiguration)config;
       int reconciliations = runtime.LayerPlanReconciliationCount;
@@ -1527,18 +1530,19 @@ namespace Spectrum.LayerPipeline.Tests {
         config.domeBrightness = (i % 101) / 100.0;
         config.domeMaxBrightness = ((i + 17) % 101) / 100.0;
         config.orientationDeviceSpotlight = i % 9 - 2;
-        config.domeLayerFireCounters = new Dictionary<string, int> {
+        config.ReplaceDomeLayerFireCounters(new Dictionary<string, int> {
           [layers[i % layers.Count].InstanceId] = i + 1,
-        };
-        config.domeLayerClearCounters = new Dictionary<string, int> {
+        });
+        config.ReplaceDomeLayerClearCounters(new Dictionary<string, int> {
           [layers[(i + 1) % layers.Count].InstanceId] = i + 1,
-        };
+        });
         config.domeGlobalFadeSpeed = (i % 31) / 10.0;
         config.domeGlobalHueSpeed = (i % 29) / 10.0;
         if (i % 20 == 0) {
-          config.domePalettes[0].ReplaceColors(new[] {
-            new LEDColor((0x010101 * i) & 0xFFFFFF),
-          });
+          new PaletteService(config).ReplaceColors(
+            "Storm", new[] {
+              new LEDColor((0x010101 * i) & 0xFFFFFF),
+            });
         }
       }
 
@@ -1579,6 +1583,207 @@ namespace Spectrum.LayerPipeline.Tests {
       GC.KeepAlive(checksum);
     }
 
+    private static void EnabledOperatorConcurrentSettingsAreIsolated() {
+      var layers = new List<DomeLayerSettings>();
+      for (int i = 0; i < StackValidator.MaxLayers; i++) {
+        layers.Add(Layer("background", "enabled-storm-" + i));
+      }
+      var config = new global::Spectrum.SpectrumConfiguration();
+      config.ReplaceDomeLayerStack(layers);
+      config.domeSimulationEnabled = true;
+      config.midiInputEnabled = true;
+      config.ReplaceMidiPresets(new Dictionary<int, MidiPreset> {
+        [9] = ConcurrentTestMidiPreset(9),
+        [10] = ConcurrentTestMidiPreset(10),
+      });
+      config.ReplaceMidiDevices(new Dictionary<int, int> { [42] = 9 });
+
+      var dispatcher = new QueuedStateDispatcher();
+      config.AttachMutationDispatcher(dispatcher);
+      var controller = new global::Spectrum.Web.LayersController(
+        dispatcher, config);
+      var runtime = new global::Spectrum.Operator(
+        config, dispatcher, connectHardware: false);
+      var settings = (IRuntimeSettingsConfiguration)config;
+      long transportGeneration =
+        settings.DomeOutputSettingsSnapshot.TransportGeneration;
+      Exception readerFailure = null;
+      using var stopReader = new CancellationTokenSource();
+
+      Task reader = Task.Run(() => {
+        try {
+          while (!stopReader.IsCancellationRequested) {
+            DomeRuntimeFrameSnapshot frame =
+              settings.DomeRuntimeFrameSnapshot;
+            Assert(frame.FireGenerations.All(pair =>
+                pair.Key.StartsWith("enabled-storm-") && pair.Value > 0),
+              "a reader observed an invalid fire-counter generation");
+
+            AudioSettingsSnapshot audio = settings.AudioSettingsSnapshot;
+            Assert(audio.DeviceId == null || audio.DeviceId == "fake-a" ||
+                audio.DeviceId == "fake-b",
+              "a reader observed a torn Audio generation");
+
+            MidiSettingsSnapshot midi = settings.MidiSettingsSnapshot;
+            Assert(midi.Devices.Count == 1 &&
+                midi.Devices.TryGetValue(42, out int preset) &&
+                (preset == 9 || preset == 10),
+              "a reader observed a torn MIDI device generation");
+
+            DomeOutputSettingsSnapshot output =
+              settings.DomeOutputSettingsSnapshot;
+            Assert(IsIdentityOrReverse(output.CableMapping),
+              "a reader observed a torn cable-mapping generation");
+            foreach (ImmutableArray<int> ports in output.PortMappings) {
+              Assert(IsIdentityOrReverse(ports),
+                "a reader observed a torn port-mapping generation");
+            }
+
+            ImmutableArray<DomeLayerView> stack = config.domeLayerStack;
+            Assert(stack.Length == StackValidator.MaxLayers &&
+                stack.All(layer => layer.RendererParams != null &&
+                  layer.OperationParams != null),
+              "a reader observed a partial immutable layer view");
+          }
+        } catch (Exception error) {
+          readerFailure = error;
+        }
+      });
+
+      runtime.Enabled = true;
+      int reconciliations = runtime.LayerPlanReconciliationCount;
+      RenderPlan acceptedPlan = runtime.DomeOutput.RenderPlan;
+      try {
+        Task webUpdates = Task.Run(async () => {
+          for (int i = 0; i < 120; i++) {
+            (bool ok, string error) = await controller.FireAsync(
+              layers[i % layers.Count].InstanceId);
+            if (!ok) {
+              throw new InvalidOperationException(error);
+            }
+          }
+        });
+        Task deviceUpdates = Task.Run(async () => {
+          for (int i = 0; i < 80; i++) {
+            int generation = i;
+            await dispatcher.InvokeAsync(() => {
+              config.audioDeviceID = (generation & 1) == 0
+                ? "fake-a" : "fake-b";
+              config.ReplaceMidiDevices(new Dictionary<int, int> {
+                [42] = (generation & 1) == 0 ? 9 : 10,
+              });
+              int[] mapping = Enumerable.Range(
+                  0, LEDDomeOutput.NumCables).ToArray();
+              if ((generation & 1) != 0) {
+                Array.Reverse(mapping);
+              }
+              config.ReplaceDomeCableMapping(mapping);
+
+              int[] ports = Enumerable.Range(
+                  0, LEDDomeOutput.NumPortsPerBox).ToArray();
+              if ((generation & 1) != 0) {
+                Array.Reverse(ports);
+              }
+              config.ReplaceDomePortMappings(Enumerable.Range(
+                0, LEDDomeOutput.NumDomeBoxes).Select(
+                  _ => new DomePortMapping(ports)).ToArray());
+            });
+          }
+        });
+        Task inputUpdates = Task.Run(async () => {
+          for (int i = 1; i <= 120; i++) {
+            byte[] datagram = new byte[15];
+            datagram[0] = 7;
+            Array.Copy(BitConverter.GetBytes(i), 0, datagram, 1, 4);
+            datagram[5] = 3;
+            datagram[7] = 0x40;
+            runtime.OrientationInput.ProcessDatagram(datagram);
+            await runtime.MidiInput.DispatchBindingsAsync(new MidiCommand {
+              deviceIndex = 42,
+              type = MidiCommandType.Knob,
+              index = 7,
+              value = (i % 101) / 100.0,
+            });
+          }
+        });
+
+        Task updates = Task.WhenAll(
+          webUpdates, deviceUpdates, inputUpdates);
+        var spin = new SpinWait();
+        while (!updates.IsCompleted) {
+          dispatcher.Drain();
+          spin.SpinOnce();
+        }
+        dispatcher.Drain();
+        updates.GetAwaiter().GetResult();
+
+        stopReader.Cancel();
+        reader.GetAwaiter().GetResult();
+        Assert(readerFailure == null,
+          "concurrent reader failed: " + readerFailure);
+        Assert(SpinWait.SpinUntil(
+            () => runtime.MidiInput.AppliedDeviceGeneration ==
+                settings.MidiSettingsSnapshot.DeviceGeneration &&
+              runtime.DomeOutput.AppliedMappingGeneration ==
+                settings.DomeOutputSettingsSnapshot.MappingGeneration,
+            TimeSpan.FromSeconds(3)),
+          "the enabled operator did not reconcile the latest device generations");
+        Assert(runtime.DomeOutput.AppliedTransportGeneration ==
+            transportGeneration,
+          "a wiring-only update reconciled the OPC transport");
+        Assert(runtime.LayerPlanReconciliationCount == reconciliations,
+          "control/device traffic reconciled the layer plan");
+        Assert(ReferenceEquals(runtime.DomeOutput.RenderPlan, acceptedPlan),
+          "control/device traffic replaced the accepted render plan");
+
+        Assert(SpinWait.SpinUntil(
+            () => runtime.Telemetry.OperatorFPS > 0,
+            TimeSpan.FromSeconds(4)),
+          "the enabled operator did not complete its first FPS window");
+        runtime.BeginAllocationMeasurement();
+        Thread.Sleep(300);
+        var allocation = runtime.EndAllocationMeasurement();
+        Assert(allocation.Frames >= 30,
+          "too few enabled operator frames were measured: " +
+          allocation.Frames);
+        Assert(allocation.Bytes == 0,
+          "the steady-state enabled operator allocated " +
+          allocation.Bytes + " managed bytes across " +
+          allocation.Frames + " frames");
+      } finally {
+        stopReader.Cancel();
+        reader.GetAwaiter().GetResult();
+        runtime.Enabled = false;
+      }
+    }
+
+    private static MidiPreset ConcurrentTestMidiPreset(int id) => new() {
+      id = id,
+      Name = "concurrent " + id,
+      Bindings = new List<IMidiBindingConfig> {
+        new ContinuousKnobMidiBindingConfig {
+          BindingName = "concurrent brightness",
+          knobIndex = 7,
+          configPropertyName = nameof(Configuration.domeBrightness),
+          startValue = 0,
+          endValue = 1,
+        },
+      },
+    };
+
+    private static bool IsIdentityOrReverse(IReadOnlyList<int> values) {
+      if (values == null || values.Count == 0) {
+        return true;
+      }
+      bool identity = true;
+      bool reverse = true;
+      for (int i = 0; i < values.Count; i++) {
+        identity &= values[i] == i;
+        reverse &= values[i] == values.Count - 1 - i;
+      }
+      return identity || reverse;
+    }
+
     private static void MidiBindingsPublishStateCommands() {
       var config = new global::Spectrum.SpectrumConfiguration();
       var dispatcher = new QueuedStateDispatcher();
@@ -1606,8 +1811,9 @@ namespace Spectrum.LayerPipeline.Tests {
 
     private static void MidiBindingFailuresAreContained() {
       Configuration config = new ThrowingBrightnessConfiguration();
-      config.midiDevices = new Dictionary<int, int> { [42] = 9 };
-      config.midiPresets = new Dictionary<int, MidiPreset> {
+      ConfigurationEditor editor = (ConfigurationEditor)config;
+      editor.ReplaceMidiDevices(new Dictionary<int, int> { [42] = 9 });
+      editor.ReplaceMidiPresets(new Dictionary<int, MidiPreset> {
         [9] = new MidiPreset {
           id = 9,
           Name = "fault containment",
@@ -1628,7 +1834,7 @@ namespace Spectrum.LayerPipeline.Tests {
             },
           },
         },
-      };
+      });
       var dispatcher = new QueuedStateDispatcher();
       var midi = new MidiInput(
         config, new BeatBroadcaster(config), dispatcher);
@@ -1716,12 +1922,9 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     private static void DuplicateRenderers() {
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("background", "background-a"),
-          Layer("background", "background-b"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("background", "background-a"),
+        Layer("background", "background-b"));
       var runtime = new global::Spectrum.Operator(config);
       int count = 0;
       foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
@@ -1897,12 +2100,9 @@ namespace Spectrum.LayerPipeline.Tests {
         LEDDomeRippleTankVisualizer.WakeStrengthForAngularSpeed(99),
         "wake strength does not cap at the stable maximum");
 
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("caustics", "caustics-inputs"),
-          Layer("ripple-tank", "tank-inputs"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("caustics", "caustics-inputs"),
+        Layer("ripple-tank", "tank-inputs"));
       var runtime = new global::Spectrum.Operator(config);
       DomeLayerVisualizer causticsRenderer = null;
       DomeLayerVisualizer tankRenderer = null;
@@ -2087,11 +2287,8 @@ namespace Spectrum.LayerPipeline.Tests {
           !onset.Sample(0.8, 0.016),
         "Watchful Iris audio onset did not emit one blink edge");
 
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("watchful-iris", "watchful-iris-render"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("watchful-iris", "watchful-iris-render"));
       SetPaletteColors(config, color => 0x205090 + color * 0x160C02);
       var runtime = new global::Spectrum.Operator(config);
       DomeLayerVisualizer iris = null;
@@ -2255,11 +2452,8 @@ namespace Spectrum.LayerPipeline.Tests {
           "Living Skin dormant B field evolved after clear");
       }
 
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("living-skin", "living-skin-inputs"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("living-skin", "living-skin-inputs"));
       var runtime = new global::Spectrum.Operator(config);
       DomeLayerVisualizer livingSkin = null;
       foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
@@ -2414,11 +2608,8 @@ namespace Spectrum.LayerPipeline.Tests {
         LEDDomeArcLightningVisualizer.AfterglowRetention(0.4, 0.4),
         "Arc Lightning afterglow is not a brightness half-life");
 
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("arc-lightning", "arc-lightning-inputs"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("arc-lightning", "arc-lightning-inputs"));
       var runtime = new global::Spectrum.Operator(config);
       DomeLayerVisualizer lightning = null;
       foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
@@ -2598,11 +2789,8 @@ namespace Spectrum.LayerPipeline.Tests {
           0xFF0000, 0x0000FF, 0.5) == 0x800080,
         "Glass Mosaic did not interpolate adjacent tile colors");
 
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("glass-mosaic", "glass-inputs"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("glass-mosaic", "glass-inputs"));
       SetPaletteColors(config, color => 0xFFFFFF - color * 0x10101);
       var runtime = new global::Spectrum.Operator(config);
       DomeLayerVisualizer mosaic = null;
@@ -2739,11 +2927,8 @@ namespace Spectrum.LayerPipeline.Tests {
           0xFF0000, 0x0000FF, 0.5) == 0x800080,
         "Cellular Dome did not blend adjacent cell colors");
 
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("cellular-dome", "cellular-inputs"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("cellular-dome", "cellular-inputs"));
       SetPaletteColors(config, color => 0xFFFFFF - color * 0x10101);
       var runtime = new global::Spectrum.Operator(config);
       DomeLayerVisualizer cellular = null;
@@ -2894,11 +3079,8 @@ namespace Spectrum.LayerPipeline.Tests {
         LEDDomeFireflySwarmVisualizer.TrailRetention(0.45, 0.45),
         "Firefly Swarm trail length is not a brightness half-life");
 
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("firefly-swarm", "firefly-inputs"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("firefly-swarm", "firefly-inputs"));
       SetPaletteColors(config, color => 0xFFFFFF - color * 0x10101);
       var runtime = new global::Spectrum.Operator(config);
       DomeLayerVisualizer fireflies = null;
@@ -3237,11 +3419,8 @@ namespace Spectrum.LayerPipeline.Tests {
           outsideTrail.pixels[0].a == 1,
         "Rain Chamber dry region cleared trail light beyond its reach");
 
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("rain-chamber", "rain-inputs"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("rain-chamber", "rain-inputs"));
       SetPaletteColors(config, color => 0xF8FCFF - color * 0x030100);
       var runtime = new global::Spectrum.Operator(config);
       DomeLayerVisualizer rain = null;
@@ -3372,11 +3551,8 @@ namespace Spectrum.LayerPipeline.Tests {
           0.46, 0.42, 0.02),
         "Topographic Dream coastline flooded distant terrain");
 
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("topographic-dream", "topographic-inputs"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("topographic-dream", "topographic-inputs"));
       SetPaletteColors(config, color => 0x183050 + color * 0x181208);
       var runtime = new global::Spectrum.Operator(config);
       DomeLayerVisualizer topographic = null;
@@ -3560,11 +3736,8 @@ namespace Spectrum.LayerPipeline.Tests {
         LEDDomeOrbitalGardenVisualizer.TrailRetention(0.8, 0.8),
         "Orbital Garden trail length is not a brightness half-life");
 
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("orbital-garden", "orbital-inputs"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("orbital-garden", "orbital-inputs"));
       SetPaletteColors(config, color => 0xFFF0D0 - color * 0x0A0502);
       var runtime = new global::Spectrum.Operator(config);
       DomeLayerVisualizer orbital = null;
@@ -3730,11 +3903,8 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(lobe > 0.8 && lobe > pinch + 0.5,
         "Lava Lamp Sky division did not form two pinched soft lobes");
 
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("lava-lamp-sky", "lava-inputs"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("lava-lamp-sky", "lava-inputs"));
       SetPaletteColors(config, color => 0xFF8A22 + color * 0x000804);
       var runtime = new global::Spectrum.Operator(config);
       DomeLayerVisualizer lava = null;
@@ -3763,10 +3933,10 @@ namespace Spectrum.LayerPipeline.Tests {
       var config = new global::Spectrum.SpectrumConfiguration {
         domeGlobalFadeSpeed = 3,
         domeGlobalHueSpeed = 0,
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("vortex", "vortex-trail"),
-        },
       };
+      config.ReplaceDomeLayerStack(new[] {
+        Layer("vortex", "vortex-trail"),
+      });
       var runtime = new global::Spectrum.Operator(config);
       DomeLayerVisualizer vortex = null;
       foreach (Visualizer visualizer in runtime.DomeOutput.GetVisualizers()) {
@@ -3829,12 +3999,8 @@ namespace Spectrum.LayerPipeline.Tests {
     private static void PlanSchedulesInstances() {
       DomeLayerSettings disabled = Layer("background", "background-off");
       disabled.Enabled = false;
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          disabled,
-          Layer("background", "background-on"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        disabled, Layer("background", "background-on"));
       var runtime = new global::Spectrum.Operator(config);
       RenderPlan plan = runtime.DomeOutput.RenderPlan;
       Assert(plan.Layers.Length == 1, "disabled layer entered the plan");
@@ -3843,12 +4009,9 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     private static void SceneRecallRetainsState() {
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("wave", "scene-wave-a"),
-          Layer("wave", "scene-wave-b"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("wave", "scene-wave-a"),
+        Layer("wave", "scene-wave-b"));
       var scenes = new SceneService(config, DomeLayerCatalog.Metadata);
       (bool saved, string saveError) = scenes.Save("duplicates");
       Assert(saved, saveError);
@@ -3890,9 +4053,9 @@ namespace Spectrum.LayerPipeline.Tests {
         ReferenceEquals(reordered.Layers[1].Renderer, rendererA),
         "reordering changed instance identity");
 
-      config.domeLayerStack = new List<DomeLayerSettings> {
+      config.ReplaceDomeLayerStack(new List<DomeLayerSettings> {
         Layer("background", "temporary-background"),
-      };
+      });
       Compile(
         compiler, store,
         ((ILayerStackSnapshotSource)config).DomeLayerStackSnapshot);
@@ -3916,12 +4079,9 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     private static void DuplicateCommandsNeedIds() {
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("wave", "command-wave-a"),
-          Layer("wave", "command-wave-b"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("wave", "command-wave-a"),
+        Layer("wave", "command-wave-b"));
       var controller = new global::Spectrum.Web.LayersController(
         new InlineGateway(), config);
 
@@ -4911,33 +5071,178 @@ namespace Spectrum.LayerPipeline.Tests {
       };
       var config = new global::Spectrum.SpectrumConfiguration {
         audioDeviceID = "test-device",
-        domeLayerStack = new List<DomeLayerSettings> {
-          serializedLayer,
-        },
       };
+      config.ReplaceDomeLayerStack(new[] { serializedLayer });
+      config.ReplaceMidiLevelDriverChannels(
+        new Dictionary<int, MidiLevelDriverPreset> {
+          [2] = new MidiLevelDriverPreset {
+            AttackTime = 10,
+            PeakLevel = 0.9,
+            DecayTime = 20,
+            SustainLevel = 0.7,
+            ReleaseTime = 30,
+          },
+        });
       using var stream = new MemoryStream();
-      new XmlSerializer<global::Spectrum.SpectrumConfiguration>().Serialize(
-        stream, config);
+      new XmlSerializer<global::Spectrum.SpectrumConfigurationDocument>()
+        .Serialize(
+          stream,
+          global::Spectrum.SpectrumConfigurationDocument.FromConfiguration(
+            config));
       Assert(stream.Length > 0, "serializer produced no XML");
+      string xml = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+      Assert(xml.Contains("<SpectrumConfiguration") &&
+          !xml.Contains("<SpectrumConfigurationDocument"),
+        "the configuration document emitted the wrong XML root");
       stream.Position = 0;
       var restored =
-        new XmlSerializer<global::Spectrum.SpectrumConfiguration>().Deserialize(
-          stream);
+        new XmlSerializer<global::Spectrum.SpectrumConfigurationDocument>()
+          .Deserialize(stream).ToConfiguration();
       Assert(restored.audioDeviceID == "test-device", "round trip lost config");
-      Assert(restored.domeLayerStack.Count == 1 &&
+      Assert(restored.domeLayerStack.Length == 1 &&
         restored.domeLayerStack[0].InstanceId == "serialize-background",
         "round trip lost layer identity");
       Assert(restored.domeLayerStack[0].RendererParams["color"] == 0x123456 &&
-        restored.domeLayerStack[0].OperationParams["amount"] == .5,
+          restored.domeLayerStack[0].OperationParams["amount"] == .5,
         "round trip merged or lost parameter namespaces");
+      BeatSettingsSnapshot beat =
+        ((IRuntimeSettingsConfiguration)restored).BeatSettingsSnapshot;
+      Assert(beat.TryGetMidiPreset(
+          2, out MidiLevelDriverSettingsSnapshot envelope) &&
+          envelope.AttackTime == 10 && envelope.PeakLevel == 0.9 &&
+          envelope.DecayTime == 20 && envelope.SustainLevel == 0.7 &&
+          envelope.ReleaseTime == 30,
+        "round trip lost the MIDI level-driver channel");
+    }
+
+    private static void ConfigurationCollectionsIsolateNestedAliases() {
+      var layer = Layer("background", "alias-layer");
+      layer.RendererParams = new Dictionary<string, double> {
+        ["color"] = 0x123456,
+      };
+      var sceneLayer = Layer("background", "alias-scene-layer");
+      sceneLayer.OperationParams = new Dictionary<string, double> {
+        ["amount"] = 0.25,
+      };
+      var paletteColor = new LEDColor(0x112233, 0x445566);
+      var binding = new ContinuousKnobMidiBindingConfig {
+        BindingName = "alias-binding",
+        knobIndex = 7,
+        configPropertyName = nameof(Configuration.domeBrightness),
+        startValue = 0,
+        endValue = 1,
+      };
+      var preset = new MidiPreset {
+        id = 3,
+        Name = "Alias preset",
+        Bindings = new List<IMidiBindingConfig> { binding },
+      };
+      var config = new global::Spectrum.SpectrumConfiguration();
+      config.ReplaceDomeLayerStack(new[] { layer });
+      config.ReplaceDomeScenes(new[] {
+        new DomeScene {
+          Name = "Alias scene",
+          Layers = new List<DomeLayerSettings> { sceneLayer },
+        },
+      });
+      config.ReplaceDomePalettes(new[] {
+        new DomePalette {
+          Name = "Alias palette",
+          Colors = new[] { paletteColor },
+        },
+      });
+      config.ReplaceMidiPresets(new Dictionary<int, MidiPreset> {
+        [3] = preset,
+      });
+
+      layer.RendererParams["color"] = 0;
+      sceneLayer.OperationParams["amount"] = 1;
+      paletteColor.color1 = 0;
+      binding.endValue = 0;
+      preset.Bindings.Clear();
+      Assert(config.domeLayerStack[0].RendererParams["color"] == 0x123456 &&
+          config.domeScenes[0].Layers[0].OperationParams["amount"] == 0.25 &&
+          config.domePalettes[0].Colors[0].Value.Color1 == 0x112233 &&
+          config.midiPresets[3].Bindings.Length == 1 &&
+          ((ContinuousKnobMidiBindingView)
+            config.midiPresets[3].Bindings[0]).EndValue == 1,
+        "a collection edit retained a nested source alias");
+
+      global::Spectrum.SpectrumConfigurationDocument document =
+        global::Spectrum.SpectrumConfigurationDocument.FromConfiguration(
+          config);
+      document.domeLayerStack[0].RendererParams["color"] = 7;
+      document.domeScenes[0].Layers[0].OperationParams["amount"] = 7;
+      document.domePalettes[0].Colors[0].color1 = 7;
+      document.midiPresets[3].Bindings.Clear();
+      Assert(config.domeLayerStack[0].RendererParams["color"] == 0x123456 &&
+          config.domeScenes[0].Layers[0].OperationParams["amount"] == 0.25 &&
+          config.domePalettes[0].Colors[0].Value.Color1 == 0x112233 &&
+          config.midiPresets[3].Bindings.Length == 1,
+        "the persistence document retained a live configuration alias");
+    }
+
+    private static void ConfigurationCollectionNotificationsAreExact() {
+      var config = new global::Spectrum.SpectrumConfiguration();
+      var names = new List<string>();
+      config.PropertyChanged += (_, e) => names.Add(e.PropertyName);
+
+      config.ReplaceDomeLayerStack(new[] {
+        Layer("background", "notification-layer"),
+      });
+      Assert(names.SequenceEqual(new[] {
+          nameof(config.domeLayerStack),
+          DomeShowStateSnapshot.NotificationPropertyName,
+        }),
+        "a layer replacement published extra or missing notifications");
+
+      names.Clear();
+      config.ReplaceDomePalettes(new[] {
+        new DomePalette { Name = "Notification palette" },
+      });
+      Assert(names.SequenceEqual(new[] {
+          nameof(config.domePalettes),
+          DomeShowStateSnapshot.NotificationPropertyName,
+        }),
+        "a palette replacement published extra or missing notifications");
+
+      names.Clear();
+      config.UpsertMidiPreset(4, new MidiPreset {
+        id = 4,
+        Name = "Notification MIDI",
+      });
+      Assert(names.SequenceEqual(new[] { nameof(config.midiPresets) }),
+        "a MIDI preset edit published extra or missing notifications");
+    }
+
+    private static void ConfigurationSurfaceRejectsMutableCollections() {
+      Type[] mutableDefinitions = {
+        typeof(List<>),
+        typeof(Dictionary<,>),
+        typeof(IList<>),
+        typeof(IDictionary<,>),
+        typeof(ICollection<>),
+      };
+      foreach (Type surface in new[] {
+          typeof(Configuration),
+          typeof(global::Spectrum.SpectrumConfiguration),
+        }) {
+        foreach (System.Reflection.PropertyInfo property in
+            surface.GetProperties()) {
+          Type type = property.PropertyType;
+          bool mutable = type.IsArray ||
+            type.IsGenericType && mutableDefinitions.Contains(
+              type.GetGenericTypeDefinition());
+          Assert(!mutable,
+            surface.Name + "." + property.Name +
+            " exposes mutable collection type " + type.Name);
+        }
+      }
     }
 
     private static void EventStreamSubscribersAreBounded() {
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> {
-          Layer("background", "coalesced-show"),
-        },
-      };
+      var config = ConfigurationWithLayers(
+        Layer("background", "coalesced-show"));
       var telemetry = new RuntimeTelemetry();
       using var stream = new global::Spectrum.Web.ConfigEventStream(
         global::Spectrum.Web.SpectrumParameters.BuildRegistry(),
@@ -4990,9 +5295,7 @@ namespace Spectrum.LayerPipeline.Tests {
       layer.OperationParams = new Dictionary<string, double> {
         ["offset"] = .125,
       };
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = new List<DomeLayerSettings> { layer },
-      };
+      var config = ConfigurationWithLayers(layer);
       var controller = new global::Spectrum.Web.LayersController(
         new InlineGateway(), config);
       global::Spectrum.Web.LayersController.LayersState state =
@@ -5074,6 +5377,13 @@ namespace Spectrum.LayerPipeline.Tests {
         snapshot.Layers[0].RendererParameters);
       return options as T ?? throw new InvalidOperationException(
         "Unexpected options type " + options.GetType().Name + ".");
+    }
+
+    private static global::Spectrum.SpectrumConfiguration
+      ConfigurationWithLayers(params DomeLayerSettings[] layers) {
+      var config = new global::Spectrum.SpectrumConfiguration();
+      config.ReplaceDomeLayerStack(layers);
+      return config;
     }
 
     private static DomeLayerSettings Layer(string key, string id) => new() {
@@ -5166,9 +5476,9 @@ namespace Spectrum.LayerPipeline.Tests {
       for (int color = 0; color < colors.Length; color++) {
         colors[color] = new LEDColor(colorAt(color));
       }
-      config.domePalettes = new List<DomePalette> {
+      config.ReplaceDomePalettes(new List<DomePalette> {
         new DomePalette { Name = "Test", Colors = colors },
-      };
+      });
     }
 
     private static void AssertColors(

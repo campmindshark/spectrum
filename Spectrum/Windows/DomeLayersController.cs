@@ -22,6 +22,7 @@ namespace Spectrum {
   // conventions.
   public class DomeLayersController {
     private readonly Configuration config;
+    private readonly ConfigurationEditor editor;
     private readonly Dispatcher dispatcher;
     public ObservableCollection<DomeLayerRowViewModel> Rows { get; } =
       new ObservableCollection<DomeLayerRowViewModel>();
@@ -29,9 +30,6 @@ namespace Spectrum {
     // True while RebuildRows is repopulating Rows from config, so the row-change
     // handlers don't publish back mid-rebuild.
     private bool rebuilding;
-    // The exact list instance this controller last wrote to config, used to
-    // ignore the PropertyChanged echo of our own write.
-    private List<DomeLayerSettings> lastPublished;
     // UI-only disclosure state, retained when a web edit or scene load rebuilds
     // the row view models. Stable layer IDs make the preference reorder-safe.
     private readonly Dictionary<string, bool> expandedByInstanceId = new();
@@ -60,11 +58,15 @@ namespace Spectrum {
       ButtonBase collapseAllButton, ButtonBase expandAllButton
     ) {
       this.config = config;
+      this.editor = config as ConfigurationEditor ??
+        throw new ArgumentException(
+          "Layer configuration must support collection edits.",
+          nameof(config));
       this.dispatcher = itemsControl.Dispatcher;
       this.observedFireGenerations = new Dictionary<string, int>(
-        this.config.domeLayerFireCounters ?? new Dictionary<string, int>());
+        this.config.domeLayerFireCounters);
       this.observedClearGenerations = new Dictionary<string, int>(
-        this.config.domeLayerClearCounters ?? new Dictionary<string, int>());
+        this.config.domeLayerClearCounters);
       this.astronomyPlaybackTimer = new DispatcherTimer {
         Interval = TimeSpan.FromMilliseconds(100),
       };
@@ -104,14 +106,7 @@ namespace Spectrum {
       if (e.PropertyName != "domeLayerStack") {
         return;
       }
-      // The write may originate off the UI thread (the operator-thread alias);
-      // marshal the rebuild onto the dispatcher. Ignore our own echo.
-      this.dispatcher.BeginInvoke(new Action(() => {
-        if (ReferenceEquals(this.config.domeLayerStack, this.lastPublished)) {
-          return;
-        }
-        this.RebuildRows();
-      }));
+      this.dispatcher.BeginInvoke(new Action(this.RebuildRows));
     }
 
     private void RebuildRows() {
@@ -122,10 +117,10 @@ namespace Spectrum {
         }
       }
       this.Rows.Clear();
-      List<DomeLayerSettings> stack = this.config.domeLayerStack;
-      if (stack != null) {
+      var stack = this.config.domeLayerStack;
+      if (!stack.IsDefaultOrEmpty) {
         // Stack index 0 = background => bottom row, so add in reverse.
-        for (int i = stack.Count - 1; i >= 0; i--) {
+        for (int i = stack.Length - 1; i >= 0; i--) {
           this.Rows.Add(this.MakeRow(stack[i]));
         }
       }
@@ -136,7 +131,7 @@ namespace Spectrum {
       }
     }
 
-    private DomeLayerRowViewModel MakeRow(DomeLayerSettings settings) {
+    private DomeLayerRowViewModel MakeRow(DomeLayerView settings) {
       string instanceId = settings.InstanceId ?? LayerInstanceId.NewId().Value;
       var vm = new DomeLayerRowViewModel(
         PaletteService.Names(this.config)) {
@@ -212,10 +207,10 @@ namespace Spectrum {
         return;
       }
       var counters = new Dictionary<string, int>(
-        this.config.domeLayerFireCounters ?? new Dictionary<string, int>());
+        this.config.domeLayerFireCounters);
       counters.TryGetValue(instanceId, out int count);
       counters[instanceId] = count + 1;
-      this.config.domeLayerFireCounters = counters;
+      this.editor.ReplaceDomeLayerFireCounters(counters);
     }
 
     // A fire-generation change may originate from either native window or the
@@ -223,7 +218,7 @@ namespace Spectrum {
     // into its own UI without persisting each timer tick.
     private void StartNewAstronomyPlaybackDisplays() {
       Dictionary<string, int> current = new Dictionary<string, int>(
-        this.config.domeLayerFireCounters ?? new Dictionary<string, int>());
+        this.config.domeLayerFireCounters);
       foreach (DomeLayerRowViewModel row in this.Rows) {
         if (row.VisualizerKey != "astronomy" || row.InstanceId == null) {
           continue;
@@ -240,7 +235,7 @@ namespace Spectrum {
 
     private void StopNewAstronomyPlaybackDisplays() {
       Dictionary<string, int> current = new Dictionary<string, int>(
-        this.config.domeLayerClearCounters ?? new Dictionary<string, int>());
+        this.config.domeLayerClearCounters);
       foreach (DomeLayerRowViewModel row in this.Rows) {
         if (row.VisualizerKey != "astronomy" || row.InstanceId == null) {
           continue;
@@ -406,10 +401,10 @@ namespace Spectrum {
         return;
       }
       var counters = new Dictionary<string, int>(
-        this.config.domeLayerClearCounters ?? new Dictionary<string, int>());
+        this.config.domeLayerClearCounters);
       counters.TryGetValue(instanceId, out int count);
       counters[instanceId] = count + 1;
-      this.config.domeLayerClearCounters = counters;
+      this.editor.ReplaceDomeLayerClearCounters(counters);
     }
 
     // Rebuild config.domeLayerStack from the current rows (bottom row = index 0)
@@ -447,8 +442,7 @@ namespace Spectrum {
           OperationParams = operationParams,
         });
       }
-      this.lastPublished = stack;
-      this.config.domeLayerStack = stack;
+      this.editor.ReplaceDomeLayerStack(stack);
     }
   }
 

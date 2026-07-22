@@ -192,6 +192,10 @@ namespace Spectrum.LEDs {
     private bool operatorFrameActive;
     private long appliedMappingGeneration;
     private long appliedTransportGeneration;
+    internal long AppliedMappingGeneration =>
+      Volatile.Read(ref this.appliedMappingGeneration);
+    internal long AppliedTransportGeneration =>
+      Volatile.Read(ref this.appliedTransportGeneration);
     private int outputSettingsPending;
     private static readonly int maxStripLength;
 

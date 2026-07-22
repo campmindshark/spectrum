@@ -3,9 +3,9 @@ using System.Collections.Generic;
 
 namespace Spectrum.Base {
 
-  // Shared mutations for the ordered list of named, live palettes. A layer's
-  // "palette" parameter is an index into this list. List mutations are
-  // copy-on-write so the renderer never observes a half-updated collection.
+  // Shared mutations for the ordered list of named palettes. A layer's
+  // "palette" parameter is an index into this list. Every edit replaces a
+  // detached branch and publishes one immutable show-state generation.
   public sealed class PaletteService {
     public const int SlotCount = DomePalette.SlotCount;
     public const int MaxPalettes = 64;
@@ -13,10 +13,15 @@ namespace Spectrum.Base {
     public const string LayerParameterKey = "palette";
 
     private readonly Configuration config;
+    private readonly ConfigurationEditor editor;
     private readonly IDomeShowStateConfiguration showState;
 
     public PaletteService(Configuration config) {
       this.config = config;
+      this.editor = config as ConfigurationEditor ??
+        throw new ArgumentException(
+          "Palette configuration must support collection edits.",
+          nameof(config));
       this.showState = config as IDomeShowStateConfiguration ??
         throw new ArgumentException(
           "Palette configuration must support atomic show-state updates.",
@@ -27,8 +32,8 @@ namespace Spectrum.Base {
 
     public static IReadOnlyList<string> Names(Configuration config) {
       var names = new List<string>();
-      if (config?.domePalettes != null) {
-        foreach (DomePalette palette in config.domePalettes) {
+      if (config != null) {
+        foreach (DomePaletteSnapshot palette in config.domePalettes) {
           if (palette != null && !string.IsNullOrWhiteSpace(palette.Name)) {
             names.Add(palette.Name);
           }
@@ -47,7 +52,8 @@ namespace Spectrum.Base {
       if (!ok) {
         return (false, error);
       }
-      List<DomePalette> current = ValidPalettes(this.config.domePalettes);
+      List<DomePalette> current = ValidPalettes(
+        DomePaletteSnapshot.ToPalettes(this.config.domePalettes));
       if (FindIndex(current, name) >= 0) {
         return (false, "a palette named " + name + " already exists");
       }
@@ -58,19 +64,24 @@ namespace Spectrum.Base {
         Name = name,
         Colors = DomePalette.CopyColors(colors),
       });
-      this.config.domePalettes = current;
+      this.editor.ReplaceDomePalettes(current);
       return (true, null);
     }
 
     // Replace one live palette's color-array reference and notify subscribers.
     // Used by the web editor; native indexer edits notify through the same object.
     public (bool ok, string error) ReplaceColors(string name, LEDColor[] colors) {
-      List<DomePalette> current = this.config.domePalettes;
+      List<DomePalette> current =
+        DomePaletteSnapshot.ToPalettes(this.config.domePalettes);
       int index = current == null ? -1 : FindIndex(current, name);
       if (index < 0) {
         return (false, "no palette named " + name);
       }
-      current[index].ReplaceColors(colors);
+      current[index] = new DomePalette {
+        Name = current[index].Name,
+        Colors = DomePalette.CopyColors(colors),
+      };
+      this.editor.ReplaceDomePalettes(current);
       return (true, null);
     }
 
@@ -80,7 +91,8 @@ namespace Spectrum.Base {
       if (!ok) {
         return (false, error);
       }
-      List<DomePalette> current = ValidPalettes(this.config.domePalettes);
+      List<DomePalette> current = ValidPalettes(
+        DomePaletteSnapshot.ToPalettes(this.config.domePalettes));
       int index = FindIndex(current, oldName);
       if (index < 0) {
         return (false, "no palette named " + oldName);
@@ -93,7 +105,7 @@ namespace Spectrum.Base {
         Name = newName,
         Colors = DomePalette.CopyColors(current[index].Colors),
       };
-      this.config.domePalettes = current;
+      this.editor.ReplaceDomePalettes(current);
       return (true, null);
     }
 
@@ -101,7 +113,8 @@ namespace Spectrum.Base {
     // saved-scene layer. Higher indices shift down; references to the deleted
     // palette fall back to the first remaining palette.
     public (bool ok, string error) Delete(string name) {
-      List<DomePalette> current = ValidPalettes(this.config.domePalettes);
+      List<DomePalette> current = ValidPalettes(
+        DomePaletteSnapshot.ToPalettes(this.config.domePalettes));
       int removed = FindIndex(current, name);
       if (removed < 0) {
         return (false, "no palette named " + name);
@@ -111,23 +124,27 @@ namespace Spectrum.Base {
       }
       current.RemoveAt(removed);
       this.showState.ApplyDomeShowState(new DomeShowStateUpdate(
-        RemapStack(this.config.domeLayerStack, removed),
+        RemapStack(DomeLayerView.ToSettings(
+          this.config.domeLayerStack), removed),
         current,
         this.config.domeGlobalFadeSpeed,
         this.config.domeGlobalHueSpeed,
-        RemapScenes(this.config.domeScenes, removed)));
+        RemapScenes(DomeSceneView.ToScenes(
+          this.config.domeScenes), removed)));
       return (true, null);
     }
 
     public static DomePalette Resolve(Configuration config, int index) {
-      List<DomePalette> palettes = config?.domePalettes;
-      if (palettes == null || palettes.Count == 0) {
+      if (config == null || config.domePalettes.IsDefaultOrEmpty) {
         return null;
       }
-      if (index < 0 || index >= palettes.Count || palettes[index] == null) {
+      if (index < 0 || index >= config.domePalettes.Length ||
+          config.domePalettes[index] == null) {
         index = 0;
       }
-      return index < palettes.Count ? palettes[index] : null;
+      return index < config.domePalettes.Length
+        ? config.domePalettes[index]?.ToPalette()
+        : null;
     }
 
     private static List<DomePalette> ValidPalettes(List<DomePalette> source) {

@@ -7,9 +7,9 @@ namespace Spectrum.Base {
    * Both surfaces call into it so the logic can't diverge: the native
    * DomeScenesController (already on the UI thread) calls it directly; the web
    * SceneController wraps each call in ApplicationStateDispatcher.InvokeAsync. Every method
-   * therefore assumes it runs on the serialization thread (UI/Dispatcher) — it
-   * reads and writes Configuration properties directly, exactly like a native GUI
-   * write, so the PropertyChanged events land where every subscriber expects.
+   * therefore assumes it runs on the state-owner thread (UI/Dispatcher). It
+   * reads immutable Configuration views and writes through ConfigurationEditor,
+   * so PropertyChanged events land where every subscriber expects.
    *
    * A scene captures the whole layer stack plus the two cross-layer globals (see
    * DomeScene). Save and Apply both deep-copy — a saved scene never aliases the
@@ -31,11 +31,16 @@ namespace Spectrum.Base {
     public const int MaxNameLength = 64;
 
     private readonly Configuration config;
+    private readonly ConfigurationEditor editor;
     private readonly IDomeShowStateConfiguration showState;
     private readonly LayerCatalog layerCatalog;
 
     public SceneService(Configuration config, LayerCatalog layerCatalog) {
       this.config = config;
+      this.editor = config as ConfigurationEditor ??
+        throw new System.ArgumentException(
+          "Scene configuration must support collection edits.",
+          nameof(config));
       this.layerCatalog = layerCatalog ??
         throw new System.ArgumentNullException(nameof(layerCatalog));
       this.showState = config as IDomeShowStateConfiguration ??
@@ -47,9 +52,8 @@ namespace Spectrum.Base {
     // The saved scene names, in stored order. Never null.
     public IReadOnlyList<string> Names() {
       var names = new List<string>();
-      List<DomeScene> scenes = this.config.domeScenes;
-      if (scenes != null) {
-        foreach (DomeScene scene in scenes) {
+      if (!this.config.domeScenes.IsDefaultOrEmpty) {
+        foreach (DomeSceneView scene in this.config.domeScenes) {
           if (scene != null && scene.Name != null) {
             names.Add(scene.Name);
           }
@@ -70,7 +74,7 @@ namespace Spectrum.Base {
       }
       var scene = new DomeScene {
         Name = name,
-        Layers = DeepCopyStack(this.config.domeLayerStack),
+        Layers = DomeLayerView.ToSettings(this.config.domeLayerStack),
         GlobalFadeSpeed = this.config.domeGlobalFadeSpeed,
         GlobalHueSpeed = this.config.domeGlobalHueSpeed,
       };
@@ -79,7 +83,7 @@ namespace Spectrum.Base {
       // mid-mutation list.
       var next = new List<DomeScene>();
       bool replaced = false;
-      List<DomeScene> current = this.config.domeScenes;
+      List<DomeScene> current = DomeSceneView.ToScenes(this.config.domeScenes);
       if (current != null) {
         foreach (DomeScene existing in current) {
           if (existing == null) {
@@ -99,7 +103,7 @@ namespace Spectrum.Base {
         }
         next.Add(scene);
       }
-      this.config.domeScenes = next;
+      this.editor.ReplaceDomeScenes(next);
       return (true, null);
     }
 
@@ -107,7 +111,7 @@ namespace Spectrum.Base {
     // run them through the shared validator, then publish the stack and both
     // globals as one immutable show-state generation.
     public (bool ok, string error) Apply(string name) {
-      DomeScene scene = Find(this.config.domeScenes, name);
+      DomeSceneView scene = Find(this.config.domeScenes, name);
       if (scene == null) {
         return (false, "no scene named " + name);
       }
@@ -115,23 +119,27 @@ namespace Spectrum.Base {
       // parameter bags) without mutating its input, so the published stack never
       // aliases the stored scene — no separate deep copy needed here.
       (List<DomeLayerSettings> stack, string error) =
-        StackValidator.Validate(scene.Layers, this.layerCatalog);
+        StackValidator.Validate(
+          DomeLayerView.ToSettings(scene.Layers), this.layerCatalog);
       if (error != null) {
         return (false, error);
       }
       this.showState.ApplyDomeShowState(new DomeShowStateUpdate(
         stack,
-        this.config.domePalettes,
+        DomePaletteSnapshot.ToPalettes(this.config.domePalettes),
         scene.GlobalFadeSpeed,
         scene.GlobalHueSpeed,
-        this.config.domeScenes));
+        DomeSceneView.ToScenes(this.config.domeScenes)) {
+          PalettesChanged = false,
+          ScenesChanged = false,
+        });
       return (true, null);
     }
 
     // Remove the named scene. A no-op (still ok) if it doesn't exist.
     public (bool ok, string error) Delete(string name) {
-      List<DomeScene> current = this.config.domeScenes;
-      if (current == null) {
+      List<DomeScene> current = DomeSceneView.ToScenes(this.config.domeScenes);
+      if (current.Count == 0) {
         return (true, null);
       }
       var next = new List<DomeScene>();
@@ -141,7 +149,7 @@ namespace Spectrum.Base {
         }
       }
       if (next.Count != current.Count) {
-        this.config.domeScenes = next;
+        this.editor.ReplaceDomeScenes(next);
       }
       return (true, null);
     }
@@ -154,11 +162,12 @@ namespace Spectrum.Base {
       if (!ok) {
         return (false, error);
       }
-      List<DomeScene> current = this.config.domeScenes;
-      if (Find(current, oldName) == null) {
+      List<DomeScene> current = DomeSceneView.ToScenes(this.config.domeScenes);
+      if (Find(this.config.domeScenes, oldName) == null) {
         return (false, "no scene named " + oldName);
       }
-      if (!NameEquals(oldName, newName) && Find(current, newName) != null) {
+      if (!NameEquals(oldName, newName) &&
+          Find(this.config.domeScenes, newName) != null) {
         return (false, "a scene named " + newName + " already exists");
       }
       var next = new List<DomeScene>();
@@ -177,7 +186,7 @@ namespace Spectrum.Base {
           next.Add(existing);
         }
       }
-      this.config.domeScenes = next;
+      this.editor.ReplaceDomeScenes(next);
       return (true, null);
     }
 
@@ -191,11 +200,14 @@ namespace Spectrum.Base {
       return (true, null);
     }
 
-    private static DomeScene Find(List<DomeScene> scenes, string name) {
-      if (scenes == null || name == null) {
+    private static DomeSceneView Find(
+      System.Collections.Immutable.ImmutableArray<DomeSceneView> scenes,
+      string name
+    ) {
+      if (name == null) {
         return null;
       }
-      foreach (DomeScene scene in scenes) {
+      foreach (DomeSceneView scene in scenes) {
         if (scene != null && NameEquals(scene.Name, name)) {
           return scene;
         }
@@ -206,36 +218,5 @@ namespace Spectrum.Base {
     private static bool NameEquals(string a, string b) =>
       string.Equals(a, b, System.StringComparison.OrdinalIgnoreCase);
 
-    // Deep-copy a layer stack, including fresh parameter dictionaries per layer, so
-    // neither the live stack nor a stored scene ever aliases the other. Mirrors
-    // the copy in DomeLayersController.Publish / LayersController.SerializeStack.
-    private static List<DomeLayerSettings> DeepCopyStack(
-      List<DomeLayerSettings> stack
-    ) {
-      if (stack == null) {
-        return null;
-      }
-      var copy = new List<DomeLayerSettings>(stack.Count);
-      foreach (DomeLayerSettings layer in stack) {
-        if (layer == null) {
-          continue;
-        }
-        copy.Add(new DomeLayerSettings {
-          InstanceId = layer.InstanceId,
-          VisualizerKey = layer.VisualizerKey,
-          BlendMode = layer.BlendMode,
-          Opacity = layer.Opacity,
-          Enabled = layer.Enabled,
-          Notes = layer.Notes,
-          RendererParams = layer.RendererParams == null
-            ? null
-            : new Dictionary<string, double>(layer.RendererParams),
-          OperationParams = layer.OperationParams == null
-            ? null
-            : new Dictionary<string, double>(layer.OperationParams),
-        });
-      }
-      return copy;
-    }
   }
 }

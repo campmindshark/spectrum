@@ -88,21 +88,21 @@ namespace Spectrum.LayerPipeline.Tests {
       var liveLayer = ValidLayer("live");
       var liveStack = new List<DomeLayerSettings> { liveLayer };
       var config = new global::Spectrum.SpectrumConfiguration {
-        domeLayerStack = liveStack,
         domeGlobalFadeSpeed = 0.25,
         domeGlobalHueSpeed = 0.5,
-        domePalettes = new List<DomePalette> {
-          new DomePalette {
-            Name = "Live",
-            Colors = new[] { new LEDColor(0x112233) },
-          },
-        },
       };
+      config.ReplaceDomeLayerStack(liveStack);
+      config.ReplaceDomePalettes(new List<DomePalette> {
+        new DomePalette {
+          Name = "Live",
+          Colors = new[] { new LEDColor(0x112233) },
+        },
+      });
 
       DomeLayerSettings incompleteFirstLayer = ValidLayer(null);
       DomeLayerSettings invalidSecondLayer = ValidLayer("invalid");
       invalidSecondLayer.VisualizerKey = "not-a-visualizer";
-      config.domeScenes = new List<DomeScene> {
+      config.ReplaceDomeScenes(new List<DomeScene> {
         new DomeScene {
           Name = "Broken",
           Layers = new List<DomeLayerSettings> {
@@ -112,14 +112,14 @@ namespace Spectrum.LayerPipeline.Tests {
           GlobalFadeSpeed = 0.75,
           GlobalHueSpeed = 1.5,
         },
-      };
+      });
 
       (bool applied, string error) = new SceneService(
         config, DomeLayerCatalog.Metadata).Apply("Broken");
       Assert(!applied && error != null,
         "invalid scene was accepted");
-      Assert(ReferenceEquals(config.domeLayerStack, liveStack) &&
-        ReferenceEquals(config.domeLayerStack[0], liveLayer),
+      Assert(config.domeLayerStack.Length == 1 &&
+        config.domeLayerStack[0].InstanceId == liveLayer.InstanceId,
         "invalid scene partially replaced the live stack");
       Assert(config.domeGlobalFadeSpeed == 0.25 &&
         config.domeGlobalHueSpeed == 0.5,

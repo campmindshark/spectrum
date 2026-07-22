@@ -14,4 +14,8 @@
     <ProjectReference Include="..\Base\Base.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spectrum" />
+  </ItemGroup>
+
 </Project>

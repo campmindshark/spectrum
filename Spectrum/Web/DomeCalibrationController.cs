@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -51,6 +52,7 @@ namespace Spectrum.Web {
 
     private readonly ApplicationStateDispatcher gateway;
     private readonly Configuration config;
+    private readonly ConfigurationEditor editor;
     private readonly DomeCalibrationState calibration;
     private readonly int numCables;
     private readonly string[] cableLabels;
@@ -84,6 +86,10 @@ namespace Spectrum.Web {
       }
       this.gateway = gateway;
       this.config = config;
+      this.editor = config as ConfigurationEditor ??
+        throw new ArgumentException(
+          "Calibration configuration must support collection edits.",
+          nameof(config));
       this.calibration = calibration;
       this.numCables = numCables;
       this.cableDraft = new int[numCables];
@@ -260,8 +266,8 @@ namespace Spectrum.Web {
             .Select(ports => new DomePortMapping(ports)).ToArray();
           // One dispatcher action makes the cable permutation and all five
           // strip permutations visible as one committed calibration.
-          this.config.domeCableMapping = cables;
-          this.config.domePortMappings = mappings;
+          this.editor.ReplaceDomeCableMapping(cables);
+          this.editor.ReplaceDomePortMappings(mappings);
           this.LoadSavedGuessesLocked();
           this.ResetDraftLocked();
           this.stage = IdleStage;
@@ -446,20 +452,19 @@ namespace Spectrum.Web {
     }
 
     private void LoadSavedGuessesLocked() {
-      int[] configuredCables = this.config.domeCableMapping;
+      int[] configuredCables = this.config.domeCableMapping.ToArray();
       this.savedCableMapping = IsPermutation(
         configuredCables, this.numCables)
           ? (int[])configuredCables.Clone()
           : Identity(this.numCables);
 
-      DomePortMapping[] configuredPorts = this.config.domePortMappings;
-      bool validPerBox = configuredPorts?.Length ==
+      var configuredPorts = this.config.domePortMappings;
+      bool validPerBox = configuredPorts.Length ==
         LEDDomeOutput.NumDomeBoxes && configuredPorts.All(mapping =>
-          IsPermutation(mapping?.ports?.ToArray(),
-            LEDDomeOutput.NumPortsPerBox));
+          IsPermutation(mapping, LEDDomeOutput.NumPortsPerBox));
       if (validPerBox) {
         this.savedPortMappings = configuredPorts
-          .Select(mapping => mapping.ports.ToArray()).ToArray();
+          .Select(mapping => mapping.ToArray()).ToArray();
         return;
       }
       int[] source = Identity(LEDDomeOutput.NumPortsPerBox);
@@ -486,8 +491,10 @@ namespace Spectrum.Web {
       }
     }
 
-    private static bool IsPermutation(int[] values, int count) {
-      if (values == null || values.Length != count) {
+    private static bool IsPermutation(
+      IReadOnlyList<int> values, int count
+    ) {
+      if (values == null || values.Count != count) {
         return false;
       }
       var seen = new bool[count];
@@ -613,10 +620,10 @@ namespace Spectrum.Web {
       if (!IsPermutation(this.config.domeCableMapping, this.numCables)) {
         return false;
       }
-      DomePortMapping[] mappings = this.config.domePortMappings;
-      return mappings?.Length == LEDDomeOutput.NumDomeBoxes &&
+      var mappings = this.config.domePortMappings;
+      return mappings.Length == LEDDomeOutput.NumDomeBoxes &&
         mappings.All(mapping => IsPermutation(
-          mapping?.ports?.ToArray(), LEDDomeOutput.NumPortsPerBox));
+          mapping, LEDDomeOutput.NumPortsPerBox));
     }
 
     private string[] BoxStatusesLocked() {

@@ -41,8 +41,11 @@ namespace Spectrum.MIDI {
     // Operator, not part of Configuration).
     private readonly BeatBroadcaster beat;
     private readonly ApplicationStateDispatcher stateDispatcher;
+    private readonly bool connectHardware;
     private Dictionary<int, InputDevice> devices;
     private long appliedDeviceGeneration = -1;
+    internal long AppliedDeviceGeneration =>
+      Volatile.Read(ref this.appliedDeviceGeneration);
     private readonly ConcurrentQueue<MidiCommand> buffer;
     // Latest-value state has one deliberately chosen owner lock: driver
     // callbacks write under it and the operator/visualizers read under it.
@@ -64,6 +67,17 @@ namespace Spectrum.MIDI {
       Configuration config,
       BeatBroadcaster beat,
       ApplicationStateDispatcher stateDispatcher
+    ) : this(config, beat, stateDispatcher, true) {
+    }
+
+    // The internal disconnected path is used only by Spectrum's integrated
+    // operator harness. It keeps binding/device-generation reconciliation live
+    // while replacing Sanford device handles with an empty in-memory set.
+    internal MidiInput(
+      Configuration config,
+      BeatBroadcaster beat,
+      ApplicationStateDispatcher stateDispatcher,
+      bool connectHardware
     ) {
       this.config = config;
       this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
@@ -72,6 +86,7 @@ namespace Spectrum.MIDI {
       this.beat = beat;
       this.stateDispatcher = stateDispatcher ??
         throw new ArgumentNullException(nameof(stateDispatcher));
+      this.connectHardware = connectHardware;
       this.buffer = new ConcurrentQueue<MidiCommand>();
       this.knobValues = new Dictionary<int, Dictionary<int, double>>();
       this.noteVelocities = new Dictionary<int, Dictionary<int, double>>();
@@ -202,8 +217,8 @@ namespace Spectrum.MIDI {
             return;
           }
           if (value) {
-            // Sanford owns the callback threads. The retired optional worker
-            // only spun around an empty Update method and never owned input.
+            // Sanford owns the callback threads; the operator owns device-set
+            // reconciliation.
             this.InitializeMidi(
               this.runtimeSettings.MidiSettingsSnapshot);
           } else {
@@ -229,6 +244,9 @@ namespace Spectrum.MIDI {
     private void InitializeMidi(MidiSettingsSnapshot settings) {
       this.devices = new Dictionary<int, InputDevice>();
       this.appliedDeviceGeneration = settings.DeviceGeneration;
+      if (!this.connectHardware) {
+        return;
+      }
       foreach (var pair in settings.Devices) {
         var device = new InputDevice(pair.Key);
         device.ChannelMessageReceived +=
@@ -381,7 +399,9 @@ namespace Spectrum.MIDI {
         }
       }
       int numMessages = this.buffer.Count;
-      var commands = new MidiCommand[numMessages];
+      MidiCommand[] commands = numMessages == 0
+        ? Array.Empty<MidiCommand>()
+        : new MidiCommand[numMessages];
       for (int i = 0; i < numMessages; i++) {
         bool result = this.buffer.TryDequeue(out commands[i]);
         if (!result) {

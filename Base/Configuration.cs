@@ -1,12 +1,13 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel;
+using System.Collections.Immutable;
 
 namespace Spectrum.Base {
 
   /**
-   * A reference to a single shared Configuration is passed around all over
-   * the Spectrum projects. It is updated by the user through the UI (native
-   * GUI, MIDI bindings, or the web gateway).
+   * A reference to a single shared Configuration is passed around the Spectrum
+   * projects. Scalar values and cached immutable collection views are updated
+   * by the owner thread through the native UI, MIDI bindings, or web gateway.
    *
    * This interface carries persisted settings only. Live runtime state and
    * services live with their owners and are exposed by the Operator: the
@@ -22,11 +23,6 @@ namespace Spectrum.Base {
 
     bool domeEnabled { get; set; }
     bool midiInputEnabled { get; set; }
-
-    // Legacy serialized setting retained so older configuration files continue
-    // to round-trip. Sanford delivers MIDI on its own callbacks; the retired
-    // worker behind this flag performed no work, so the runtime ignores it.
-    bool midiInputInSeparateThread { get; set; }
 
     // If true, dome output is polled separately from the visualizer thread.
     bool domeOutputInSeparateThread { get; set; }
@@ -45,9 +41,9 @@ namespace Spectrum.Base {
     int domeTestPattern { get; set; }
 
     // The dome's compositing stack, index 0 = background (bottom), last = front.
-    // Persisted. Writers replace the whole list (snapshot swap) so PropertyChanged
-    // fires and the operator thread never observes a mid-mutation list.
-    List<DomeLayerSettings> domeLayerStack { get; set; }
+    // Persisted. ConfigurationEditor replaces the whole list so notifications
+    // and runtime snapshot publication cannot be bypassed by in-place edits.
+    ImmutableArray<DomeLayerView> domeLayerStack { get; }
 
     // Dome cable mapping. The dome is wired as 10 cables (5 control boxes, each
     // with two ethernet cables: A = strands 0-3, B = strands 4-7), identified by
@@ -56,12 +52,12 @@ namespace Spectrum.Base {
     // under the hard-coded layout) that actually lights when c is driven.
     // Identity {0..9} = the legacy hard-coded wiring. Discovered by the "Set
     // Dome Mapping" calibration window.
-    int[] domeCableMapping { get; set; }
+    ImmutableArray<int> domeCableMapping { get; }
 
     // One independently owned physical-port -> legacy-path permutation for
     // each of the five dome-side boxes. Missing or invalid entries fall back to
     // identity per box.
-    DomePortMapping[] domePortMappings { get; set; }
+    ImmutableArray<ImmutableArray<int>> domePortMappings { get; }
 
     // Cross-layer visual state: every stack layer applies the same fade /
     // hue-rotate speed to its own buffer. Per-visualizer tuning does NOT belong
@@ -75,38 +71,29 @@ namespace Spectrum.Base {
     // monotonic counter rather than a bool so two clients firing
     // concurrently never race over who clears a flag — LayerTrigger just
     // edge-detects "the count changed since I last looked."
-    Dictionary<string, int> domeLayerFireCounters { get; set; }
+    ImmutableDictionary<string, int> domeLayerFireCounters { get; }
 
     // Per-layer manual-clear counters, exactly parallel to domeLayerFireCounters:
     // keyed by InstanceId, bumped by the native Clear button. A layer that
     // carries accumulated live state (e.g. Shooting Star's in-flight dots)
     // edge-detects a bump and drops that state — an escape hatch when a layer is
     // dragging the frame rate. Same monotonic-counter rationale as fire.
-    Dictionary<string, int> domeLayerClearCounters { get; set; }
+    ImmutableDictionary<string, int> domeLayerClearCounters { get; }
 
     // Named snapshots of the dome look (layer stack + the two globals above),
-    // saved/recalled by the VJ. See DomeScene and SceneService. Null by default,
-    // following the same null-by-default XSerializer rule as domeLayerStack /
-    // domeCableMapping / domePortMappings: a non-null initializer double-adds
-    // entries on deserialize.
-    // Old config files load with domeScenes == null, treated as empty — no
-    // migration needed.
-    List<DomeScene> domeScenes { get; set; }
+    // saved/recalled by the VJ. See DomeScene and SceneService. An empty
+    // document collection is projected as an empty immutable view.
+    ImmutableArray<DomeSceneView> domeScenes { get; }
 
-    // Ordered named palettes. These are the live color sources: a layer's
-    // "palette" parameter indexes this list directly, and editing a DomePalette
-    // changes every layer that selects it. Current configuration files always
-    // contain at least one palette.
-    List<DomePalette> domePalettes { get; set; }
+    // Ordered named palettes. A layer's "palette" parameter indexes this cached
+    // immutable view; palette edits publish a replacement generation through
+    // ConfigurationEditor. Current configuration files contain at least one.
+    ImmutableArray<DomePaletteSnapshot> domePalettes { get; }
 
     // maps from device ID to preset ID
     bool vjHUDEnabled { get; set; }
-    Dictionary<int, int> midiDevices { get; set; }
-    Dictionary<int, MidiPreset> midiPresets { get; set; }
-
-    Dictionary<string, ILevelDriverPreset> levelDriverPresets { get; set; }
-    Dictionary<int, string> channelToAudioLevelDriverPreset { get; set; }
-    Dictionary<int, string> channelToMidiLevelDriverPreset { get; set; }
+    ImmutableDictionary<int, int> midiDevices { get; }
+    ImmutableDictionary<int, MidiPresetView> midiPresets { get; }
 
     double flashSpeed { get; set; }
 
@@ -119,5 +106,24 @@ namespace Spectrum.Base {
     // COM port of the USB-CDC ESP-NOW wand receiver, "" = no serial input.
     // The receiver reacts live to changes; not in configPropertiesToRebootOn.
     string wandSerialPort { get; set; }
+  }
+
+  // Collection changes are explicit owner-thread operations. Inputs use
+  // detached document DTOs for convenient editing; implementations deep-copy
+  // the changed branch before publishing one immutable view and notification.
+  public interface ConfigurationEditor {
+    void ReplaceDomeLayerStack(IReadOnlyList<DomeLayerSettings> value);
+    void ReplaceDomeCableMapping(IReadOnlyList<int> value);
+    void ReplaceDomePortMappings(IReadOnlyList<DomePortMapping> value);
+    void ReplaceDomeLayerFireCounters(
+      IReadOnlyDictionary<string, int> value);
+    void ReplaceDomeLayerClearCounters(
+      IReadOnlyDictionary<string, int> value);
+    void ReplaceDomeScenes(IReadOnlyList<DomeScene> value);
+    void ReplaceDomePalettes(IReadOnlyList<DomePalette> value);
+    void ReplaceMidiDevices(IReadOnlyDictionary<int, int> value);
+    void ReplaceMidiPresets(IReadOnlyDictionary<int, MidiPreset> value);
+    void UpsertMidiPreset(int id, MidiPreset value);
+    void RemoveMidiPreset(int id);
   }
 }

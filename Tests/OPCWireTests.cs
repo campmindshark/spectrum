@@ -251,7 +251,7 @@ namespace Spectrum.LayerPipeline.Tests {
           0, LEDDomeOutput.NumCables).ToArray();
         routing[0] = 9;
         routing[9] = 0;
-        config.domeCableMapping = routing;
+        config.ReplaceDomeCableMapping(routing);
         byte[] mappedMessage = Capture(output, sink, frame);
         SaveCapture("current-cable-swapped.opc", mappedMessage);
         int[] mapped = PayloadPixels(mappedMessage);
@@ -297,8 +297,8 @@ namespace Spectrum.LayerPipeline.Tests {
           new[] { 1, 0, 3, 2, 5, 4, 7, 6 },
           new[] { 6, 5, 4, 7, 2, 1, 0, 3 },
         };
-        config.domeCableMapping = cableMapping;
-        config.domePortMappings = PortMappingDtos(portMappings);
+        config.ReplaceDomeCableMapping(cableMapping);
+        config.ReplaceDomePortMappings(PortMappingDtos(portMappings));
         int[] mapped = PayloadPixels(Capture(output, sink, frame));
 
         for (int controllerCable = 0;
@@ -330,9 +330,9 @@ namespace Spectrum.LayerPipeline.Tests {
         // A bad setting fails closed only for its own box. Other boxes retain
         // their independent mappings, and the live replacement rebuilds the
         // cached wire map.
-        config.domeCableMapping = identityCables;
+        config.ReplaceDomeCableMapping(identityCables);
         portMappings[2] = new[] { 0, 0, 2, 3, 4, 5, 6, 7 };
-        config.domePortMappings = PortMappingDtos(portMappings);
+        config.ReplaceDomePortMappings(PortMappingDtos(portMappings));
         int[] containedFallback = PayloadPixels(Capture(output, sink, frame));
         for (int box = 0; box < LEDDomeOutput.NumDomeBoxes; box++) {
           int[] expectedMapping = box == 2
@@ -345,7 +345,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
         // A missing five-box value falls back directly to identity for every
         // box; there is no older shared setting to consult.
-        config.domePortMappings = null;
+        config.ReplaceDomePortMappings(null);
         int[] missingFallback = PayloadPixels(Capture(output, sink, frame));
         for (int box = 0; box < LEDDomeOutput.NumDomeBoxes; box++) {
           AssertBoxPortMapping(
@@ -364,12 +364,11 @@ namespace Spectrum.LayerPipeline.Tests {
         AppContext.BaseDirectory, "spectrum_default_config.xml");
       using FileStream stream = File.OpenRead(path);
       var config =
-        new XSerializer.XmlSerializer<global::Spectrum.SpectrumConfiguration>(
-        ).Deserialize(stream);
-      Assert(config.domePortMappings != null &&
-          config.domePortMappings.Length == LEDDomeOutput.NumDomeBoxes &&
+        new XSerializer.XmlSerializer<global::Spectrum.SpectrumConfigurationDocument>(
+        ).Deserialize(stream).ToConfiguration();
+      Assert(config.domePortMappings.Length == LEDDomeOutput.NumDomeBoxes &&
           config.domePortMappings.All(mapping =>
-            mapping?.ports != null && mapping.ports.SequenceEqual(
+            mapping.SequenceEqual(
               Enumerable.Range(0, PortsPerController))),
         "default config per-box mappings are missing or not identity");
     }
@@ -412,6 +411,10 @@ namespace Spectrum.LayerPipeline.Tests {
         "colorPaletteIndex",
         "colorPalette",
         "paletteModelVersion",
+        "midiInputInSeparateThread",
+        "levelDriverPresets",
+        "channelToAudioLevelDriverPreset",
+        "channelToMidiLevelDriverPreset",
       };
       string[] foundRetired = root.Elements()
         .Select(element => element.Name.LocalName)
@@ -423,14 +426,22 @@ namespace Spectrum.LayerPipeline.Tests {
 
       using FileStream stream = File.OpenRead(path);
       var config =
-        new XSerializer.XmlSerializer<global::Spectrum.SpectrumConfiguration>(
-        ).Deserialize(stream);
+        new XSerializer.XmlSerializer<global::Spectrum.SpectrumConfigurationDocument>(
+        ).Deserialize(stream).ToConfiguration();
       Assert(string.IsNullOrWhiteSpace(config.audioDeviceID),
         "default config selects an audio device");
       Assert(config.midiDevices != null && config.midiDevices.Count == 0,
         "default config selects a MIDI device");
-      Assert(config.domePalettes?.Count == 8,
+      Assert(config.domePalettes.Length == 8,
         "default config does not use the named live palette model");
+      BeatSettingsSnapshot beat =
+        ((IRuntimeSettingsConfiguration)config).BeatSettingsSnapshot;
+      Assert(beat.TryGetMidiPreset(
+          0, out MidiLevelDriverSettingsSnapshot envelope) &&
+          envelope.AttackTime == 10 && envelope.PeakLevel == 1 &&
+          envelope.DecayTime == 20 && envelope.SustainLevel == 0.8 &&
+          envelope.ReleaseTime == 10,
+        "default config does not define its MIDI level-driver channel");
     }
 
     private static void PortMappingConfigurationContract() {
@@ -441,35 +452,33 @@ namespace Spectrum.LayerPipeline.Tests {
           .Select(port => (port + box) % PortsPerController).ToArray())
         .ToArray();
       DomePortMapping[] assignedMappings = PortMappingDtos(values);
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeCableMapping = cableMapping,
-        domePortMappings = assignedMappings,
-      };
+      var config = new global::Spectrum.SpectrumConfiguration();
+      config.ReplaceDomeCableMapping(cableMapping);
+      config.ReplaceDomePortMappings(assignedMappings);
 
       cableMapping[0] = 0;
       assignedMappings[1].ports[0] = 7;
       Assert(config.domeCableMapping[0] == LEDDomeOutput.NumCables - 1 &&
-          config.domePortMappings[1].ports[0] == 1,
+          config.domePortMappings[1][0] == 1,
         "configuration retained an alias to assigned mapping values");
 
-      int[] detachedCables = config.domeCableMapping;
-      DomePortMapping[] detachedPorts = config.domePortMappings;
-      detachedCables[0] = 0;
-      detachedPorts[1].ports[0] = 7;
       Assert(config.domeCableMapping[0] == LEDDomeOutput.NumCables - 1 &&
-          config.domePortMappings[1].ports[0] == 1,
-        "configuration exposed mutable live mapping values");
+          config.domePortMappings[1][0] == 1,
+        "configuration did not publish immutable mapping values");
 
       using var stream = new MemoryStream();
       var serializer =
-        new XSerializer.XmlSerializer<global::Spectrum.SpectrumConfiguration>();
-      serializer.Serialize(stream, config);
+        new XSerializer.XmlSerializer<global::Spectrum.SpectrumConfigurationDocument>();
+      serializer.Serialize(
+        stream,
+        global::Spectrum.SpectrumConfigurationDocument.FromConfiguration(
+          config));
       stream.Position = 0;
       global::Spectrum.SpectrumConfiguration restored =
-        serializer.Deserialize(stream);
-      Assert(restored.domePortMappings != null &&
-          restored.domePortMappings.Length == LEDDomeOutput.NumDomeBoxes &&
-          restored.domePortMappings[4].ports.SequenceEqual(
+        serializer.Deserialize(stream).ToConfiguration();
+      Assert(restored.domePortMappings.Length ==
+          LEDDomeOutput.NumDomeBoxes &&
+          restored.domePortMappings[4].SequenceEqual(
             Enumerable.Range(0, PortsPerController).Select(
               port => (port + 4) % PortsPerController)),
         "per-box port mappings did not survive serialization");
@@ -501,10 +510,9 @@ namespace Spectrum.LayerPipeline.Tests {
     private static void TwoStageCalibrationContract() {
       int[] identityPorts = Enumerable.Range(
         0, PortsPerController).ToArray();
-      var missingPortConfig = new global::Spectrum.SpectrumConfiguration {
-        domeCableMapping = Enumerable.Range(
-          0, LEDDomeOutput.NumCables).ToArray(),
-      };
+      var missingPortConfig = new global::Spectrum.SpectrumConfiguration();
+      missingPortConfig.ReplaceDomeCableMapping(Enumerable.Range(
+        0, LEDDomeOutput.NumCables).ToArray());
       var missingPortController =
         new global::Spectrum.Web.DomeCalibrationController(
           new ImmediateGateway(), missingPortConfig,
@@ -526,10 +534,9 @@ namespace Spectrum.LayerPipeline.Tests {
           Enumerable.Range(0, PortsPerController).Select(
             port => (port + box + 3) % PortsPerController).ToArray())
         .ToArray();
-      var config = new global::Spectrum.SpectrumConfiguration {
-        domeCableMapping = savedCables,
-        domePortMappings = PortMappingDtos(savedPorts),
-      };
+      var config = new global::Spectrum.SpectrumConfiguration();
+      config.ReplaceDomeCableMapping(savedCables);
+      config.ReplaceDomePortMappings(PortMappingDtos(savedPorts));
       var renderState = new global::Spectrum.DomeCalibrationState();
       var controller = new global::Spectrum.Web.DomeCalibrationController(
         new ImmediateGateway(), config, renderState,
@@ -639,12 +646,12 @@ namespace Spectrum.LayerPipeline.Tests {
           result.state.cableReadout.Contains("~") &&
           config.domeCableMapping.SequenceEqual(state.picks) &&
           config.domePortMappings.Length == LEDDomeOutput.NumDomeBoxes &&
-          config.domePortMappings[2].ports.SequenceEqual(
+          config.domePortMappings[2].SequenceEqual(
             state.stripMappings[2]),
         "final Save did not atomically commit and release the calibration");
 
       result.state.stripMappings[2][0] = -1;
-      Assert(config.domePortMappings[2].ports[0] >= 0 &&
+      Assert(config.domePortMappings[2][0] >= 0 &&
           controller.State().stripMappings[2][0] >= 0,
         "a returned calibration snapshot aliases the draft or configuration");
     }
@@ -656,9 +663,9 @@ namespace Spectrum.LayerPipeline.Tests {
       config.domeSimulationEnabled = true;
       output.SimulatorHasConsumer = true;
       config.domeMaxBrightness = 1;
-      config.domePortMappings = PortMappingDtos(Enumerable.Range(
+      config.ReplaceDomePortMappings(PortMappingDtos(Enumerable.Range(
         0, LEDDomeOutput.NumDomeBoxes).Select(_ =>
-          Enumerable.Range(0, PortsPerController).ToArray()).ToArray());
+          Enumerable.Range(0, PortsPerController).ToArray()).ToArray()));
       var state = new global::Spectrum.DomeCalibrationState();
       var visualizer =
         new global::Spectrum.LEDDomeMappingCalibrationVisualizer(
@@ -849,8 +856,8 @@ namespace Spectrum.LayerPipeline.Tests {
         domeEnabled = true,
         domeOutputInSeparateThread = false,
         domeBeagleboneOPCAddress = "127.0.0.1:" + sink.Port,
-        domeCableMapping = cableMapping,
       };
+      config.ReplaceDomeCableMapping(cableMapping);
       var output = new LEDDomeOutput(
         config, new RuntimeTelemetry(), new BeatBroadcaster(config));
       output.Active = true;
