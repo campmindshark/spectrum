@@ -39,6 +39,8 @@ namespace Spectrum.Portability.Tests {
         MadmomRuntimeDiscovery);
       Run("Linux ALSA input discovers devices and publishes PCM peak level",
         LinuxAlsaAudioInput);
+      Run("portable Pro DJ Link input receives UDP beats",
+        PortableProDjLinkInput);
       Run("portable core compiles built-in layer configuration",
         PortableCoreLayerConfiguration);
       Run("portable runtime assembly has no Windows desktop dependencies",
@@ -342,6 +344,71 @@ namespace Spectrum.Portability.Tests {
       failing.Active = false;
     }
 
+    private static void PortableProDjLinkInput() {
+      using var blocker = new UdpClient();
+      blocker.ExclusiveAddressUse = true;
+      blocker.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
+      int port = ((IPEndPoint)blocker.Client.LocalEndPoint).Port;
+
+      var config = new global::Spectrum.SpectrumConfiguration {
+        beatInput = 2,
+      };
+      var beat = new BeatBroadcaster(config);
+      using var input = new global::Spectrum.ProDjLinkInput(
+        config,
+        beat,
+        connectNetwork: true,
+        port,
+        TimeSpan.FromMilliseconds(5));
+      Assert(input.Enabled,
+        "the Pro DJ Link input did not follow the selected tempo source");
+      input.Active = true;
+      Assert(SpinWait.SpinUntil(
+          () => input.LastError != null,
+          TimeSpan.FromSeconds(2)),
+        "a busy Pro DJ Link port did not report a contained bind error");
+      blocker.Dispose();
+      Assert(SpinWait.SpinUntil(
+          () => input.Listening,
+          TimeSpan.FromSeconds(2)),
+        "the portable Pro DJ Link listener did not recover after the port " +
+        "became available");
+
+      byte[] packet = new byte[0x5d];
+      byte[] magic = {
+        0x51, 0x73, 0x70, 0x74, 0x31,
+        0x57, 0x6d, 0x4a, 0x4f, 0x4c,
+      };
+      Array.Copy(magic, packet, magic.Length);
+      packet[0x0a] = 0x28;
+      packet[0x21] = 1;
+      packet[0x55] = 0x10; // pitch 0x100000 == 1.0x
+      packet[0x5a] = 0x2e; // 12000 == 120.00 BPM
+      packet[0x5b] = 0xe0;
+      packet[0x5c] = 3;
+
+      using var sender = new UdpClient();
+      var endpoint = new IPEndPoint(IPAddress.Loopback, port);
+      for (int attempt = 0;
+           attempt < 20 && beat.MeasureLength != 500;
+           attempt++) {
+        sender.Send(packet, packet.Length, endpoint);
+        Thread.Sleep(10);
+      }
+      Assert(beat.MeasureLength == 500 &&
+          beat.LatestBeatWithinBar == 3,
+        "the portable UDP input did not publish the 120 BPM beat packet");
+      Assert(input.LastError == null,
+        "the Pro DJ Link listener reported an unexpected error");
+
+      input.Active = false;
+      Assert(!input.Listening,
+        "stopping Pro DJ Link left its UDP socket published");
+      config.beatInput = 0;
+      Assert(!input.Enabled,
+        "the Pro DJ Link input stayed enabled for another tempo source");
+    }
+
     private static void PortableRuntimeAssemblyBoundary() {
       var assembly = typeof(global::Spectrum.Operator).Assembly;
       var forbidden = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
@@ -381,6 +448,13 @@ namespace Spectrum.Portability.Tests {
     }
 
     private static void PortableWebHostServesOperatorApi() {
+      ParameterRegistry desktopRegistry =
+        global::Spectrum.Web.SpectrumParameters.BuildRegistry(
+          nativeWindowControlsAvailable: true);
+      Assert(desktopRegistry.TryGet("vjHUDEnabled", out _) &&
+          desktopRegistry.TryGet("domeSimulationEnabled", out _),
+        "the Windows web registry lost its native-window controls");
+
       int port;
       using (var reservation = new TcpListener(IPAddress.Loopback, 0)) {
         reservation.Start();
@@ -391,6 +465,8 @@ namespace Spectrum.Portability.Tests {
         new DedicatedThreadApplicationStateDispatcher();
       var config = new global::Spectrum.SpectrumConfiguration {
         webDomeSimulatorEnabled = false,
+        vjHUDEnabled = true,
+        domeSimulationEnabled = true,
       };
       dispatcher.InvokeAsync(
         () => config.AttachMutationDispatcher(dispatcher))
@@ -400,7 +476,9 @@ namespace Spectrum.Portability.Tests {
         dispatcher,
         new DisabledSpectrumInputFactory(),
         connectHardware: false);
-      var web = new SpectrumWebHost(config, dispatcher, runtime, port);
+      var web = new SpectrumWebHost(
+        config, dispatcher, runtime, port,
+        nativeWindowControlsAvailable: false);
       try {
         web.Start();
         using var client = new HttpClient {
@@ -418,6 +496,23 @@ namespace Spectrum.Portability.Tests {
             audioResponse.Contains("\"availableDevices\":[]"),
           "the audio setup API returned an unexpected response: " +
           audioResponse);
+        string parametersResponse = client.GetStringAsync(
+          "http://127.0.0.1:" + port +
+            "/api/maintenance/parameters")
+          .GetAwaiter().GetResult();
+        Assert(!parametersResponse.Contains("\"vjHUDEnabled\"") &&
+            !parametersResponse.Contains("\"domeSimulationEnabled\""),
+          "the headless API exposed native WPF window controls: " +
+          parametersResponse);
+        using var nativeWindowWrite = new StringContent(
+          "{\"value\":false}", Encoding.UTF8, "application/json");
+        HttpResponseMessage nativeWindowWriteResponse = client.PutAsync(
+          "http://127.0.0.1:" + port +
+            "/api/maintenance/parameters/vjHUDEnabled",
+          nativeWindowWrite).GetAwaiter().GetResult();
+        Assert(nativeWindowWriteResponse.StatusCode == HttpStatusCode.NotFound &&
+            config.vjHUDEnabled,
+          "the headless API accepted a native WPF window setting");
         using var audioWrite = new StringContent(
           "{\"value\":\"hw:test,0\"}",
           Encoding.UTF8,

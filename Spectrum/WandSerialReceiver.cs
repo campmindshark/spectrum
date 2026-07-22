@@ -20,7 +20,7 @@ namespace Spectrum {
   // exactly one transport, so the two paths feed disjoint deviceIds into the
   // shared device map and there is no double-counting.
   //
-  // Modeled on ProDjLinkHandler's self-managing lifecycle, with one deliberate
+  // Modeled on ProDjLinkInput's self-managing lifecycle, with one deliberate
   // divergence: all blocking serial calls (open/close/read) live on a single
   // persistent worker thread, and shutdown is via ReadTimeout + desired-state
   // flags, NOT by closing the port from another thread. Unlike UdpClient,

@@ -192,6 +192,11 @@ namespace Spectrum {
       this.inputs.Add(midi);
       this.MidiInput = midi;
       this.MidiLog = midi.MidiLog;
+      // Pro DJ Link is portable receive-only UDP input. Keep it independent of
+      // the platform audio adapter so ALSA and WASAPI compositions both offer
+      // the same network tempo source.
+      this.inputs.Add(new ProDjLinkInput(
+        config, this.BeatBroadcaster, connectHardware));
       var orientation = new OrientationInput(
         config, stateDispatcher, connectHardware);
       this.inputs.Add(orientation);

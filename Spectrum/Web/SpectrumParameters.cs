@@ -46,7 +46,9 @@ namespace Spectrum.Web {
       "Human", "Madmom", "Pro DJ Link",
     };
 
-    public static ParameterRegistry BuildRegistry() {
+    public static ParameterRegistry BuildRegistry(
+      bool nativeWindowControlsAvailable = true
+    ) {
       const ControlRole user = ControlRole.User;
       const ControlRole maint = ControlRole.Maintenance;
 
@@ -151,6 +153,15 @@ namespace Spectrum.Web {
           label: "Dome test pattern",
           description: "Overrides the live look while a diagnostic pattern is active."),
       };
+
+      if (!nativeWindowControlsAvailable) {
+        // These values only open WPF windows. Keeping them out of the headless
+        // registry removes both the controls and their write endpoints while
+        // preserving the fields in a configuration shared with Windows.
+        descriptors.RemoveAll(descriptor =>
+          descriptor.Key == "vjHUDEnabled" ||
+          descriptor.Key == "domeSimulationEnabled");
+      }
 
       return new ParameterRegistry(descriptors);
     }

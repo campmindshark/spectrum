@@ -226,7 +226,8 @@ namespace Spectrum {
         (config, dispatcher) => new Operator(
           config, dispatcher, new WindowsSpectrumInputFactory()),
         (config, dispatcher, runtime) => new Web.SpectrumWebHost(
-          config, dispatcher, runtime, WebServerPort),
+          config, dispatcher, runtime, WebServerPort,
+          nativeWindowControlsAvailable: true),
         ConfigPropertiesToRebootOn,
         saveEnabled: () => !MainWindow.LoadingConfig,
         reportLoadFailure: failure => Debug.WriteLine(

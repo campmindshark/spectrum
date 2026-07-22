@@ -26,10 +26,9 @@ namespace Spectrum.Audio {
     public string LastError => Volatile.Read(ref this.lastError);
 
     private readonly MadmomHandler madmomHandler;
-    private readonly ProDjLinkHandler proDjLinkHandler;
-
-    // `beat` is the tempo service the two beat detectors report into (owned by
-    // the Operator, not part of Configuration).
+    // `beat` is the tempo service the beat detector reports into (owned by the
+    // Operator, not part of Configuration). Pro DJ Link is owned directly by
+    // Operator now so its portable UDP input is also available to Linux.
     public AudioInput(Configuration config, BeatBroadcaster beat) : this(
       config, beat, true) {
     }
@@ -46,7 +45,6 @@ namespace Spectrum.Audio {
           "AudioInput requires immutable runtime settings.", nameof(config));
       this.connectHardware = connectHardware;
       this.madmomHandler = new MadmomHandler(config, this, beat);
-      this.proDjLinkHandler = new ProDjLinkHandler(config, beat);
     }
 
     private bool active;
@@ -74,7 +72,6 @@ namespace Spectrum.Audio {
         this.active = value;
         if (this.connectHardware) {
           this.madmomHandler.Active = value;
-          this.proDjLinkHandler.Active = value;
         }
       }
     }

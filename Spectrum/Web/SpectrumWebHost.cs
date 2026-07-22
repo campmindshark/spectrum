@@ -20,7 +20,8 @@ namespace Spectrum.Web {
       SpectrumConfiguration config,
       ApplicationStateDispatcher stateDispatcher,
       Operator runtime,
-      int port
+      int port,
+      bool nativeWindowControlsAvailable
     ) {
       if (config == null) {
         throw new ArgumentNullException(nameof(config));
@@ -32,7 +33,8 @@ namespace Spectrum.Web {
         throw new ArgumentNullException(nameof(runtime));
       }
 
-      ParameterRegistry registry = SpectrumParameters.BuildRegistry();
+      ParameterRegistry registry = SpectrumParameters.BuildRegistry(
+        nativeWindowControlsAvailable);
       var controls = new ControlService(
         registry, stateDispatcher, config);
       this.eventStream = new ConfigEventStream(

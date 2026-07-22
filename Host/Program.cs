@@ -62,7 +62,8 @@ namespace Spectrum.Host {
           (config, owner) => new Operator(
             config, owner, inputFactory),
           (config, owner, runtime) => new SpectrumWebHost(
-            config, owner, runtime, options.WebPort),
+            config, owner, runtime, options.WebPort,
+            nativeWindowControlsAvailable: false),
           new[] {
             nameof(SpectrumConfiguration.audioDeviceID),
             nameof(SpectrumConfiguration.domeOutputInSeparateThread),
