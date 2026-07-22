@@ -56,9 +56,24 @@ namespace Spectrum.LEDs {
     private const int MaxRefreshRateHz = 200;
     private static readonly double MinSendIntervalMs = 1000.0 / MaxRefreshRateHz;
 
+    // A missing controller must not stall the operator. Connection attempts are
+    // started asynchronously and polled by the normal update loop; after a
+    // failure, wait briefly before creating another socket so an offline show
+    // network does not turn into a tight connect loop.
+    private const int ReconnectDelayMs = 250;
+    private const int ConnectTimeoutMs = 2000;
+    private static readonly long ReconnectDelayTicks =
+      Stopwatch.Frequency * ReconnectDelayMs / 1000;
+    private static readonly long ConnectTimeoutTicks =
+      Stopwatch.Frequency * ConnectTimeoutMs / 1000;
+
     private readonly string host;
     private readonly int port;
     private Socket socket;
+    private IAsyncResult connectAttempt;
+    private long connectAttemptStartedTimestamp;
+    private long nextConnectAttemptTimestamp;
+    private readonly object connectionLock = new object();
     // channel ID => its double-buffered pixel storage. Structural additions
     // happen only under lockObject; after warmup the set of channels is fixed,
     // so the hot SetPixel path reads it lock-free. volatile so a lock-free
@@ -80,8 +95,11 @@ namespace Spectrum.LEDs {
     // Whether a default channel was actually specified in the host string.
     // defaultChannel is a byte, so a ">= 0" check can never detect "unset".
     private readonly bool defaultChannelSet;
-    // Read in Update() outside lockObject, written under it in Flush()/Update().
-    private volatile bool flushHappened;
+    // Flush and send generations avoid losing a new frame when Flush() races a
+    // send on the separate output thread. A failed send leaves the generation
+    // pending, so the newest realized frame is sent after reconnect.
+    private long flushGeneration;
+    private long sentGeneration;
 
     /**
      * hostAndPort looks like:
@@ -109,7 +127,8 @@ namespace Spectrum.LEDs {
         this.channels[this.defaultChannel] =
           new ChannelBuffer(InitialChannelCapacity);
       }
-      this.flushHappened = false;
+      this.flushGeneration = 0;
+      this.sentGeneration = 0;
       this.separateThread = separateThread;
       this.setFPS = setFPS;
 
@@ -119,7 +138,7 @@ namespace Spectrum.LEDs {
       this.sendThrottleStopwatch = Stopwatch.StartNew();
     }
 
-    private bool active;
+    private volatile bool active;
     private Thread outputThread;
     // Cooperative stop flag for OutputThread, replacing Thread.Abort().
     private volatile bool outputThreadStop;
@@ -136,8 +155,8 @@ namespace Spectrum.LEDs {
           if (this.active == value) {
             return;
           }
-          // Set active before (re)starting/stopping so ConnectSocket's
-          // this.Active check sees the new state.
+          // Set active before (re)starting/stopping so the asynchronous
+          // connector sees the new state.
           this.active = value;
           if (value) {
             if (this.separateThread) {
@@ -177,65 +196,117 @@ namespace Spectrum.LEDs {
       this.socket.NoDelay = true;
     }
 
-    private void ConnectSocket() {
-      while (true) {
-        if (!this.Active || this.outputThreadStop) {
-          return;
+    // Starts or polls one asynchronous connection attempt. This method never
+    // waits for the network, so both inline and threaded output remain
+    // responsive while the controller is absent or becoming reachable.
+    private bool ConnectSocket() {
+      lock (this.connectionLock) {
+        if (!this.active || this.outputThreadStop) {
+          return false;
         }
-        var asyncResult = this.socket.BeginConnect(this.host, this.port, null, null);
-        bool result = asyncResult.AsyncWaitHandle.WaitOne(2000, true);
-        if (result && this.socket.Connected) {
-          return;
+
+        if (this.connectAttempt != null) {
+          if (!this.connectAttempt.IsCompleted) {
+            if (Stopwatch.GetTimestamp() -
+                this.connectAttemptStartedTimestamp >= ConnectTimeoutTicks) {
+              Debug.WriteLine("OPCAPI: connection attempt timed out");
+              this.ReplaceSocketForRetry();
+            }
+            return false;
+          }
+          IAsyncResult completed = this.connectAttempt;
+          this.connectAttempt = null;
+          this.connectAttemptStartedTimestamp = 0;
+          try {
+            this.socket.EndConnect(completed);
+            if (this.socket.Connected) {
+              this.nextConnectAttemptTimestamp = 0;
+              return true;
+            }
+          } catch (Exception e) {
+            Debug.WriteLine("OPCAPI: connection attempt failed: " + e);
+          }
+          this.ReplaceSocketForRetry();
+          return false;
+        }
+
+        if (this.socket.Connected) {
+          return true;
+        }
+        if (Stopwatch.GetTimestamp() < this.nextConnectAttemptTimestamp) {
+          return false;
         }
         try {
-          this.socket.Close();
+          this.connectAttempt = this.socket.BeginConnect(
+            this.host, this.port, null, null);
+          this.connectAttemptStartedTimestamp = Stopwatch.GetTimestamp();
         } catch (Exception e) {
-          Debug.WriteLine("OPCAPI: error closing socket during reconnect: " + e);
+          Debug.WriteLine("OPCAPI: could not start connection attempt: " + e);
+          this.ReplaceSocketForRetry();
         }
-        this.InitializeSocket();
+        return false;
       }
     }
 
     private void DisconnectSocket() {
-      try {
-        this.socket.Disconnect(true);
-      } catch (Exception e) {
-        Debug.WriteLine("OPCAPI: error disconnecting socket: " + e);
+      lock (this.connectionLock) {
+        this.CloseSocket();
+        this.InitializeSocket();
+        this.connectAttempt = null;
+        this.connectAttemptStartedTimestamp = 0;
+        this.nextConnectAttemptTimestamp = 0;
       }
-      try {
-        this.socket.Close();
-      } catch (Exception e) {
-        Debug.WriteLine("OPCAPI: error closing socket: " + e);
-      }
-      this.InitializeSocket();
-      // Reset the realized pixel set on (re)connect. Built off-lock then swapped
-      // in under lockObject so a lock-free SetPixel reader never observes a
-      // half-built dictionary (channels is volatile, so the new reference is
-      // visible immediately). DisconnectSocket is now reachable from Update()'s
-      // catch outside the lock; lock is reentrant, so callers already holding it
-      // (the Active setter) are fine.
+      // An explicit deactivation starts with a clean pixel set next time. A
+      // transport failure uses ReplaceSocketForRetry instead and deliberately
+      // preserves the newest pending frame.
       var fresh = new Dictionary<byte, ChannelBuffer>();
       if (this.defaultChannelSet) {
         fresh[this.defaultChannel] = new ChannelBuffer(InitialChannelCapacity);
       }
       lock (this.lockObject) {
         this.channels = fresh;
+        Volatile.Write(
+          ref this.sentGeneration,
+          Volatile.Read(ref this.flushGeneration));
+      }
+    }
+
+    private void ReplaceSocketForRetry() {
+      this.CloseSocket();
+      this.InitializeSocket();
+      this.connectAttempt = null;
+      this.connectAttemptStartedTimestamp = 0;
+      this.nextConnectAttemptTimestamp =
+        Stopwatch.GetTimestamp() + ReconnectDelayTicks;
+    }
+
+    private void CloseSocket() {
+      try {
+        this.socket?.Close();
+      } catch (Exception e) {
+        Debug.WriteLine("OPCAPI: error closing socket: " + e);
       }
     }
 
     // Returns true if a frame was actually pushed to the controller this call.
     private bool Update() {
-      if (!this.flushHappened || this.socket == null || !this.socket.Connected) {
+      if (!this.ConnectSocket()) {
         return false;
       }
-      // Refresh-rate cap: if we pushed a frame too recently, leave flushHappened
-      // set and try again on a later pass. This throttles both the threaded
-      // output loop (which spins) and the inline OperatorUpdate() path.
+      long pendingGeneration = Volatile.Read(ref this.flushGeneration);
+      if (pendingGeneration == Volatile.Read(ref this.sentGeneration)) {
+        return false;
+      }
+      // Refresh-rate cap: if we pushed a frame too recently, leave its
+      // generation pending and try again on a later pass. This throttles both
+      // the threaded output loop and the inline OperatorUpdate() path.
       if (this.sendThrottleStopwatch.Elapsed.TotalMilliseconds < MinSendIntervalMs) {
         return false;
       }
       int totalLength;
+      long sendingGeneration;
       lock (this.lockObject) {
+        sendingGeneration = Volatile.Read(ref this.flushGeneration);
         // Each non-empty channel contributes a 4-byte OPC header plus 3 bytes
         // per pixel. Channels with no pixels set yet are skipped, matching the
         // original (which only emitted channels present in the realized set).
@@ -246,7 +317,7 @@ namespace Spectrum.LEDs {
           }
         }
         if (totalLength == 0) {
-          this.flushHappened = false;
+          Volatile.Write(ref this.sentGeneration, sendingGeneration);
           return false;
         }
         if (this.sendBuffer == null || this.sendBuffer.Length < totalLength) {
@@ -278,33 +349,56 @@ namespace Spectrum.LEDs {
       // reconnect can block for seconds; holding lockObject across it would
       // stall Flush()/SetPixel on the operator thread for the whole outage,
       // defeating the point of the separate output thread. sendBuffer and the
-      // socket are only ever touched on this single Update() thread, so they
-      // need no lock here.
+      // sendBuffer is touched only on this Update() thread. Capture the socket
+      // so a concurrent explicit deactivation can close it safely; SendAll then
+      // throws and the frame generation stays pending.
+      Socket sendingSocket = this.socket;
       try {
-        // Socket.Send may legally accept fewer bytes than requested. A frame
-        // only counts as sent once its entire OPC payload has been handed to
-        // the TCP stack.
-        int sent = 0;
-        while (sent < totalLength) {
-          int bytesSent = this.socket.Send(
-            this.sendBuffer,
-            sent,
-            totalLength - sent,
-            SocketFlags.None
-          );
-          if (bytesSent == 0) {
-            throw new SocketException((int)SocketError.ConnectionReset);
-          }
-          sent += bytesSent;
-        }
+        SendAll(
+          this.sendBuffer, totalLength,
+          new SocketByteSender(sendingSocket));
         this.sendThrottleStopwatch.Restart();
-        this.flushHappened = false;
+        Volatile.Write(ref this.sentGeneration, sendingGeneration);
         return true;
       } catch (Exception e) {
         Debug.WriteLine("OPCAPI: socket send failed, reconnecting: " + e);
-        this.DisconnectSocket();
-        this.ConnectSocket();
+        lock (this.connectionLock) {
+          if (ReferenceEquals(this.socket, sendingSocket)) {
+            this.ReplaceSocketForRetry();
+          }
+        }
         return false;
+      }
+    }
+
+    internal interface IOpcByteSender {
+      int Send(byte[] buffer, int offset, int count);
+    }
+
+    private readonly struct SocketByteSender : IOpcByteSender {
+      private readonly Socket socket;
+
+      public SocketByteSender(Socket socket) {
+        this.socket = socket;
+      }
+
+      public int Send(byte[] buffer, int offset, int count) =>
+        this.socket.Send(buffer, offset, count, SocketFlags.None);
+    }
+
+    // Socket.Send may legally accept fewer bytes than requested. Keep this
+    // loop independently testable so a platform/socket implementation that
+    // returns partial writes cannot truncate an OPC message.
+    internal static void SendAll<TSender>(
+      byte[] buffer, int length, TSender sender
+    ) where TSender : IOpcByteSender {
+      int sent = 0;
+      while (sent < length) {
+        int count = sender.Send(buffer, sent, length - sent);
+        if (count <= 0 || count > length - sent) {
+          throw new SocketException((int)SocketError.ConnectionReset);
+        }
+        sent += count;
       }
     }
 
@@ -371,7 +465,7 @@ namespace Spectrum.LEDs {
           Array.Copy(channel.current, channel.next, channel.currentCount);
           channel.nextCount = channel.currentCount;
         }
-        this.flushHappened = true;
+        Interlocked.Increment(ref this.flushGeneration);
       }
     }
 

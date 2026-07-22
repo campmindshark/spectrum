@@ -6,6 +6,11 @@ use different readiness levels: native ALSA audio-level capture and Madmom beat
 tracking are available, while MIDI remains disabled. The browser simulator,
 OPC output, UDP orientation input, and USB serial wand input remain available.
 
+The standalone live simulator is available at
+`http://<host>:8080/simulator`. It loads the dome geometry once and streams
+binary RGB frames over WebSocket at up to 60 FPS. This browser simulator is the
+Linux UI; the native WPF simulator window remains Windows-only.
+
 The archive also includes a relocatable CPython 3.11 Madmom runtime with the
 Linux Cython extensions and PyAudio under `Madmom/runtime`. The runtime is
 packaged and qualified with both file and raw-PCM inputs. When Madmom is the
@@ -89,6 +94,11 @@ systemctl restart spectrum.service
 
 Session-scoped PipeWire configurations may require a user service or an explicit
 ALSA device/ACL instead of group access; qualify this on the target distribution.
+
+OPC output does not require the controller to be online when Spectrum starts.
+Connection attempts and retries are non-blocking, and the newest flushed frame
+remains pending until the controller is reachable. A controller or show network
+that starts late therefore does not require restarting the Spectrum service.
 
 For a USB serial wand receiver, add the service account to the group that owns
 the device (commonly `dialout`) and restart the service:

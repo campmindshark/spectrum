@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.IO;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -58,7 +59,8 @@ namespace Spectrum.Portability.Tests {
         PortableEarthTextureDecoder);
       Run("portable web host serves the operator API",
         PortableWebHostServesOperatorApi);
-      Run("portable OPC client emits the expected wire frame", OpcWireFrame);
+      Run("portable OPC client handles partial sends and late controllers",
+        OpcWireFrame);
       return failures == 0 ? 0 : 1;
     }
 
@@ -668,6 +670,43 @@ namespace Spectrum.Portability.Tests {
         Assert(audioWriteResponse.IsSuccessStatusCode &&
             config.audioDeviceID == "hw:test,0",
           "the browser audio selection did not reach configuration");
+
+        using (var eventsRequest = new HttpRequestMessage(
+            HttpMethod.Get,
+            "http://127.0.0.1:" + port + "/api/events"))
+        using (HttpResponseMessage eventsResponse = client.SendAsync(
+            eventsRequest, HttpCompletionOption.ResponseHeadersRead)
+            .GetAwaiter().GetResult())
+        using (Stream eventsBody = eventsResponse.Content.ReadAsStream())
+        using (var eventsReader = new StreamReader(eventsBody)) {
+          Assert(eventsResponse.IsSuccessStatusCode &&
+              eventsResponse.Content.Headers.ContentType?.MediaType ==
+                "text/event-stream",
+            "the change-feed endpoint did not open an SSE response");
+          using var flashWrite = new StringContent(
+            "{\"value\":0.375}", Encoding.UTF8, "application/json");
+          HttpResponseMessage flashWriteResponse = client.PutAsync(
+            "http://127.0.0.1:" + port +
+              "/api/parameters/flashSpeed",
+            flashWrite).GetAwaiter().GetResult();
+          Assert(flashWriteResponse.IsSuccessStatusCode,
+            "the user parameter write failed while SSE was connected");
+
+          bool sawFlashEvent = false;
+          for (int line = 0; line < 64 && !sawFlashEvent; line++) {
+            string eventLine = eventsReader.ReadLineAsync()
+              .WaitAsync(TimeSpan.FromSeconds(2))
+              .GetAwaiter().GetResult();
+            Assert(eventLine != null,
+              "the SSE response ended before publishing the parameter write");
+            sawFlashEvent = eventLine.StartsWith("data: ") &&
+              eventLine.Contains("\"kind\":\"param\"") &&
+              eventLine.Contains("\"key\":\"flashSpeed\"") &&
+              eventLine.Contains("\"value\":0.375");
+          }
+          Assert(sawFlashEvent,
+            "the real SSE endpoint did not publish the parameter write");
+        }
       } finally {
         web.StopAsync().GetAwaiter().GetResult();
       }
@@ -1014,25 +1053,61 @@ namespace Spectrum.Portability.Tests {
     }
 
     private static void OpcWireFrame() {
-      using var listener = new TcpListener(IPAddress.Loopback, 0);
-      listener.Start();
-      int port = ((IPEndPoint)listener.LocalEndpoint).Port;
-      Task<Socket> accept = listener.AcceptSocketAsync();
+      byte[] partialPayload = {
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+      };
+      var partialSender = new PartialOpcSender(2);
+      OPCAPI.SendAll(
+        partialPayload, partialPayload.Length, partialSender);
+      Assert(partialSender.Calls >= 4 &&
+          partialSender.Bytes.AsSpan().SequenceEqual(partialPayload),
+        "the OPC send loop truncated a sequence of partial writes");
+
+      int port;
+      using (var reservation = new TcpListener(IPAddress.Loopback, 0)) {
+        reservation.Start();
+        port = ((IPEndPoint)reservation.LocalEndpoint).Port;
+      }
+
       var opc = new OPCAPI("127.0.0.1:" + port + ":7", false, _ => { });
       try {
+        var activation = Stopwatch.StartNew();
         opc.Active = true;
-        using Socket connection = accept.WaitAsync(TimeSpan.FromSeconds(2))
-          .GetAwaiter().GetResult();
-        connection.ReceiveTimeout = 2000;
+        activation.Stop();
+        Assert(activation.Elapsed < TimeSpan.FromMilliseconds(500),
+          "an offline OPC controller blocked output activation");
+
         opc.SetPixel(0, 0x123456);
         opc.SetPixel(2, 0xABCDEF);
         opc.Flush();
-        for (int attempt = 0; attempt < 100 && connection.Available == 0;
-            attempt++) {
-          Thread.Sleep(2);
+
+        // Let the initial connection fail while the port is closed. Every
+        // inline update must remain bounded instead of stalling the operator.
+        for (int attempt = 0; attempt < 10; attempt++) {
+          var update = Stopwatch.StartNew();
           opc.OperatorUpdate();
+          update.Stop();
+          Assert(update.Elapsed < TimeSpan.FromMilliseconds(500),
+            "an OPC reconnect attempt blocked the operator");
+          Thread.Sleep(5);
         }
 
+        using var listener = new TcpListener(IPAddress.Loopback, port);
+        listener.Start();
+        Task<Socket> accept = listener.AcceptSocketAsync();
+        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(3);
+        while (!accept.IsCompleted && DateTime.UtcNow < deadline) {
+          opc.OperatorUpdate();
+          Thread.Sleep(5);
+        }
+        using Socket connection = accept
+          .WaitAsync(TimeSpan.FromMilliseconds(500))
+          .GetAwaiter().GetResult();
+        connection.ReceiveTimeout = 2000;
+        while (connection.Available == 0 && DateTime.UtcNow < deadline) {
+          opc.OperatorUpdate();
+          Thread.Sleep(5);
+        }
         byte[] actual = Receive(connection, 13);
         byte[] expected = {
           7, 0, 0, 9,
@@ -1044,6 +1119,27 @@ namespace Spectrum.Portability.Tests {
           "the OPC header or RGB payload changed");
       } finally {
         opc.Active = false;
+      }
+    }
+
+    private sealed class PartialOpcSender : OPCAPI.IOpcByteSender {
+      private readonly int maxChunk;
+      private readonly List<byte> bytes = new List<byte>();
+
+      public PartialOpcSender(int maxChunk) {
+        this.maxChunk = maxChunk;
+      }
+
+      public int Calls { get; private set; }
+      public byte[] Bytes => this.bytes.ToArray();
+
+      public int Send(byte[] buffer, int offset, int count) {
+        int written = Math.Min(this.maxChunk, count);
+        for (int i = 0; i < written; i++) {
+          this.bytes.Add(buffer[offset + i]);
+        }
+        this.Calls++;
+        return written;
       }
     }
 
