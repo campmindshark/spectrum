@@ -44,14 +44,19 @@ namespace Spectrum.Visualizers {
     private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
 
-    // Static per-pixel unit-sphere geometry, baked once (as every orientation
-    // layer does).
-    private readonly ImmutableArray<Vector3> pixelPositions;
+    // Static per-pixel unit-sphere geometry is baked once and bucketed by its
+    // coordinates. Spots move, so rendering asks this index for the 3x3x3 cells
+    // around each spot instead of testing every pixel against every spot. The
+    // exact angular dot-product check still decides coverage; the grid only
+    // rejects impossible pairs.
+    private readonly PixelSpatialIndex pixelSpatialIndex;
+    private readonly double[] bestPixelValues;
+    private readonly double[] bestPixelHues;
 
     private readonly FrameClock frameClock = new FrameClock();
 
     // One movable point in the cloud.
-    private struct Spot {
+    internal struct Spot {
       public Vector3 pos;   // current unit-sphere position
       public Vector3 home;  // rest position it springs back toward
       public Vector3 vel;   // velocity in the local tangent plane
@@ -80,7 +85,11 @@ namespace Spectrum.Visualizers {
       this.center = center;
       this.dome = dome;
       this.buffer = this.dome.MakeDomeFrame();
-      this.pixelPositions = this.buffer.BakePixelPositions();
+      ImmutableArray<Vector3> pixelPositions =
+        this.buffer.BakePixelPositions();
+      this.pixelSpatialIndex = new PixelSpatialIndex(pixelPositions);
+      this.bestPixelValues = new double[pixelPositions.Length];
+      this.bestPixelHues = new double[pixelPositions.Length];
       Reseed(ParamCount());
     }
 
@@ -264,34 +273,117 @@ namespace Spectrum.Visualizers {
         1 - Math.Pow(5, -this.environment.GlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
+      ResolveNearestSpots(
+        this.pixelSpatialIndex, this.spots, spotSize,
+        this.bestPixelValues, this.bestPixelHues);
+      for (int i = 0; i < this.buffer.pixels.Length; i++) {
+        if (this.bestPixelValues[i] > 0) {
+          this.buffer.pixels[i].color =
+            HsvToInt(
+              this.bestPixelHues[i], 1, this.bestPixelValues[i]);
+        }
+      }
+    }
+
+    // Resolve the brightest covering spot for every pixel. Exposed internally
+    // so the executable regression suite can compare the indexed result with a
+    // brute-force reference and verify steady-state allocation behavior.
+    internal static void ResolveNearestSpots(
+      PixelSpatialIndex index,
+      Spot[] spots,
+      double spotSize,
+      double[] bestValues,
+      double[] bestHues
+    ) {
+      index.Ensure(spotSize);
+      Array.Clear(bestValues, 0, bestValues.Length);
+
       double cosRadius = Math.Cos(spotSize);
       // As in StepPhysics: keep the falloff normalization finite for a tiny
       // spotSize where cosRadius rounds to 1.
       double radiusSpan = Math.Max(1 - cosRadius, 1e-6);
 
-      for (int i = 0; i < this.buffer.pixels.Length; i++) {
-        Vector3 pixel = this.pixelPositions[i];
-
-        double bestValue = 0;
-        double bestHue = 0;
-        for (int s = 0; s < this.spots.Length; s++) {
-          double cos = Vector3.Dot(pixel, this.spots[s].pos);
-          if (cos <= cosRadius) {
-            continue;
+      for (int s = 0; s < spots.Length; s++) {
+        Spot spot = spots[s];
+        PixelSpatialIndex.Cell center = index.CellFor(spot.pos);
+        for (int dz = -1; dz <= 1; dz++) {
+          for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+              int pixel = index.HeadAt(center, dx, dy, dz);
+              while (pixel >= 0) {
+                double cos = Vector3.Dot(
+                  index.PositionAt(pixel), spot.pos);
+                if (cos > cosRadius) {
+                  // Soft round falloff: full at the center, 0 at the edge.
+                  double value = (cos - cosRadius) / radiusSpan;
+                  // Spots are visited in their original order and equal values
+                  // do not replace an earlier winner, matching the old loop.
+                  if (value > bestValues[pixel]) {
+                    bestValues[pixel] = value;
+                    bestHues[pixel] = spot.hue;
+                  }
+                }
+                pixel = index.Next(pixel);
+              }
+            }
           }
-          // Soft round falloff: full at the center, 0 at the edge of the spot.
-          double value = (cos - cosRadius) / radiusSpan;
-          if (value > bestValue) {
-            bestValue = value;
-            bestHue = this.spots[s].hue;
-          }
-        }
-
-        if (bestValue > 0) {
-          this.buffer.pixels[i].color =
-            HsvToInt(bestHue, 1, bestValue);
         }
       }
+    }
+
+    internal sealed class PixelSpatialIndex {
+      internal readonly record struct Cell(int X, int Y, int Z);
+
+      private const double MinimumCellSize = 1e-6;
+      private readonly ImmutableArray<Vector3> positions;
+      private readonly Dictionary<Cell, int> cellHeads;
+      private readonly int[] nextPixel;
+      private double indexedSpotSize = double.NaN;
+      private double inverseCellSize;
+
+      internal PixelSpatialIndex(ImmutableArray<Vector3> positions) {
+        if (positions.IsDefault) {
+          throw new ArgumentException(
+            "Pixel positions must be initialized.", nameof(positions));
+        }
+        this.positions = positions;
+        this.cellHeads = new Dictionary<Cell, int>(positions.Length);
+        this.nextPixel = new int[positions.Length];
+      }
+
+      // Angular distance theta between two unit vectors corresponds to chord
+      // distance 2*sin(theta/2). A grid cell one chord wide guarantees that any
+      // covered pixel differs from its spot by at most one cell on each axis.
+      internal void Ensure(double spotSize) {
+        if (spotSize == this.indexedSpotSize) {
+          return;
+        }
+        double cellSize = Math.Max(
+          MinimumCellSize, 2 * Math.Sin(spotSize / 2));
+        this.inverseCellSize = 1 / cellSize;
+        this.cellHeads.Clear();
+        for (int pixel = 0; pixel < this.positions.Length; pixel++) {
+          Cell cell = this.CellFor(this.positions[pixel]);
+          this.nextPixel[pixel] =
+            this.cellHeads.TryGetValue(cell, out int head) ? head : -1;
+          this.cellHeads[cell] = pixel;
+        }
+        this.indexedSpotSize = spotSize;
+      }
+
+      internal Cell CellFor(Vector3 position) => new Cell(
+        (int)Math.Floor(position.X * this.inverseCellSize),
+        (int)Math.Floor(position.Y * this.inverseCellSize),
+        (int)Math.Floor(position.Z * this.inverseCellSize));
+
+      internal int HeadAt(Cell center, int dx, int dy, int dz) =>
+        this.cellHeads.TryGetValue(
+          new Cell(center.X + dx, center.Y + dy, center.Z + dz),
+          out int head) ? head : -1;
+
+      internal int Next(int pixel) => this.nextPixel[pixel];
+
+      internal Vector3 PositionAt(int pixel) => this.positions[pixel];
     }
   }
 }
