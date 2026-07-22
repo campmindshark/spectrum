@@ -17,7 +17,7 @@ namespace Spectrum.LayerPipeline.Tests {
   // the bytes received by an OPC server. The full-dome fixture was derived
   // independently from the deployed source revision by
   // Fixtures/Get-KnownGoodOpcBaseline.ps1.
-  internal static class OPCWireTests {
+  public static class OPCWireTests {
     private const string KnownGoodCommit =
       "72d68765ae2465724ed1958c8fa5f1709b95000b";
     private const string KnownGoodDomeSha256 =

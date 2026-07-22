@@ -172,7 +172,8 @@ namespace Spectrum.Web {
       Configuration config
     ) {
       var options = new List<VisualizerOptionDto>();
-      foreach (LayerDefinition definition in DomeLayerCatalog.Metadata.Definitions) {
+      foreach (LayerDefinition definition in
+          BuiltInDomeLayerCatalog.Metadata.Definitions) {
         options.Add(new VisualizerOptionDto {
           key = definition.Id,
           label = definition.DisplayName,
@@ -254,7 +255,7 @@ namespace Spectrum.Web {
         });
       }
       (List<DomeLayerSettings> newStack, string error) =
-        StackValidator.Validate(parsed, DomeLayerCatalog.Metadata);
+        StackValidator.Validate(parsed, BuiltInDomeLayerCatalog.Metadata);
       if (error != null) {
         return (false, error);
       }

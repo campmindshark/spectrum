@@ -1,6 +1,6 @@
 namespace Spectrum {
 
-  internal static class WandTypeNames {
+  public static class WandTypeNames {
     public static string Of(int deviceType) {
       switch (deviceType) {
         case 1: return "Wand";

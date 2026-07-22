@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  internal static class AdvisoryLockTests {
+  public static class AdvisoryLockTests {
 
     public static void Register(Action<string, Action> run) {
       run("advisory lock tokens govern writes and release", OwnershipPolicy);

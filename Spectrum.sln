@@ -19,6 +19,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Spectrum.Host", "Host\Spect
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Spectrum.Platform.Linux", "Platform.Linux\Spectrum.Platform.Linux.csproj", "{D204BE30-FC91-4C82-95F5-524BA6CBF164}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Spectrum.Web", "Web\Spectrum.Web.csproj", "{1C728064-A98B-4AD4-AD76-7F0F413C8E51}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Spectrum.LayerPipeline.Tests", "Tests\Spectrum.LayerPipeline.Tests.csproj", "{9AE50863-C8FE-4B0B-95D7-94B415F433D5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Spectrum.PortableLayerPipeline.Tests", "Tests\PortableLayerPipeline\Spectrum.PortableLayerPipeline.Tests.csproj", "{69452213-ED32-40CC-98DC-F290B9964168}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Spectrum.Portability.Tests", "Tests\Portability\Spectrum.Portability.Tests.csproj", "{BFA4F4C4-B236-4BDB-817E-C0AAE1AF6BAA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Spectrum.LayerPipeline.TestSupport", "Tests\LayerPipeline.TestSupport\Spectrum.LayerPipeline.TestSupport.csproj", "{CD5E423B-A801-4908-B3DB-4CF29A95BEBE}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{48BA8332-3FB0-40F6-A887-BDAE6731BDF0}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
@@ -70,6 +80,26 @@ Global
 		{D204BE30-FC91-4C82-95F5-524BA6CBF164}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D204BE30-FC91-4C82-95F5-524BA6CBF164}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D204BE30-FC91-4C82-95F5-524BA6CBF164}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C728064-A98B-4AD4-AD76-7F0F413C8E51}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C728064-A98B-4AD4-AD76-7F0F413C8E51}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C728064-A98B-4AD4-AD76-7F0F413C8E51}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C728064-A98B-4AD4-AD76-7F0F413C8E51}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9AE50863-C8FE-4B0B-95D7-94B415F433D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9AE50863-C8FE-4B0B-95D7-94B415F433D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9AE50863-C8FE-4B0B-95D7-94B415F433D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9AE50863-C8FE-4B0B-95D7-94B415F433D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{69452213-ED32-40CC-98DC-F290B9964168}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{69452213-ED32-40CC-98DC-F290B9964168}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{69452213-ED32-40CC-98DC-F290B9964168}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{69452213-ED32-40CC-98DC-F290B9964168}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BFA4F4C4-B236-4BDB-817E-C0AAE1AF6BAA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BFA4F4C4-B236-4BDB-817E-C0AAE1AF6BAA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BFA4F4C4-B236-4BDB-817E-C0AAE1AF6BAA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BFA4F4C4-B236-4BDB-817E-C0AAE1AF6BAA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CD5E423B-A801-4908-B3DB-4CF29A95BEBE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD5E423B-A801-4908-B3DB-4CF29A95BEBE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD5E423B-A801-4908-B3DB-4CF29A95BEBE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD5E423B-A801-4908-B3DB-4CF29A95BEBE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

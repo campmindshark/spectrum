@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Spectrum.Base;
 using Spectrum.LEDs;
-using Spectrum.MIDI;
 using Spectrum.Visualizers;
 using XSerializer;
 
@@ -46,8 +45,6 @@ namespace Spectrum.LayerPipeline.Tests {
         EarthTextureFollowsSpotlight);
       Run("astronomy options and north heading are deterministic",
         AstronomyOptionsAndHeading);
-      Run("astronomy playback display updates stay transient",
-        AstronomyPlaybackDisplayUpdatesStayTransient);
       Run("simulator real view foreshortens the dome from above",
         SimulatorTopDownProjection);
       Run("dome topology stores both projections and unit normals",
@@ -75,12 +72,8 @@ namespace Spectrum.LayerPipeline.Tests {
         RuntimeSettingsPublishCompleteGenerations);
       Run("control storms avoid plan reconciliation and frame allocation",
         ControlStormAvoidsPlanWork);
-      Run("enabled operator isolates concurrent web and device generations",
-        EnabledOperatorConcurrentSettingsAreIsolated);
       Run("MIDI configuration bindings publish state commands",
         MidiBindingsPublishStateCommands);
-      Run("MIDI binding validation and deferred failures are contained",
-        MidiBindingFailuresAreContained);
       Run("compositor executes every operation in stack order", StackOrder);
       Run("scratch copies only mutable channels", ScratchCopiesChannelsOnly);
       Run("frame operations require shared topology", FramesRequireTopology);
@@ -201,9 +194,6 @@ namespace Spectrum.LayerPipeline.Tests {
         "typed built-in options are outside the portable core");
       Assert(coreType.Assembly == runtimeType.Assembly,
         "the runtime and portable feature metadata are split across assemblies");
-      Type applicationType = typeof(global::Spectrum.MainWindow);
-      Assert(coreType.Assembly != applicationType.Assembly,
-        "portable runtime still compiles into the Windows application");
       Assert(catalogType.Assembly.GetType(
           typeof(RadialLayerOptions).FullName) == null,
         "Base still contains built-in renderer option types");
@@ -1053,22 +1043,6 @@ namespace Spectrum.LayerPipeline.Tests {
           defaultOptions.ShowNighttimeSky &&
           defaultOptions.PlaybackSpeed == 1,
         "astronomy controls did not preserve their default appearance");
-      var astronomyRow = new global::Spectrum.DomeLayerRowViewModel {
-        VisualizerKey = "astronomy",
-      };
-      Assert(astronomyRow.FireLabel == "Play" &&
-          astronomyRow.ClearLabel == "Stop" &&
-          astronomyRow.HasFireAction && astronomyRow.HasClearAction,
-        "astronomy layer actions were not labeled Play and Stop");
-      astronomyRow.VisualizerKey = "earth";
-      Assert(!astronomyRow.HasFireAction && !astronomyRow.HasClearAction &&
-          astronomyRow.FireLabel == null && astronomyRow.ClearLabel == null,
-        "non-triggerable layer retained action controls");
-      astronomyRow.VisualizerKey = "shooting-star";
-      Assert(astronomyRow.HasFireAction && astronomyRow.HasClearAction &&
-          astronomyRow.FireLabel == "Fire" &&
-          astronomyRow.ClearLabel == "Clear",
-        "triggerable layer actions were not exposed");
       Assert(DomeLayerDate.TryDecode(defaultOptions.StartDate, out _),
         "astronomy start date did not default to a valid local date");
       Assert(DomeLayerDate.TryParse("2026-07-15", out double encodedDate) &&
@@ -1203,36 +1177,6 @@ namespace Spectrum.LayerPipeline.Tests {
       }
     }
 
-    private static void AstronomyPlaybackDisplayUpdatesStayTransient() {
-      var descriptor = new DomeLayerParam {
-        Key = "timeOffsetHours",
-        Label = "Time (hours from start)",
-        Type = DomeLayerParamType.Double,
-        Min = 0,
-        Max = 168,
-        Step = 1,
-        Default = 0,
-      };
-      var param = new global::Spectrum.LayerParamViewModel(
-        descriptor, 12, false);
-      int edits = 0;
-      bool valueChanged = false;
-      param.Changed += () => edits++;
-      param.PropertyChanged += (sender, e) => {
-        if (e.PropertyName == nameof(param.Value)) {
-          valueChanged = true;
-        }
-      };
-
-      param.SetDisplayedValue(13.5);
-      Assert(param.Value == 13.5 && param.StoredValue == 12 &&
-          edits == 0 && valueChanged,
-        "astronomy playback display persisted a timer tick");
-
-      param.Value = 14;
-      Assert(param.Value == 14 && param.StoredValue == 14 && edits == 1,
-        "astronomy time slider edit was not persisted");
-    }
 
     private static void PlanFreezesRendererInputs() {
       LayerSnapshot snapshot = SnapshotWithParameter("input-1", "speed", 1);
@@ -1682,208 +1626,6 @@ namespace Spectrum.LayerPipeline.Tests {
       GC.KeepAlive(checksum);
     }
 
-    private static void EnabledOperatorConcurrentSettingsAreIsolated() {
-      var layers = new List<DomeLayerSettings>();
-      for (int i = 0; i < StackValidator.MaxLayers; i++) {
-        layers.Add(Layer("background", "enabled-storm-" + i));
-      }
-      var config = new global::Spectrum.SpectrumConfiguration();
-      config.ReplaceDomeLayerStack(layers);
-      config.domeSimulationEnabled = true;
-      config.midiInputEnabled = true;
-      config.ReplaceMidiPresets(new Dictionary<int, MidiPreset> {
-        [9] = ConcurrentTestMidiPreset(9),
-        [10] = ConcurrentTestMidiPreset(10),
-      });
-      config.ReplaceMidiDevices(new Dictionary<int, int> { [42] = 9 });
-
-      var dispatcher = new QueuedStateDispatcher();
-      config.AttachMutationDispatcher(dispatcher);
-      var controller = new global::Spectrum.Web.LayersController(
-        dispatcher, config);
-      var runtime = new global::Spectrum.Operator(
-        config, dispatcher,
-        new DisconnectedWindowsMidiInputFactory(),
-        connectHardware: false);
-      var settings = (IRuntimeSettingsConfiguration)config;
-      long transportGeneration =
-        settings.DomeOutputSettingsSnapshot.TransportGeneration;
-      Exception readerFailure = null;
-      using var stopReader = new CancellationTokenSource();
-
-      Task reader = Task.Run(() => {
-        try {
-          while (!stopReader.IsCancellationRequested) {
-            DomeRuntimeFrameSnapshot frame =
-              settings.DomeRuntimeFrameSnapshot;
-            Assert(frame.FireGenerations.All(pair =>
-                pair.Key.StartsWith("enabled-storm-") && pair.Value > 0),
-              "a reader observed an invalid fire-counter generation");
-
-            AudioSettingsSnapshot audio = settings.AudioSettingsSnapshot;
-            Assert(audio.DeviceId == null || audio.DeviceId == "fake-a" ||
-                audio.DeviceId == "fake-b",
-              "a reader observed a torn Audio generation");
-
-            MidiSettingsSnapshot midi = settings.MidiSettingsSnapshot;
-            Assert(midi.Devices.Count == 1 &&
-                midi.Devices.TryGetValue(42, out int preset) &&
-                (preset == 9 || preset == 10),
-              "a reader observed a torn MIDI device generation");
-
-            DomeOutputSettingsSnapshot output =
-              settings.DomeOutputSettingsSnapshot;
-            Assert(IsIdentityOrReverse(output.CableMapping),
-              "a reader observed a torn cable-mapping generation");
-            foreach (ImmutableArray<int> ports in output.PortMappings) {
-              Assert(IsIdentityOrReverse(ports),
-                "a reader observed a torn port-mapping generation");
-            }
-
-            ImmutableArray<DomeLayerView> stack = config.domeLayerStack;
-            Assert(stack.Length == StackValidator.MaxLayers &&
-                stack.All(layer => layer.RendererParams != null &&
-                  layer.OperationParams != null),
-              "a reader observed a partial immutable layer view");
-          }
-        } catch (Exception error) {
-          readerFailure = error;
-        }
-      });
-
-      runtime.Enabled = true;
-      int reconciliations = runtime.LayerPlanReconciliationCount;
-      RenderPlan acceptedPlan = runtime.DomeOutput.RenderPlan;
-      try {
-        Task webUpdates = Task.Run(async () => {
-          for (int i = 0; i < 120; i++) {
-            (bool ok, string error) = await controller.FireAsync(
-              layers[i % layers.Count].InstanceId);
-            if (!ok) {
-              throw new InvalidOperationException(error);
-            }
-          }
-        });
-        Task deviceUpdates = Task.Run(async () => {
-          for (int i = 0; i < 80; i++) {
-            int generation = i;
-            await dispatcher.InvokeAsync(() => {
-              config.audioDeviceID = (generation & 1) == 0
-                ? "fake-a" : "fake-b";
-              config.ReplaceMidiDevices(new Dictionary<int, int> {
-                [42] = (generation & 1) == 0 ? 9 : 10,
-              });
-              int[] mapping = Enumerable.Range(
-                  0, LEDDomeOutput.NumCables).ToArray();
-              if ((generation & 1) != 0) {
-                Array.Reverse(mapping);
-              }
-              config.ReplaceDomeCableMapping(mapping);
-
-              int[] ports = Enumerable.Range(
-                  0, LEDDomeOutput.NumPortsPerBox).ToArray();
-              if ((generation & 1) != 0) {
-                Array.Reverse(ports);
-              }
-              config.ReplaceDomePortMappings(Enumerable.Range(
-                0, LEDDomeOutput.NumDomeBoxes).Select(
-                  _ => new DomePortMapping(ports)).ToArray());
-            });
-          }
-        });
-        Task inputUpdates = Task.Run(async () => {
-          for (int i = 1; i <= 120; i++) {
-            byte[] datagram = new byte[15];
-            datagram[0] = 7;
-            Array.Copy(BitConverter.GetBytes(i), 0, datagram, 1, 4);
-            datagram[5] = 3;
-            datagram[7] = 0x40;
-            runtime.OrientationInput.ProcessDatagram(datagram);
-            await runtime.MidiInput.DispatchBindingsAsync(new MidiCommand {
-              deviceIndex = 42,
-              type = MidiCommandType.Knob,
-              index = 7,
-              value = (i % 101) / 100.0,
-            });
-          }
-        });
-
-        Task updates = Task.WhenAll(
-          webUpdates, deviceUpdates, inputUpdates);
-        var spin = new SpinWait();
-        while (!updates.IsCompleted) {
-          dispatcher.Drain();
-          spin.SpinOnce();
-        }
-        dispatcher.Drain();
-        updates.GetAwaiter().GetResult();
-
-        stopReader.Cancel();
-        reader.GetAwaiter().GetResult();
-        Assert(readerFailure == null,
-          "concurrent reader failed: " + readerFailure);
-        Assert(SpinWait.SpinUntil(
-            () => runtime.MidiInput.AppliedDeviceGeneration ==
-                settings.MidiSettingsSnapshot.DeviceGeneration &&
-              runtime.DomeOutput.AppliedMappingGeneration ==
-                settings.DomeOutputSettingsSnapshot.MappingGeneration,
-            TimeSpan.FromSeconds(3)),
-          "the enabled operator did not reconcile the latest device generations");
-        Assert(runtime.DomeOutput.AppliedTransportGeneration ==
-            transportGeneration,
-          "a wiring-only update reconciled the OPC transport");
-        Assert(runtime.LayerPlanReconciliationCount == reconciliations,
-          "control/device traffic reconciled the layer plan");
-        Assert(ReferenceEquals(runtime.DomeOutput.RenderPlan, acceptedPlan),
-          "control/device traffic replaced the accepted render plan");
-
-        Assert(SpinWait.SpinUntil(
-            () => runtime.Telemetry.OperatorFPS > 0,
-            TimeSpan.FromSeconds(4)),
-          "the enabled operator did not complete its first FPS window");
-        runtime.BeginAllocationMeasurement();
-        Thread.Sleep(300);
-        var allocation = runtime.EndAllocationMeasurement();
-        Assert(allocation.Frames >= 30,
-          "too few enabled operator frames were measured: " +
-          allocation.Frames);
-        Assert(allocation.Bytes == 0,
-          "the steady-state enabled operator allocated " +
-          allocation.Bytes + " managed bytes across " +
-          allocation.Frames + " frames");
-      } finally {
-        stopReader.Cancel();
-        reader.GetAwaiter().GetResult();
-        runtime.Enabled = false;
-      }
-    }
-
-    private static MidiPreset ConcurrentTestMidiPreset(int id) => new() {
-      id = id,
-      Name = "concurrent " + id,
-      Bindings = new List<IMidiBindingConfig> {
-        new ContinuousKnobMidiBindingConfig {
-          BindingName = "concurrent brightness",
-          knobIndex = 7,
-          configPropertyName = nameof(Configuration.domeBrightness),
-          startValue = 0,
-          endValue = 1,
-        },
-      },
-    };
-
-    private static bool IsIdentityOrReverse(IReadOnlyList<int> values) {
-      if (values == null || values.Count == 0) {
-        return true;
-      }
-      bool identity = true;
-      bool reverse = true;
-      for (int i = 0; i < values.Count; i++) {
-        identity &= values[i] == i;
-        reverse &= values[i] == values.Count - 1 - i;
-      }
-      return identity || reverse;
-    }
 
     private static void MidiBindingsPublishStateCommands() {
       var config = new global::Spectrum.SpectrumConfiguration();
@@ -1910,62 +1652,6 @@ namespace Spectrum.LayerPipeline.Tests {
         "the queued MIDI state command was not applied");
     }
 
-    private static void MidiBindingFailuresAreContained() {
-      Configuration config = new ThrowingBrightnessConfiguration();
-      ConfigurationEditor editor = (ConfigurationEditor)config;
-      editor.ReplaceMidiDevices(new Dictionary<int, int> { [42] = 9 });
-      editor.ReplaceMidiPresets(new Dictionary<int, MidiPreset> {
-        [9] = new MidiPreset {
-          id = 9,
-          Name = "fault containment",
-          Bindings = new List<IMidiBindingConfig> {
-            new ContinuousKnobMidiBindingConfig {
-              BindingName = "wrong numeric type",
-              knobIndex = 6,
-              configPropertyName = nameof(config.domeTestPattern),
-              startValue = 0,
-              endValue = 1,
-            },
-            new ContinuousKnobMidiBindingConfig {
-              BindingName = "throwing setter",
-              knobIndex = 7,
-              configPropertyName = nameof(config.domeBrightness),
-              startValue = 0,
-              endValue = 1,
-            },
-          },
-        },
-      });
-      var dispatcher = new QueuedStateDispatcher();
-      var midi = new MidiInput(
-        config, new BeatBroadcaster(config), dispatcher);
-
-      Task invocation = Task.Run(() => midi.DispatchBindingsAsync(
-        new MidiCommand {
-          deviceIndex = 42,
-          type = MidiCommandType.Knob,
-          index = 7,
-          value = 0.5,
-        }));
-      Assert(SpinWait.SpinUntil(
-          () => dispatcher.PendingCount == 1,
-          TimeSpan.FromSeconds(2)),
-        "the valid MIDI mutation was not queued");
-      dispatcher.Drain();
-      invocation.GetAwaiter().GetResult();
-
-      MidiLogMessage[] messages = midi.MidiLog.DequeueAllMessages();
-      Assert(messages.Any(message =>
-          message.message != null &&
-          message.message.Contains("wrong numeric type") &&
-          message.message.Contains("has type Int32")),
-        "an incompatible existing MIDI target was not rejected at compile time");
-      Assert(messages.Any(message =>
-          message.message != null &&
-          message.message.Contains("throwing setter") &&
-          message.message.Contains("setter exploded")),
-        "a deferred MIDI setter failure was not contained in the MIDI log");
-    }
 
     private static void StackOrder() {
       DomeTopology topology = OnePixelTopology();
@@ -5701,36 +5387,6 @@ namespace Spectrum.LayerPipeline.Tests {
       ) => this.Midi;
     }
 
-    /**
-     * Keeps the Windows MIDI orchestration in the Windows-only integration
-     * suite without opening Sanford or NAudio hardware handles. The portable
-     * runtime itself no longer constructs these adapters.
-     */
-    private sealed class DisconnectedWindowsMidiInputFactory :
-      ISpectrumInputFactory {
-      private readonly DisabledSpectrumInputFactory disabled =
-        new DisabledSpectrumInputFactory();
-
-      public IAudioLevelInput CreateAudioInput(
-        Configuration config,
-        BeatBroadcaster beat
-      ) => this.disabled.CreateAudioInput(config, beat);
-
-      public IMidiControlInput CreateMidiInput(
-        Configuration config,
-        BeatBroadcaster beat,
-        ApplicationStateDispatcher stateDispatcher
-      ) => new global::Spectrum.MIDI.MidiInput(
-        config, beat, stateDispatcher, connectHardware: false);
-    }
-
-    private sealed class ThrowingBrightnessConfiguration :
-      global::Spectrum.SpectrumConfiguration, Configuration {
-      double Configuration.domeBrightness {
-        get => base.domeBrightness;
-        set => throw new InvalidOperationException("setter exploded");
-      }
-    }
 
     private sealed class InlineGateway : ApplicationStateDispatcher {
       public bool CheckAccess() => true;

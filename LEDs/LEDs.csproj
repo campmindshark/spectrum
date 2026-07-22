@@ -12,6 +12,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Spectrum.LayerPipeline.Tests" />
+    <InternalsVisibleTo Include="Spectrum.LayerPipeline.TestSupport" />
+    <InternalsVisibleTo Include="Spectrum.PortableLayerPipeline.Tests" />
     <InternalsVisibleTo Include="Spectrum.Portability.Tests" />
   </ItemGroup>
 

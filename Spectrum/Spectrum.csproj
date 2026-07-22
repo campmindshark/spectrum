@@ -11,9 +11,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="spectrum_default_config.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <None Include="Resources\spectrum wordmark.PNG">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -27,42 +24,8 @@
     <PackageReference Include="XSerializer" Version="0.4.4" />
   </ItemGroup>
 
-  <!-- In-process Kestrel host for the web control surface (Web/). Sharing the
-       one Configuration instance with the WPF app; see docs/web_architecture.md. -->
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
-
   <ItemGroup>
     <InternalsVisibleTo Include="Spectrum.LayerPipeline.Tests" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Web\wwwroot\**\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</Link>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="SpectrumConfiguration.cs" />
-    <Compile Remove="SpectrumConfigurationDocument.cs" />
-    <Compile Remove="CobsCodec.cs" />
-    <Compile Remove="Color.cs" />
-    <Compile Remove="ConfigurationDomeLayerEnvironment.cs" />
-    <Compile Remove="Crc8.cs" />
-    <Compile Remove="DatagramHandler.cs" />
-    <Compile Remove="DomeCalibrationState.cs" />
-    <Compile Remove="DomeLayerCatalog.cs" />
-    <Compile Remove="DomeSurfaceGeometry.cs" />
-    <Compile Remove="DomeTestPatterns.cs" />
-    <Compile Remove="MathUtil.cs" />
-    <Compile Remove="Operator.cs" />
-    <Compile Remove="OrientationDevice.cs" />
-    <Compile Remove="OrientationInput.cs" />
-    <Compile Remove="WandSerialReceiver.cs" />
-    <Compile Remove="Visualizers\**\*.cs" />
-    <Compile Remove="Web\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -71,6 +34,7 @@
     <ProjectReference Include="..\LEDs\LEDs.csproj" />
     <ProjectReference Include="..\MIDI\MIDI.csproj" />
     <ProjectReference Include="..\Core\Spectrum.Core.csproj" />
+    <ProjectReference Include="..\Web\Spectrum.Web.csproj" />
   </ItemGroup>
 
 </Project>

@@ -4,7 +4,7 @@ using Spectrum.Base;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  internal static class PaletteServiceTests {
+  public static class PaletteServiceTests {
 
     public static void Register(Action<string, Action> run) {
       run("named live palettes preserve layer references", PaletteMutations);

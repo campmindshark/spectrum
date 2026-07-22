@@ -20,6 +20,10 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Verify production source ownership
+      shell: pwsh
+      run: ./.github/scripts/verify-source-ownership.ps1
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:

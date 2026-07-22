@@ -4,51 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Spectrum</RootNamespace>
     <AssemblyName>Spectrum.Core</AssemblyName>
-    <DefineConstants>$(DefineConstants);SPECTRUM_FEATURES</DefineConstants>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Include="..\Spectrum\SpectrumConfiguration.cs"
-             Link="SpectrumConfiguration.cs" />
-    <Compile Include="..\Spectrum\SpectrumConfigurationDocument.cs"
-             Link="SpectrumConfigurationDocument.cs" />
-    <Compile Include="..\Spectrum\CobsCodec.cs"
-             Link="Runtime\CobsCodec.cs" />
-    <Compile Include="..\Spectrum\Color.cs"
-             Link="Runtime\Color.cs" />
-    <Compile Include="..\Spectrum\ConfigurationDomeLayerEnvironment.cs"
-             Link="Runtime\ConfigurationDomeLayerEnvironment.cs" />
-    <Compile Include="..\Spectrum\Crc8.cs"
-             Link="Runtime\Crc8.cs" />
-    <Compile Include="..\Spectrum\DatagramHandler.cs"
-             Link="Runtime\DatagramHandler.cs" />
-    <Compile Include="..\Spectrum\DomeCalibrationState.cs"
-             Link="Runtime\DomeCalibrationState.cs" />
-    <Compile Include="..\Spectrum\DomeLayerCatalog.cs"
-             Link="Runtime\DomeLayerCatalog.cs" />
-    <Compile Include="..\Spectrum\DomeSurfaceGeometry.cs"
-             Link="Runtime\DomeSurfaceGeometry.cs" />
-    <Compile Include="..\Spectrum\DomeTestPatterns.cs"
-             Link="Runtime\DomeTestPatterns.cs" />
-    <Compile Include="..\Spectrum\MathUtil.cs"
-             Link="Runtime\MathUtil.cs" />
-    <Compile Include="..\Spectrum\Operator.cs"
-             Link="Runtime\Operator.cs" />
-    <Compile Include="..\Spectrum\OrientationDevice.cs"
-             Link="Runtime\OrientationDevice.cs" />
-    <Compile Include="..\Spectrum\OrientationInput.cs"
-             Link="Runtime\OrientationInput.cs" />
-    <Compile Include="..\Spectrum\WandSerialReceiver.cs"
-             Link="Runtime\WandSerialReceiver.cs" />
-    <Compile Include="..\Spectrum\Visualizers\**\*.cs"
-             Link="Visualizers\%(RecursiveDir)%(Filename)%(Extension)" />
-    <Compile Include="..\Spectrum\Web\*.cs"
-             Link="Web\%(Filename)%(Extension)" />
-    <Compile Include="..\Base\DomeLayerSettings.cs"
-             Link="Features\BuiltInLayerSchemas.cs" />
-    <Compile Include="..\Base\LayerRendererOptions.cs"
-             Link="Features\BuiltInLayerOptions.cs" />
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Base\Base.csproj" />
@@ -60,18 +16,23 @@
   </ItemGroup>
 
   <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <EmbeddedResource Include="Resources\EarthTexture.png"
+                      LogicalName="Spectrum.Resources.EarthTexture.png" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\Spectrum\Resources\EarthTexture.png"
-                      Link="Resources\EarthTexture.png"
-                      LogicalName="Spectrum.Resources.EarthTexture.png" />
+    <Content Include="Configuration\spectrum_default_config.xml">
+      <Link>spectrum_default_config.xml</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Spectrum" />
     <InternalsVisibleTo Include="Spectrum.LayerPipeline.Tests" />
+    <InternalsVisibleTo Include="Spectrum.LayerPipeline.TestSupport" />
+    <InternalsVisibleTo Include="Spectrum.PortableLayerPipeline.Tests" />
     <InternalsVisibleTo Include="Spectrum.Portability.Tests" />
   </ItemGroup>
 

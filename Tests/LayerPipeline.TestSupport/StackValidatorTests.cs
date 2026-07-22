@@ -4,7 +4,7 @@ using Spectrum.Base;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  internal static class StackValidatorTests {
+  public static class StackValidatorTests {
 
     public static void Register(Action<string, Action> run) {
       run("stack validation rejects invalid identity and schema",

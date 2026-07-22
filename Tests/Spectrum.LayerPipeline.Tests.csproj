@@ -7,10 +7,13 @@
   <ItemGroup>
     <Compile Remove="Portability\**\*.cs" />
     <Compile Remove="PortableLayerPipeline\**\*.cs" />
+    <Compile Remove="LayerPipeline.TestSupport\**\*.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Base\Base.csproj" />
     <ProjectReference Include="..\Core\Spectrum.Core.csproj" />
+    <ProjectReference Include="..\Web\Spectrum.Web.csproj" />
+    <ProjectReference Include="LayerPipeline.TestSupport\Spectrum.LayerPipeline.TestSupport.csproj" />
     <ProjectReference Include="..\LEDs\LEDs.csproj" />
     <ProjectReference Include="..\Spectrum\Spectrum.csproj" />
   </ItemGroup>

@@ -15,17 +15,10 @@
     <ProjectReference Include="..\Base\Base.csproj" />
     <ProjectReference Include="..\Core\Spectrum.Core.csproj" />
     <ProjectReference Include="..\Platform.Linux\Spectrum.Platform.Linux.csproj" />
+    <ProjectReference Include="..\Web\Spectrum.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\Spectrum\spectrum_default_config.xml"
-             Link="spectrum_default_config.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\Spectrum\Web\wwwroot\**\*"
-             Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <Content Include="..\deploy\linux\README.md"
              Link="deploy\linux\README.md">
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>

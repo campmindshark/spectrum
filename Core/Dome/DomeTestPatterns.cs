@@ -8,7 +8,7 @@ namespace Spectrum {
    * each label is the persisted/runtime value, so every control surface must
    * use this list rather than maintaining its own copy.
    */
-  internal static class DomeTestPatterns {
+  public static class DomeTestPatterns {
 
     public static IReadOnlyList<string> Names { get; } = Array.AsReadOnly(
       new[] {

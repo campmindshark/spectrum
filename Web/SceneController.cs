@@ -29,7 +29,8 @@ namespace Spectrum.Web {
       ApplicationStateDispatcher gateway, Configuration config
     ) {
       this.gateway = gateway;
-      this.service = new SceneService(config, DomeLayerCatalog.Metadata);
+      this.service = new SceneService(
+        config, BuiltInDomeLayerCatalog.Metadata);
     }
 
     internal ScenesState State() {

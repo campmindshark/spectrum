@@ -4,7 +4,7 @@ using Spectrum.Base;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  internal static class MotionEmbersTests {
+  public static class MotionEmbersTests {
     public static void Register(Action<string, Action> run) {
       run("Motion Embers exposes normalized composite controls",
         ControlsCompileAndClamp);

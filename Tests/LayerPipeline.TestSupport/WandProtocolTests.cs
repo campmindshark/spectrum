@@ -3,7 +3,7 @@ using System.Numerics;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  internal static class WandProtocolTests {
+  public static class WandProtocolTests {
 
     public static void Register(Action<string, Action> run) {
       run("CRC-8 matches the receiver firmware variant", CrcFixture);

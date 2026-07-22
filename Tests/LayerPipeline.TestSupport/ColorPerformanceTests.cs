@@ -5,7 +5,7 @@ using Spectrum.LEDs;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  internal static class ColorPerformanceTests {
+  public static class ColorPerformanceTests {
     private static int colorSink;
 
     public static void Register(Action<string, Action> run) {

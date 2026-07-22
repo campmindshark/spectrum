@@ -282,7 +282,7 @@ namespace Spectrum.Web {
       this.stage = IdleStage;
     });
 
-    internal CalibrationState State() {
+    public CalibrationState State() {
       lock (this.gate) {
         return this.SnapshotLocked();
       }
