@@ -71,7 +71,31 @@ restart, `Restart=on-failure` after `SIGKILL`, and a clean `SIGTERM` stop, then
 removes its test-owned service account, unit, install tree, and state. It
 refuses to run if any production path, account, or port is already in use.
 
-From an extracted release directory, run:
+Before installation, the unprivileged runtime qualifier can exercise an
+extracted release in place. It runs concurrent HTTP reads while sampling the
+read-only `/api/maintenance/runtime` snapshot, verifies useful operator cadence
+without exceeding the 400 Hz cap, bounds resident-memory growth, and requires a
+clean `SIGTERM`. All test configuration and logs live in a temporary directory
+that the script removes. A 60-second check is the default:
+
+```shell
+bash deploy/linux/qualify-runtime.sh "$PWD"
+```
+
+Pass a duration, unused port, and worker count for a longer target-host soak.
+For example, this runs eight hours with eight HTTP workers and allows at most
+128 MiB of resident-memory growth after warmup:
+
+```shell
+SPECTRUM_MAX_RSS_GROWTH_KB=131072 \
+  bash deploy/linux/qualify-runtime.sh "$PWD" 28800 18081 8
+```
+
+The minimum and maximum accepted cadence default to 30 and 425 FPS. Set
+`SPECTRUM_MIN_OPERATOR_FPS` or `SPECTRUM_MAX_OPERATOR_FPS` when the target has a
+measured, deployment-specific performance envelope.
+
+For the separate installed-service/systemd check, run:
 
 ```shell
 sudo bash deploy/linux/qualify-systemd.sh "$PWD"

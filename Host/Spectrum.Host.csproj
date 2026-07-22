@@ -38,6 +38,10 @@
              Link="deploy\linux\qualify-systemd.sh">
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
+    <Content Include="..\deploy\linux\qualify-runtime.sh"
+             Link="deploy\linux\qualify-runtime.sh">
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
     <Content Include="..\LICENSE" Link="LICENSE">
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>

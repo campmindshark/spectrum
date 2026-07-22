@@ -642,6 +642,15 @@ namespace Spectrum.Portability.Tests {
             audioResponse.Contains("\"availableDevices\":[]"),
           "the audio setup API returned an unexpected response: " +
           audioResponse);
+        string runtimeResponse = client.GetStringAsync(
+          "http://127.0.0.1:" + port + "/api/maintenance/runtime")
+          .GetAwaiter().GetResult();
+        Assert(runtimeResponse.Contains("\"enabled\":false") &&
+            runtimeResponse.Contains("\"operatorFps\":0") &&
+            runtimeResponse.Contains("\"domeOpcFps\":0") &&
+            runtimeResponse.Contains("\"layerPlanError\":null"),
+          "the runtime health API returned an unexpected response: " +
+          runtimeResponse);
         string parametersResponse = client.GetStringAsync(
           "http://127.0.0.1:" + port +
             "/api/maintenance/parameters")

@@ -30,6 +30,16 @@ namespace Spectrum.Web {
 
     public object State() => new { enabled = this.op.Enabled };
 
+    // Read-only maintenance snapshot for service monitoring and Linux soak
+    // qualification. Keep live counters out of Configuration: they are
+    // transient process health, never persisted operator settings.
+    public object RuntimeState() => new {
+      enabled = this.op.Enabled,
+      operatorFps = this.op.Telemetry.OperatorFPS,
+      domeOpcFps = this.op.Telemetry.DomeBeagleboneOPCFPS,
+      layerPlanError = this.op.Telemetry.LayerPlanError,
+    };
+
     // Sets the engine on/off through the gateway and reports the resulting
     // state. Idempotent — the setter no-ops (and fires no event) if already in
     // the requested state, so a redundant press from a stale client is harmless.

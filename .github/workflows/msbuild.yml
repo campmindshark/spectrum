@@ -113,6 +113,16 @@ jobs:
         path: artifacts/wheels/linux-x64/*.whl
         if-no-files-found: error
 
+    - name: Qualify runtime cadence under sustained HTTP load
+      shell: bash
+      run: >-
+        bash
+        "${RUNNER_TEMP}/Spectrum-linux-x64/deploy/linux/qualify-runtime.sh"
+        "${RUNNER_TEMP}/Spectrum-linux-x64"
+        20
+        18081
+        4
+
     - name: Stress HTTP writes and repeated SIGTERM shutdown
       shell: bash
       run: |

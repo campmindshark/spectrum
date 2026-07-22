@@ -359,6 +359,12 @@ namespace Spectrum.Web {
       app.MapGet("/api/maintenance/audio", () =>
         Results.Json(this.audio.State()));
 
+      // Process-local engine health for service probes and sustained-load
+      // qualification. This is a snapshot rather than a configuration surface,
+      // so it is intentionally read-only and bypasses persistence.
+      app.MapGet("/api/maintenance/runtime", () =>
+        Results.Json(this.operatorControl.RuntimeState()));
+
       // ---- Advisory locks for modal ops ----
       app.MapGet("/api/maintenance/locks", () =>
         Results.Json(this.locks.ActiveLocks()));
