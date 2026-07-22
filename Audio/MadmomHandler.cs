@@ -61,53 +61,6 @@ namespace Spectrum.Audio {
       }
     }
 
-    private sealed class MadmomRuntime {
-      public MadmomRuntime(string pythonPath, string scriptPath) {
-        this.PythonPath = pythonPath;
-        this.ScriptPath = scriptPath;
-      }
-
-      public string PythonPath { get; }
-      public string ScriptPath { get; }
-    }
-
-    // Walks up from the running assembly's directory looking first for the
-    // relocatable release runtime and then for the checkout's development
-    // virtualenv. Returning both paths lets ProcessStartInfo.ArgumentList avoid
-    // fragile command-line quoting.
-    private static MadmomRuntime FindMadmomRuntime() {
-      var dir = new DirectoryInfo(
-        Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
-      );
-      while (dir != null) {
-        var portableRoot = Path.Combine(dir.FullName, "Madmom", "runtime");
-        var portablePython = Path.Combine(portableRoot, "python.exe");
-        var portableScript = Path.Combine(
-          portableRoot, "Scripts", "DBNBeatTracker"
-        );
-        if (File.Exists(portablePython) && File.Exists(portableScript)) {
-          return new MadmomRuntime(portablePython, portableScript);
-        }
-
-        foreach (var environmentName in new[] { ".build-env", "env" }) {
-          var developmentScripts = Path.Combine(
-            dir.FullName, "Madmom", environmentName, "Scripts"
-          );
-          var developmentPython = Path.Combine(
-            developmentScripts, "python.exe"
-          );
-          var developmentScript = Path.Combine(
-            developmentScripts, "DBNBeatTracker"
-          );
-          if (File.Exists(developmentPython) && File.Exists(developmentScript)) {
-            return new MadmomRuntime(developmentPython, developmentScript);
-          }
-        }
-        dir = dir.Parent;
-      }
-      return null;
-    }
-
     private void UpdateEnabled() {
       lock (this.lifecycleLock) {
         this.UpdateEnabledLocked();
@@ -132,7 +85,9 @@ namespace Spectrum.Audio {
         return;
       }
 
-      var runtime = FindMadmomRuntime();
+      MadmomRuntimePaths runtime = MadmomRuntimeLocator.Find(
+        Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+        OperatingSystem.IsWindows());
       if (runtime == null) {
         Debug.WriteLine(
           "MadmomHandler: could not locate a portable Madmom runtime or " +
@@ -145,9 +100,12 @@ namespace Spectrum.Audio {
       Process started = null;
       try {
         ProcessStartInfo start = new ProcessStartInfo();
-        start.WorkingDirectory = Path.GetDirectoryName(runtime.ScriptPath);
+        start.WorkingDirectory = Path.GetDirectoryName(runtime.TrackerPath);
         start.FileName = runtime.PythonPath;
-        start.ArgumentList.Add(runtime.ScriptPath);
+        start.ArgumentList.Add(runtime.TrackerPath);
+        // Keep the legacy boolean form compatible with an already-created
+        // development environment. New tracker builds interpret it as the
+        // automatic platform default (WASAPI on Windows).
         start.ArgumentList.Add("--host_api");
         start.ArgumentList.Add(string.Format(
           "--audio_input={0}", this.audio.CurrentAudioDeviceIndex

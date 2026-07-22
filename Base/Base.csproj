@@ -6,4 +6,9 @@
     <AssemblyName>Base</AssemblyName>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Audio" />
+    <InternalsVisibleTo Include="Spectrum.Portability.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -34,6 +34,8 @@ namespace Spectrum.Portability.Tests {
         PortableHostLifecycle);
       Run("headless configuration paths follow explicit and XDG policy",
         HeadlessConfigurationPaths);
+      Run("Madmom runtime discovery supports Windows and Unix layouts",
+        MadmomRuntimeDiscovery);
       Run("portable core compiles built-in layer configuration",
         PortableCoreLayerConfiguration);
       Run("portable runtime assembly has no Windows desktop dependencies",
@@ -195,6 +197,78 @@ namespace Spectrum.Portability.Tests {
         Assert(recovered.Failures.Count == 1 &&
             recovered.Failures[0].Path == primary,
           "the failed primary load was not reported");
+      } finally {
+        Directory.Delete(directory, recursive: true);
+      }
+    }
+
+    private static void MadmomRuntimeDiscovery() {
+      string directory = Path.Combine(
+        Path.GetTempPath(), "spectrum-madmom-" + Guid.NewGuid());
+      string nested = Path.Combine(directory, "publish", "nested");
+      Directory.CreateDirectory(nested);
+      try {
+        string windowsEnvironment = Path.Combine(
+          directory, "Madmom", ".build-env");
+        string windowsScripts = Path.Combine(
+          windowsEnvironment, "Scripts");
+        Directory.CreateDirectory(windowsScripts);
+        string windowsPython = Path.Combine(
+          windowsScripts, "python.exe");
+        string windowsTracker = Path.Combine(
+          windowsScripts, "DBNBeatTracker");
+        File.WriteAllText(windowsPython, "");
+        File.WriteAllText(windowsTracker, "");
+
+        MadmomRuntimePaths windows = MadmomRuntimeLocator.Find(
+          nested, useWindowsLayout: true);
+        Assert(windows != null &&
+            windows.PythonPath == windowsPython &&
+            windows.TrackerPath == windowsTracker,
+          "the Windows virtual-environment layout was not found");
+
+        string packagedWindowsEnvironment = Path.Combine(
+          directory, "Madmom", "runtime");
+        string packagedWindowsScripts = Path.Combine(
+          packagedWindowsEnvironment, "Scripts");
+        Directory.CreateDirectory(packagedWindowsScripts);
+        string packagedWindowsPython = Path.Combine(
+          packagedWindowsEnvironment, "python.exe");
+        string packagedWindowsTracker = Path.Combine(
+          packagedWindowsScripts, "DBNBeatTracker");
+        File.WriteAllText(packagedWindowsPython, "");
+        File.WriteAllText(packagedWindowsTracker, "");
+
+        windows = MadmomRuntimeLocator.Find(
+          nested, useWindowsLayout: true);
+        Assert(windows != null &&
+            windows.PythonPath == packagedWindowsPython &&
+            windows.TrackerPath == packagedWindowsTracker,
+          "the packaged Windows layout was not preferred");
+
+        string unixEnvironment = Path.Combine(
+          directory, "Madmom", "runtime");
+        string unixBin = Path.Combine(unixEnvironment, "bin");
+        Directory.CreateDirectory(unixBin);
+        string unixPython = Path.Combine(unixBin, "python");
+        string unixTracker = Path.Combine(unixBin, "DBNBeatTracker");
+        File.WriteAllText(unixPython, "");
+        File.WriteAllText(unixTracker, "");
+
+        MadmomRuntimePaths unix = MadmomRuntimeLocator.Find(
+          nested, useWindowsLayout: false);
+        Assert(unix != null &&
+            unix.PythonPath == unixPython &&
+            unix.TrackerPath == unixTracker,
+          "the packaged Unix runtime layout was not found");
+
+        MadmomRuntimePaths missing = MadmomRuntimeLocator.Find(
+          Path.Combine(
+            Path.GetTempPath(),
+            "spectrum-madmom-missing-" + Guid.NewGuid()),
+          useWindowsLayout: false);
+        Assert(missing == null,
+          "runtime discovery escaped its ancestor search roots");
       } finally {
         Directory.Delete(directory, recursive: true);
       }

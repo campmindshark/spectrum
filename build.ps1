@@ -99,6 +99,14 @@ try {
       "--artifacts-path", $DotnetArtifactsDirectory
     )
 
+    Write-Step "Running the portable layer-pipeline suite"
+    Invoke-Checked -FilePath "dotnet" -Arguments @(
+      "run",
+      "--project", "Tests/PortableLayerPipeline/Spectrum.PortableLayerPipeline.Tests.csproj",
+      "-c", $Configuration,
+      "--artifacts-path", $DotnetArtifactsDirectory
+    )
+
     Write-Step "Running the Windows .NET verification suite"
     Invoke-Checked -FilePath "dotnet" -Arguments @(
       "run",

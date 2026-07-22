@@ -6,10 +6,11 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-using Spectrum.Audio;
 using Spectrum.Base;
 using Spectrum.LEDs;
+#if !PORTABLE_LAYER_PIPELINE
 using Spectrum.MIDI;
+#endif
 using Spectrum.Visualizers;
 using XSerializer;
 
@@ -45,8 +46,10 @@ namespace Spectrum.LayerPipeline.Tests {
         EarthTextureFollowsSpotlight);
       Run("astronomy options and north heading are deterministic",
         AstronomyOptionsAndHeading);
+#if !PORTABLE_LAYER_PIPELINE
       Run("astronomy playback display updates stay transient",
         AstronomyPlaybackDisplayUpdatesStayTransient);
+#endif
       Run("simulator real view foreshortens the dome from above",
         SimulatorTopDownProjection);
       Run("dome topology stores both projections and unit normals",
@@ -74,12 +77,16 @@ namespace Spectrum.LayerPipeline.Tests {
         RuntimeSettingsPublishCompleteGenerations);
       Run("control storms avoid plan reconciliation and frame allocation",
         ControlStormAvoidsPlanWork);
+#if !PORTABLE_LAYER_PIPELINE
       Run("enabled operator isolates concurrent web and device generations",
         EnabledOperatorConcurrentSettingsAreIsolated);
+#endif
       Run("MIDI configuration bindings publish state commands",
         MidiBindingsPublishStateCommands);
+#if !PORTABLE_LAYER_PIPELINE
       Run("MIDI binding validation and deferred failures are contained",
         MidiBindingFailuresAreContained);
+#endif
       Run("compositor executes every operation in stack order", StackOrder);
       Run("scratch copies only mutable channels", ScratchCopiesChannelsOnly);
       Run("frame operations require shared topology", FramesRequireTopology);
@@ -193,7 +200,6 @@ namespace Spectrum.LayerPipeline.Tests {
     private static void BuiltInFeaturesLiveInPortableCore() {
       Type catalogType = typeof(LayerCatalog);
       Type runtimeType = typeof(global::Spectrum.Operator);
-      Type applicationType = typeof(global::Spectrum.MainWindow);
       Type coreType = typeof(global::Spectrum.BuiltInDomeLayerCatalog);
       Assert(catalogType.GetProperty("Default") == null,
         "Base still owns the application feature catalog");
@@ -201,8 +207,11 @@ namespace Spectrum.LayerPipeline.Tests {
         "typed built-in options are outside the portable core");
       Assert(coreType.Assembly == runtimeType.Assembly,
         "the runtime and portable feature metadata are split across assemblies");
+#if !PORTABLE_LAYER_PIPELINE
+      Type applicationType = typeof(global::Spectrum.MainWindow);
       Assert(coreType.Assembly != applicationType.Assembly,
         "portable runtime still compiles into the Windows application");
+#endif
       Assert(catalogType.Assembly.GetType(
           typeof(RadialLayerOptions).FullName) == null,
         "Base still contains built-in renderer option types");
@@ -962,6 +971,7 @@ namespace Spectrum.LayerPipeline.Tests {
           defaultOptions.ShowNighttimeSky &&
           defaultOptions.PlaybackSpeed == 1,
         "astronomy controls did not preserve their default appearance");
+#if !PORTABLE_LAYER_PIPELINE
       var astronomyRow = new global::Spectrum.DomeLayerRowViewModel {
         VisualizerKey = "astronomy",
       };
@@ -978,6 +988,7 @@ namespace Spectrum.LayerPipeline.Tests {
           astronomyRow.FireLabel == "Fire" &&
           astronomyRow.ClearLabel == "Clear",
         "triggerable layer actions were not exposed");
+#endif
       Assert(DomeLayerDate.TryDecode(defaultOptions.StartDate, out _),
         "astronomy start date did not default to a valid local date");
       Assert(DomeLayerDate.TryParse("2026-07-15", out double encodedDate) &&
@@ -1112,6 +1123,7 @@ namespace Spectrum.LayerPipeline.Tests {
       }
     }
 
+#if !PORTABLE_LAYER_PIPELINE
     private static void AstronomyPlaybackDisplayUpdatesStayTransient() {
       var descriptor = new DomeLayerParam {
         Key = "timeOffsetHours",
@@ -1142,6 +1154,7 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(param.Value == 14 && param.StoredValue == 14 && edits == 1,
         "astronomy time slider edit was not persisted");
     }
+#endif
 
     private static void PlanFreezesRendererInputs() {
       LayerSnapshot snapshot = SnapshotWithParameter("input-1", "speed", 1);
@@ -1591,6 +1604,7 @@ namespace Spectrum.LayerPipeline.Tests {
       GC.KeepAlive(checksum);
     }
 
+#if !PORTABLE_LAYER_PIPELINE
     private static void EnabledOperatorConcurrentSettingsAreIsolated() {
       var layers = new List<DomeLayerSettings>();
       for (int i = 0; i < StackValidator.MaxLayers; i++) {
@@ -1793,6 +1807,7 @@ namespace Spectrum.LayerPipeline.Tests {
       }
       return identity || reverse;
     }
+#endif
 
     private static void MidiBindingsPublishStateCommands() {
       var config = new global::Spectrum.SpectrumConfiguration();
@@ -1819,6 +1834,7 @@ namespace Spectrum.LayerPipeline.Tests {
         "the queued MIDI state command was not applied");
     }
 
+#if !PORTABLE_LAYER_PIPELINE
     private static void MidiBindingFailuresAreContained() {
       Configuration config = new ThrowingBrightnessConfiguration();
       ConfigurationEditor editor = (ConfigurationEditor)config;
@@ -1875,6 +1891,7 @@ namespace Spectrum.LayerPipeline.Tests {
           message.message.Contains("setter exploded")),
         "a deferred MIDI setter failure was not contained in the MIDI log");
     }
+#endif
 
     private static void StackOrder() {
       DomeTopology topology = OnePixelTopology();
@@ -5610,6 +5627,7 @@ namespace Spectrum.LayerPipeline.Tests {
       ) => this.Midi;
     }
 
+#if !PORTABLE_LAYER_PIPELINE
     /**
      * Keeps the Windows MIDI orchestration in the Windows-only integration
      * suite without opening Sanford or NAudio hardware handles. The portable
@@ -5640,6 +5658,7 @@ namespace Spectrum.LayerPipeline.Tests {
         set => throw new InvalidOperationException("setter exploded");
       }
     }
+#endif
 
     private sealed class InlineGateway : ApplicationStateDispatcher {
       public bool CheckAccess() => true;

@@ -43,6 +43,8 @@ namespace Spectrum.Host {
         stream => new XmlSerializer<SpectrumConfigurationDocument>()
           .Deserialize(stream).ToConfiguration());
 
+      ConsoleCancelEventHandler cancelHandler = null;
+      PosixSignalRegistration terminate = null;
       try {
         using var dispatcher =
           new DedicatedThreadApplicationStateDispatcher(
@@ -85,12 +87,11 @@ namespace Spectrum.Host {
 
         var shutdown = new TaskCompletionSource(
           TaskCreationOptions.RunContinuationsAsynchronously);
-        ConsoleCancelEventHandler cancelHandler = (_, eventArgs) => {
+        cancelHandler = (_, eventArgs) => {
           eventArgs.Cancel = true;
           shutdown.TrySetResult();
         };
         Console.CancelKeyPress += cancelHandler;
-        PosixSignalRegistration terminate = null;
         if (!OperatingSystem.IsWindows()) {
           terminate = PosixSignalRegistration.Create(
             PosixSignal.SIGTERM,
@@ -99,17 +100,19 @@ namespace Spectrum.Host {
               shutdown.TrySetResult();
             });
         }
-        try {
-          await shutdown.Task.ConfigureAwait(false);
-        } finally {
-          terminate?.Dispose();
-          Console.CancelKeyPress -= cancelHandler;
-        }
+        await shutdown.Task.ConfigureAwait(false);
         Console.WriteLine("Stopping Spectrum headless host...");
         return 0;
       } catch (Exception exception) {
         Console.Error.WriteLine("Spectrum headless host failed: " + exception);
         return 1;
+      } finally {
+        // Keep intercepting repeated signals until the await-using host above
+        // has finished service, runtime, and persistence shutdown.
+        terminate?.Dispose();
+        if (cancelHandler != null) {
+          Console.CancelKeyPress -= cancelHandler;
+        }
       }
     }
 
