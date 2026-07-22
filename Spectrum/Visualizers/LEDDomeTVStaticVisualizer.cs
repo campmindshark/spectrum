@@ -1,4 +1,3 @@
-using Spectrum.Audio;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using System;

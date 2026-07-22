@@ -12,15 +12,12 @@ using System.Collections.Generic;
 using System.Windows.Media;
 using Spectrum.Base;
 using System.ComponentModel;
-using System.Reflection;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 
 namespace Spectrum {
-
-  using Timer = System.Windows.Forms.Timer;
 
   public partial class MainWindow : Window {
 
@@ -64,30 +61,12 @@ namespace Spectrum {
       public string BindingTypeName { get; set; }
     }
 
-    private static readonly HashSet<string> configPropertiesToRebootOn = new HashSet<string>() {
+    private static readonly HashSet<string> ConfigPropertiesToRebootOn = new HashSet<string>() {
       nameof(SpectrumConfiguration.domeOutputInSeparateThread),
     };
-    // Property changes that never warrant a config save, derived from the one
-    // marker that already means "not persisted": [XmlIgnore]. Deriving it (vs.
-    // the old hand-maintained list) can't drift when a property is added — and
-    // it covers midiLog, whose forwarded change events used to trigger a
-    // (debounced) save for every MIDI message.
-    private static readonly HashSet<string> configPropertiesIgnored =
-      BuildNonPersistedPropertyNames();
-    private static HashSet<string> BuildNonPersistedPropertyNames() {
-      var names = new HashSet<string>();
-      foreach (PropertyInfo property in
-          typeof(SpectrumConfiguration).GetProperties()) {
-        if (property.GetCustomAttribute<
-              System.Xml.Serialization.XmlIgnoreAttribute>() != null) {
-          names.Add(property.Name);
-        }
-      }
-      return names;
-    }
-
     private Operator op;
     private SpectrumConfiguration config;
+    private SpectrumHost<Operator, Web.SpectrumWebHost> host;
     private ApplicationStateDispatcher applicationStateDispatcher;
     public static bool LoadingConfig { get; set; } = false;
     private List<int> midiDeviceIndices;
@@ -102,23 +81,26 @@ namespace Spectrum {
     private System.Windows.Threading.DispatcherTimer wandReceiverStatusTimer;
     private int? currentlyEditingPreset = null;
     private int? currentlyEditingBinding = null;
-    private Timer configSaveTimer = null;
-    private Web.WebServer webServer = null;
-    private Web.ConfigEventStream webEventStream = null;
     private Web.AdvisoryLockManager advisoryLocks = null;
     private Web.DomeCalibrationController domeCalibrationController = null;
     private const int WebServerPort = 8080;
     // Spectrum is distributed as a portable application, so keep its mutable
     // state beside the executable. AppContext.BaseDirectory is stable when the
     // process is launched from a shortcut or an unrelated working directory.
-    private static readonly string ConfigPath = Path.Combine(
-      AppContext.BaseDirectory, "spectrum_config.xml");
-    private static readonly string BackupConfigPath = Path.Combine(
-      AppContext.BaseDirectory, "spectrum_old_config.xml");
-    private static readonly string TemporaryConfigPath = Path.Combine(
-      AppContext.BaseDirectory, "spectrum_config.xml.tmp");
-    private static readonly string DefaultConfigPath = Path.Combine(
-      AppContext.BaseDirectory, "spectrum_default_config.xml");
+    private static readonly SpectrumConfigurationPaths ConfigPaths =
+      SpectrumConfigurationPaths.ForPortableDesktop(
+        AppContext.BaseDirectory);
+    private static readonly ConfigurationFileStore<SpectrumConfiguration>
+      ConfigStore = new ConfigurationFileStore<SpectrumConfiguration>(
+        ConfigPaths.PrimaryPath,
+        ConfigPaths.BackupPath,
+        ConfigPaths.DefaultPath,
+        (stream, value) =>
+          new XmlSerializer<SpectrumConfigurationDocument>().Serialize(
+            stream,
+            SpectrumConfigurationDocument.FromConfiguration(value)),
+        stream => new XmlSerializer<SpectrumConfigurationDocument>()
+          .Deserialize(stream).ToConfiguration());
     private static readonly string WindowPlacementPath = Path.Combine(
       AppContext.BaseDirectory, "spectrum_window_state.json");
     private string webServerError = null;
@@ -130,85 +112,12 @@ namespace Spectrum {
 
       this.LoadConfig();
       this.config.PropertyChanged += ConfigUpdated;
-      this.StartWebServer();
+      this.host.Start();
+      this.webServerError = this.host.ServiceStartError?.Message;
       this.InitializeReadinessDashboard();
     }
 
-    private void StartWebServer() {
-      var registry = Web.SpectrumParameters.BuildRegistry();
-      var controls = new Web.ControlService(
-        registry, this.applicationStateDispatcher, this.config);
-      // The event stream subscribes to config.PropertyChanged (and the
-      // Operator's EnabledChanged) and fans changes out to connected browsers
-      // over SSE.
-      this.webEventStream = new Web.ConfigEventStream(
-        registry, this.config, this.op, this.op.Telemetry,
-        this.op.BeatBroadcaster);
-      // Advisory locks guard modal ops (calibration, per-device test patterns)
-      // against concurrent maintenance users.
-      this.advisoryLocks = new Web.AdvisoryLockManager();
-      // The dome-mapping calibration flow: same state machine as
-      // DomeMappingWindow, driven over REST and guarded by the domeCalibration
-      // lease. Persisted config writes go through the same gateway; the
-      // transient cable selection is the Operator's shared calibration state.
-      this.domeCalibrationController = new Web.DomeCalibrationController(
-        this.applicationStateDispatcher, this.config,
-        this.op.DomeCalibration,
-        LEDs.LEDDomeOutput.NumCables);
-      // Read-only wand/orientation-device diagnostics (the web port of
-      // WandStatusWindow), plus its Calibrate All action through the gateway.
-      var wands = new Web.WandStatusController(
-        this.op.OrientationInput, this.applicationStateDispatcher, this.config);
-      // The global Start/Stop button: toggles the Operator's runtime Enabled
-      // flag (the same engine switch the native power button drives) through the
-      // gateway.
-      var operatorControl = new Web.OperatorController(
-        this.op, this.applicationStateDispatcher);
-      // The maintenance "Tap" tempo button: applies a browser-computed BPM as
-      // the human tap tempo (and switches the source to Human) through the
-      // gateway, the same as a native tap.
-      var tempo = new Web.TempoController(
-        this.config, this.op.BeatBroadcaster,
-        this.applicationStateDispatcher);
-      // The dome layer stack: whole-stack last-write-wins through the same
-      // gateway (replaces the old domeActiveVis dropdown, broadcast over SSE).
-      var layers = new Web.LayersController(
-        this.applicationStateDispatcher, this.config);
-      // Saved dome scenes: named snapshots of the stack + globals, saved/recalled
-      // through the same gateway and broadcast over the SSE "scenes" frame.
-      var scenes = new Web.SceneController(
-        this.applicationStateDispatcher, this.config);
-      // The color palette: the live eight-slot palette (whole-palette
-      // last-write-wins, broadcast over the SSE "palette" frame) plus named
-      // presets (parallel to scenes, broadcast over the "palettes" frame).
-      var palettes = new Web.PaletteController(
-        this.applicationStateDispatcher, this.config);
-      // Startup-only feature flag: when disabled no simulator service is
-      // constructed and WebServer maps no simulator routes.
-      var domeSimulator = this.config.webDomeSimulatorEnabled
-        ? new Web.WebDomeSimulator(this.op.DomeOutput)
-        : null;
-      this.webServer = new Web.WebServer(
-        controls, this.webEventStream, this.advisoryLocks,
-        this.domeCalibrationController, wands,
-        operatorControl, tempo, layers, scenes, palettes, domeSimulator,
-        WebServerPort);
-      try {
-        this.webServer.Start();
-        this.webServerError = null;
-      } catch (Exception e) {
-        this.webServerError = e.Message;
-        Debug.WriteLine("Web controller failed to start: " + e);
-        this.webEventStream?.Dispose();
-        this.webEventStream = null;
-        this.webServer = null;
-      }
-    }
-
     private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
-      if (configPropertiesToRebootOn.Contains(e.PropertyName)) {
-        this.op.Reboot();
-      }
       // The wand receiver-port combo has a host-dependent item set, so it can't
       // use the two-way WPF Bind() every other control gets. Instead re-run the
       // guarded repopulate + preselect when the value changes externally (e.g. a
@@ -230,9 +139,6 @@ namespace Spectrum {
         }));
       }
       this.Dispatcher.BeginInvoke(new Action(this.UpdateReadinessDashboard));
-      if (!configPropertiesIgnored.Contains(e.PropertyName)) {
-        this.EventuallySaveConfig();
-      }
     }
 
     private void HandleClose(object sender, EventArgs e) {
@@ -240,12 +146,12 @@ namespace Spectrum {
       this.op.Enabled = false;
       this.readinessTimer?.Stop();
       this.wandReceiverStatusTimer?.Stop();
-      // Fire-and-forget: Kestrel shuts down on background threads, and the
-      // process is exiting anyway, so don't block the UI thread waiting on it.
-      this.webServer?.StopAsync();
-      this.webEventStream?.Dispose();
       this.SaveWindowPlacement();
-      this.SaveConfig();
+      try {
+        this.host?.Dispose();
+      } catch (Exception error) {
+        App.LogException("Could not shut Spectrum down cleanly", error);
+      }
     }
 
     private void RestoreWindowPlacement() {
@@ -306,93 +212,33 @@ namespace Spectrum {
       }
     }
 
-    private void SaveConfig() {
-      if (MainWindow.LoadingConfig) {
-        return;
-      }
-      try {
-        // Serialize completely before touching the live file. File.Replace then
-        // swaps it atomically and creates the recovery backup in the same step.
-        using (FileStream stream = new FileStream(
-            TemporaryConfigPath, FileMode.Create)) {
-          new XmlSerializer<SpectrumConfigurationDocument>().Serialize(
-            stream,
-            SpectrumConfigurationDocument.FromConfiguration(this.config)
-          );
-          stream.Flush(true);
-        }
-        if (File.Exists(ConfigPath)) {
-          File.Replace(TemporaryConfigPath, ConfigPath, BackupConfigPath);
-        } else {
-          File.Move(TemporaryConfigPath, ConfigPath);
-        }
-      } catch (Exception e) {
-        App.LogException("Could not save Spectrum configuration", e);
-      } finally {
-        try {
-          if (File.Exists(TemporaryConfigPath)) {
-            File.Delete(TemporaryConfigPath);
-          }
-        } catch (Exception e) {
-          App.LogException("Could not clean up temporary configuration", e);
-        }
-      }
-    }
-
-    private void EventuallySaveConfig() {
-      lock (this.op) {
-        if (this.configSaveTimer == null) {
-          this.configSaveTimer = new Timer();
-          this.configSaveTimer.Interval = 100;
-          this.configSaveTimer.Tick += DelayedConfigSave;
-          this.configSaveTimer.Start();
-        }
-      }
-    }
-
-    private void DelayedConfigSave(object sender, EventArgs e) {
-      lock (this.op) {
-        this.SaveConfig();
-        this.configSaveTimer.Stop();
-        this.configSaveTimer.Dispose();
-        this.configSaveTimer = null;
-      }
-    }
-
     private void LoadConfig() {
       MainWindow.LoadingConfig = true;
 
-      string loadFile = null;
-      string[] candidates = new string[] {
-        ConfigPath,
-        BackupConfigPath,
-        DefaultConfigPath,
-      };
-      foreach (string candidate in candidates) {
-        if (!File.Exists(candidate)) {
-          continue;
-        }
-        try {
-          using (FileStream stream = File.OpenRead(candidate)) {
-            this.config = new XmlSerializer<SpectrumConfigurationDocument>(
-            ).Deserialize(stream).ToConfiguration();
-          }
-          loadFile = candidate;
-          break;
-        } catch (Exception e) {
-          Debug.WriteLine(
-            "Failed to load configuration from " + candidate + ": " + e);
-          this.config = null;
-        }
-      }
-      if (this.config == null) {
-        this.config = new SpectrumConfiguration();
-      }
       this.applicationStateDispatcher =
         new DispatcherApplicationStateDispatcher(
           this.Dispatcher);
-      this.config.AttachMutationDispatcher(this.applicationStateDispatcher);
-      this.op = new Operator(this.config, this.applicationStateDispatcher);
+      this.host = new SpectrumHost<Operator, Web.SpectrumWebHost>(
+        ConfigStore,
+        this.applicationStateDispatcher,
+        TimeSpan.FromMilliseconds(100),
+        (config, dispatcher) => new Operator(
+          config, dispatcher, new WindowsSpectrumInputFactory()),
+        (config, dispatcher, runtime) => new Web.SpectrumWebHost(
+          config, dispatcher, runtime, WebServerPort),
+        ConfigPropertiesToRebootOn,
+        saveEnabled: () => !MainWindow.LoadingConfig,
+        reportLoadFailure: failure => Debug.WriteLine(
+          "Failed to load configuration from " + failure.Path + ": " +
+          failure.Error),
+        reportSaveError: error => App.LogException(
+          "Could not save Spectrum configuration", error),
+        reportServiceStartError: error => Debug.WriteLine(
+          "Web controller failed to start: " + error));
+      this.config = this.host.Configuration;
+      this.op = this.host.Runtime;
+      this.advisoryLocks = this.host.Service.AdvisoryLocks;
+      this.domeCalibrationController = this.host.Service.DomeCalibration;
 
       this.RefreshAudioDevices(null, null);
       this.RefreshMidiDevices(null, null);

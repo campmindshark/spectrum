@@ -1,6 +1,4 @@
 ﻿using Spectrum.Base;
-using Spectrum.Audio;
-using Spectrum.MIDI;
 using Spectrum.LEDs;
 using System;
 using System.Collections.Generic;
@@ -13,8 +11,7 @@ namespace Spectrum {
      * to volume, beats, constant, or still. See RacerConfig below to configure the bands.
      */
     private readonly LayerRendererRuntime runtime;
-    private readonly AudioInput audio;
-    private readonly MidiInput midi;
+    private readonly IAudioLevelInput audio;
     private readonly BeatBroadcaster beat;
     private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
@@ -84,7 +81,7 @@ namespace Spectrum {
       // `speed` is the layer's speed param (formerly the global
       // domeVolumeRotationSpeed knob this visualizer borrowed); `beat` is the
       // live tempo service.
-      public void Move(double numSeconds, AudioInput audio, BeatBroadcaster beat, double speed) {
+      public void Move(double numSeconds, IAudioLevelInput audio, BeatBroadcaster beat, double speed) {
         // Could use classes for this, but eh.
         double revsPerSec =
           conf.rotation == Rotation.Volume ? RevsPerSecondVolume(audio, speed) :
@@ -133,17 +130,17 @@ namespace Spectrum {
         AccumulatedSeconds = 0;
       }
 
-      public double RevsPerSecondVolume(AudioInput audio, double speed) {
+      public double RevsPerSecondVolume(IAudioLevelInput audio, double speed) {
         // Square the volume to give a bigger umph.
         return audio.Volume + speed / 12;
       }
 
-      public double RevsPerSecondVolumeSquared(AudioInput audio, double speed) {
+      public double RevsPerSecondVolumeSquared(IAudioLevelInput audio, double speed) {
         // Square the volume to give a bigger umph.
         return audio.Volume * audio.Volume + speed / 12;
       }
 
-      public double RevsPerSecondBeats(AudioInput audio, BeatBroadcaster beat) {
+      public double RevsPerSecondBeats(IAudioLevelInput audio, BeatBroadcaster beat) {
         double BPS =
           // If we don't have a beet counter, fake it as 60 BPM.
           beat.MeasureLength == -1 ? 1 :
@@ -152,7 +149,7 @@ namespace Spectrum {
         // Make a full revolution after 4 beats.
         return 1.0 * BPS / 4;
       }
-      public double RevsPerSecondConstant(AudioInput audio, double speed) {
+      public double RevsPerSecondConstant(IAudioLevelInput audio, double speed) {
         return 1.0 * speed / 4;
       }
     }
@@ -212,14 +209,12 @@ namespace Spectrum {
 
     public LEDDomeRaceVisualizer(
      LayerRendererRuntime runtime,
-     AudioInput audio,
-     MidiInput midi,
+     IAudioLevelInput audio,
      BeatBroadcaster beat,
      DomeRenderContext dome
      ) {
       this.runtime = runtime;
       this.audio = audio;
-      this.midi = midi;
       this.beat = beat;
       this.dome = dome;
       // Create new racers.

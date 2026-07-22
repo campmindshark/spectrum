@@ -6,10 +6,8 @@
     <RootNamespace>Spectrum</RootNamespace>
     <AssemblyName>Spectrum</AssemblyName>
     <UseWPF>true</UseWPF>
-    <!-- ColorPicker uses System.Windows.Forms.ColorDialog / DialogResult,
-         MainWindow uses System.Windows.Forms.Timer. -->
+    <!-- ColorPicker uses System.Windows.Forms.ColorDialog / DialogResult. -->
     <UseWindowsForms>true</UseWindowsForms>
-    <DefineConstants>$(DefineConstants);SPECTRUM_FEATURES</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,11 +20,9 @@
     <None Include="Resources\s.PNG">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <EmbeddedResource Include="Resources\EarthTexture.png" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.IO.Ports" Version="10.0.0" />
     <PackageReference Include="WriteableBitmapEx" Version="1.6.11" />
     <PackageReference Include="XSerializer" Version="0.4.4" />
   </ItemGroup>
@@ -49,12 +45,24 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Feature schemas and typed options compile into the application host,
-         while Base compiles only their reusable contracts from these sources. -->
-    <Compile Include="..\Base\DomeLayerSettings.cs"
-             Link="Features\BuiltInLayerSchemas.cs" />
-    <Compile Include="..\Base\LayerRendererOptions.cs"
-             Link="Features\BuiltInLayerOptions.cs" />
+    <Compile Remove="SpectrumConfiguration.cs" />
+    <Compile Remove="SpectrumConfigurationDocument.cs" />
+    <Compile Remove="CobsCodec.cs" />
+    <Compile Remove="Color.cs" />
+    <Compile Remove="ConfigurationDomeLayerEnvironment.cs" />
+    <Compile Remove="Crc8.cs" />
+    <Compile Remove="DatagramHandler.cs" />
+    <Compile Remove="DomeCalibrationState.cs" />
+    <Compile Remove="DomeLayerCatalog.cs" />
+    <Compile Remove="DomeSurfaceGeometry.cs" />
+    <Compile Remove="DomeTestPatterns.cs" />
+    <Compile Remove="MathUtil.cs" />
+    <Compile Remove="Operator.cs" />
+    <Compile Remove="OrientationDevice.cs" />
+    <Compile Remove="OrientationInput.cs" />
+    <Compile Remove="WandSerialReceiver.cs" />
+    <Compile Remove="Visualizers\**\*.cs" />
+    <Compile Remove="Web\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -62,6 +70,7 @@
     <ProjectReference Include="..\Base\Base.csproj" />
     <ProjectReference Include="..\LEDs\LEDs.csproj" />
     <ProjectReference Include="..\MIDI\MIDI.csproj" />
+    <ProjectReference Include="..\Core\Spectrum.Core.csproj" />
   </ItemGroup>
 
 </Project>

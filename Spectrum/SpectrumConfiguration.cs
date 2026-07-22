@@ -158,7 +158,7 @@ namespace Spectrum {
     private ImmutableArray<DomeLayerView> _domeLayerStackView =
       ImmutableArray<DomeLayerView>.Empty;
     private static readonly LayerStackService layerStackService =
-      new LayerStackService(DomeLayerCatalog.Metadata);
+      new LayerStackService(BuiltInDomeLayerCatalog.Metadata);
     private LayerStackSnapshot _domeLayerStackSnapshot =
       LayerStackSnapshot.Empty;
     public ImmutableArray<DomeLayerView> domeLayerStack =>

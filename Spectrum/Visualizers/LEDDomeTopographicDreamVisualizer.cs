@@ -1,4 +1,3 @@
-using Spectrum.Audio;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
@@ -31,7 +30,7 @@ namespace Spectrum.Visualizers {
       new Vector3(0.62f, -0.18f, 0.76f));
 
     private readonly LayerRendererRuntime runtime;
-    private readonly AudioInput audio;
+    private readonly IAudioLevelInput audio;
     private readonly OrientationInput orientation;
     private readonly OrientationCenter orientationCenter;
     private readonly DomeRenderContext dome;
@@ -42,7 +41,7 @@ namespace Spectrum.Visualizers {
 
     public LEDDomeTopographicDreamVisualizer(
       LayerRendererRuntime runtime,
-      AudioInput audio,
+      IAudioLevelInput audio,
       OrientationInput orientation,
       OrientationCenter orientationCenter,
       DomeRenderContext dome

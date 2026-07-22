@@ -1,4 +1,3 @@
-using Spectrum.Audio;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
@@ -15,7 +14,7 @@ namespace Spectrum.Visualizers {
   // audio adds heat and separation, pinching elongated bodies into two lobes.
   class LEDDomeLavaLampSkyVisualizer : DomeLayerVisualizer {
     private readonly LayerRendererRuntime runtime;
-    private readonly AudioInput audio;
+    private readonly IAudioLevelInput audio;
     private readonly OrientationInput orientationInput;
     private readonly OrientationCenter orientationCenter;
     private readonly DomeRenderContext dome;
@@ -26,7 +25,7 @@ namespace Spectrum.Visualizers {
 
     public LEDDomeLavaLampSkyVisualizer(
       LayerRendererRuntime runtime,
-      AudioInput audio,
+      IAudioLevelInput audio,
       OrientationInput orientationInput,
       OrientationCenter orientationCenter,
       DomeRenderContext dome

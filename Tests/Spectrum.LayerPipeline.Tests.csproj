@@ -5,7 +5,11 @@
     <RootNamespace>Spectrum.LayerPipeline.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Portability\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Base\Base.csproj" />
+    <ProjectReference Include="..\Core\Spectrum.Core.csproj" />
     <ProjectReference Include="..\LEDs\LEDs.csproj" />
     <ProjectReference Include="..\Spectrum\Spectrum.csproj" />
   </ItemGroup>

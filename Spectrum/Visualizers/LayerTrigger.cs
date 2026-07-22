@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Diagnostics;
-using Spectrum.Audio;
 using Spectrum.Base;
 
 namespace Spectrum.Visualizers {
@@ -35,7 +34,7 @@ namespace Spectrum.Visualizers {
     private readonly DomeLayerEnvironment environment;
     private readonly OrientationInput orientationInput;
     private readonly BeatBroadcaster beat;
-    private readonly AudioInput audio;
+    private readonly IAudioLevelInput audio;
     private readonly LayerInstanceId instanceId;
 
     // Previous frame's actionFlag per device id, so a held button (flag stays
@@ -60,7 +59,7 @@ namespace Spectrum.Visualizers {
     public LayerTrigger(
       DomeLayerEnvironment environment, OrientationInput orientationInput,
       LayerInstanceId instanceId,
-      BeatBroadcaster beat = null, AudioInput audio = null
+      BeatBroadcaster beat = null, IAudioLevelInput audio = null
     ) {
       this.environment = environment;
       this.orientationInput = orientationInput;

@@ -1,4 +1,3 @@
-using Spectrum.Audio;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
@@ -17,7 +16,7 @@ namespace Spectrum.Visualizers {
   // agent away from the flock centroid, after which cohesion regroups it.
   class LEDDomeFireflySwarmVisualizer : DomeLayerVisualizer {
     private readonly LayerRendererRuntime runtime;
-    private readonly AudioInput audio;
+    private readonly IAudioLevelInput audio;
     private readonly OrientationInput orientationInput;
     private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
@@ -30,7 +29,7 @@ namespace Spectrum.Visualizers {
 
     public LEDDomeFireflySwarmVisualizer(
       LayerRendererRuntime runtime,
-      AudioInput audio,
+      IAudioLevelInput audio,
       OrientationInput orientationInput,
       DomeRenderContext dome
     ) {

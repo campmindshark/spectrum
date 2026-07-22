@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Spectrum.Base;
 using Spectrum.LEDs;
-using Spectrum.MIDI;
 using System.Diagnostics;
 
 namespace Spectrum {

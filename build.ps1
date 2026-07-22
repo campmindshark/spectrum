@@ -91,7 +91,15 @@ try {
   )
 
   if (-not $SkipTests) {
-    Write-Step "Running the .NET verification suite"
+    Write-Step "Running the portable .NET verification suite"
+    Invoke-Checked -FilePath "dotnet" -Arguments @(
+      "run",
+      "--project", "Tests/Portability/Spectrum.Portability.Tests.csproj",
+      "-c", $Configuration,
+      "--artifacts-path", $DotnetArtifactsDirectory
+    )
+
+    Write-Step "Running the Windows .NET verification suite"
     Invoke-Checked -FilePath "dotnet" -Arguments @(
       "run",
       "--project", "Tests/Spectrum.LayerPipeline.Tests.csproj",

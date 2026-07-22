@@ -14,14 +14,7 @@ namespace Spectrum.MIDI {
   using BindingKey = Tuple<MidiCommandType, int>;
   using InnerBindingKey = Tuple<int, MidiCommandType, int>;
 
-  public struct MidiCommand {
-    public int deviceIndex;
-    public MidiCommandType type;
-    public int index;
-    public double value;
-  }
-
-  public class MidiInput : Input {
+  public class MidiInput : IMidiControlInput {
 
     // Each key on the keyboard corresponds to a color
     private static readonly int[] colorFromColorIndex = new int[] {
@@ -44,7 +37,7 @@ namespace Spectrum.MIDI {
     private readonly bool connectHardware;
     private Dictionary<int, InputDevice> devices;
     private long appliedDeviceGeneration = -1;
-    internal long AppliedDeviceGeneration =>
+    public long AppliedDeviceGeneration =>
       Volatile.Read(ref this.appliedDeviceGeneration);
     private readonly ConcurrentQueue<MidiCommand> buffer;
     // Latest-value state has one deliberately chosen owner lock: driver
@@ -313,7 +306,7 @@ namespace Spectrum.MIDI {
       _ = this.DispatchBindingsAsync(command);
     }
 
-    internal Task DispatchBindingsAsync(MidiCommand command) {
+    public Task DispatchBindingsAsync(MidiCommand command) {
       ImmutableDictionary<InnerBindingKey, ImmutableArray<Binding>> snapshot =
         Volatile.Read(ref this.bindings);
       var tasks = new List<Task>();

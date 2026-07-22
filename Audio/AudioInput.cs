@@ -7,7 +7,7 @@ using NAudio.Wave;
 
 namespace Spectrum.Audio {
 
-  public class AudioInput : Input {
+  public class AudioInput : IAudioLevelInput {
 
     private int audioFormatSampleFrequency = 44100;
 

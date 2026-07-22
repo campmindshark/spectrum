@@ -130,16 +130,17 @@ namespace Spectrum.Web {
 
     public async Task StopAsync() {
       if (this.calibrationWatchdog != null) {
-        await this.calibrationWatchdog.DisposeAsync();
+        await this.calibrationWatchdog.DisposeAsync().ConfigureAwait(false);
         this.calibrationWatchdog = null;
       }
       if (this.app != null) {
-        await this.app.StopAsync(TimeSpan.FromSeconds(2));
+        await this.app.StopAsync(TimeSpan.FromSeconds(2))
+          .ConfigureAwait(false);
         if (this.hostLifetimeTask != null) {
-          await this.hostLifetimeTask;
+          await this.hostLifetimeTask.ConfigureAwait(false);
           this.hostLifetimeTask = null;
         }
-        await this.app.DisposeAsync();
+        await this.app.DisposeAsync().ConfigureAwait(false);
         this.app = null;
       }
     }

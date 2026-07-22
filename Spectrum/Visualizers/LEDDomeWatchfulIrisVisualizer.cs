@@ -1,4 +1,3 @@
-using Spectrum.Audio;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
@@ -38,7 +37,7 @@ namespace Spectrum.Visualizers {
     private const double BlinkAudioRise = 0.14;
 
     private readonly LayerRendererRuntime runtime;
-    private readonly AudioInput audio;
+    private readonly IAudioLevelInput audio;
     private readonly OrientationInput orientation;
     private readonly OrientationCenter orientationCenter;
     private readonly DomeRenderContext dome;
@@ -56,7 +55,7 @@ namespace Spectrum.Visualizers {
     public LEDDomeWatchfulIrisVisualizer(
       DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
-      AudioInput audio,
+      IAudioLevelInput audio,
       OrientationInput orientation,
       OrientationCenter orientationCenter,
       BeatBroadcaster beats,

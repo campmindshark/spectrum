@@ -4,8 +4,6 @@ using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Numerics;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace Spectrum.Visualizers {
 
@@ -52,7 +50,7 @@ namespace Spectrum.Visualizers {
       this.pixelPositions = this.buffer.BakePixelPositions();
 
       // Decode once when the first Earth renderer is constructed. Every Earth
-      // layer instance shares the immutable BGRA bytes through the static Lazy.
+      // layer instance shares the immutable RGB bytes through the static Lazy.
       _ = texture.Value;
     }
 
@@ -116,14 +114,12 @@ namespace Spectrum.Visualizers {
     private sealed class EarthTexture {
       private readonly int width;
       private readonly int height;
-      private readonly int stride;
-      private readonly byte[] bgra;
+      private readonly byte[] rgb;
 
-      private EarthTexture(int width, int height, int stride, byte[] bgra) {
+      private EarthTexture(int width, int height, byte[] rgb) {
         this.width = width;
         this.height = height;
-        this.stride = stride;
-        this.bgra = bgra;
+        this.rgb = rgb;
       }
 
       public static EarthTexture Load() {
@@ -131,20 +127,8 @@ namespace Spectrum.Visualizers {
           .GetManifestResourceStream(TextureResourceName)
           ?? throw new InvalidOperationException(
             "Missing embedded Earth texture " + TextureResourceName + ".");
-        var decoder = new PngBitmapDecoder(
-          stream, BitmapCreateOptions.PreservePixelFormat,
-          BitmapCacheOption.OnLoad);
-        BitmapSource source = decoder.Frames[0];
-        if (source.Format != PixelFormats.Bgra32) {
-          source = new FormatConvertedBitmap(
-            source, PixelFormats.Bgra32, null, 0);
-        }
-
-        int stride = source.PixelWidth * 4;
-        var pixels = new byte[stride * source.PixelHeight];
-        source.CopyPixels(pixels, stride, 0);
-        return new EarthTexture(
-          source.PixelWidth, source.PixelHeight, stride, pixels);
+        PortablePngImage source = PortablePngImage.Load(stream);
+        return new EarthTexture(source.Width, source.Height, source.Rgb);
       }
 
       public int Sample(double u, double v) {
@@ -159,9 +143,9 @@ namespace Spectrum.Visualizers {
         int y1 = Math.Clamp(y0 + 1, 0, this.height - 1);
         y0 = Math.Clamp(y0, 0, this.height - 1);
 
-        int r = InterpolateChannel(x0, x1, y0, y1, fx, fy, 2);
+        int r = InterpolateChannel(x0, x1, y0, y1, fx, fy, 0);
         int g = InterpolateChannel(x0, x1, y0, y1, fx, fy, 1);
-        int b = InterpolateChannel(x0, x1, y0, y1, fx, fy, 0);
+        int b = InterpolateChannel(x0, x1, y0, y1, fx, fy, 2);
         return (r << 16) | (g << 8) | b;
       }
 
@@ -169,12 +153,12 @@ namespace Spectrum.Visualizers {
         int x0, int x1, int y0, int y1,
         double fx, double fy, int channel
       ) {
-        double top = this.bgra[y0 * this.stride + x0 * 4 + channel] *
+        double top = this.rgb[(y0 * this.width + x0) * 3 + channel] *
           (1 - fx) +
-          this.bgra[y0 * this.stride + x1 * 4 + channel] * fx;
-        double bottom = this.bgra[y1 * this.stride + x0 * 4 + channel] *
+          this.rgb[(y0 * this.width + x1) * 3 + channel] * fx;
+        double bottom = this.rgb[(y1 * this.width + x0) * 3 + channel] *
           (1 - fx) +
-          this.bgra[y1 * this.stride + x1 * 4 + channel] * fx;
+          this.rgb[(y1 * this.width + x1) * 3 + channel] * fx;
         return (int)Math.Round(top * (1 - fy) + bottom * fy);
       }
 

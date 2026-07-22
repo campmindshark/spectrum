@@ -1,0 +1,25 @@
+[Unit]
+Description=Spectrum headless lighting controller
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=spectrum
+Group=spectrum
+WorkingDirectory=/opt/spectrum
+StateDirectory=spectrum
+StateDirectoryMode=0750
+ExecStart=/opt/spectrum/Spectrum.Host --data-dir /var/lib/spectrum --port 8080
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

@@ -20,8 +20,8 @@ namespace Spectrum.LayerPipeline.Tests {
 
     private static void Main() {
       Run("catalog metadata is unique", CatalogIsUnique);
-      Run("built-in features live at the application composition root",
-        BuiltInFeaturesLiveInApplicationAssembly);
+      Run("built-in feature metadata lives in the portable core",
+        BuiltInFeaturesLiveInPortableCore);
       Run("tunnel parameters compile and clamp", TunnelParametersCompile);
       Run("Ripple and Stamp rings use angular surface distance",
         OrientationRingsUseAngularDistance);
@@ -83,6 +83,8 @@ namespace Spectrum.LayerPipeline.Tests {
       Run("compositor executes every operation in stack order", StackOrder);
       Run("scratch copies only mutable channels", ScratchCopiesChannelsOnly);
       Run("frame operations require shared topology", FramesRequireTopology);
+      Run("operator consumes injected platform inputs",
+        OperatorUsesInjectedPlatformInputs);
       Run("operator creates independent duplicate renderers", DuplicateRenderers);
       Run("operator reboot notifications do not hold the renderer lock",
         RebootNotificationsAreUnlocked);
@@ -188,13 +190,19 @@ namespace Spectrum.LayerPipeline.Tests {
       }
     }
 
-    private static void BuiltInFeaturesLiveInApplicationAssembly() {
+    private static void BuiltInFeaturesLiveInPortableCore() {
       Type catalogType = typeof(LayerCatalog);
-      Type applicationType = typeof(global::Spectrum.Operator);
+      Type runtimeType = typeof(global::Spectrum.Operator);
+      Type applicationType = typeof(global::Spectrum.MainWindow);
+      Type coreType = typeof(global::Spectrum.BuiltInDomeLayerCatalog);
       Assert(catalogType.GetProperty("Default") == null,
         "Base still owns the application feature catalog");
-      Assert(typeof(RadialLayerOptions).Assembly == applicationType.Assembly,
-        "typed built-in options still compile into Base");
+      Assert(typeof(RadialLayerOptions).Assembly == coreType.Assembly,
+        "typed built-in options are outside the portable core");
+      Assert(coreType.Assembly == runtimeType.Assembly,
+        "the runtime and portable feature metadata are split across assemblies");
+      Assert(coreType.Assembly != applicationType.Assembly,
+        "portable runtime still compiles into the Windows application");
       Assert(catalogType.Assembly.GetType(
           typeof(RadialLayerOptions).FullName) == null,
         "Base still contains built-in renderer option types");
@@ -1603,7 +1611,9 @@ namespace Spectrum.LayerPipeline.Tests {
       var controller = new global::Spectrum.Web.LayersController(
         dispatcher, config);
       var runtime = new global::Spectrum.Operator(
-        config, dispatcher, connectHardware: false);
+        config, dispatcher,
+        new DisconnectedWindowsMidiInputFactory(),
+        connectHardware: false);
       var settings = (IRuntimeSettingsConfiguration)config;
       long transportGeneration =
         settings.DomeOutputSettingsSnapshot.TransportGeneration;
@@ -1919,6 +1929,25 @@ namespace Spectrum.LayerPipeline.Tests {
         rejected = true;
       }
       Assert(rejected, "mismatched logical frames were copied by index");
+    }
+
+    private static void OperatorUsesInjectedPlatformInputs() {
+      var config = ConfigurationWithLayers(
+        Layer("volume", "injected-audio"));
+      var factory = new FakeSpectrumInputFactory();
+      var runtime = new global::Spectrum.Operator(
+        config, new InlineGateway(), factory);
+
+      Assert(ReferenceEquals(runtime.AudioInput, factory.Audio) &&
+          ReferenceEquals(runtime.MidiInput, factory.Midi) &&
+          ReferenceEquals(runtime.MidiLog, factory.Midi.MidiLog),
+        "operator replaced an injected platform input");
+      DomeLayerVisualizer volume = runtime.DomeOutput.GetVisualizers()
+        .OfType<DomeLayerVisualizer>()
+        .Single(layer => layer.LayerKey == "volume");
+      Assert(volume.GetInputs().Length == 1 &&
+          ReferenceEquals(volume.GetInputs()[0], factory.Audio),
+        "renderer catalog did not consume the portable audio contract");
     }
 
     private static void DuplicateRenderers() {
@@ -5542,6 +5571,66 @@ namespace Spectrum.LayerPipeline.Tests {
       public bool AlwaysActive => false;
       public bool Enabled => true;
       public void OperatorUpdate() { }
+    }
+
+    private sealed class FakeAudioLevelInput : IAudioLevelInput {
+      public bool Active { get; set; }
+      public bool AlwaysActive => true;
+      public bool Enabled => true;
+      public float Volume => 0.25f;
+      public void OperatorUpdate() { }
+    }
+
+    private sealed class FakeMidiControlInput : IMidiControlInput {
+      public bool Active { get; set; }
+      public bool AlwaysActive => true;
+      public bool Enabled => true;
+      public ObservableMidiLog MidiLog { get; } = new ObservableMidiLog();
+      public long AppliedDeviceGeneration => 0;
+      public Task DispatchBindingsAsync(MidiCommand command) =>
+        Task.CompletedTask;
+      public void OperatorUpdate() { }
+    }
+
+    private sealed class FakeSpectrumInputFactory : ISpectrumInputFactory {
+      public FakeAudioLevelInput Audio { get; } =
+        new FakeAudioLevelInput();
+      public FakeMidiControlInput Midi { get; } =
+        new FakeMidiControlInput();
+
+      public IAudioLevelInput CreateAudioInput(
+        Configuration config,
+        BeatBroadcaster beat
+      ) => this.Audio;
+
+      public IMidiControlInput CreateMidiInput(
+        Configuration config,
+        BeatBroadcaster beat,
+        ApplicationStateDispatcher stateDispatcher
+      ) => this.Midi;
+    }
+
+    /**
+     * Keeps the Windows MIDI orchestration in the Windows-only integration
+     * suite without opening Sanford or NAudio hardware handles. The portable
+     * runtime itself no longer constructs these adapters.
+     */
+    private sealed class DisconnectedWindowsMidiInputFactory :
+      ISpectrumInputFactory {
+      private readonly DisabledSpectrumInputFactory disabled =
+        new DisabledSpectrumInputFactory();
+
+      public IAudioLevelInput CreateAudioInput(
+        Configuration config,
+        BeatBroadcaster beat
+      ) => this.disabled.CreateAudioInput(config, beat);
+
+      public IMidiControlInput CreateMidiInput(
+        Configuration config,
+        BeatBroadcaster beat,
+        ApplicationStateDispatcher stateDispatcher
+      ) => new global::Spectrum.MIDI.MidiInput(
+        config, beat, stateDispatcher, connectHardware: false);
     }
 
     private sealed class ThrowingBrightnessConfiguration :

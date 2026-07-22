@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Spectrum.Base;
 using Spectrum.LEDs;
-using Spectrum.Audio;
 using System.Diagnostics;
 
 namespace Spectrum {
@@ -14,7 +13,7 @@ namespace Spectrum {
 
     private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
-    private readonly AudioInput audio;
+    private readonly IAudioLevelInput audio;
     private readonly BeatBroadcaster beat;
     private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
@@ -44,7 +43,7 @@ namespace Spectrum {
     public LEDDomeVolumeVisualizer(
       DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
-      AudioInput audio,
+      IAudioLevelInput audio,
       BeatBroadcaster beat,
       DomeRenderContext dome
     ) {

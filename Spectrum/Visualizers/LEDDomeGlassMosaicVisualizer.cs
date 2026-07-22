@@ -1,4 +1,3 @@
-using Spectrum.Audio;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using Spectrum.Visualizers;
@@ -22,7 +21,7 @@ namespace Spectrum {
 
     private readonly DomeLayerEnvironment environment;
     private readonly LayerRendererRuntime runtime;
-    private readonly AudioInput audio;
+    private readonly IAudioLevelInput audio;
     private readonly OrientationInput orientationInput;
     private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
@@ -36,7 +35,7 @@ namespace Spectrum {
     public LEDDomeGlassMosaicVisualizer(
       DomeLayerEnvironment environment,
       LayerRendererRuntime runtime,
-      AudioInput audio,
+      IAudioLevelInput audio,
       OrientationInput orientationInput,
       BeatBroadcaster beats,
       DomeRenderContext dome

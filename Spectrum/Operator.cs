@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Threading;
 using Spectrum.Base;
-using Spectrum.Audio;
 using Spectrum.LEDs;
-using Spectrum.MIDI;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.ComponentModel;
@@ -13,7 +11,7 @@ using Spectrum.Visualizers;
 
 namespace Spectrum {
 
-  public class Operator {
+  public class Operator : ISpectrumHostRuntime {
 
     // Keeps the existing headless/test construction path synchronous. The WPF
     // host supplies its real dispatcher through the overload below.
@@ -55,7 +53,7 @@ namespace Spectrum {
     // live orientation-device state. Stable for the Operator's lifetime — Reboot
     // only toggles threads, it doesn't rebuild this instance.
     public OrientationInput OrientationInput { get; }
-    internal MidiInput MidiInput { get; }
+    internal IMidiControlInput MidiInput { get; }
     // Live runtime state and services, split off Configuration (which carries
     // only persisted settings — arch_issues item 5). All stable for the
     // Operator's lifetime, like OrientationInput above:
@@ -120,13 +118,15 @@ namespace Spectrum {
     private readonly HashSet<Output> outputActivationFailures = new HashSet<Output>();
 
     public Operator(Configuration config) : this(
-      config, new ImmediateApplicationStateDispatcher()) {
+      config,
+      new ImmediateApplicationStateDispatcher(),
+      new DisabledSpectrumInputFactory()) {
     }
 
     public Operator(
       Configuration config,
       ApplicationStateDispatcher stateDispatcher
-    ) : this(config, stateDispatcher, true) {
+    ) : this(config, stateDispatcher, new DisabledSpectrumInputFactory()) {
     }
 
     // Production construction connects the physical adapters. The internal
@@ -136,9 +136,31 @@ namespace Spectrum {
       Configuration config,
       ApplicationStateDispatcher stateDispatcher,
       bool connectHardware
+    ) : this(
+      config,
+      stateDispatcher,
+      new DisabledSpectrumInputFactory(),
+      connectHardware) {
+    }
+
+    public Operator(
+      Configuration config,
+      ApplicationStateDispatcher stateDispatcher,
+      ISpectrumInputFactory inputFactory
+    ) : this(config, stateDispatcher, inputFactory, true) {
+    }
+
+    internal Operator(
+      Configuration config,
+      ApplicationStateDispatcher stateDispatcher,
+      ISpectrumInputFactory inputFactory,
+      bool connectHardware
     ) {
       if (stateDispatcher == null) {
         throw new ArgumentNullException(nameof(stateDispatcher));
+      }
+      if (inputFactory == null) {
+        throw new ArgumentNullException(nameof(inputFactory));
       }
       this.config = config;
       this.showStateSource = config as IDomeShowStateConfiguration ??
@@ -158,12 +180,15 @@ namespace Spectrum {
       this.completedFramesInWindow = 0;
 
       this.inputs = new List<Input>();
-      var audio = new AudioInput(
-        config, this.BeatBroadcaster, connectHardware);
+      IAudioLevelInput audio = inputFactory.CreateAudioInput(
+        config, this.BeatBroadcaster) ?? throw new InvalidOperationException(
+          "The platform input factory returned no audio input.");
       this.AudioInput = audio;
       this.inputs.Add(audio);
-      var midi = new MidiInput(
-        config, this.BeatBroadcaster, stateDispatcher, connectHardware);
+      IMidiControlInput midi = inputFactory.CreateMidiInput(
+        config, this.BeatBroadcaster, stateDispatcher) ??
+        throw new InvalidOperationException(
+          "The platform input factory returned no MIDI input.");
       this.inputs.Add(midi);
       this.MidiInput = midi;
       this.MidiLog = midi.MidiLog;
@@ -214,7 +239,7 @@ namespace Spectrum {
         dome
       ));
       this.layerCatalog = DomeLayerCatalog.Create(
-        this.layerEnvironment, audio, midi, orientation, orientationCenter,
+        this.layerEnvironment, audio, orientation, orientationCenter,
         this.BeatBroadcaster, dome);
       this.layerRendererStore = new LayerRendererStore(this.layerCatalog);
       this.config.PropertyChanged += this.OnLayerConfigurationChanged;
@@ -229,7 +254,7 @@ namespace Spectrum {
 
     // Live input signal for readiness surfaces. AudioInput owns capture state;
     // exposing the instance avoids duplicating device or meter logic in UI code.
-    public AudioInput AudioInput { get; }
+    public IAudioLevelInput AudioInput { get; }
 
     private void OnLayerConfigurationChanged(
       object sender, PropertyChangedEventArgs e
