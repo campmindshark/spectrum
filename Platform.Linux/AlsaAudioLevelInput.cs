@@ -20,6 +20,7 @@ namespace Spectrum.Platform.Linux {
     private readonly object lifecycleLock = new object();
     private readonly IRuntimeSettingsConfiguration runtimeSettings;
     private readonly IAlsaApi alsa;
+    private readonly IPcmBeatTracker beatTracker;
     private readonly TimeSpan retryDelay;
     private CancellationTokenSource cancellation;
     private Thread worker;
@@ -29,19 +30,28 @@ namespace Spectrum.Platform.Linux {
     private string discoveryError;
     private bool disposed;
 
-    public AlsaAudioLevelInput(Configuration config) : this(
-      config, new AlsaApi(), DefaultRetryDelay) {
+    public AlsaAudioLevelInput(
+      Configuration config,
+      BeatBroadcaster beat
+    ) : this(
+      config,
+      new AlsaApi(),
+      new MadmomPcmBeatTracker(beat),
+      DefaultRetryDelay) {
     }
 
     internal AlsaAudioLevelInput(
       Configuration config,
       IAlsaApi alsa,
+      IPcmBeatTracker beatTracker,
       TimeSpan retryDelay
     ) {
       this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
         throw new ArgumentException(
           "ALSA audio requires immutable runtime settings.", nameof(config));
       this.alsa = alsa ?? throw new ArgumentNullException(nameof(alsa));
+      this.beatTracker = beatTracker ??
+        throw new ArgumentNullException(nameof(beatTracker));
       if (retryDelay < TimeSpan.Zero) {
         throw new ArgumentOutOfRangeException(nameof(retryDelay));
       }
@@ -72,6 +82,9 @@ namespace Spectrum.Platform.Linux {
             this.worker.Start();
           } else {
             this.cancellation.Cancel();
+            // Stop the child before joining capture. If it has stopped reading
+            // stdin, terminating it releases any pending pipe write promptly.
+            this.beatTracker.Enabled = false;
             threadToJoin = this.worker;
             this.worker = null;
           }
@@ -95,7 +108,10 @@ namespace Spectrum.Platform.Linux {
     public string BackendName => "ALSA";
     public string LastError =>
       Volatile.Read(ref this.discoveryError) ??
-      Volatile.Read(ref this.captureError);
+      Volatile.Read(ref this.captureError) ??
+      (this.runtimeSettings.AudioSettingsSnapshot.BeatInput == 1
+        ? this.beatTracker.LastError
+        : null);
 
     public IReadOnlyList<AudioCaptureDevice> GetAvailableDevices() {
       try {
@@ -118,6 +134,7 @@ namespace Spectrum.Platform.Linux {
         }
       }
       this.Active = false;
+      this.beatTracker.Dispose();
       lock (this.lifecycleLock) {
         this.disposed = true;
       }
@@ -125,7 +142,10 @@ namespace Spectrum.Platform.Linux {
 
     private void CaptureLoop(CancellationToken stop) {
       while (!stop.IsCancellationRequested) {
-        string deviceId = this.runtimeSettings.AudioSettingsSnapshot.DeviceId;
+        AudioSettingsSnapshot settings =
+          this.runtimeSettings.AudioSettingsSnapshot;
+        this.beatTracker.Enabled = settings.BeatInput == 1;
+        string deviceId = settings.DeviceId;
         if (string.IsNullOrWhiteSpace(deviceId)) {
           Volatile.Write(
             ref this.captureError, "No ALSA capture device is selected.");
@@ -146,6 +166,10 @@ namespace Spectrum.Platform.Linux {
             if (sampleCount > 0) {
               Volatile.Write(
                 ref this.volume, PeakLevel(samples, sampleCount));
+              this.beatTracker.Enabled =
+                this.runtimeSettings.AudioSettingsSnapshot.BeatInput == 1;
+              this.beatTracker.Write(
+                samples, sampleCount, capture.Channels);
             }
           }
         } catch (Exception error) {
@@ -156,6 +180,7 @@ namespace Spectrum.Platform.Linux {
           }
         }
       }
+      this.beatTracker.Enabled = false;
       Volatile.Write(ref this.volume, 0);
     }
 

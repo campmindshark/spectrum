@@ -18,7 +18,10 @@ namespace Spectrum.Portability.Tests {
   internal static class Program {
     private static int failures;
 
-    private static int Main() {
+    private static int Main(string[] args) {
+      if (args.Length == 1 && args[0] == "--fake-pcm-tracker") {
+        return RunFakePcmTracker();
+      }
       Run("headless state dispatcher owns one dedicated thread",
         DedicatedThreadOwnership);
       Run("headless state dispatcher serializes concurrent commands",
@@ -39,6 +42,10 @@ namespace Spectrum.Portability.Tests {
         MadmomRuntimeDiscovery);
       Run("Linux ALSA input discovers devices and publishes PCM peak level",
         LinuxAlsaAudioInput);
+      Run("Linux Madmom input consumes the owned ALSA PCM stream",
+        LinuxMadmomPcmInput);
+      Run("Linux Madmom process consumes PCM and publishes beats",
+        LinuxMadmomProcessLifecycle);
       Run("portable Pro DJ Link input receives UDP beats",
         PortableProDjLinkInput);
       Run("portable core compiles built-in layer configuration",
@@ -309,8 +316,9 @@ namespace Spectrum.Portability.Tests {
         audioDeviceID = "hw:test,0",
       };
       var api = new FakeAlsaApi();
+      var tracker = new FakePcmBeatTracker();
       using var input = new AlsaAudioLevelInput(
-        config, api, TimeSpan.FromMilliseconds(5));
+        config, api, tracker, TimeSpan.FromMilliseconds(5));
 
       IReadOnlyList<AudioCaptureDevice> devices =
         input.GetAvailableDevices();
@@ -331,8 +339,9 @@ namespace Spectrum.Portability.Tests {
         "stopping ALSA capture left a stale peak level");
 
       api.FailOpen = true;
+      var failingTracker = new FakePcmBeatTracker();
       using var failing = new AlsaAudioLevelInput(
-        config, api, TimeSpan.FromMilliseconds(5));
+        config, api, failingTracker, TimeSpan.FromMilliseconds(5));
       failing.Active = true;
       Assert(SpinWait.SpinUntil(
           () => failing.LastError?.Contains("test device unavailable") == true,
@@ -342,6 +351,139 @@ namespace Spectrum.Portability.Tests {
       Assert(failing.LastError?.Contains("test device unavailable") == true,
         "device polling erased the active ALSA capture failure");
       failing.Active = false;
+    }
+
+    private static void LinuxMadmomPcmInput() {
+      var config = new global::Spectrum.SpectrumConfiguration {
+        audioDeviceID = "hw:test,0",
+        beatInput = 1,
+      };
+      var api = new FakeAlsaApi();
+      var tracker = new FakePcmBeatTracker {
+        LastErrorValue = "test tracker unavailable",
+      };
+      using var input = new AlsaAudioLevelInput(
+        config, api, tracker, TimeSpan.FromMilliseconds(5));
+      input.Active = true;
+      Assert(SpinWait.SpinUntil(
+          () => tracker.WriteCount > 0,
+          TimeSpan.FromSeconds(2)),
+        "the selected Madmom source did not receive ALSA PCM");
+      Assert(tracker.Enabled && tracker.LastChannels == 2 &&
+          tracker.LastSampleCount > 0,
+        "the ALSA worker published the wrong PCM shape to Madmom");
+      Assert(input.LastError == "test tracker unavailable",
+        "the audio health surface hid the Madmom process error");
+
+      config.beatInput = 0;
+      Assert(SpinWait.SpinUntil(
+          () => !tracker.Enabled,
+          TimeSpan.FromSeconds(2)),
+        "changing tempo source did not stop the Madmom process");
+      Assert(input.LastError == null,
+        "a disabled Madmom source left a stale audio health error");
+      input.Active = false;
+
+      short[] stereo = {
+        short.MaxValue, -short.MaxValue,
+        short.MinValue, short.MinValue,
+      };
+      byte[] encoded = null;
+      int byteCount = MadmomPcmBeatTracker.EncodeMonoPcm(
+        stereo, stereo.Length, channels: 2, ref encoded);
+      Assert(byteCount == 4 &&
+          encoded[0] == 0 && encoded[1] == 0 &&
+          encoded[2] == 0 && encoded[3] == 0x80,
+        "stereo ALSA PCM was not downmixed to signed-16-bit little endian");
+
+      Assert(MadmomPcmBeatTracker.TryParseBeat(
+          "BEAT:12.345", out long milliseconds) &&
+          milliseconds == 12345 &&
+          !MadmomPcmBeatTracker.TryParseBeat("BEAT:not-a-number", out _),
+        "Madmom stdout beat parsing accepted an invalid event");
+      var runtime = new MadmomRuntimePaths(
+        "/runtime/bin/python", "/runtime/bin/DBNBeatTracker");
+      System.Diagnostics.ProcessStartInfo start =
+        MadmomPcmBeatTracker.CreateStartInfo(runtime);
+      Assert(start.RedirectStandardInput &&
+          start.RedirectStandardOutput &&
+          start.RedirectStandardError &&
+          start.ArgumentList.Count == 3 &&
+          start.ArgumentList[0] == runtime.TrackerPath &&
+          start.ArgumentList[1] == "--pcm_stdin" &&
+          start.ArgumentList[2] == "online",
+        "the Linux Madmom child was not configured for owned PCM stdin");
+    }
+
+    private static void LinuxMadmomProcessLifecycle() {
+      var config = new global::Spectrum.SpectrumConfiguration {
+        audioDeviceID = "hw:test,0",
+        beatInput = 1,
+      };
+      var beat = new BeatBroadcaster(config);
+      using var tracker = new MadmomPcmBeatTracker(
+        beat,
+        CreateFakePcmTrackerStartInfo,
+        TimeSpan.FromSeconds(10));
+      var api = new FakeAlsaApi();
+      using var input = new AlsaAudioLevelInput(
+        config, api, tracker, TimeSpan.FromMilliseconds(5));
+
+      input.Active = true;
+      Assert(SpinWait.SpinUntil(
+          () => beat.MeasureLength == 500,
+          TimeSpan.FromSeconds(5)),
+        "Madmom child stdout did not publish its two 120 BPM beat events");
+      Assert(SpinWait.SpinUntil(
+          () => !string.IsNullOrWhiteSpace(input.LastError),
+          TimeSpan.FromSeconds(5)),
+        "an unexpected Madmom child exit was not reported");
+      Assert(input.LastError.Contains("Madmom", StringComparison.Ordinal),
+        "the Madmom child failure was reported as the wrong health error: " +
+        input.LastError);
+      input.Active = false;
+    }
+
+    private static System.Diagnostics.ProcessStartInfo
+      CreateFakePcmTrackerStartInfo() {
+      string executable = Environment.ProcessPath ??
+        throw new InvalidOperationException(
+          "The portability test process path is unavailable.");
+      var start = new System.Diagnostics.ProcessStartInfo {
+        FileName = executable,
+        UseShellExecute = false,
+        RedirectStandardInput = true,
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        CreateNoWindow = true,
+      };
+      if (string.Equals(
+          Path.GetFileNameWithoutExtension(executable),
+          "dotnet",
+          StringComparison.OrdinalIgnoreCase)) {
+        start.ArgumentList.Add(
+          typeof(Program).Assembly.Location);
+      }
+      start.ArgumentList.Add("--fake-pcm-tracker");
+      return start;
+    }
+
+    private static int RunFakePcmTracker() {
+      var buffer = new byte[4];
+      int received = 0;
+      Stream input = Console.OpenStandardInput();
+      while (received < buffer.Length) {
+        int count = input.Read(buffer, received, buffer.Length - received);
+        if (count == 0) {
+          return 3;
+        }
+        received += count;
+      }
+      Console.WriteLine("BEAT:0.500");
+      Console.WriteLine("BEAT:1.000");
+      Console.Out.Flush();
+      Thread.Sleep(100);
+      return 0;
     }
 
     private static void PortableProDjLinkInput() {
@@ -658,6 +800,39 @@ namespace Spectrum.Portability.Tests {
       }
 
       public void Dispose() { }
+    }
+
+    private sealed class FakePcmBeatTracker : IPcmBeatTracker {
+      private int enabled;
+      private int writeCount;
+      private int lastChannels;
+      private int lastSampleCount;
+
+      public bool Enabled {
+        get => Volatile.Read(ref this.enabled) != 0;
+        set => Volatile.Write(ref this.enabled, value ? 1 : 0);
+      }
+
+      public string LastError => this.LastErrorValue;
+      public string LastErrorValue { get; set; }
+      public int WriteCount => Volatile.Read(ref this.writeCount);
+      public int LastChannels => Volatile.Read(ref this.lastChannels);
+      public int LastSampleCount => Volatile.Read(ref this.lastSampleCount);
+
+      public void Write(
+        short[] samples,
+        int sampleCount,
+        int channels
+      ) {
+        if (!this.Enabled) {
+          return;
+        }
+        Volatile.Write(ref this.lastChannels, channels);
+        Volatile.Write(ref this.lastSampleCount, sampleCount);
+        Interlocked.Increment(ref this.writeCount);
+      }
+
+      public void Dispose() => this.Enabled = false;
     }
 
     private sealed class FakeHostService :

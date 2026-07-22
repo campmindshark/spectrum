@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Audio" />
+    <InternalsVisibleTo Include="Spectrum.Platform.Linux" />
     <InternalsVisibleTo Include="Spectrum.Portability.Tests" />
   </ItemGroup>
 

@@ -2,15 +2,19 @@
 
 The self-contained `linux-x64` archive runs the browser-controlled headless
 host without requiring a system-wide .NET installation. Audio and MIDI inputs
-use different readiness levels: native ALSA audio-level capture is available,
-while MIDI remains disabled. The browser simulator, OPC output, UDP orientation
-input, and USB serial wand input remain available.
+use different readiness levels: native ALSA audio-level capture and Madmom beat
+tracking are available, while MIDI remains disabled. The browser simulator,
+OPC output, UDP orientation input, and USB serial wand input remain available.
 
 The archive also includes a relocatable CPython 3.11 Madmom runtime with the
 Linux Cython extensions and PyAudio under `Madmom/runtime`. The runtime is
-packaged and file-input qualified, but the headless host does not start it yet:
-the stable ALSA PCM selected for level capture still needs a reliable mapping
-to Madmom's PortAudio device identity.
+packaged and qualified with both file and raw-PCM inputs. When Madmom is the
+selected tempo source, the headless host starts that packaged tracker and feeds
+it a mono copy of the PCM already captured by ALSA. ALSA remains the only owner
+of the hardware device, so saved stable PCM names never need to be translated
+to PortAudio's independently enumerated indices. Tracker startup, pipe, and
+exit failures are contained, reported on the audio maintenance page, and
+retried while the source remains selected.
 
 The self-contained .NET archive still uses the distribution's ALSA shared
 library and C++ runtime. The packaged Python audio adapter also uses

@@ -133,8 +133,8 @@ namespace Spectrum.Host {
       public const string Usage =
         "Usage: Spectrum.Host [--data-dir PATH] [--port PORT] [--check]\n" +
         "\n" +
-        "Runs the browser-controlled Spectrum engine with ALSA audio on " +
-        "Linux and MIDI disabled.\n" +
+        "Runs the browser-controlled Spectrum engine with ALSA audio and " +
+        "Madmom beat tracking on Linux; MIDI is disabled.\n" +
         "Configuration defaults to SPECTRUM_DATA_DIR, XDG_CONFIG_HOME/" +
         "spectrum,\n" +
         "or ~/.config/spectrum. --check validates composition without " +

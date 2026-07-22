@@ -4,7 +4,8 @@ Spectrum is a lighting-control application written in C#. Its desktop frontend
 and MIDI adapter are Windows-only. The lighting engine, browser controller,
 simulator, OPC output, orientation inputs, ALSA audio-level capture, and
 headless host run on Linux. The Linux release also carries a native Madmom
-runtime, though live Madmom capture is not wired to the host yet.
+runtime; the host feeds it the PCM already captured by ALSA so it does not need
+to enumerate or open the device a second time.
 
 ## Installation
 
@@ -48,10 +49,10 @@ For a faster developer/CI build that omits the portable application, run
 ### Linux headless host and portable verification
 
 The `Spectrum.Host` console application runs the engine and browser controller
-with ALSA audio-level capture on Linux and MIDI disabled. The target must provide
-`libasound.so.2` and `libstdc++.so.6` with `GLIBCXX_3.4.22` or newer; stock
-Ubuntu 16.04 is too old for the self-contained .NET 10 host. With those
-libraries and the .NET 10 SDK installed:
+with ALSA audio-level capture and Madmom beat tracking on Linux; MIDI is
+disabled. The target must provide `libasound.so.2` and `libstdc++.so.6` with
+`GLIBCXX_3.4.22` or newer; stock Ubuntu 16.04 is too old for the self-contained
+.NET 10 host. With those libraries and the .NET 10 SDK installed:
 
 ```shell
 dotnet run --project Host/Spectrum.Host.csproj -c Release -- --data-dir ./spectrum-data
@@ -60,15 +61,17 @@ dotnet run --project Host/Spectrum.Host.csproj -c Release -- --data-dir ./spectr
 Open `http://localhost:8080` to use the controller or browser dome simulator.
 The maintenance page enumerates ALSA capture devices, persists the selected PCM
 name, shows the live peak level, and reports capture errors. The capture worker
-retries when an interface is absent or unplugged.
+retries when an interface is absent or unplugged. When Madmom is selected as
+the tempo source, it also starts the packaged tracker, streams a mono copy of
+that PCM to stdin, and reports/retries tracker process failures.
 `--port` changes the listener port. Without `--data-dir`, configuration follows
 `SPECTRUM_DATA_DIR`, `XDG_CONFIG_HOME/spectrum`, then `~/.config/spectrum`.
 `Ctrl+C` and `SIGTERM` perform an ordered shutdown and flush pending changes.
 
-The host is not yet at full Linux show-hardware parity: ALSA audio-level capture
-and a native Linux Madmom runtime are packaged, but live Madmom capture is not
-wired to the host, MIDI is deliberately deferred, and capture still needs
-hardware latency/permission qualification.
+The host is not yet at full Linux show-hardware parity: ALSA capture and live
+Madmom orchestration are implemented and packaged, but they still need physical
+hardware latency/permission/unplug qualification. MIDI is deliberately
+deferred.
 The portable regression suite runs with:
 
 ```shell
@@ -88,7 +91,8 @@ bash Madmom/scripts/build.sh \
 
 The script provisions managed CPython 3.11.15, runs the Madmom suite, checks the
 four Cython `.so` modules and PyAudio, runs the DBN tracker against its sample
-audio, and repeats the smoke test after relocating the staged runtime.
+audio through both file and raw-PCM inputs, and repeats the smoke tests after
+relocating the staged runtime.
 
 To create the same self-contained `linux-x64` directory used by CI and tagged
 releases:

@@ -2,7 +2,9 @@ using Spectrum.Base;
 
 namespace Spectrum.Platform.Linux {
 
-  /** Linux platform composition. ALSA supplies audio; MIDI remains disabled. */
+  /**
+   * Linux composition. ALSA owns capture and feeds Madmom; MIDI stays disabled.
+   */
   public sealed class LinuxSpectrumInputFactory : ISpectrumInputFactory {
     private readonly DisabledSpectrumInputFactory disabled =
       new DisabledSpectrumInputFactory();
@@ -10,7 +12,7 @@ namespace Spectrum.Platform.Linux {
     public IAudioLevelInput CreateAudioInput(
       Configuration config,
       BeatBroadcaster beat
-    ) => new AlsaAudioLevelInput(config);
+    ) => new AlsaAudioLevelInput(config, beat);
 
     public IMidiControlInput CreateMidiInput(
       Configuration config,
