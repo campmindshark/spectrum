@@ -68,10 +68,7 @@ namespace Spectrum.Host {
             nativeWindowControlsAvailable: false,
             reportBackgroundError: exception => Console.Error.WriteLine(
               "Web background task failed: " + exception)),
-          new[] {
-            nameof(SpectrumConfiguration.audioDeviceID),
-            nameof(SpectrumConfiguration.domeOutputInSeparateThread),
-          },
+          SpectrumConfigurationSchema.RestartPropertyNames,
           reportLoadFailure: failure => Console.Error.WriteLine(
             "Could not load " + failure.Path + ": " +
             failure.Error.Message),

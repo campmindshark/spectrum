@@ -83,19 +83,22 @@ namespace Spectrum {
       this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    private string? _audioDeviceID;
+    private string? _audioDeviceID =
+      SpectrumConfigurationSchema.AudioDeviceId.TypedDefaultValue;
     public string? audioDeviceID {
       get => _audioDeviceID;
       set => SetField(ref _audioDeviceID, value, this.PublishAudioSettings);
     }
 
-    private bool _domeEnabled = false;
+    private bool _domeEnabled =
+      SpectrumConfigurationSchema.DomeEnabled.TypedDefaultValue;
     public bool domeEnabled {
       get => _domeEnabled;
       set => SetField(
         ref _domeEnabled, value, this.PublishDomeTransportSettings);
     }
-    private bool _midiInputEnabled = false;
+    private bool _midiInputEnabled =
+      SpectrumConfigurationSchema.MidiInputEnabled.TypedDefaultValue;
     public bool midiInputEnabled {
       get => _midiInputEnabled;
       set => SetField(
@@ -103,7 +106,8 @@ namespace Spectrum {
         this.PublishMidiEnabledSettings);
     }
 
-    private bool _domeOutputInSeparateThread = false;
+    private bool _domeOutputInSeparateThread =
+      SpectrumConfigurationSchema.DomeOutputInSeparateThread.TypedDefaultValue;
     public bool domeOutputInSeparateThread {
       get => _domeOutputInSeparateThread;
       set => SetField(
@@ -111,7 +115,8 @@ namespace Spectrum {
         this.PublishDomeTransportSettings);
     }
 
-    private string _domeBeagleboneOPCAddress = "";
+    private string _domeBeagleboneOPCAddress =
+      SpectrumConfigurationSchema.DomeBeagleboneOpcAddress.TypedDefaultValue;
     public string domeBeagleboneOPCAddress {
       get => _domeBeagleboneOPCAddress;
       set => SetField(
@@ -119,33 +124,38 @@ namespace Spectrum {
         this.PublishDomeTransportSettings);
     }
 
-    private bool _domeSimulationEnabled = false;
+    private bool _domeSimulationEnabled =
+      SpectrumConfigurationSchema.DomeSimulationEnabled.TypedDefaultValue;
     public bool domeSimulationEnabled {
       get => _domeSimulationEnabled;
       set => SetField(
         ref _domeSimulationEnabled, value,
         this.PublishDomeOutputState);
     }
-    private bool _webDomeSimulatorEnabled = true;
+    private bool _webDomeSimulatorEnabled =
+      SpectrumConfigurationSchema.WebDomeSimulatorEnabled.TypedDefaultValue;
     public bool webDomeSimulatorEnabled {
       get => _webDomeSimulatorEnabled;
       set => SetField(ref _webDomeSimulatorEnabled, value);
     }
-    private double _domeMaxBrightness = 0.5;
+    private double _domeMaxBrightness =
+      SpectrumConfigurationSchema.DomeMaxBrightness.TypedDefaultValue;
     public double domeMaxBrightness {
       get => _domeMaxBrightness;
       set => SetField(
         ref _domeMaxBrightness, value,
         this.PublishDomeRuntimeFrameSettings);
     }
-    private double _domeBrightness = 0.1;
+    private double _domeBrightness =
+      SpectrumConfigurationSchema.DomeBrightness.TypedDefaultValue;
     public double domeBrightness {
       get => _domeBrightness;
       set => SetField(
         ref _domeBrightness, value,
         this.PublishDomeRuntimeFrameSettings);
     }
-    private int _domeTestPattern = 0;
+    private int _domeTestPattern =
+      SpectrumConfigurationSchema.DomeTestPattern.TypedDefaultValue;
     public int domeTestPattern {
       get => _domeTestPattern;
       set => SetField(
@@ -281,7 +291,8 @@ namespace Spectrum {
 
     // Cross-layer visual state; per-visualizer tuning lives in each layer's
     // renderer parameter bag instead (see Configuration).
-    private double _domeGlobalFadeSpeed = 0;
+    private double _domeGlobalFadeSpeed =
+      SpectrumConfigurationSchema.DomeGlobalFadeSpeed.TypedDefaultValue;
     public double domeGlobalFadeSpeed {
       get => _domeGlobalFadeSpeed;
       set {
@@ -299,7 +310,8 @@ namespace Spectrum {
           DomeShowStateSnapshot.NotificationPropertyName);
       }
     }
-    private double _domeGlobalHueSpeed = 1;
+    private double _domeGlobalHueSpeed =
+      SpectrumConfigurationSchema.DomeGlobalHueSpeed.TypedDefaultValue;
     public double domeGlobalHueSpeed {
       get => _domeGlobalHueSpeed;
       set {
@@ -503,7 +515,8 @@ namespace Spectrum {
     }
 
     // maps from device ID to preset ID
-    private bool _vjHUDEnabled = false;
+    private bool _vjHUDEnabled =
+      SpectrumConfigurationSchema.VjHudEnabled.TypedDefaultValue;
     public bool vjHUDEnabled {
       get => _vjHUDEnabled;
       set => SetField(ref _vjHUDEnabled, value);
@@ -580,27 +593,31 @@ namespace Spectrum {
     private Dictionary<int, MidiLevelDriverPreset> _midiLevelDriverChannels =
       new Dictionary<int, MidiLevelDriverPreset>();
 
-    private double _flashSpeed = 0.0;
+    private double _flashSpeed =
+      SpectrumConfigurationSchema.FlashSpeed.TypedDefaultValue;
     public double flashSpeed {
       get => _flashSpeed;
       set => SetField(ref _flashSpeed, value, this.PublishBeatSettings);
     }
 
     // 0 = human, 1 = Madmom, 2 = Pro DJ Link
-    private int _beatInput = 0;
+    private int _beatInput =
+      SpectrumConfigurationSchema.BeatInput.TypedDefaultValue;
     public int beatInput {
       get => _beatInput;
       set => SetField(ref _beatInput, value, this.PublishAudioSettings);
     }
 
-    private int _orientationDeviceSpotlight = 0;
+    private int _orientationDeviceSpotlight =
+      SpectrumConfigurationSchema.OrientationDeviceSpotlight.TypedDefaultValue;
     public int orientationDeviceSpotlight {
       get => _orientationDeviceSpotlight;
       set => SetField(
         ref _orientationDeviceSpotlight, value,
         this.PublishOrientationAndFrameSettings);
     }
-    private bool _orientationCalibrate = false;
+    private bool _orientationCalibrate =
+      SpectrumConfigurationSchema.OrientationCalibrate.TypedDefaultValue;
     public bool orientationCalibrate {
       get => _orientationCalibrate;
       set => SetField(
@@ -611,7 +628,8 @@ namespace Spectrum {
     // check and StringParameter.Coerce/Get have a real string, and a
     // spectrum_config.xml predating this property (which leaves the field
     // untouched on deserialize) still reads as "no serial input".
-    private string _wandSerialPort = "";
+    private string _wandSerialPort =
+      SpectrumConfigurationSchema.WandSerialPort.TypedDefaultValue;
     public string wandSerialPort {
       get => _wandSerialPort;
       set => SetField(

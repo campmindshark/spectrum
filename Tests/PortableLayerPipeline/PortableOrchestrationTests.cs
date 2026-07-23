@@ -311,11 +311,13 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(binding.callback != null,
         "the MIDI binding did not compile a callback");
 
-      BindingInvocation invocation =
-        Task.Run(() => binding.callback(7, 0.6)).GetAwaiter().GetResult();
+      BindingInvocation invocation = RunOnDedicatedThread(
+        () => binding.callback(7, 0.6));
       Assert(Math.Abs(config.domeBrightness - 0.1) < 0.000001 &&
           dispatcher.PendingCount == 1,
-        "a MIDI binding assigned configuration on its callback thread");
+        "a MIDI binding assigned configuration on its callback thread; " +
+        "brightness=" + config.domeBrightness +
+        ", pending=" + dispatcher.PendingCount);
       dispatcher.Drain();
       invocation.Completion?.GetAwaiter().GetResult();
       Assert(Math.Abs(config.domeBrightness - 0.6) < 0.000001,

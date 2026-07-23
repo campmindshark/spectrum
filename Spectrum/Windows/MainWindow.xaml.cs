@@ -62,10 +62,6 @@ namespace Spectrum {
       public string BindingTypeName { get; set; } = string.Empty;
     }
 
-    private static readonly HashSet<string> ConfigPropertiesToRebootOn = new HashSet<string>() {
-      nameof(SpectrumConfiguration.audioDeviceID),
-      nameof(SpectrumConfiguration.domeOutputInSeparateThread),
-    };
     // LoadConfig completes this composition root before the constructor starts
     // the host or exposes the window.
     private Operator op = null!;
@@ -233,7 +229,7 @@ namespace Spectrum {
           nativeWindowControlsAvailable: true,
           reportBackgroundError: error => App.LogException(
             "Web background task failed", error)),
-        ConfigPropertiesToRebootOn,
+        SpectrumConfigurationSchema.RestartPropertyNames,
         saveEnabled: () => !MainWindow.LoadingConfig,
         reportLoadFailure: failure => Debug.WriteLine(
           "Failed to load configuration from " + failure.Path + ": " +
@@ -958,6 +954,7 @@ namespace Spectrum {
     }
 
     private void MidiBindingTypeSelectionChanged(object sender, SelectionChangedEventArgs e) {
+      this.ClearMidiBindingValidation();
       this.midiTapTempoBindingPanel.Visibility = this.midiBindingType.SelectedIndex == 0
         ? Visibility.Visible
         : Visibility.Collapsed;
@@ -975,208 +972,24 @@ namespace Spectrum {
         : Visibility.Collapsed;
     }
 
-    private static MidiCommandType commandTypeFromIndex(int index) {
-      if (index == 0) {
-        return MidiCommandType.Knob;
-      } else if (index == 1) {
-        return MidiCommandType.Program;
-      } else if (index == 2) {
-        return MidiCommandType.Note;
-      }
-      throw new Exception("invalid CommandType index " + index);
-    }
-
-    private static int indexFromCommandType(MidiCommandType commandType) {
-      if (commandType == MidiCommandType.Knob) {
-        return 0;
-      } else if (commandType == MidiCommandType.Program) {
-        return 1;
-      } else if (commandType == MidiCommandType.Note) {
-        return 2;
-      }
-      throw new Exception("invalid CommandType " + commandType.ToString());
-    }
-
     private void MidiAddBindingClicked(object sender, RoutedEventArgs e) {
       if (this.midiPresetList.SelectedIndex == -1) {
         this.midiPresetList.Focus();
         return;
       }
-      if (this.midiBindingType.SelectedIndex == -1) {
-        this.midiBindingType.Focus();
-        return;
-      }
-      var newName = this.midiNewBindingName.Text.Trim();
-      if (String.IsNullOrEmpty(newName)) {
-        this.midiNewBindingName.Text = "";
-        this.midiNewBindingName.Focus();
+
+      MidiBindingDraft draft = this.CaptureMidiBindingDraft();
+      if (!MidiBindingEditor.TryCreate(
+          draft,
+          out IMidiBindingConfig? newBinding,
+          out MidiBindingValidationError? validationError)) {
+        this.ShowMidiBindingValidation(validationError);
         return;
       }
 
       int editingBindingIndex =
         this.currentlyEditingBinding.GetValueOrDefault();
       bool editing = this.currentlyEditingBinding.HasValue;
-      IMidiBindingConfig newBinding;
-      if (this.midiBindingType.SelectedIndex == 0) {
-        if (this.midiTapTempoButtonType.SelectedIndex == -1) {
-          this.midiTapTempoButtonType.Focus();
-          return;
-        }
-        var buttonType = commandTypeFromIndex(this.midiTapTempoButtonType.SelectedIndex);
-        int buttonIndex;
-        try {
-          buttonIndex = Convert.ToInt32(this.midiTapTempoButtonIndex.Text.Trim());
-        } catch (Exception) {
-          this.midiTapTempoButtonIndex.Text = "";
-          this.midiTapTempoButtonIndex.Focus();
-          return;
-        }
-        newBinding = new TapTempoMidiBindingConfig() {
-          BindingName = newName,
-          buttonType = buttonType,
-          buttonIndex = buttonIndex,
-        };
-      } else if (this.midiBindingType.SelectedIndex == 1) {
-        string configPropertyName = this.midiContinuousKnobPropertyName.Text.Trim();
-        if (String.IsNullOrEmpty(configPropertyName)) {
-          this.midiContinuousKnobPropertyName.Text = "";
-          this.midiContinuousKnobPropertyName.Focus();
-          return;
-        }
-        if (MidiBindingConfig.ConfigurationPropertyError(
-            configPropertyName, typeof(double)) != null) {
-          this.midiContinuousKnobPropertyName.Text = "";
-          this.midiContinuousKnobPropertyName.Focus();
-          return;
-        }
-        int knobIndex;
-        try {
-          knobIndex = Convert.ToInt32(this.midiContinuousKnobIndex.Text.Trim());
-        } catch (Exception) {
-          this.midiContinuousKnobIndex.Text = "";
-          this.midiContinuousKnobIndex.Focus();
-          return;
-        }
-        double startValue, endValue;
-        try {
-          startValue = Convert.ToDouble(this.midiContinuousKnobStartValue.Text.Trim());
-        } catch (Exception) {
-          this.midiContinuousKnobStartValue.Text = "";
-          this.midiContinuousKnobStartValue.Focus();
-          return;
-        }
-        try {
-          endValue = Convert.ToDouble(this.midiContinuousKnobEndValue.Text.Trim());
-        } catch (Exception) {
-          this.midiContinuousKnobEndValue.Text = "";
-          this.midiContinuousKnobEndValue.Focus();
-          return;
-        }
-        if (endValue < startValue) {
-          this.midiContinuousKnobEndValue.Text = "";
-          this.midiContinuousKnobEndValue.Focus();
-          return;
-        }
-        newBinding = new ContinuousKnobMidiBindingConfig() {
-          BindingName = newName,
-          knobIndex = knobIndex,
-          configPropertyName = configPropertyName,
-          startValue = startValue,
-          endValue = endValue,
-        };
-      } else if (this.midiBindingType.SelectedIndex == 2) {
-        string configPropertyName = this.midiDiscreteKnobPropertyName.Text.Trim();
-        if (String.IsNullOrEmpty(configPropertyName)) {
-          this.midiDiscreteKnobPropertyName.Text = "";
-          this.midiDiscreteKnobPropertyName.Focus();
-          return;
-        }
-        if (MidiBindingConfig.ConfigurationPropertyError(
-            configPropertyName, typeof(int)) != null) {
-          this.midiDiscreteKnobPropertyName.Text = "";
-          this.midiDiscreteKnobPropertyName.Focus();
-          return;
-        }
-        int knobIndex, numPossibleValues;
-        try {
-          knobIndex = Convert.ToInt32(this.midiDiscreteKnobIndex.Text.Trim());
-        } catch (Exception) {
-          this.midiDiscreteKnobIndex.Text = "";
-          this.midiDiscreteKnobIndex.Focus();
-          return;
-        }
-        try {
-          numPossibleValues = Convert.ToInt32(this.midiDiscreteKnobNumPossibleValues.Text.Trim());
-        } catch (Exception) {
-          this.midiDiscreteKnobNumPossibleValues.Text = "";
-          this.midiDiscreteKnobNumPossibleValues.Focus();
-          return;
-        }
-        newBinding = new DiscreteKnobMidiBindingConfig() {
-          BindingName = newName,
-          knobIndex = knobIndex,
-          configPropertyName = configPropertyName,
-          numPossibleValues = numPossibleValues,
-        };
-      } else if (this.midiBindingType.SelectedIndex == 3) {
-        string configPropertyName = this.midiLogarithmicKnobPropertyName.Text.Trim();
-        if (String.IsNullOrEmpty(configPropertyName)) {
-          this.midiLogarithmicKnobPropertyName.Text = "";
-          this.midiLogarithmicKnobPropertyName.Focus();
-          return;
-        }
-        if (MidiBindingConfig.ConfigurationPropertyError(
-            configPropertyName, typeof(double)) != null) {
-          this.midiLogarithmicKnobPropertyName.Text = "";
-          this.midiLogarithmicKnobPropertyName.Focus();
-          return;
-        }
-        int knobIndex, numPossibleValues;
-        try {
-          knobIndex = Convert.ToInt32(this.midiLogarithmicKnobIndex.Text.Trim());
-        } catch (Exception) {
-          this.midiLogarithmicKnobIndex.Text = "";
-          this.midiLogarithmicKnobIndex.Focus();
-          return;
-        }
-        try {
-          numPossibleValues = Convert.ToInt32(this.midiLogarithmicKnobNumPossibleValues.Text.Trim());
-        } catch (Exception) {
-          this.midiLogarithmicKnobNumPossibleValues.Text = "";
-          this.midiLogarithmicKnobNumPossibleValues.Focus();
-          return;
-        }
-        double startValue;
-        try {
-          startValue = Convert.ToDouble(this.midiLogarithmicKnobStartValue.Text.Trim());
-        } catch (Exception) {
-          this.midiLogarithmicKnobStartValue.Text = "";
-          this.midiLogarithmicKnobStartValue.Focus();
-          return;
-        }
-        newBinding = new DiscreteLogarithmicKnobMidiBindingConfig() {
-          BindingName = newName,
-          knobIndex = knobIndex,
-          configPropertyName = configPropertyName,
-          numPossibleValues = numPossibleValues,
-          startValue = startValue,
-        };
-      } else if (this.midiBindingType.SelectedIndex == 4) {
-        int indexRangeStart;
-        try {
-          indexRangeStart = Convert.ToInt32(this.midiAdsrLevelDriverIndexRangeStart.Text.Trim());
-        } catch (Exception) {
-          this.midiAdsrLevelDriverIndexRangeStart.Text = "";
-          this.midiAdsrLevelDriverIndexRangeStart.Focus();
-          return;
-        }
-        newBinding = new AdsrLevelDriverMidiBindingConfig() {
-          BindingName = newName,
-          indexRangeStart = indexRangeStart,
-        };
-      } else {
-        return;
-      }
 
       int editedPresetId =
         this.midiPresetIndices[this.midiPresetList.SelectedIndex];
@@ -1189,29 +1002,11 @@ namespace Spectrum {
       }
       this.config.UpsertMidiPreset(editedPresetId, midiPreset);
 
-      if (this.midiBindingType.SelectedIndex == 0) {
-        this.midiTapTempoButtonType.SelectedIndex = -1;
-        this.midiTapTempoButtonIndex.Text = "";
-      } else if (this.midiBindingType.SelectedIndex == 1) {
-        this.midiContinuousKnobIndex.Text = "";
-        this.midiContinuousKnobPropertyName.Text = "";
-        this.midiContinuousKnobStartValue.Text = "";
-        this.midiContinuousKnobEndValue.Text = "";
-      } else if (this.midiBindingType.SelectedIndex == 2) {
-        this.midiDiscreteKnobIndex.Text = "";
-        this.midiDiscreteKnobPropertyName.Text = "";
-        this.midiDiscreteKnobNumPossibleValues.Text = "";
-      } else if (this.midiBindingType.SelectedIndex == 3) {
-        this.midiLogarithmicKnobIndex.Text = "";
-        this.midiLogarithmicKnobPropertyName.Text = "";
-        this.midiLogarithmicKnobNumPossibleValues.Text = "";
-        this.midiLogarithmicKnobStartValue.Text = "";
-      } else if (this.midiBindingType.SelectedIndex == 4) {
-        this.midiAdsrLevelDriverIndexRangeStart.Text = "";
-      }
+      this.ClearMidiBindingFields(draft.BindingType);
 
       ComboBoxItem item = (ComboBoxItem)this.midiBindingType.SelectedItem;
       string bindingTypeName = (string)item.Content;
+      string newName = newBinding.BindingName ?? "";
       if (editing) {
         var entry = (MidiBindingEntry)
           this.midiBindingList.Items[editingBindingIndex];
@@ -1228,6 +1023,103 @@ namespace Spectrum {
 
       this.midiBindingType.SelectedIndex = -1;
       this.midiNewBindingName.Text = "";
+      this.ClearMidiBindingValidation();
+    }
+
+    private MidiBindingDraft CaptureMidiBindingDraft() =>
+      new MidiBindingDraft {
+        BindingName = this.midiNewBindingName.Text,
+        BindingType = this.midiBindingType.SelectedIndex,
+        TapTempoButtonType = this.midiTapTempoButtonType.SelectedIndex,
+        TapTempoButtonIndex = this.midiTapTempoButtonIndex.Text,
+        ContinuousKnobIndex = this.midiContinuousKnobIndex.Text,
+        ContinuousKnobPropertyName =
+          this.midiContinuousKnobPropertyName.Text,
+        ContinuousKnobStartValue =
+          this.midiContinuousKnobStartValue.Text,
+        ContinuousKnobEndValue = this.midiContinuousKnobEndValue.Text,
+        DiscreteKnobIndex = this.midiDiscreteKnobIndex.Text,
+        DiscreteKnobPropertyName = this.midiDiscreteKnobPropertyName.Text,
+        DiscreteKnobNumPossibleValues =
+          this.midiDiscreteKnobNumPossibleValues.Text,
+        LogarithmicKnobIndex = this.midiLogarithmicKnobIndex.Text,
+        LogarithmicKnobPropertyName =
+          this.midiLogarithmicKnobPropertyName.Text,
+        LogarithmicKnobNumPossibleValues =
+          this.midiLogarithmicKnobNumPossibleValues.Text,
+        LogarithmicKnobStartValue =
+          this.midiLogarithmicKnobStartValue.Text,
+        AdsrLevelDriverIndexRangeStart =
+          this.midiAdsrLevelDriverIndexRangeStart.Text,
+      };
+
+    private void ShowMidiBindingValidation(
+      MidiBindingValidationError error
+    ) {
+      this.midiBindingValidationMessage.Text = error.Message;
+      this.midiBindingValidationMessage.Visibility = Visibility.Visible;
+      Control control = error.Field switch {
+        MidiBindingEditorField.BindingName => this.midiNewBindingName,
+        MidiBindingEditorField.BindingType => this.midiBindingType,
+        MidiBindingEditorField.TapTempoButtonType =>
+          this.midiTapTempoButtonType,
+        MidiBindingEditorField.TapTempoButtonIndex =>
+          this.midiTapTempoButtonIndex,
+        MidiBindingEditorField.ContinuousKnobIndex =>
+          this.midiContinuousKnobIndex,
+        MidiBindingEditorField.ContinuousKnobPropertyName =>
+          this.midiContinuousKnobPropertyName,
+        MidiBindingEditorField.ContinuousKnobStartValue =>
+          this.midiContinuousKnobStartValue,
+        MidiBindingEditorField.ContinuousKnobEndValue =>
+          this.midiContinuousKnobEndValue,
+        MidiBindingEditorField.DiscreteKnobIndex =>
+          this.midiDiscreteKnobIndex,
+        MidiBindingEditorField.DiscreteKnobPropertyName =>
+          this.midiDiscreteKnobPropertyName,
+        MidiBindingEditorField.DiscreteKnobNumPossibleValues =>
+          this.midiDiscreteKnobNumPossibleValues,
+        MidiBindingEditorField.LogarithmicKnobIndex =>
+          this.midiLogarithmicKnobIndex,
+        MidiBindingEditorField.LogarithmicKnobPropertyName =>
+          this.midiLogarithmicKnobPropertyName,
+        MidiBindingEditorField.LogarithmicKnobNumPossibleValues =>
+          this.midiLogarithmicKnobNumPossibleValues,
+        MidiBindingEditorField.LogarithmicKnobStartValue =>
+          this.midiLogarithmicKnobStartValue,
+        MidiBindingEditorField.AdsrLevelDriverIndexRangeStart =>
+          this.midiAdsrLevelDriverIndexRangeStart,
+        _ => this.midiBindingType,
+      };
+      control.Focus();
+    }
+
+    private void ClearMidiBindingValidation() {
+      this.midiBindingValidationMessage.Text = "";
+      this.midiBindingValidationMessage.Visibility = Visibility.Collapsed;
+    }
+
+    private void ClearMidiBindingFields(int bindingType) {
+      if (bindingType == 0) {
+        this.midiTapTempoButtonType.SelectedIndex = -1;
+        this.midiTapTempoButtonIndex.Text = "";
+      } else if (bindingType == 1) {
+        this.midiContinuousKnobIndex.Text = "";
+        this.midiContinuousKnobPropertyName.Text = "";
+        this.midiContinuousKnobStartValue.Text = "";
+        this.midiContinuousKnobEndValue.Text = "";
+      } else if (bindingType == 2) {
+        this.midiDiscreteKnobIndex.Text = "";
+        this.midiDiscreteKnobPropertyName.Text = "";
+        this.midiDiscreteKnobNumPossibleValues.Text = "";
+      } else if (bindingType == 3) {
+        this.midiLogarithmicKnobIndex.Text = "";
+        this.midiLogarithmicKnobPropertyName.Text = "";
+        this.midiLogarithmicKnobNumPossibleValues.Text = "";
+        this.midiLogarithmicKnobStartValue.Text = "";
+      } else if (bindingType == 4) {
+        this.midiAdsrLevelDriverIndexRangeStart.Text = "";
+      }
     }
 
     private void MidiBindingListSelectionChanged(object sender, SelectionChangedEventArgs e) {
@@ -1289,7 +1181,8 @@ namespace Spectrum {
       this.midiBindingType.SelectedIndex = bindingConfig.BindingType;
       if (bindingConfig.BindingType == 0) {
         var config = (TapTempoMidiBindingView)bindingConfig;
-        this.midiTapTempoButtonType.SelectedIndex = indexFromCommandType(config.ButtonType);
+        this.midiTapTempoButtonType.SelectedIndex =
+          MidiBindingEditor.CommandTypeIndex(config.ButtonType);
         this.midiTapTempoButtonIndex.Text = config.ButtonIndex.ToString();
       } else if (this.midiBindingType.SelectedIndex == 1) {
         var config = (ContinuousKnobMidiBindingView)bindingConfig;
@@ -1344,127 +1237,8 @@ namespace Spectrum {
       this.midiLogarithmicKnobPropertyName.Text = "";
       this.midiLogarithmicKnobNumPossibleValues.Text = "";
       this.midiLogarithmicKnobStartValue.Text = "";
-    }
-
-    private void MidiContinuousKnobIndexLostFocus(object sender, RoutedEventArgs e) {
-      try {
-        Convert.ToInt32(this.midiContinuousKnobIndex.Text.Trim());
-      } catch (Exception) {
-        this.midiContinuousKnobIndex.Text = "";
-      }
-    }
-
-    private void MidiContinuousKnobPropertyNameLostFocus(object sender, RoutedEventArgs e) {
-      var configPropertyName = this.midiContinuousKnobPropertyName.Text;
-      if (MidiBindingConfig.ConfigurationPropertyError(
-          configPropertyName, typeof(double)) != null) {
-        this.midiContinuousKnobPropertyName.Text = "";
-      }
-    }
-
-    private void MidiContinuousKnobStartValueLostFocus(object sender, RoutedEventArgs e) {
-      double startNumber;
-      try {
-        startNumber = Convert.ToDouble(this.midiContinuousKnobStartValue.Text.Trim());
-      } catch (Exception) {
-        this.midiContinuousKnobStartValue.Text = "";
-        return;
-      }
-      try {
-        double endNumber = Convert.ToDouble(this.midiContinuousKnobEndValue.Text.Trim());
-        if (endNumber < startNumber) {
-          this.midiContinuousKnobEndValue.Text = "";
-          this.midiContinuousKnobEndValue.Focus();
-        }
-      } catch (Exception) {
-        this.midiContinuousKnobEndValue.Text = "";
-        this.midiContinuousKnobEndValue.Focus();
-      }
-    }
-
-    private void MidiContinuousKnobEndValueLostFocus(object sender, RoutedEventArgs e) {
-      double endNumber;
-      try {
-        endNumber = Convert.ToDouble(this.midiContinuousKnobEndValue.Text.Trim());
-      } catch (Exception) {
-        this.midiContinuousKnobEndValue.Text = "";
-        return;
-      }
-      try {
-        double startNumber = Convert.ToDouble(this.midiContinuousKnobStartValue.Text.Trim());
-        if (endNumber < startNumber) {
-          this.midiContinuousKnobStartValue.Text = "";
-          this.midiContinuousKnobStartValue.Focus();
-        }
-      } catch (Exception) {
-        this.midiContinuousKnobStartValue.Text = "";
-        this.midiContinuousKnobStartValue.Focus();
-      }
-    }
-
-    private void MidiDiscreteKnobIndexLostFocus(object sender, RoutedEventArgs e) {
-      try {
-        Convert.ToInt32(this.midiDiscreteKnobIndex.Text.Trim());
-      } catch (Exception) {
-        this.midiDiscreteKnobIndex.Text = "";
-      }
-    }
-
-    private void MidiDiscreteKnobPropertyNameLostFocus(object sender, RoutedEventArgs e) {
-      var configPropertyName = this.midiDiscreteKnobPropertyName.Text;
-      if (MidiBindingConfig.ConfigurationPropertyError(
-          configPropertyName, typeof(int)) != null) {
-        this.midiDiscreteKnobPropertyName.Text = "";
-      }
-    }
-
-    private void MidiDiscreteKnobNumPossibleValuesLostFocus(object sender, RoutedEventArgs e) {
-      try {
-        Convert.ToInt32(this.midiDiscreteKnobNumPossibleValues.Text.Trim());
-      } catch (Exception) {
-        this.midiDiscreteKnobNumPossibleValues.Text = "";
-      }
-    }
-
-    private void MidiLogarithmicKnobIndexLostFocus(object sender, RoutedEventArgs e) {
-      try {
-        Convert.ToInt32(this.midiLogarithmicKnobIndex.Text.Trim());
-      } catch (Exception) {
-        this.midiLogarithmicKnobIndex.Text = "";
-      }
-    }
-
-    private void MidiLogarithmicKnobPropertyNameLostFocus(object sender, RoutedEventArgs e) {
-      var configPropertyName = this.midiLogarithmicKnobPropertyName.Text;
-      if (MidiBindingConfig.ConfigurationPropertyError(
-          configPropertyName, typeof(double)) != null) {
-        this.midiLogarithmicKnobPropertyName.Text = "";
-      }
-    }
-
-    private void MidiLogarithmicKnobNumPossibleValuesLostFocus(object sender, RoutedEventArgs e) {
-      try {
-        Convert.ToInt32(this.midiLogarithmicKnobNumPossibleValues.Text.Trim());
-      } catch (Exception) {
-        this.midiLogarithmicKnobNumPossibleValues.Text = "";
-      }
-    }
-
-    private void MidiLogarithmicKnobStartValueLostFocus(object sender, RoutedEventArgs e) {
-      try {
-        Convert.ToDouble(this.midiLogarithmicKnobStartValue.Text.Trim());
-      } catch (Exception) {
-        this.midiLogarithmicKnobStartValue.Text = "";
-      }
-    }
-
-    private void MidiAdsrLevelDriverIndexRangeStartLostFocus(object sender, RoutedEventArgs e) {
-      try {
-        Convert.ToInt32(this.midiAdsrLevelDriverIndexRangeStart.Text.Trim());
-      } catch (Exception) {
-        this.midiAdsrLevelDriverIndexRangeStart.Text = "";
-        return;
-      }
+      this.midiAdsrLevelDriverIndexRangeStart.Text = "";
+      this.ClearMidiBindingValidation();
     }
 
     private void OpenVJHUD(object sender, RoutedEventArgs e) {

@@ -4,6 +4,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:configuration="clr-namespace:Spectrum;assembly=Spectrum.Core"
   xmlns:local="clr-namespace:Spectrum"
   mc:Ignorable="d"
   Title="VJ Heads-Up Display"
@@ -63,12 +64,22 @@
                         <DockPanel Margin="0,2,0,0">
                             <Label Content="Fade speed" Width="82" Padding="0" VerticalAlignment="Center" />
                             <Label x:Name="domeGlobalFadeSpeedLabel" DockPanel.Dock="Right" Content="0" Width="34" Padding="0" ContentStringFormat="F3" VerticalAlignment="Center" />
-                            <Slider x:Name="domeGlobalFadeSpeedSlider" Value="0" VerticalAlignment="Center" Maximum="3.0" LargeChange="1" SmallChange="0.2" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                            <Slider x:Name="domeGlobalFadeSpeedSlider"
+                                    Value="{x:Static configuration:SpectrumConfigurationSchema.DomeGlobalFadeSpeedDefault}"
+                                    Minimum="{x:Static configuration:SpectrumConfigurationSchema.DomeGlobalFadeSpeedMinimum}"
+                                    Maximum="{x:Static configuration:SpectrumConfigurationSchema.DomeGlobalFadeSpeedMaximum}"
+                                    VerticalAlignment="Center" LargeChange="1" SmallChange="0.2"
+                                    Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                         </DockPanel>
                         <DockPanel Margin="0,4,0,0">
                             <Label Content="Hue speed" Width="82" Padding="0" VerticalAlignment="Center" />
                             <Label x:Name="domeGlobalHueSpeedLabel" DockPanel.Dock="Right" Content="0" Width="34" Padding="0" ContentStringFormat="F3" VerticalAlignment="Center" />
-                            <Slider x:Name="domeGlobalHueSpeedSlider" Value="1" VerticalAlignment="Center" Minimum="0.0" Maximum="3.0" LargeChange="1" SmallChange="0.2" Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
+                            <Slider x:Name="domeGlobalHueSpeedSlider"
+                                    Value="{x:Static configuration:SpectrumConfigurationSchema.DomeGlobalHueSpeedDefault}"
+                                    Minimum="{x:Static configuration:SpectrumConfigurationSchema.DomeGlobalHueSpeedMinimum}"
+                                    Maximum="{x:Static configuration:SpectrumConfigurationSchema.DomeGlobalHueSpeedMaximum}"
+                                    VerticalAlignment="Center" LargeChange="1" SmallChange="0.2"
+                                    Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                         </DockPanel>
                         <DockPanel Margin="0,4,0,0">
                             <Label Content="Flash rate" Width="82" Padding="0" VerticalAlignment="Center" />

@@ -32,6 +32,7 @@ namespace Spectrum.LayerPipeline.Tests {
       ColorPerformanceTests.Register(Register);
       OPCWireTests.Register(Register);
       ConfigurationContractTests.Register(Register);
+      MidiBindingEditorTests.Register(Register);
       PointCloudTests.Register(Register);
       DomeTopologyTests.Register(Register);
       LayerCatalogTests.Register(Register);

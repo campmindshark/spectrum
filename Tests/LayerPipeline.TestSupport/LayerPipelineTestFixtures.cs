@@ -259,6 +259,24 @@ namespace Spectrum.LayerPipeline.Tests {
         Task.FromResult(read());
     }
 
+    public static T RunOnDedicatedThread<T>(Func<T> action) {
+      var completion = new TaskCompletionSource<T>(
+        TaskCreationOptions.RunContinuationsAsynchronously);
+      var thread = new Thread(() => {
+        try {
+          completion.SetResult(action());
+        } catch (Exception error) {
+          completion.SetException(error);
+        }
+      }) {
+        IsBackground = true,
+      };
+      thread.Start();
+      Assert(thread.Join(TimeSpan.FromSeconds(3)),
+        "dedicated test thread did not complete");
+      return completion.Task.GetAwaiter().GetResult();
+    }
+
     public sealed class QueuedStateDispatcher :
       ApplicationStateDispatcher {
       private readonly int ownerThreadId =

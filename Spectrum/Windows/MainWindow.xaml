@@ -4,6 +4,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:configuration="clr-namespace:Spectrum;assembly=Spectrum.Core"
   mc:Ignorable="d"
   Title="Spectrum Operator Console"
   Height="680"
@@ -298,40 +299,43 @@
                   </StackPanel>
                   <StackPanel x:Name="midiContinuousKnobBindingPanel" Visibility="Collapsed" Margin="0,8,0,0">
                     <TextBlock Text="Knob index" Style="{StaticResource CaptionText}" />
-                    <TextBox x:Name="midiContinuousKnobIndex" LostFocus="MidiContinuousKnobIndexLostFocus" />
+                    <TextBox x:Name="midiContinuousKnobIndex" />
                     <TextBlock Text="Configuration property" Style="{StaticResource CaptionText}" Margin="0,6,0,0" />
-                    <TextBox x:Name="midiContinuousKnobPropertyName" LostFocus="MidiContinuousKnobPropertyNameLostFocus" />
+                    <TextBox x:Name="midiContinuousKnobPropertyName" />
                     <TextBlock Text="Value range" Style="{StaticResource CaptionText}" Margin="0,6,0,0" />
                     <Grid>
                       <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                      <TextBox x:Name="midiContinuousKnobStartValue" LostFocus="MidiContinuousKnobStartValueLostFocus" />
+                      <TextBox x:Name="midiContinuousKnobStartValue" />
                       <TextBlock Grid.Column="1" Text="to" Margin="8,0" VerticalAlignment="Center" />
-                      <TextBox x:Name="midiContinuousKnobEndValue" Grid.Column="2" LostFocus="MidiContinuousKnobEndValueLostFocus" />
+                      <TextBox x:Name="midiContinuousKnobEndValue" Grid.Column="2" />
                     </Grid>
                   </StackPanel>
                   <StackPanel x:Name="midiDiscreteKnobBindingPanel" Visibility="Collapsed" Margin="0,8,0,0">
                     <TextBlock Text="Knob index" Style="{StaticResource CaptionText}" />
-                    <TextBox x:Name="midiDiscreteKnobIndex" LostFocus="MidiDiscreteKnobIndexLostFocus" />
+                    <TextBox x:Name="midiDiscreteKnobIndex" />
                     <TextBlock Text="Configuration property" Style="{StaticResource CaptionText}" Margin="0,6,0,0" />
-                    <TextBox x:Name="midiDiscreteKnobPropertyName" LostFocus="MidiDiscreteKnobPropertyNameLostFocus" />
+                    <TextBox x:Name="midiDiscreteKnobPropertyName" />
                     <TextBlock Text="Number of values" Style="{StaticResource CaptionText}" Margin="0,6,0,0" />
-                    <TextBox x:Name="midiDiscreteKnobNumPossibleValues" LostFocus="MidiDiscreteKnobNumPossibleValuesLostFocus" />
+                    <TextBox x:Name="midiDiscreteKnobNumPossibleValues" />
                   </StackPanel>
                   <StackPanel x:Name="midiLogarithmicKnobBindingPanel" Visibility="Collapsed" Margin="0,8,0,0">
                     <TextBlock Text="Knob index" Style="{StaticResource CaptionText}" />
-                    <TextBox x:Name="midiLogarithmicKnobIndex" LostFocus="MidiLogarithmicKnobIndexLostFocus" />
+                    <TextBox x:Name="midiLogarithmicKnobIndex" />
                     <TextBlock Text="Configuration property" Style="{StaticResource CaptionText}" Margin="0,6,0,0" />
-                    <TextBox x:Name="midiLogarithmicKnobPropertyName" LostFocus="MidiLogarithmicKnobPropertyNameLostFocus" />
+                    <TextBox x:Name="midiLogarithmicKnobPropertyName" />
                     <TextBlock Text="Number of values" Style="{StaticResource CaptionText}" Margin="0,6,0,0" />
-                    <TextBox x:Name="midiLogarithmicKnobNumPossibleValues" LostFocus="MidiLogarithmicKnobNumPossibleValuesLostFocus" />
+                    <TextBox x:Name="midiLogarithmicKnobNumPossibleValues" />
                     <TextBlock Text="Starting value" Style="{StaticResource CaptionText}" Margin="0,6,0,0" />
-                    <TextBox x:Name="midiLogarithmicKnobStartValue" LostFocus="MidiLogarithmicKnobStartValueLostFocus" />
+                    <TextBox x:Name="midiLogarithmicKnobStartValue" />
                   </StackPanel>
                   <StackPanel x:Name="midiAdsrLevelDriverBindingPanel" Visibility="Collapsed" Margin="0,8,0,0">
                     <TextBlock Text="Start MIDI note" Style="{StaticResource CaptionText}" />
-                    <TextBox x:Name="midiAdsrLevelDriverIndexRangeStart" LostFocus="MidiAdsrLevelDriverIndexRangeStartLostFocus" />
+                    <TextBox x:Name="midiAdsrLevelDriverIndexRangeStart" />
                   </StackPanel>
 
+                  <TextBlock x:Name="midiBindingValidationMessage"
+                             Foreground="OrangeRed" TextWrapping="Wrap"
+                             Visibility="Collapsed" Margin="0,8,0,0" />
                   <DockPanel Margin="0,10,0,0">
                     <Button x:Name="midiCancelEditBinding" Content="Cancel" Click="MidiCancelEditBindingClicked" Visibility="Collapsed" />
                     <Button x:Name="midiAddBinding" DockPanel.Dock="Right" Content="Add binding"
@@ -360,14 +364,22 @@
                   <TextBlock Text="Maximum brightness" Style="{StaticResource CaptionText}" Margin="0,10,0,0" />
                   <Grid Margin="0,4,0,0">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="60" /></Grid.ColumnDefinitions>
-                    <Slider x:Name="domeMaxBrightnessSlider" Value="0.5" Maximum="1.0" LargeChange="0.1" SmallChange="0.001"
+                    <Slider x:Name="domeMaxBrightnessSlider"
+                            Value="{x:Static configuration:SpectrumConfigurationSchema.DomeMaxBrightnessDefault}"
+                            Minimum="{x:Static configuration:SpectrumConfigurationSchema.DomeBrightnessMinimum}"
+                            Maximum="{x:Static configuration:SpectrumConfigurationSchema.DomeBrightnessMaximum}"
+                            LargeChange="0.1" SmallChange="0.001"
                             Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                     <Label x:Name="domeMaxBrightnessLabel" Grid.Column="1" Content="50%" HorizontalAlignment="Right" />
                   </Grid>
                   <TextBlock Text="Brightness" Style="{StaticResource CaptionText}" Margin="0,9,0,0" />
                   <Grid Margin="0,4,0,0">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="60" /></Grid.ColumnDefinitions>
-                    <Slider x:Name="domeBrightnessSlider" Value="0.1" Maximum="1.0" LargeChange="0.1" SmallChange="0.001"
+                    <Slider x:Name="domeBrightnessSlider"
+                            Value="{x:Static configuration:SpectrumConfigurationSchema.DomeBrightnessDefault}"
+                            Minimum="{x:Static configuration:SpectrumConfigurationSchema.DomeBrightnessMinimum}"
+                            Maximum="{x:Static configuration:SpectrumConfigurationSchema.DomeBrightnessMaximum}"
+                            LargeChange="0.1" SmallChange="0.001"
                             Thumb.DragStarted="SliderStarted" Thumb.DragCompleted="SliderCompleted" />
                     <Label x:Name="domeBrightnessLabel" Grid.Column="1" Content="10%" HorizontalAlignment="Right" />
                   </Grid>

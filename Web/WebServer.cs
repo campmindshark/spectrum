@@ -1,13 +1,8 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Spectrum.Base;
@@ -15,48 +10,26 @@ using Spectrum.Base;
 namespace Spectrum.Web {
 
   /**
-   * The in-process Kestrel host for the web control surface. Runs inside the
-   * WPF process, sharing the one Configuration instance (via ControlService).
-   *
-   * Two scopes, split only by which parameters they expose — there is no
-   * authentication of any kind (the installation LAN is trusted):
-   *   - user  — the curated VJ knobs (ControlRole.User)
-   *   - maint — everything (ControlRole.Maintenance)
+   * The in-process Kestrel lifecycle owner for the web control surface.
+   * Endpoint registration belongs to the user, maintenance, and event route
+   * modules; this class owns listener startup/shutdown and background work.
    */
   public sealed class WebServer {
 
-    private readonly ControlService controls;
-    private readonly ConfigEventStream events;
     private readonly AdvisoryLockManager locks;
     private readonly DomeCalibrationController calibration;
-    private readonly WandStatusController wands;
-    private readonly OperatorController operatorControl;
-    private readonly TempoController tempo;
-    private readonly LayersController layers;
-    private readonly SceneController scenes;
-    private readonly PaletteController palettes;
-    private readonly AudioDeviceController audio;
-    private readonly WebDomeSimulator? domeSimulator;
+    private readonly UserApiRoutes userRoutes;
+    private readonly MaintenanceApiRoutes maintenanceRoutes;
+    private readonly EventApiRoutes eventRoutes;
+    private readonly bool domeSimulatorEnabled;
     private readonly Action<Exception>? reportBackgroundError;
     private readonly int port;
     private WebApplication? app;
     private Task? hostLifetimeTask;
 
-    // Advisory-lock lease token, carried on writes to a locked resource and on
-    // every calibration action.
-    private const string LockTokenHeader = "X-Spectrum-Lock-Token";
-
     // Watchdog that reconciles the modal dome-calibration flow with its advisory
-    // lease. The native DomeMappingWindow always deactivates calibration in its
-    // WindowClosed handler; the web flow has no such guaranteed hook. A client
-    // that navigates away, closes the tab, or drops off the LAN only releases
-    // the lease (app.js pagehide) or lets it lapse on TTL — it never cancels the
-    // flow. Left unreconciled, DomeCalibrationState.Active stays true and
-    // LEDDomeMappingCalibrationVisualizer keeps its priority-10000 override,
-    // seizing the dome so no normal visualizer runs again. This sweep restores
-    // the native contract: once nobody holds the domeCalibration lease, a
-    // still-active flow is auto-cancelled and the dome hands back to the normal
-    // visualizers.
+    // lease. A web client can disappear without explicitly cancelling the flow;
+    // once its lease is gone, this task returns the dome to normal rendering.
     private CancellationTokenSource? calibrationWatchdogCancellation;
     private Task? calibrationWatchdogTask;
     private static readonly TimeSpan CalibrationWatchdogInterval =
@@ -78,49 +51,53 @@ namespace Spectrum.Web {
       int port,
       Action<Exception>? reportBackgroundError = null
     ) {
-      this.controls = controls;
-      this.events = events;
       this.locks = locks;
       this.calibration = calibration;
-      this.wands = wands;
-      this.operatorControl = operatorControl;
-      this.tempo = tempo;
-      this.layers = layers;
-      this.scenes = scenes;
-      this.palettes = palettes;
-      this.audio = audio;
-      this.domeSimulator = domeSimulator;
       this.port = port;
       this.reportBackgroundError = reportBackgroundError;
+      this.domeSimulatorEnabled = domeSimulator != null;
+
+      var parameterWrites = new ParameterWriteHandler(controls, locks);
+      this.userRoutes = new UserApiRoutes(
+        controls,
+        operatorControl,
+        layers,
+        scenes,
+        palettes,
+        wands,
+        domeSimulator,
+        parameterWrites);
+      this.maintenanceRoutes = new MaintenanceApiRoutes(
+        controls,
+        audio,
+        operatorControl,
+        locks,
+        calibration,
+        wands,
+        tempo,
+        parameterWrites);
+      this.eventRoutes = new EventApiRoutes(controls, events);
     }
 
-    // Builds and starts Kestrel on a background thread. Returns once the host
-    // has begun listening. Safe to call once.
+    // Builds and starts Kestrel. Returns once the listener is bound.
     public void Start() {
       var builder = WebApplication.CreateBuilder(new WebApplicationOptions {
-        // The WPF app's base dir; wwwroot lives beside the exe.
         ContentRootPath = AppContext.BaseDirectory,
       });
-      // Don't let ASP.NET Core hijack process-wide concerns from the WPF app.
       builder.Logging.ClearProviders();
       builder.WebHost.UseKestrel();
-      // Listen on all interfaces so phones on the LAN can reach it.
       builder.WebHost.UseUrls($"http://0.0.0.0:{this.port}");
 
       WebApplication app = builder.Build();
-
-      if (this.domeSimulator != null) {
+      if (this.domeSimulatorEnabled) {
         app.UseWebSockets();
       }
       app.UseDefaultFiles();
       app.UseStaticFiles();
+      this.userRoutes.Map(app);
+      this.maintenanceRoutes.Map(app);
+      this.eventRoutes.Map(app);
 
-      this.MapApi(app);
-
-      // Confirm the listener is bound before returning. Start() is called once
-      // during window construction, where synchronously observing this short
-      // startup operation is preferable to silently discarding a faulted
-      // RunAsync task (for example when the port is already occupied).
       try {
         app.StartAsync().GetAwaiter().GetResult();
         this.hostLifetimeTask = app.WaitForShutdownAsync();
@@ -154,6 +131,7 @@ namespace Spectrum.Web {
           this.calibrationWatchdogTask = null;
         }
       }
+
       WebApplication? app = this.app;
       if (app != null) {
         await app.StopAsync(TimeSpan.FromSeconds(2))
@@ -168,11 +146,6 @@ namespace Spectrum.Web {
       }
     }
 
-    // If the calibration flow is still active but nobody holds its lease
-    // anymore (released on the client leaving, or lapsed on TTL), the driving
-    // client is gone — cancel the flow so the dome returns to the normal
-    // visualizers. One owned task serializes ticks, reports failures, and is
-    // cancelled and awaited before host shutdown continues.
     private async Task RunCalibrationWatchdogAsync(
       CancellationToken cancellationToken
     ) {
@@ -196,519 +169,11 @@ namespace Spectrum.Web {
 
     private async Task ReconcileCalibrationLeaseAsync() {
       var state = await this.calibration.StateAsync().ConfigureAwait(false);
-      if (!state.active) {
+      if (!state.active ||
+          this.locks.Get(LockPolicy.DomeCalibration) != null) {
         return;
       }
-      if (this.locks.Get(LockPolicy.DomeCalibration) != null) {
-        return; // a client still holds the lease and is driving the flow
-      }
       await this.calibration.CancelAsync().ConfigureAwait(false);
-    }
-
-    private void MapApi(WebApplication app) {
-      // Keep the high-rate preview out of the main control document entirely.
-      // Loading /simulator is the only navigation path that loads its client.
-      app.MapGet("/simulator", () => Results.Redirect("/simulator.html"));
-
-      // The routes do not exist when the startup feature flag is false. Merely
-      // loading the control page therefore cannot activate or poll a disabled
-      // simulator component.
-      if (this.domeSimulator is WebDomeSimulator domeSimulator) {
-        app.MapGet("/api/dome-simulator/geometry", () =>
-          Results.Json(domeSimulator.Geometry()));
-        app.Map("/api/dome-simulator/frames", domeSimulator.StreamAsync);
-      }
-
-      // ---- Global engine on/off (the Start/Stop button) ----
-      // Not scoped or role-gated: it's the one switch the whole installation
-      // shares, exposed to every surface exactly like the native power button.
-      // Unlocked — starting/stopping is idempotent and momentary, so (like the
-      // native button) it takes no advisory lease.
-      app.MapGet("/api/operator", () =>
-        Results.Json(this.operatorControl.State()));
-
-      app.MapPut("/api/operator", async (OperatorBody body) => {
-        if (body == null) {
-          return Results.BadRequest(new { error = "body must be {\"enabled\": true|false}" });
-        }
-        return Results.Json(await this.operatorControl.SetEnabledAsync(body.enabled));
-      });
-
-      // ---- User scope ----
-      // These handlers intentionally take no HttpContext argument. A lone
-      // HttpContext async lambda binds to the RequestDelegate overload, which
-      // discards its returned IResult and sends an empty 200 response.
-      app.MapGet("/api/parameters", async () =>
-        Results.Json(await this.controls.DescribeAsync(ControlRole.User)));
-
-      app.MapGet("/api/parameters/{key}", async (string key) => {
-        ParameterView? view = await this.controls.ReadAsync(
-          key, ControlRole.User);
-        return view == null ? Results.NotFound() : Results.Json(view);
-      });
-
-      app.MapPut("/api/parameters/{key}", (string key, HttpContext ctx) =>
-        this.HandleWrite(key, ctx, ControlRole.User));
-
-      // ---- Dome layer stack (user scope — it replaces the old domeActiveVis
-      // selector, which was user-level). Whole-stack last-write-wins: the client
-      // always PUTs its full edited copy, so no advisory lease is needed. The
-      // result is broadcast on the SSE "layers" frame, converging every client.
-      app.MapGet("/api/layers", async () =>
-        Results.Json(await this.layers.StateAsync()));
-
-      app.MapPut("/api/layers", async (LayersBody? body) => {
-        (bool ok, string? error) = await this.layers.ReplaceAsync(body?.layers);
-        return ok
-          ? Results.Json(await this.layers.StateAsync())
-          : Results.BadRequest(new { error });
-      });
-
-      // Manual fire for one layer bumps that instance's
-      // fire counter so a triggerable layer fires once. Not a stack edit, so it
-      // returns no body and doesn't broadcast a "layers" frame.
-      app.MapPost("/api/layers/{instanceId}/fire", async (string instanceId) => {
-        (bool ok, string? error) = await this.layers.FireAsync(instanceId);
-        return ok ? Results.Ok() : Results.BadRequest(new { error });
-      });
-
-      // Manual clear for one layer bumps that visualizer's
-      // clear counter so a layer holding live state (Shooting Star) drops it.
-      // Parallel to fire — no body, no "layers" frame.
-      app.MapPost("/api/layers/{instanceId}/clear", async (string instanceId) => {
-        (bool ok, string? error) = await this.layers.ClearAsync(instanceId);
-        return ok ? Results.Ok() : Results.BadRequest(new { error });
-      });
-
-      // ---- Dome scenes (user scope). Named snapshots of the whole layer stack
-      // plus the two cross-layer globals. Save/delete change the scene *list*,
-      // broadcast on the SSE "scenes" frame; apply replaces the stack + globals,
-      // which converge over the existing "layers" and parameter frames. Like the
-      // layer stack, whole-list last-write-wins — no advisory lease. ----
-      app.MapGet("/api/scenes", async () =>
-        Results.Json(await this.scenes.StateAsync()));
-
-      app.MapPost("/api/scenes", async (SceneBody? body) => {
-        (bool ok, string? error) = await this.scenes.SaveAsync(body?.name);
-        return ok
-          ? Results.Json(await this.scenes.StateAsync())
-          : Results.BadRequest(new { error });
-      });
-
-      app.MapPost("/api/scenes/{name}/apply", async (string name) => {
-        (bool ok, string? error) = await this.scenes.ApplyAsync(name);
-        return ok
-          ? Results.Json(await this.scenes.StateAsync())
-          : Results.BadRequest(new { error });
-      });
-
-      app.MapDelete("/api/scenes/{name}", async (string name) => {
-        (bool ok, string? error) = await this.scenes.DeleteAsync(name);
-        return ok
-          ? Results.Json(await this.scenes.StateAsync())
-          : Results.BadRequest(new { error });
-      });
-
-      // ---- Named live palettes (user scope). Layers select these entries
-      // directly; edits update the selected entry and broadcast the whole list.
-      // No separate live bank or Apply endpoint exists. ----
-      app.MapGet("/api/palettes", async () =>
-        Results.Json(await this.palettes.StateAsync()));
-
-      app.MapPost("/api/palettes", async (PaletteBody? body) => {
-        (bool ok, string? error) = await this.palettes.AddAsync(
-          body?.name, body?.sourceName);
-        return ok
-          ? Results.Json(await this.palettes.StateAsync())
-          : Results.BadRequest(new { error });
-      });
-
-      app.MapPut("/api/palettes/{name}", async (
-        string name, PaletteLiveBody? body
-      ) => {
-        (bool ok, string? error) = await this.palettes.SetColorsAsync(
-          name, body?.colors);
-        return ok
-          ? Results.Json(await this.palettes.StateAsync())
-          : Results.BadRequest(new { error });
-      });
-
-      app.MapPost("/api/palettes/{name}/rename", async (
-        string name, PaletteRenameBody? body
-      ) => {
-        (bool ok, string? error) = await this.palettes.RenameAsync(
-          name, body?.newName);
-        return ok
-          ? Results.Json(await this.palettes.StateAsync())
-          : Results.BadRequest(new { error });
-      });
-
-      app.MapDelete("/api/palettes/{name}", async (string name) => {
-        (bool ok, string? error) = await this.palettes.DeleteAsync(name);
-        return ok
-          ? Results.Json(await this.palettes.StateAsync())
-          : Results.BadRequest(new { error });
-      });
-
-      // Read-only wand status for the user surface's slimmed-down "Wand status"
-      // box (ID/Type/Motion/Quality). Wraps the same row snapshot the
-      // maintenance table polls together with the current spotlight value, so
-      // the user page can reflect which spotlight radio is selected (the rows
-      // alone can't distinguish -1/all from -2/idle). Exposed under the user
-      // namespace so the user page never reaches into /api/maintenance/*.
-      app.MapGet("/api/wands", () =>
-        Results.Json(new {
-          spotlight = this.wands.CurrentSpotlight(),
-          rows = this.wands.Snapshot(),
-        }));
-
-      // Set the orientation "spotlight" wand from the user surface's wand view
-      // (one radio per connected device). deviceId = -1 clears the spotlight so
-      // every wand renders again; -2 forces the dome idle (every wand ignored,
-      // screen-saver on). Momentary config write, marshaled through the gateway
-      // like the native VJ HUD text box — no advisory lease.
-      app.MapPost("/api/wands/spotlight", (SpotlightBody body) => {
-        if (body == null) {
-          return Results.BadRequest(
-            new { error = "body must be {\"deviceId\": <int>}" });
-        }
-        this.wands.SetSpotlight(body.deviceId);
-        return Results.Ok();
-      });
-
-      // ---- Maintenance scope (same host, just the full parameter set) ----
-      app.MapGet("/api/maintenance/parameters", async () =>
-        Results.Json(await this.controls.DescribeAsync(
-          ControlRole.Maintenance)));
-
-      app.MapGet("/api/maintenance/parameters/{key}", async (string key) => {
-        ParameterView? view = await this.controls.ReadAsync(
-          key, ControlRole.Maintenance);
-        return view == null ? Results.NotFound() : Results.Json(view);
-      });
-
-      app.MapPut("/api/maintenance/parameters/{key}", (string key, HttpContext ctx) =>
-        this.HandleWrite(key, ctx, ControlRole.Maintenance));
-
-      // Capture-device discovery and health. Selection is written through the
-      // audioDeviceID parameter so persistence and runtime reboot policy stay
-      // on the same serialized configuration path as every other setting.
-      app.MapGet("/api/maintenance/audio", () =>
-        Results.Json(this.audio.State()));
-
-      // Process-local engine health for service probes and sustained-load
-      // qualification. This is a snapshot rather than a configuration surface,
-      // so it is intentionally read-only and bypasses persistence.
-      app.MapGet("/api/maintenance/runtime", () =>
-        Results.Json(this.operatorControl.RuntimeState()));
-
-      // ---- Advisory locks for modal ops ----
-      app.MapGet("/api/maintenance/locks", () =>
-        Results.Json(this.locks.ActiveLocks()));
-
-      app.MapPost("/api/maintenance/locks/{resource}", async (string resource, HttpContext ctx) => {
-        string holderName = "operator";
-        try {
-          AcquireBody? body =
-            await ctx.Request.ReadFromJsonAsync<AcquireBody>();
-          if (!string.IsNullOrWhiteSpace(body?.holderName)) {
-            holderName = body.holderName;
-          }
-        } catch (JsonException) { /* empty body is fine */ }
-
-        string? token = this.locks.TryAcquire(
-          resource, holderName, out AdvisoryLockManager.LockInfo current);
-        if (token == null) {
-          // Held by someone else.
-          return Results.Json(new { error = "locked", holder = current },
-            statusCode: StatusCodes.Status423Locked);
-        }
-        return Results.Json(new { token, holder = current });
-      });
-
-      app.MapPost("/api/maintenance/locks/{resource}/heartbeat", (string resource, HttpContext ctx) => {
-        string token = ctx.Request.Headers[LockTokenHeader].ToString();
-        return this.locks.TryRenew(resource, token)
-          ? Results.Ok()
-          : Results.Json(new { error = "not holder" }, statusCode: StatusCodes.Status409Conflict);
-      });
-
-      app.MapDelete("/api/maintenance/locks/{resource}", (string resource, HttpContext ctx) => {
-        string token = ctx.Request.Headers[LockTokenHeader].ToString();
-        this.locks.TryRelease(resource, token);
-        return Results.Ok();
-      });
-
-      // ---- Dome mapping calibration (modal — guarded by the domeCalibration
-      // lease, which the client must hold before driving the flow) ----
-      // Each mutating action binds the lease token from the header as a route
-      // parameter, so the handler is a proper route handler whose returned
-      // IResult is written to the response (a lone-HttpContext handler returning
-      // Task<IResult> would instead bind as a RequestDelegate and silently drop
-      // the body — ASP0016).
-      app.MapGet("/api/maintenance/calibration", async () =>
-        Results.Json(await this.calibration.StateAsync()));
-
-      app.MapPost("/api/maintenance/calibration/start",
-        ([FromHeader(Name = LockTokenHeader)] string? token) =>
-          this.RunCalibration(token, c => c.StartAsync()));
-
-      app.MapPost("/api/maintenance/calibration/navigate",
-        ([FromHeader(Name = LockTokenHeader)] string? token,
-         DirectionBody? body) =>
-          this.RunCalibration(
-            token, c => c.NavigateAsync(body?.direction ?? 0)));
-
-      app.MapPost("/api/maintenance/calibration/confirm",
-        ([FromHeader(Name = LockTokenHeader)] string? token) =>
-          this.RunCalibration(token, c => c.ConfirmAsync()));
-
-      app.MapPost("/api/maintenance/calibration/back",
-        ([FromHeader(Name = LockTokenHeader)] string? token) =>
-          this.RunCalibration(token, c => c.BackAsync()));
-
-      app.MapPost("/api/maintenance/calibration/select-box",
-        ([FromHeader(Name = LockTokenHeader)] string? token, BoxBody? body) =>
-          this.RunCalibration(
-            token, c => c.SelectBoxAsync(body?.box ?? -1)));
-
-      app.MapPost("/api/maintenance/calibration/apply-box-one",
-        ([FromHeader(Name = LockTokenHeader)] string? token) =>
-          this.RunCalibration(token, c => c.ApplyBoxOneAsync()));
-
-      app.MapPost("/api/maintenance/calibration/recalibrate-box",
-        ([FromHeader(Name = LockTokenHeader)] string? token, BoxBody? body) =>
-          this.RunCalibration(
-            token, c => c.RecalibrateBoxAsync(body?.box ?? -1)));
-
-      app.MapPost("/api/maintenance/calibration/cancel",
-        ([FromHeader(Name = LockTokenHeader)] string? token) =>
-          this.RunCalibration(token, c => c.CancelAsync()));
-
-      app.MapPost("/api/maintenance/calibration/save",
-        async ([FromHeader(Name = LockTokenHeader)] string? token) => {
-          if (!this.locks.HoldsLock(LockPolicy.DomeCalibration, token)) {
-            return this.CalibrationLocked();
-          }
-          (bool ok, string? error, var state) =
-            await this.calibration.SaveAsync();
-          return ok
-            ? Results.Json(state)
-            : Results.BadRequest(new { error, state });
-        });
-
-      // ---- Wand status (read-only orientation-device diagnostics, polled by
-      // the client). Calibrate is a momentary global action, unguarded like the
-      // native Calibrate All button. ----
-      app.MapGet("/api/maintenance/wands", () =>
-        Results.Json(this.wands.Snapshot()));
-
-      // Serial (USB-CDC ESP-NOW) receiver: port list, selection, and liveness.
-      // Port selection uses the existing PUT .../parameters/wandSerialPort.
-      app.MapGet("/api/maintenance/wands/serial", () =>
-        Results.Json(this.wands.SerialInfo()));
-
-      app.MapPost("/api/maintenance/wands/calibrate", () => {
-        this.wands.CalibrateAll();
-        return Results.Ok();
-      });
-
-      // ---- Human tap tempo. The client times its own taps and posts the
-      // computed BPM (momentary, like the native Tap button — no advisory
-      // lease). Also flips the source to Human, matching the native button. ----
-      app.MapPost("/api/maintenance/tempo/tap", async (TempoBody body) => {
-        if (body == null || double.IsNaN(body.bpm) ||
-            double.IsInfinity(body.bpm) || body.bpm <= 0.0) {
-          return Results.BadRequest(
-            new { error = "body must be {\"bpm\": <positive number>}" });
-        }
-        await this.tempo.SetManualBPMAsync(body.bpm);
-        return Results.Ok();
-      });
-
-      // ---- Change feed (Server-Sent Events) ----
-      // Clients open one of these after their initial GET and re-render on each
-      // pushed {key, value}. This is what makes last-write-wins coherent across
-      // phones — everyone sees the winning value.
-      app.MapGet("/api/events", (HttpContext ctx) =>
-        this.StreamEvents(ctx, ControlRole.User));
-
-      app.MapGet("/api/maintenance/events", (HttpContext ctx) =>
-        this.StreamEvents(ctx, ControlRole.Maintenance));
-    }
-
-    // Runs a calibration action for a caller holding the domeCalibration lease
-    // (a modal flow can't be shared) and returns its result as JSON. Returns 423
-    // with the current holder if the caller doesn't hold the lease, or 400 if
-    // the action rejects its argument.
-    private async Task<IResult> RunCalibration(
-      string? token,
-      Func<DomeCalibrationController, Task<DomeCalibrationController.CalibrationState>> action
-    ) {
-      if (!this.locks.HoldsLock(LockPolicy.DomeCalibration, token)) {
-        return this.CalibrationLocked();
-      }
-      try {
-        return Results.Json(await action(this.calibration));
-      } catch (ArgumentException e) {
-        // Return the unchanged state alongside the error so the client re-renders
-        // the flow (diagram, picks) instead of collapsing to the start screen.
-        return Results.BadRequest(new {
-          error = e.Message,
-          state = await this.calibration.StateAsync(),
-        });
-      }
-    }
-
-    private IResult CalibrationLocked() => Results.Json(
-      new { error = "hold the domeCalibration lock first",
-        holder = this.locks.Get(LockPolicy.DomeCalibration) },
-      statusCode: StatusCodes.Status423Locked);
-
-    private async Task StreamEvents(HttpContext ctx, ControlRole role) {
-      ctx.Response.Headers["Content-Type"] = "text/event-stream";
-      ctx.Response.Headers["Cache-Control"] = "no-cache";
-      ctx.Response.Headers["X-Accel-Buffering"] = "no";
-
-      ConfigEventStream.Subscriber sub = this.events.Subscribe(role, out Guid id);
-      try {
-        // Nudge the stream open so EventSource fires onopen promptly, then seed
-        // the current telemetry values (parameters get theirs from the initial
-        // REST GET, but telemetry has no such GET).
-        await ctx.Response.WriteAsync(": connected\n\n");
-        List<string> initialFrames = await this.controls.CaptureAsync(
-          this.events.InitialStateFrames);
-        foreach (string frame in initialFrames) {
-          await ctx.Response.WriteAsync($"data: {frame}\n\n", ctx.RequestAborted);
-        }
-        await ctx.Response.Body.FlushAsync(ctx.RequestAborted);
-
-        await foreach (string msg in
-            sub.Reader.ReadAllAsync(ctx.RequestAborted)) {
-          await ctx.Response.WriteAsync($"data: {msg}\n\n", ctx.RequestAborted);
-          await ctx.Response.Body.FlushAsync(ctx.RequestAborted);
-        }
-      } catch (OperationCanceledException) {
-        // Client disconnected; fall through to cleanup.
-      } finally {
-        this.events.Unsubscribe(id);
-      }
-    }
-
-    private async Task<IResult> HandleWrite(string key, HttpContext ctx, ControlRole role) {
-      WriteBody? body;
-      try {
-        body = await ctx.Request.ReadFromJsonAsync<WriteBody>();
-      } catch (JsonException) {
-        return Results.BadRequest(new { error = "malformed JSON body" });
-      }
-      if (body == null || body.value.ValueKind == JsonValueKind.Undefined) {
-        return Results.BadRequest(new { error = "body must be {\"value\": ...}" });
-      }
-
-      object raw;
-      try {
-        raw = Unwrap(body.value);
-      } catch (ArgumentException e) {
-        return Results.BadRequest(new { error = e.Message });
-      }
-
-      // Advisory-lock gate: if this parameter is part of a modal resource that
-      // another user currently holds, refuse the write.
-      string? resource = LockPolicy.ResourceForKey(key);
-      if (resource != null) {
-        string token = ctx.Request.Headers[LockTokenHeader].ToString();
-        if (!this.locks.CanWrite(resource, token)) {
-          return Results.Json(
-            new { error = "locked", holder = this.locks.Get(resource) },
-            statusCode: StatusCodes.Status423Locked);
-        }
-      }
-
-      WriteResult result = await this.controls.WriteAsync(key, raw, role);
-      switch (result.Status) {
-        case WriteStatus.Ok:
-          return Results.Json(new { key, value = result.Value });
-        case WriteStatus.NotFound:
-          return Results.NotFound(new { error = result.Message });
-        case WriteStatus.Forbidden:
-          return Results.Json(new { error = result.Message }, statusCode: StatusCodes.Status403Forbidden);
-        case WriteStatus.Invalid:
-        default:
-          return Results.BadRequest(new { error = result.Message });
-      }
-    }
-
-    // Converts a JSON value into the boxed scalar the descriptors expect.
-    private static object Unwrap(JsonElement value) {
-      switch (value.ValueKind) {
-        case JsonValueKind.True:
-          return true;
-        case JsonValueKind.False:
-          return false;
-        case JsonValueKind.String:
-          return value.GetString() ?? throw new ArgumentException(
-            "string value is unavailable");
-        case JsonValueKind.Number:
-          return value.GetDouble();
-        case JsonValueKind.Null:
-          throw new ArgumentException("value must not be null");
-        default:
-          throw new ArgumentException("unsupported value kind: " + value.ValueKind);
-      }
-    }
-
-    private sealed class WriteBody {
-      public JsonElement value { get; set; }
-    }
-
-    private sealed class OperatorBody {
-      public bool enabled { get; set; }
-    }
-
-    private sealed class TempoBody {
-      public double bpm { get; set; }
-    }
-
-    private sealed class SpotlightBody {
-      public int deviceId { get; set; }
-    }
-
-    private sealed class AcquireBody {
-      public string? holderName { get; set; }
-    }
-
-    private sealed class DirectionBody {
-      public int direction { get; set; }
-    }
-
-    private sealed class BoxBody {
-      public int box { get; set; }
-    }
-
-    private sealed class LayersBody {
-      public System.Collections.Generic.List<LayersController.LayerDto?>? layers {
-        get; set;
-      }
-    }
-
-    private sealed class SceneBody {
-      public string? name { get; set; }
-    }
-
-    private sealed class PaletteBody {
-      public string? name { get; set; }
-      public string? sourceName { get; set; }
-    }
-
-    private sealed class PaletteLiveBody {
-      public System.Collections.Generic.List<PaletteController.SlotDto>? colors {
-        get; set;
-      }
-    }
-
-    private sealed class PaletteRenameBody {
-      public string? newName { get; set; }
     }
   }
 }

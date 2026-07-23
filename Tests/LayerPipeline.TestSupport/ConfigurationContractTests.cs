@@ -13,6 +13,9 @@ namespace Spectrum.LayerPipeline.Tests {
     public static void Register(Action<string, Action> run) {
       run(nameof(ConfigurationSerializes), ConfigurationSerializes);
       run(
+        nameof(ConfigurationScalarSchemaIsExhaustive),
+        ConfigurationScalarSchemaIsExhaustive);
+      run(
         nameof(ConfigurationCollectionsIsolateNestedAliases),
         ConfigurationCollectionsIsolateNestedAliases);
       run(
@@ -80,6 +83,116 @@ namespace Spectrum.LayerPipeline.Tests {
           envelope.DecayTime == 20 && envelope.SustainLevel == 0.7 &&
           envelope.ReleaseTime == 30,
         "round trip lost the MIDI level-driver channel");
+    }
+
+    private static void ConfigurationScalarSchemaIsExhaustive() {
+      Type[] scalarTypes = {
+        typeof(bool),
+        typeof(double),
+        typeof(int),
+        typeof(string),
+      };
+      var liveScalarNames = typeof(Configuration).GetProperties()
+        .Where(property =>
+          property.CanRead &&
+          property.CanWrite &&
+          scalarTypes.Contains(property.PropertyType))
+        .Select(property => property.Name)
+        .ToHashSet();
+      var documentScalarNames =
+        typeof(global::Spectrum.SpectrumConfigurationDocument)
+          .GetProperties()
+          .Where(property =>
+            property.CanRead &&
+            property.CanWrite &&
+            scalarTypes.Contains(property.PropertyType))
+          .Select(property => property.Name)
+          .ToHashSet();
+      var schemaNames =
+        global::Spectrum.SpectrumConfigurationSchema.All
+          .Where(property => property.Persisted)
+          .Select(property => property.Key)
+          .ToHashSet();
+
+      Assert(schemaNames.SetEquals(liveScalarNames),
+        "the scalar schema and Configuration surface differ: schema=" +
+        string.Join(",", schemaNames.OrderBy(name => name)) +
+        "; live=" +
+        string.Join(",", liveScalarNames.OrderBy(name => name)));
+      Assert(schemaNames.SetEquals(documentScalarNames),
+        "the scalar schema and persistence document differ: schema=" +
+        string.Join(",", schemaNames.OrderBy(name => name)) +
+        "; document=" +
+        string.Join(",", documentScalarNames.OrderBy(name => name)));
+
+      var config = new global::Spectrum.SpectrumConfiguration();
+      var document =
+        new global::Spectrum.SpectrumConfigurationDocument();
+      foreach (global::Spectrum.ConfigurationPropertyMetadata property in
+          global::Spectrum.SpectrumConfigurationSchema.All) {
+        System.Reflection.PropertyInfo? liveProperty =
+          typeof(Configuration).GetProperty(property.Key);
+        System.Reflection.PropertyInfo? documentProperty =
+          document.GetType().GetProperty(property.Key);
+        Assert(liveProperty != null &&
+            liveProperty.PropertyType == property.ValueType,
+          property.Key + " has the wrong live schema type");
+        Assert(documentProperty != null &&
+            documentProperty.PropertyType == property.ValueType,
+          property.Key + " has the wrong document schema type");
+        Assert(Equals(property.DefaultValue, property.Read(config)),
+          property.Key + " live default bypasses the scalar schema");
+        Assert(Equals(
+            property.DefaultValue,
+            documentProperty!.GetValue(document)),
+          property.Key + " document default bypasses the scalar schema");
+      }
+
+      ParameterRegistry desktopRegistry =
+        global::Spectrum.SpectrumConfigurationSchema
+          .BuildParameterRegistry();
+      var schemaWebKeys =
+        global::Spectrum.SpectrumConfigurationSchema.All
+          .Where(property => property.WebParameter != null)
+          .Select(property => property.Key)
+          .ToHashSet();
+      Assert(
+        schemaWebKeys.SetEquals(
+          desktopRegistry.All.Select(descriptor => descriptor.Key)),
+        "the desktop web registry bypasses the scalar schema");
+
+      ParameterRegistry headlessRegistry =
+        global::Spectrum.SpectrumConfigurationSchema
+          .BuildParameterRegistry(nativeWindowControlsAvailable: false);
+      var headlessKeys =
+        desktopRegistry.All
+          .Select(descriptor => descriptor.Key)
+          .Where(key =>
+            key != nameof(Configuration.vjHUDEnabled) &&
+            key != nameof(Configuration.domeSimulationEnabled))
+          .ToHashSet();
+      Assert(
+        headlessKeys.SetEquals(
+          headlessRegistry.All.Select(descriptor => descriptor.Key)),
+        "the headless registry did not apply native-window availability");
+
+      string defaultPath = Path.Combine(
+        AppContext.BaseDirectory, "spectrum_default_config.xml");
+      Assert(File.Exists(defaultPath),
+        "the packaged default configuration is missing");
+      using FileStream defaultStream = File.OpenRead(defaultPath);
+      global::Spectrum.SpectrumConfiguration defaultConfig =
+        new XmlSerializer<
+          global::Spectrum.SpectrumConfigurationDocument>()
+          .Deserialize(defaultStream)
+          .ToConfiguration();
+      foreach (ParameterDescriptor descriptor in desktopRegistry.All) {
+        object current = descriptor.Get(defaultConfig);
+        object validated = descriptor.Coerce(current);
+        Assert(Equals(current, validated),
+          "the packaged default configuration violates the schema for " +
+          descriptor.Key);
+      }
     }
 
     private static void ConfigurationCollectionsIsolateNestedAliases() {

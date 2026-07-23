@@ -9,28 +9,41 @@ namespace Spectrum {
   // those shapes stay here instead of defining the live application API.
   [XmlRoot("SpectrumConfiguration")]
   public sealed class SpectrumConfigurationDocument {
-    public string? audioDeviceID { get; set; }
-    public bool domeEnabled { get; set; }
-    public bool midiInputEnabled { get; set; }
-    public bool domeOutputInSeparateThread { get; set; }
-    public string domeBeagleboneOPCAddress { get; set; } = "";
-    public bool domeSimulationEnabled { get; set; }
-    public bool webDomeSimulatorEnabled { get; set; } = true;
-    public double domeMaxBrightness { get; set; } = 0.5;
-    public double domeBrightness { get; set; } = 0.1;
-    public int domeTestPattern { get; set; }
+    public string? audioDeviceID { get; set; } =
+      SpectrumConfigurationSchema.AudioDeviceId.TypedDefaultValue;
+    public bool domeEnabled { get; set; } =
+      SpectrumConfigurationSchema.DomeEnabled.TypedDefaultValue;
+    public bool midiInputEnabled { get; set; } =
+      SpectrumConfigurationSchema.MidiInputEnabled.TypedDefaultValue;
+    public bool domeOutputInSeparateThread { get; set; } =
+      SpectrumConfigurationSchema.DomeOutputInSeparateThread.TypedDefaultValue;
+    public string domeBeagleboneOPCAddress { get; set; } =
+      SpectrumConfigurationSchema.DomeBeagleboneOpcAddress.TypedDefaultValue;
+    public bool domeSimulationEnabled { get; set; } =
+      SpectrumConfigurationSchema.DomeSimulationEnabled.TypedDefaultValue;
+    public bool webDomeSimulatorEnabled { get; set; } =
+      SpectrumConfigurationSchema.WebDomeSimulatorEnabled.TypedDefaultValue;
+    public double domeMaxBrightness { get; set; } =
+      SpectrumConfigurationSchema.DomeMaxBrightness.TypedDefaultValue;
+    public double domeBrightness { get; set; } =
+      SpectrumConfigurationSchema.DomeBrightness.TypedDefaultValue;
+    public int domeTestPattern { get; set; } =
+      SpectrumConfigurationSchema.DomeTestPattern.TypedDefaultValue;
     public List<DomeLayerSettings>? domeLayerStack { get; set; }
     public int[]? domeCableMapping { get; set; }
     public DomePortMapping?[]? domePortMappings { get; set; }
-    public double domeGlobalFadeSpeed { get; set; }
-    public double domeGlobalHueSpeed { get; set; } = 1;
+    public double domeGlobalFadeSpeed { get; set; } =
+      SpectrumConfigurationSchema.DomeGlobalFadeSpeed.TypedDefaultValue;
+    public double domeGlobalHueSpeed { get; set; } =
+      SpectrumConfigurationSchema.DomeGlobalHueSpeed.TypedDefaultValue;
     public Dictionary<string, int> domeLayerFireCounters { get; set; } =
       new Dictionary<string, int>();
     public Dictionary<string, int> domeLayerClearCounters { get; set; } =
       new Dictionary<string, int>();
     public List<DomeScene>? domeScenes { get; set; }
     public List<DomePalette>? domePalettes { get; set; }
-    public bool vjHUDEnabled { get; set; }
+    public bool vjHUDEnabled { get; set; } =
+      SpectrumConfigurationSchema.VjHudEnabled.TypedDefaultValue;
     public Dictionary<int, int> midiDevices { get; set; } =
       new Dictionary<int, int>();
     public Dictionary<int, MidiPreset> midiPresets { get; set; } =
@@ -38,11 +51,16 @@ namespace Spectrum {
     public Dictionary<int, MidiLevelDriverPreset> midiLevelDriverChannels {
       get; set;
     } = new Dictionary<int, MidiLevelDriverPreset>();
-    public double flashSpeed { get; set; }
-    public int beatInput { get; set; }
-    public int orientationDeviceSpotlight { get; set; }
-    public bool orientationCalibrate { get; set; }
-    public string wandSerialPort { get; set; } = "";
+    public double flashSpeed { get; set; } =
+      SpectrumConfigurationSchema.FlashSpeed.TypedDefaultValue;
+    public int beatInput { get; set; } =
+      SpectrumConfigurationSchema.BeatInput.TypedDefaultValue;
+    public int orientationDeviceSpotlight { get; set; } =
+      SpectrumConfigurationSchema.OrientationDeviceSpotlight.TypedDefaultValue;
+    public bool orientationCalibrate { get; set; } =
+      SpectrumConfigurationSchema.OrientationCalibrate.TypedDefaultValue;
+    public string wandSerialPort { get; set; } =
+      SpectrumConfigurationSchema.WandSerialPort.TypedDefaultValue;
 
     public SpectrumConfiguration ToConfiguration() {
       var config = new SpectrumConfiguration {
