@@ -176,11 +176,12 @@ namespace Spectrum.LEDs {
     private readonly DomeOpcTransport transport;
     private readonly DomeSimulatorPublisher simulatorPublisher =
       new DomeSimulatorPublisher();
+    private readonly DomePaletteSampler paletteSampler;
 
     internal WaitHandle? PendingOpcConnectWaitHandle =>
       this.transport.PendingConnectWaitHandle;
     // The tempo service (owned by the Operator, not part of Configuration),
-    // read for the beat-synced flash-off in the per-frame color cache.
+    // shared by palette sampling and global hue postprocessing.
     private readonly BeatBroadcaster beat;
     private readonly List<Visualizer> visualizers;
     private readonly DomeCompositor compositor;
@@ -286,15 +287,21 @@ namespace Spectrum.LEDs {
       this.transport = new DomeOpcTransport(telemetry, opcMinSendInterval);
       this.beat = beat;
       this.visualizers = new List<Visualizer>();
-      this.compositor = new DomeCompositor(
-        this.MakeDomeFrame, orientationAngle,
-        paletteColor: (palette, position) => this.GetGradientBetweenColors(
-          0, 7, position, 0, false, palette));
       DomeShowStateSnapshot initialShowState =
         (config as IDomeShowStateConfiguration)?.DomeShowStateSnapshot ??
           DomeShowStateSnapshot.Empty;
       this.renderGeneration = new DomeRenderGeneration(
         RenderPlan.Empty, initialShowState);
+      this.paletteSampler = new DomePaletteSampler(
+        beat,
+        () => Volatile.Read(ref this.renderGeneration) ??
+          DomeRenderGeneration.Empty,
+        () => this.runtimeSettings.DomeRuntimeFrameSnapshot);
+      this.compositor = new DomeCompositor(
+        this.MakeDomeFrame, orientationAngle,
+        paletteColor: (palette, position) =>
+          this.paletteSampler.GetGradientBetweenColors(
+          0, 7, position, 0, false, palette));
       this.frameRenderGeneration = this.renderGeneration;
       this.frameRuntimeSettings =
         this.runtimeSettings.DomeRuntimeFrameSnapshot;
@@ -477,11 +484,11 @@ namespace Spectrum.LEDs {
     public void OperatorUpdate() {
       this.EnsureOutputSettingsReconciled();
       // Blend this frame's layer stack and push it to the wire/simulator BEFORE
-      // opcAPI.OperatorUpdate() sends and before we invalidate the frame color
-      // cache. The visualizers ran (into their own buffers) earlier this frame
-      // with the cache still valid; Composite reads only their buffers, so the
-      // ordering composite -> opc send -> cache invalidate is required. See the
-      // GetGradientColor cache note in EnsureFrameColorCache.
+      // opcAPI.OperatorUpdate() sends and before the palette sampler releases
+      // its captured frame. The visualizers ran (into their own buffers)
+      // earlier this frame with the capture still valid; Composite reads only
+      // their buffers, so the ordering composite -> opc send -> release is
+      // required.
       DomeRenderGeneration frameGeneration =
         this.frameRenderGeneration ?? Volatile.Read(ref this.renderGeneration);
       DomeFrame? completed = this.compositor.Compose(frameGeneration.Plan);
@@ -491,11 +498,7 @@ namespace Spectrum.LEDs {
         this.ApplyGlobalHueRotation(frameGeneration);
       }
       this.transport.OperatorUpdate();
-      // The operator runs Visualize() on every winning visualizer and then this
-      // OperatorUpdate() once per output, so this marks the end of a frame: drop
-      // the per-frame color snapshot so the next frame's first pixel recomputes
-      // it. See EnsureFrameColorCache.
-      this.frameColorCacheValid = false;
+      this.paletteSampler.EndFrame();
       this.frameRenderGeneration = null;
       this.operatorFrameActive = false;
     }
@@ -544,7 +547,7 @@ namespace Spectrum.LEDs {
       this.frameOutputSettings =
         this.runtimeSettings.DomeOutputSettingsSnapshot;
       this.operatorFrameActive = true;
-      this.frameColorCacheValid = false;
+      this.paletteSampler.BeginFrame(generation, this.frameRuntimeSettings);
       return generation.ShowState;
     }
 
@@ -609,32 +612,6 @@ namespace Spectrum.LEDs {
       double mod = 3 * p * p - 3 * p + 1;
       double delta = rate * mod * frameScale;
       this.compositor.AdvancePostFrameHue(generation.Plan, delta);
-    }
-
-    // Per-frame snapshot of the beat/brightness state that every GetSingleColor /
-    // GetGradientColor call would otherwise recompute for each of the ~4500 dome
-    // pixels. CurrentlyFlashedOff takes a lock and reads the wall clock, so
-    // querying it (and the domeMaxBrightness*domeBrightness product) once per
-    // frame instead of once per pixel removes millions of lock acquisitions and
-    // DateTime.Now reads per second from the operator thread. These fields are
-    // only ever touched on the operator thread (visualizers and OperatorUpdate
-    // both run there), so they need no synchronization.
-    private bool frameColorCacheValid = false;
-    private bool frameFlashedOff;
-    private double frameBrightness;
-
-    private DomeRenderGeneration EnsureFrameColorCache() {
-      if (this.frameColorCacheValid) {
-        return this.frameRenderGeneration ?? DomeRenderGeneration.Empty;
-      }
-      this.frameFlashedOff = this.beat.CurrentlyFlashedOff;
-      this.frameBrightness =
-        this.frameRuntimeSettings.MaxBrightness *
-        this.frameRuntimeSettings.Brightness;
-      this.frameRenderGeneration ??=
-        Volatile.Read(ref this.renderGeneration) ?? DomeRenderGeneration.Empty;
-      this.frameColorCacheValid = true;
-      return this.frameRenderGeneration;
     }
 
     // Keep the established output façade while the publisher owns both
@@ -929,16 +906,7 @@ namespace Spectrum.LEDs {
     // Resolve a relative color slot through the named palette selected by the
     // layer. The palette parameter is an index into config.domePalettes.
     public int GetSingleColor(int index, int paletteIndex = 0) {
-      DomeRenderGeneration frameGeneration = this.EnsureFrameColorCache();
-      if (this.frameFlashedOff) {
-        return 0x000000;
-      }
-      DomePaletteSnapshot? palette =
-        frameGeneration.ShowState.ResolvePalette(paletteIndex);
-      return LEDColor.ScaleColor(
-        palette == null ? 0x000000 : palette.GetSingleColor(index),
-        this.frameBrightness
-      );
+      return this.paletteSampler.GetSingleColor(index, paletteIndex);
     }
 
     public int GetGradientColor(
@@ -948,30 +916,8 @@ namespace Spectrum.LEDs {
       bool wrap,
       int paletteIndex = 0
     ) {
-      DomeRenderGeneration frameGeneration = this.EnsureFrameColorCache();
-      if (this.frameFlashedOff) {
-        return 0x000000;
-      }
-      DomePaletteSnapshot? palette =
-        frameGeneration.ShowState.ResolvePalette(paletteIndex);
-      if (
-        palette == null ||
-        index < 0 || index >= palette.Colors.Length ||
-        palette.Colors[index] == null
-      ) {
-        return 0x000000;
-      }
-      DomeColorSnapshot? selected = palette.Colors[index];
-      if (!selected.HasValue || !selected.Value.IsGradient) {
-        return LEDColor.ScaleColor(
-          palette.GetSingleColor(index),
-          this.frameBrightness
-        );
-      }
-      return LEDColor.ScaleColor(
-        palette.GetGradientColor(index, pixelPos, focusPos, wrap),
-        this.frameBrightness
-      );
+      return this.paletteSampler.GetGradientColor(
+        index, pixelPos, focusPos, wrap, paletteIndex);
     }
 
     public int GetGradientBetweenColors(
@@ -982,79 +928,8 @@ namespace Spectrum.LEDs {
       bool wrap,
       int paletteIndex = 0
     ) {
-      // Return a color evenly scaled between min index and max index, based on the pixel position.
-      if (double.IsNaN(pixelPos) || double.IsInfinity(pixelPos) ||
-          pixelPos < 0 || pixelPos > 1) {
-        throw new ArgumentException("Pixel Position out of range: " + pixelPos.ToString());
-      }
-      if (minIndex < 0) {
-        throw new ArgumentOutOfRangeException(
-          nameof(minIndex), "Minimum color index cannot be negative.");
-      }
-      if (maxIndex <= minIndex) {
-        throw new ArgumentException(
-          "Maximum color index must be greater than minimum color index.",
-          nameof(maxIndex));
-      }
-      if (paletteIndex < 0) {
-        throw new ArgumentOutOfRangeException(
-          nameof(paletteIndex), "Palette index cannot be negative.");
-      }
-      DomeRenderGeneration frameGeneration = this.EnsureFrameColorCache();
-      if (this.frameFlashedOff) {
-        return 0x000000;
-      }
-      var num_colors = maxIndex - minIndex;
-      // Which adjacent pair of palette slots pixelPos lands between, as an
-      // offset from minIndex. Clamp so pixelPos == 1.0 maps to the last pair
-      // (maxIndex-1, maxIndex) instead of overrunning past maxIndex.
-      int segment = (int)(pixelPos * num_colors);
-      if (segment >= num_colors) {
-        segment = num_colors - 1;
-      }
-      // Offset by minIndex so "gradient between colors 59-63" actually reads
-      // slots 59-63 rather than 0-4 of the current palette.
-      int minColorIdx = minIndex + segment;
-      int maxColorIdx = minColorIdx + 1;
-      // Rescale the position so it runs 0..1 between the two chosen slots,
-      // clamping to guard against floating-point rounding landing just outside.
-      double scaledPixelPos = pixelPos * num_colors - segment;
-      if (scaledPixelPos < 0) {
-        scaledPixelPos = 0;
-      } else if (scaledPixelPos > 1) {
-        scaledPixelPos = 1;
-      }
-      DomePaletteSnapshot? palette =
-        frameGeneration.ShowState.ResolvePalette(paletteIndex);
-      if (
-        palette == null ||
-        palette.Colors.Length <= minColorIdx ||
-        palette.Colors[minColorIdx] == null
-      ) {
-        return 0x000000;
-      }
-      if (
-        palette.Colors.Length <= maxColorIdx ||
-        palette.Colors[maxColorIdx] == null
-      ) {
-        return 0x000000;
-      }
-      DomeColorSnapshot? firstColor = palette.Colors[minColorIdx];
-      if (!firstColor.HasValue || !firstColor.Value.IsGradient) {
-        return this.GetSingleColor(minColorIdx, paletteIndex);
-      }
-      // Blend Color1 of the two adjacent slots. Read the palette directly
-      // (unscaled) and apply frameBrightness exactly once at the end — routing
-      // the endpoints through this.GetSingleColor would pre-scale each by
-      // frameBrightness, making the result quadratic in the brightness slider.
-      var color = new DomeColorSnapshot(
-        palette.GetSingleColor(minColorIdx),
-        palette.GetSingleColor(maxColorIdx),
-        true);
-      return LEDColor.ScaleColor(
-        color.GradientColor(scaledPixelPos, focusPos, wrap),
-        this.frameBrightness
-      );
+      return this.paletteSampler.GetGradientBetweenColors(
+        minIndex, maxIndex, pixelPos, focusPos, wrap, paletteIndex);
     }
   }
 
