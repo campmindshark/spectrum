@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using Spectrum.Base;
+using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
@@ -117,12 +117,5 @@ namespace Spectrum.LayerPipeline.Tests {
       }
     }
 
-    private static void Assert(
-      [DoesNotReturnIf(false)] bool condition, string? message
-    ) {
-      if (!condition) {
-        throw new InvalidOperationException(message);
-      }
-    }
   }
 }

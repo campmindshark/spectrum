@@ -12,6 +12,7 @@
     <ProjectReference Include="..\..\Web\Spectrum.Web.csproj" />
     <ProjectReference Include="..\..\LEDs\LEDs.csproj" />
     <ProjectReference Include="..\..\Platform.Linux\Spectrum.Platform.Linux.csproj" />
+    <ProjectReference Include="..\LayerPipeline.TestSupport\Spectrum.LayerPipeline.TestSupport.csproj" />
   </ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

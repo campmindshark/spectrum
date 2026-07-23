@@ -1,6 +1,6 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
@@ -149,12 +149,5 @@ namespace Spectrum.LayerPipeline.Tests {
         name + ": expected " + expected + ", got " + actual);
     }
 
-    private static void Assert(
-      [DoesNotReturnIf(false)] bool condition, string? message
-    ) {
-      if (!condition) {
-        throw new InvalidOperationException(message);
-      }
-    }
   }
 }

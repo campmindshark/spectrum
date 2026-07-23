@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using Spectrum.Base;
+using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
@@ -148,14 +148,6 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(snapshot != null && error == null, error);
       return (MotionEmbersOptions)DomeBlend.MotionEmbers.CompileOptions(
         snapshot.Layers[0].OperationParameters);
-    }
-
-    private static void Assert(
-      [DoesNotReturnIf(false)] bool condition, string? message
-    ) {
-      if (!condition) {
-        throw new InvalidOperationException(message);
-      }
     }
 
     private static void AssertClose(

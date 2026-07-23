@@ -5,7 +5,6 @@ using System.Net.Sockets;
 using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
@@ -20,6 +19,7 @@ using Spectrum.LEDs;
 using Spectrum.Platform.Linux;
 using Spectrum.Visualizers;
 using Spectrum.Web;
+using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.Portability.Tests {
 
@@ -1250,12 +1250,5 @@ namespace Spectrum.Portability.Tests {
       return bytes;
     }
 
-    private static void Assert(
-      [DoesNotReturnIf(false)] bool condition, string? message
-    ) {
-      if (!condition) {
-        throw new InvalidOperationException(message);
-      }
-    }
   }
 }

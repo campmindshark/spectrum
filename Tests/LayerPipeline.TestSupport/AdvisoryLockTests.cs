@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
+using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
@@ -87,12 +87,5 @@ namespace Spectrum.LayerPipeline.Tests {
         "concurrent acquisition published multiple leases");
     }
 
-    private static void Assert(
-      [DoesNotReturnIf(false)] bool condition, string? message
-    ) {
-      if (!condition) {
-        throw new InvalidOperationException(message);
-      }
-    }
   }
 }

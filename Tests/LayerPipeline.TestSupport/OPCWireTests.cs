@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -11,6 +10,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Spectrum.Base;
 using Spectrum.LEDs;
+using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
@@ -988,14 +988,6 @@ namespace Spectrum.LayerPipeline.Tests {
       }
       throw new InvalidOperationException(
         name + " did not throw " + typeof(T).Name);
-    }
-
-    private static void Assert(
-      [DoesNotReturnIf(false)] bool condition, string? message
-    ) {
-      if (!condition) {
-        throw new InvalidOperationException(message);
-      }
     }
 
     private sealed class LoopbackSink : IDisposable {

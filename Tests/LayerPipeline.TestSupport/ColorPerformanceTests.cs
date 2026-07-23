@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Spectrum.Base;
 using Spectrum.LEDs;
+using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
@@ -176,10 +177,5 @@ namespace Spectrum.LayerPipeline.Tests {
         ", got 0x" + actual.ToString("X6"));
     }
 
-    private static void Assert(bool condition, string message) {
-      if (!condition) {
-        throw new InvalidOperationException(message);
-      }
-    }
   }
 }
