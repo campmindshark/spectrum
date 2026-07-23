@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -172,15 +171,14 @@ namespace Spectrum.LEDs {
       new Tuple<int, int>(4, 4), new Tuple<int, int>(0, 4),
     };
 
-    private OPCAPI? opcAPI;
-    private TimeSpan? opcMinSendInterval;
     private readonly Configuration config;
     private readonly IRuntimeSettingsConfiguration runtimeSettings;
-    // Live counters, not config: the OPC send rate is reported here.
-    private readonly RuntimeTelemetry telemetry;
+    private readonly DomeOpcTransport transport;
+    private readonly DomeSimulatorPublisher simulatorPublisher =
+      new DomeSimulatorPublisher();
 
     internal WaitHandle? PendingOpcConnectWaitHandle =>
-      this.opcAPI?.PendingConnectWaitHandle;
+      this.transport.PendingConnectWaitHandle;
     // The tempo service (owned by the Operator, not part of Configuration),
     // read for the beat-synced flash-off in the per-frame color cache.
     private readonly BeatBroadcaster beat;
@@ -234,10 +232,6 @@ namespace Spectrum.LEDs {
       new int[NumDomeBoxes, NumPortsPerBox];
     private DomeOutputMapping outputMapping = new DomeOutputMapping(
       Array.Empty<int>(), Array.Empty<int>());
-    // Touched only by the operator thread. Comparing mapping snapshots makes an
-    // output-map transition clear OPC's persistent next frame exactly when the
-    // first frame using that new projection is written.
-    private DomeOutputMapping? lastWireMapping;
     private DomeTopology? topology;
 
     private static int calculateMaxStripLength() {
@@ -274,13 +268,22 @@ namespace Spectrum.LEDs {
     public LEDDomeOutput(
       Configuration config, RuntimeTelemetry telemetry, BeatBroadcaster beat,
       OrientationAngleProvider? orientationAngle = null
+    ) : this(config, telemetry, beat, orientationAngle, null) {
+    }
+
+    private LEDDomeOutput(
+      Configuration config,
+      RuntimeTelemetry telemetry,
+      BeatBroadcaster beat,
+      OrientationAngleProvider? orientationAngle,
+      TimeSpan? opcMinSendInterval
     ) {
       this.config = config;
       this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
         throw new ArgumentException(
           "LEDDomeOutput requires immutable runtime settings.",
           nameof(config));
-      this.telemetry = telemetry;
+      this.transport = new DomeOpcTransport(telemetry, opcMinSendInterval);
       this.beat = beat;
       this.visualizers = new List<Visualizer>();
       this.compositor = new DomeCompositor(
@@ -308,11 +311,10 @@ namespace Spectrum.LEDs {
     internal LEDDomeOutput(
       Configuration config, RuntimeTelemetry telemetry, BeatBroadcaster beat,
       TimeSpan opcMinSendInterval
-    ) : this(config, telemetry, beat) {
+    ) : this(config, telemetry, beat, null, opcMinSendInterval) {
       if (opcMinSendInterval < TimeSpan.Zero) {
         throw new ArgumentOutOfRangeException(nameof(opcMinSendInterval));
       }
-      this.opcMinSendInterval = opcMinSendInterval;
     }
 
     private static bool IsValidPermutation(
@@ -430,12 +432,7 @@ namespace Spectrum.LEDs {
       if (settings.TransportGeneration != this.appliedTransportGeneration) {
         this.appliedTransportGeneration = settings.TransportGeneration;
         changed = true;
-        if (this.opcAPI != null) {
-          this.opcAPI.Active = false;
-        }
-        if (this.active && settings.Enabled) {
-          this.initializeOPCAPI(settings);
-        }
+        this.transport.ApplySettings(settings);
       }
       if (changed) {
         this.PublishOutputSettingsApplied();
@@ -451,48 +448,19 @@ namespace Spectrum.LEDs {
       }
     }
 
-    private void initializeOPCAPI(DomeOutputSettingsSnapshot settings) {
-      var opcAddress = settings.OpcAddress;
-      string[] parts = opcAddress.Split(':');
-      if (parts.Length < 3) {
-        opcAddress += ":0"; // default to channel 0
-      }
-      Action<int> publishFPS =
-        newFPS => this.telemetry.DomeBeagleboneOPCFPS = newFPS;
-      this.opcAPI = this.opcMinSendInterval.HasValue
-        ? new OPCAPI(
-            opcAddress,
-            settings.OutputInSeparateThread,
-            publishFPS,
-            this.opcMinSendInterval.Value)
-        : new OPCAPI(
-            opcAddress,
-            settings.OutputInSeparateThread,
-            publishFPS);
-      this.opcAPI.Active = this.active;
-    }
-
-    private bool active = false;
     public bool Active {
-      get {
-        return this.active;
-      }
+      get { return this.transport.Active; }
       set {
-        if (value == this.active) {
+        if (value == this.transport.Active) {
           return;
         }
-        this.active = value;
         if (value) {
           Interlocked.Exchange(ref this.outputSettingsPending, 1);
           this.EnsureOutputSettingsReconciled();
-          DomeOutputSettingsSnapshot settings =
-            this.runtimeSettings.DomeOutputSettingsSnapshot;
-          if (settings.Enabled &&
-              (this.opcAPI == null || !this.opcAPI.Active)) {
-            this.initializeOPCAPI(settings);
-          }
-        } else if (this.opcAPI != null) {
-          this.opcAPI.Active = false;
+          this.transport.Activate(
+            this.runtimeSettings.DomeOutputSettingsSnapshot);
+        } else {
+          this.transport.Deactivate();
         }
       }
     }
@@ -522,9 +490,7 @@ namespace Spectrum.LEDs {
         this.Flush();
         this.ApplyGlobalHueRotation(frameGeneration);
       }
-      if (this.opcAPI != null) {
-         this.opcAPI.OperatorUpdate();
-      }
+      this.transport.OperatorUpdate();
       // The operator runs Visualize() on every winning visualizer and then this
       // OperatorUpdate() once per output, so this marks the end of a frame: drop
       // the per-frame color snapshot so the next frame's first pixel recomputes
@@ -671,227 +637,41 @@ namespace Spectrum.LEDs {
       return this.frameRenderGeneration;
     }
 
-    // Ordered per-pixel/flush commands for diagnostic visualizers. Normal
-    // buffer-rendered frames use the latest-frame mailbox below: the simulator
-    // cannot display intermediate frames, so queueing them only creates GC and
-    // redundant UI work.
-    public ConcurrentQueue<DomeLEDCommand> SimulatorCommandQueue { get; } =
-      new ConcurrentQueue<DomeLEDCommand>();
+    // Keep the established output façade while the publisher owns both
+    // simulator queues, pooled mailboxes, and browser sampling policy.
+    public ConcurrentQueue<DomeLEDCommand> SimulatorCommandQueue =>
+      this.simulatorPublisher.NativeCommands;
+    public ConcurrentQueue<DomeLEDCommand> WebSimulatorCommandQueue =>
+      this.simulatorPublisher.WebCommands;
+    public const int WebSimulatorFramesPerSecond =
+      DomeSimulatorPublisher.WebFramesPerSecond;
 
-    // Separate from the native queue/mailbox so both simulators can be open
-    // without competing for the same latest frame.
-    public ConcurrentQueue<DomeLEDCommand> WebSimulatorCommandQueue { get; } =
-      new ConcurrentQueue<DomeLEDCommand>();
-
-    private readonly object simulatorFrameGate = new object();
-    private volatile bool simulatorHasConsumer;
-    private int[]? latestSimulatorFrame;
-    // Set on the operator thread when WriteBuffer publishes a mailbox frame;
-    // Flush then knows it needn't also enqueue a redundant redraw command.
-    private bool simulatorFramePublishedSinceFlush;
-    private readonly object webSimulatorFrameGate = new object();
-    private volatile bool webSimulatorHasConsumer;
-    private int[]? latestWebSimulatorFrame;
-    private bool webSimulatorFramePublishedSinceFlush;
-    private long nextWebSimulatorFrameTimestamp;
-    public const int WebSimulatorFramesPerSecond = 60;
-    private static readonly long WebSimulatorFrameIntervalTicks =
-      Stopwatch.Frequency / WebSimulatorFramesPerSecond;
-
-    // True while the simulator window is open. Disabling the consumer also
-    // atomically detaches and returns any pending pooled frame.
     public bool SimulatorHasConsumer {
-      get { return this.simulatorHasConsumer; }
-      set {
-        int[]? abandoned = null;
-        lock (this.simulatorFrameGate) {
-          this.simulatorHasConsumer = value;
-          if (!value) {
-            abandoned = this.latestSimulatorFrame;
-            this.latestSimulatorFrame = null;
-          }
-        }
-        if (abandoned != null) {
-          ArrayPool<int>.Shared.Return(abandoned);
-        }
-      }
+      get { return this.simulatorPublisher.NativeHasConsumer; }
+      set { this.simulatorPublisher.NativeHasConsumer = value; }
     }
 
     public bool WebSimulatorHasConsumer {
-      get { return this.webSimulatorHasConsumer; }
-      set {
-        int[]? abandoned = null;
-        lock (this.webSimulatorFrameGate) {
-          this.webSimulatorHasConsumer = value;
-          if (!value) {
-            abandoned = this.latestWebSimulatorFrame;
-            this.latestWebSimulatorFrame = null;
-            this.nextWebSimulatorFrameTimestamp = 0;
-          }
-        }
-        if (abandoned != null) {
-          ArrayPool<int>.Shared.Return(abandoned);
-        }
-        if (!value) {
-          this.WebSimulatorCommandQueue.Clear();
-        }
-      }
-    }
-
-    // Only produce simulator output when simulation is on AND a window is
-    // consuming it. Without the consumer check, diagnostic commands could grow
-    // the queue and normal rendering would keep cycling pooled frame buffers
-    // with nobody displaying them.
-    private bool ShouldEnqueueDomeCommand =>
-      this.OutputSettings.SimulationEnabled && this.SimulatorHasConsumer;
-
-    private bool ShouldEnqueueWebDomeCommand => this.WebSimulatorHasConsumer;
-
-    // The dedicated browser simulator is sampled at 60 FPS. The operator may
-    // run at 400 FPS; copying every one of those frames would be pure waste.
-    private bool ShouldCaptureWebSimulatorFrame() {
-      if (!this.ShouldEnqueueWebDomeCommand) {
-        return false;
-      }
-      long now = Stopwatch.GetTimestamp();
-      lock (this.webSimulatorFrameGate) {
-        if (!this.webSimulatorHasConsumer ||
-            now < this.nextWebSimulatorFrameTimestamp) {
-          return false;
-        }
-        // Advance the target from its previous timestamp so the 400 Hz engine
-        // tick quantization does not turn 60 FPS into a steady ~57 FPS. If the
-        // producer fell a whole frame behind, reset instead of catch-up bursting.
-        if (this.nextWebSimulatorFrameTimestamp == 0 ||
-            now - this.nextWebSimulatorFrameTimestamp >=
-              WebSimulatorFrameIntervalTicks) {
-          this.nextWebSimulatorFrameTimestamp =
-            now + WebSimulatorFrameIntervalTicks;
-        } else {
-          this.nextWebSimulatorFrameTimestamp +=
-            WebSimulatorFrameIntervalTicks;
-        }
-        return true;
-      }
-    }
-
-    // Replaces the pending normal frame. The producer returns any superseded
-    // pooled array immediately; a frame already taken by the UI is owned by the
-    // UI until ReturnSimulatorFrame is called.
-    private bool PublishSimulatorFrame(int[] frame) {
-      int[]? superseded = null;
-      lock (this.simulatorFrameGate) {
-        if (!this.simulatorHasConsumer ||
-            !this.OutputSettings.SimulationEnabled) {
-          return false;
-        }
-        superseded = this.latestSimulatorFrame;
-        this.latestSimulatorFrame = frame;
-      }
-      if (superseded != null) {
-        ArrayPool<int>.Shared.Return(superseded);
-      }
-      // A complete frame supersedes any older diagnostic pixels left in the
-      // ordered queue (notably when switching out of a diagnostic mode).
-      if (!this.SimulatorCommandQueue.IsEmpty) {
-        this.SimulatorCommandQueue.Clear();
-      }
-      return true;
+      get { return this.simulatorPublisher.WebHasConsumer; }
+      set { this.simulatorPublisher.WebHasConsumer = value; }
     }
 
     public bool TryTakeSimulatorFrame([NotNullWhen(true)] out int[]? frame) {
-      lock (this.simulatorFrameGate) {
-        frame = this.latestSimulatorFrame;
-        this.latestSimulatorFrame = null;
-        return frame != null;
-      }
+      return this.simulatorPublisher.TryTakeNativeFrame(out frame);
     }
 
     public void ReturnSimulatorFrame(int[]? frame) {
-      if (frame != null) {
-        ArrayPool<int>.Shared.Return(frame);
-      }
-    }
-
-    private bool PublishWebSimulatorFrame(int[] frame) {
-      int[]? superseded = null;
-      lock (this.webSimulatorFrameGate) {
-        if (!this.webSimulatorHasConsumer) {
-          return false;
-        }
-        superseded = this.latestWebSimulatorFrame;
-        this.latestWebSimulatorFrame = frame;
-      }
-      if (superseded != null) {
-        ArrayPool<int>.Shared.Return(superseded);
-      }
-      this.WebSimulatorCommandQueue.Clear();
-      return true;
+      DomeSimulatorPublisher.ReturnFrame(frame);
     }
 
     public bool TryTakeWebSimulatorFrame(out int[]? frame) {
-      lock (this.webSimulatorFrameGate) {
-        frame = this.latestWebSimulatorFrame;
-        this.latestWebSimulatorFrame = null;
-        return frame != null;
-      }
-    }
-
-    // Hard ceiling on SimulatorCommandQueue depth. The consumer
-    // (DomeSimulatorWindow) drains on a ~100Hz UI tick, but the operator thread
-    // produces at up to 400Hz, and if the UI thread stalls (window dragged,
-    // minimized, slow machine) the queue would otherwise grow without bound. A
-    // display only needs recent diagnostic state, so past this cap we drop the
-    // oldest commands. Sized above several full diagnostic/calibration frames
-    // (~4,500 per-pixel commands plus a Flush each); normal frames never enter
-    // this queue.
-    private const int SimulatorCommandQueueCap = 20000;
-
-    // Enqueue a simulator command, dropping the oldest queued commands if the
-    // backlog has grown past SimulatorCommandQueueCap. TryDequeue here races the
-    // consumer's own dequeues, which ConcurrentQueue handles; the consumer
-    // tolerates a command being pulled out from under it (see
-    // DomeSimulatorWindow.Update).
-    private void EnqueueSimulatorCommand(DomeLEDCommand command) {
-      EnqueueSimulatorCommand(this.SimulatorCommandQueue, command);
-    }
-
-    private void EnqueueWebSimulatorCommand(DomeLEDCommand command) {
-      EnqueueSimulatorCommand(this.WebSimulatorCommandQueue, command);
-    }
-
-    private static void EnqueueSimulatorCommand(
-      ConcurrentQueue<DomeLEDCommand> queue,
-      DomeLEDCommand command
-    ) {
-      queue.Enqueue(command);
-      while (
-        queue.Count > SimulatorCommandQueueCap &&
-        queue.TryDequeue(out _)
-      ) {
-      }
+      return this.simulatorPublisher.TryTakeWebFrame(out frame);
     }
 
     public void Flush() {
       this.FlushHardware();
-      if (
-        this.ShouldEnqueueDomeCommand &&
-        !this.simulatorFramePublishedSinceFlush
-      ) {
-        this.EnqueueSimulatorCommand(
-          new DomeLEDCommand() { isFlush = true }
-        );
-      }
-      if (
-        this.ShouldEnqueueWebDomeCommand &&
-        !this.webSimulatorFramePublishedSinceFlush
-      ) {
-        this.EnqueueWebSimulatorCommand(
-          new DomeLEDCommand() { isFlush = true }
-        );
-      }
-      this.simulatorFramePublishedSinceFlush = false;
-      this.webSimulatorFramePublishedSinceFlush = false;
+      this.simulatorPublisher.FlushFrame(
+        this.OutputSettings.SimulationEnabled);
     }
 
     // Calibration publishes hardware and logical simulator diagnostics as two
@@ -899,32 +679,18 @@ namespace Spectrum.LEDs {
     // touching OPC; changing the fixed physical selection uses FlushHardware.
     public void FlushHardware() {
       this.EnsureOutputSettingsReconciled();
-      if (this.opcAPI != null) {
-        this.opcAPI.Flush();
-      }
+      this.transport.Flush();
     }
 
     public void FlushSimulator() {
-      if (this.ShouldEnqueueDomeCommand) {
-        this.EnqueueSimulatorCommand(
-          new DomeLEDCommand() { isFlush = true }
-        );
-      }
-      if (this.ShouldEnqueueWebDomeCommand) {
-        this.EnqueueWebSimulatorCommand(
-          new DomeLEDCommand() { isFlush = true }
-        );
-      }
+      this.simulatorPublisher.FlushDiagnostics(
+        this.OutputSettings.SimulationEnabled);
     }
 
     private void SetDevicePixel(int controlBoxIndex, int pixelIndex, int color) {
-      lock (this.visualizers) {
-        if (this.opcAPI != null) {
-          int totalPixelIndex =
-            controlBoxIndex * (maxStripLength * NumPortsPerBox) + pixelIndex;
-          this.opcAPI.SetPixel(totalPixelIndex, color);
-        }
-      }
+      int totalPixelIndex =
+        controlBoxIndex * (maxStripLength * NumPortsPerBox) + pixelIndex;
+      this.transport.SetPixel(totalPixelIndex, color);
     }
 
     // Raw (identity) device address: which control box and pixel-within-box a
@@ -976,21 +742,9 @@ namespace Spectrum.LEDs {
       this.EnsureOutputSettingsReconciled();
       Tuple<int, int> deviceIndexes = this.GetDeviceIndexes(strutIndex, ledIndex);
       this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
-
-      if (this.ShouldEnqueueDomeCommand) {
-        this.EnqueueSimulatorCommand(new DomeLEDCommand() {
-          strutIndex = strutIndex,
-          ledIndex = ledIndex,
-          color = color,
-        });
-      }
-      if (this.ShouldEnqueueWebDomeCommand) {
-        this.EnqueueWebSimulatorCommand(new DomeLEDCommand() {
-          strutIndex = strutIndex,
-          ledIndex = ledIndex,
-          color = color,
-        });
-      }
+      this.simulatorPublisher.PublishPixel(
+        strutIndex, ledIndex, color,
+        this.OutputSettings.SimulationEnabled);
     }
 
     // Writes only to the raw (unpermuted) control-box address. The calibration
@@ -1008,20 +762,9 @@ namespace Spectrum.LEDs {
     // Publishes a logical strut pixel to native/web simulators without writing
     // an OPC device address.
     public void SetPixelSimulator(int strutIndex, int ledIndex, int color) {
-      if (this.ShouldEnqueueDomeCommand) {
-        this.EnqueueSimulatorCommand(new DomeLEDCommand() {
-          strutIndex = strutIndex,
-          ledIndex = ledIndex,
-          color = color,
-        });
-      }
-      if (this.ShouldEnqueueWebDomeCommand) {
-        this.EnqueueWebSimulatorCommand(new DomeLEDCommand() {
-          strutIndex = strutIndex,
-          ledIndex = ledIndex,
-          color = color,
-        });
-      }
+      this.simulatorPublisher.PublishPixel(
+        strutIndex, ledIndex, color,
+        this.OutputSettings.SimulationEnabled);
     }
 
     // Compatibility path for the other raw diagnostic visualizers, which want
@@ -1115,19 +858,11 @@ namespace Spectrum.LEDs {
 
     public void WriteBuffer(DomeFrame buffer) {
       this.EnsureOutputSettingsReconciled();
-      // Snapshot opcAPI once instead of null-checking + locking per pixel (P4).
-      // The visualizers list is only mutated at registration time, so the
-      // per-pixel lock in SetDevicePixel guarded nothing here.
-      OPCAPI? opcAPI = this.opcAPI;
-      bool simulationEnabled = this.ShouldEnqueueDomeCommand;
-      // Even when this particular normal frame is skipped by the 60 FPS
-      // sampler, Flush must not enqueue an empty diagnostic redraw command.
-      // WriteBuffer itself establishes that this is the normal-buffer path.
-      if (this.ShouldEnqueueWebDomeCommand) {
-        this.webSimulatorFramePublishedSinceFlush = true;
-      }
-      bool webSimulationEnabled = this.ShouldCaptureWebSimulatorFrame();
-      if (opcAPI == null && !simulationEnabled && !webSimulationEnabled) {
+      DomeSimulatorFrameCapture simulatorCapture =
+        this.simulatorPublisher.BeginFrame(
+          buffer.pixels.Length,
+          this.OutputSettings.SimulationEnabled);
+      if (!this.transport.CanWrite && !simulatorCapture.Enabled) {
         return;
       }
       // The immutable mapping is snapshotted once for this write; calibration
@@ -1135,46 +870,17 @@ namespace Spectrum.LEDs {
       int stride = maxStripLength * 8;
       DomeOutputMapping mapping = System.Threading.Volatile.Read(
         ref this.outputMapping);
-      if (opcAPI != null &&
-          !ReferenceEquals(mapping, this.lastWireMapping)) {
-        opcAPI.ClearPixels();
-        this.lastWireMapping = mapping;
-      }
-      // Rent a whole-frame snapshot for the latest-frame mailbox. If the UI has
-      // not consumed the previous frame, PublishSimulatorFrame replaces and
-      // returns it instead of building a backlog.
-      int[]? frame = simulationEnabled
-        ? ArrayPool<int>.Shared.Rent(buffer.pixels.Length) : null;
-      int[]? webFrame = webSimulationEnabled
-        ? ArrayPool<int>.Shared.Rent(buffer.pixels.Length) : null;
+      this.transport.PrepareMapping(mapping);
       for (int i = 0; i < buffer.pixels.Length; i++) {
         LEDDomeOutputPixel pixel = buffer.pixels[i];
         int totalPixelIndex =
           mapping.ControlBoxAt(i) * stride + mapping.PixelWithinBoxAt(i);
-        if (opcAPI != null) {
-          opcAPI.SetPixel(totalPixelIndex, pixel.color);
-        }
-        if (frame != null) {
-          frame[i] = pixel.color;
-        }
-        if (webFrame != null) {
-          webFrame[i] = pixel.color;
-        }
+        this.transport.SetPixel(totalPixelIndex, pixel.color);
+        simulatorCapture.SetColor(i, pixel.color);
       }
-      if (frame != null) {
-        if (this.PublishSimulatorFrame(frame)) {
-          this.simulatorFramePublishedSinceFlush = true;
-        } else {
-          ArrayPool<int>.Shared.Return(frame);
-        }
-      }
-      if (webFrame != null) {
-        if (this.PublishWebSimulatorFrame(webFrame)) {
-          this.webSimulatorFramePublishedSinceFlush = true;
-        } else {
-          ArrayPool<int>.Shared.Return(webFrame);
-        }
-      }
+      this.simulatorPublisher.CompleteFrame(
+        simulatorCapture,
+        this.OutputSettings.SimulationEnabled);
     }
 
     /**

@@ -22,24 +22,6 @@ namespace Spectrum {
 
   public partial class MainWindow : Window {
 
-    private sealed class WindowPlacementState {
-      public double Left { get; set; }
-      public double Top { get; set; }
-      public double Width { get; set; }
-      public double Height { get; set; }
-      public bool Maximized { get; set; }
-    }
-
-    // One entry in the wand receiver-port combo. The display string is kept
-    // separate from the value so picking an item shown as "COM7 (missing)" or
-    // "(none)" writes the real port ("COM7" / "") into config.wandSerialPort,
-    // not the label.
-    private class PortItem {
-      public string Display { get; set; } = string.Empty;
-      public string Value { get; set; } = string.Empty;
-      public override string ToString() => this.Display;
-    }
-
     private class MidiDeviceEntry {
 
       public int DeviceID { get; set; }
@@ -70,18 +52,14 @@ namespace Spectrum {
     public static bool LoadingConfig { get; set; } = false;
     private List<int> midiDeviceIndices = new();
     private List<int> midiPresetIndices = new();
-    private DomeSimulatorWindow? domeSimulatorWindow;
-    private DomeMappingWindow? domeMappingWindow;
-    private VJHUDWindow? vjHUDWindow;
-    private WandStatusWindow? wandStatusWindow;
+    private MidiPresetEditor midiPresetEditor = null!;
+    private MainWindowChildWindows childWindows = null!;
     // Guards programmatic repopulate/preselect of wandSerialPortSelector so it
     // never writes config back; only a genuine user pick does.
     private bool repopulatingWandPorts = false;
     private System.Windows.Threading.DispatcherTimer? wandReceiverStatusTimer;
     private int? currentlyEditingPreset = null;
     private int? currentlyEditingBinding = null;
-    private Web.AdvisoryLockManager advisoryLocks = null!;
-    private Web.DomeCalibrationController domeCalibrationController = null!;
     private const int WebServerPort = 8080;
     // Spectrum is distributed as a portable application, so keep its mutable
     // state beside the executable. AppContext.BaseDirectory is stable when the
@@ -103,11 +81,11 @@ namespace Spectrum {
     private static readonly string WindowPlacementPath = Path.Combine(
       AppContext.BaseDirectory, "spectrum_window_state.json");
     private string? webServerError;
-    private System.Windows.Threading.DispatcherTimer? readinessTimer;
+    private ReadinessRefreshLoop readinessRefreshLoop = null!;
 
     public MainWindow() {
       this.InitializeComponent();
-      this.RestoreWindowPlacement();
+      WindowPlacementStore.Restore(this, WindowPlacementPath);
 
       this.LoadConfig();
       this.config.PropertyChanged += ConfigUpdated;
@@ -141,11 +119,10 @@ namespace Spectrum {
     }
 
     private void HandleClose(object sender, EventArgs e) {
-      this.op.EnabledChanged -= this.OperatorEnabledChanged;
       this.op.Enabled = false;
-      this.readinessTimer?.Stop();
+      this.readinessRefreshLoop.Dispose();
       this.wandReceiverStatusTimer?.Stop();
-      this.SaveWindowPlacement();
+      WindowPlacementStore.Save(this, WindowPlacementPath);
       try {
         this.host?.Dispose();
       } catch (Exception error) {
@@ -153,65 +130,11 @@ namespace Spectrum {
       }
     }
 
-    private void RestoreWindowPlacement() {
-      try {
-        if (!File.Exists(WindowPlacementPath)) {
-          return;
-        }
-        var state = System.Text.Json.JsonSerializer.Deserialize<WindowPlacementState>(
-          File.ReadAllText(WindowPlacementPath));
-        if (state == null || state.Width < this.MinWidth ||
-            state.Height < this.MinHeight) {
-          return;
-        }
-        // Ignore a saved window that no longer intersects the virtual desktop
-        // (for example after disconnecting a show laptop's external monitor).
-        var saved = new Rect(state.Left, state.Top, state.Width, state.Height);
-        var desktop = new Rect(
-          SystemParameters.VirtualScreenLeft,
-          SystemParameters.VirtualScreenTop,
-          SystemParameters.VirtualScreenWidth,
-          SystemParameters.VirtualScreenHeight);
-        if (!saved.IntersectsWith(desktop)) {
-          return;
-        }
-        this.WindowStartupLocation = WindowStartupLocation.Manual;
-        this.Left = state.Left;
-        this.Top = state.Top;
-        this.Width = state.Width;
-        this.Height = state.Height;
-        if (state.Maximized) {
-          this.WindowState = WindowState.Maximized;
-        }
-      } catch (Exception e) {
-        Debug.WriteLine("Could not restore window placement: " + e.Message);
-      }
-    }
-
-    private void SaveWindowPlacement() {
-      try {
-        Rect bounds = this.WindowState == WindowState.Normal
-          ? new Rect(this.Left, this.Top, this.Width, this.Height)
-          : this.RestoreBounds;
-        var state = new WindowPlacementState {
-          Left = bounds.Left,
-          Top = bounds.Top,
-          Width = bounds.Width,
-          Height = bounds.Height,
-          Maximized = this.WindowState == WindowState.Maximized,
-        };
-        File.WriteAllText(
-          WindowPlacementPath,
-          System.Text.Json.JsonSerializer.Serialize(
-            state, new System.Text.Json.JsonSerializerOptions {
-            WriteIndented = true,
-          }));
-      } catch (Exception e) {
-        Debug.WriteLine("Could not save window placement: " + e.Message);
-      }
-    }
-
-    [MemberNotNull(nameof(config), nameof(host))]
+    [MemberNotNull(
+      nameof(config),
+      nameof(host),
+      nameof(midiPresetEditor),
+      nameof(childWindows))]
     private void LoadConfig() {
       MainWindow.LoadingConfig = true;
 
@@ -240,8 +163,16 @@ namespace Spectrum {
           "Web controller failed to start: " + error));
       this.config = this.host.Configuration;
       this.op = this.host.Runtime;
-      this.advisoryLocks = this.host.Service.AdvisoryLocks;
-      this.domeCalibrationController = this.host.Service.DomeCalibration;
+      Web.AdvisoryLockManager advisoryLocks =
+        this.host.Service.AdvisoryLocks;
+      Web.DomeCalibrationController domeCalibrationController =
+        this.host.Service.DomeCalibration;
+      this.midiPresetEditor = new MidiPresetEditor(this.config);
+      this.childWindows = new MainWindowChildWindows(
+        this.config,
+        this.op,
+        domeCalibrationController,
+        advisoryLocks);
 
       this.RefreshAudioDevices(null, null);
       this.RefreshMidiDevices(null, null);
@@ -308,28 +239,25 @@ namespace Spectrum {
       }
       this.webControllerAddress.Text = $"http://{host}:{WebServerPort}";
 
-      this.op.EnabledChanged += this.OperatorEnabledChanged;
-      this.readinessTimer = new System.Windows.Threading.DispatcherTimer {
-        Interval = TimeSpan.FromMilliseconds(500),
-      };
-      this.readinessTimer.Tick += (sender, e) =>
-        this.UpdateReadinessDashboard();
-      this.readinessTimer.Start();
-      this.UpdateReadinessDashboard();
-    }
-
-    private void OperatorEnabledChanged(bool enabled) {
-      this.Dispatcher.BeginInvoke(new Action(this.UpdateReadinessDashboard));
+      this.readinessRefreshLoop = new ReadinessRefreshLoop(
+        this.op, this.Dispatcher, this.UpdateReadinessDashboard);
     }
 
     private void SetBadge(
       Border badge,
       TextBlock text,
-      string styleKey,
-      string content
+      ReadinessStatus status
     ) {
+      string styleKey = status.Level switch {
+        ReadinessLevel.Disabled => "DisabledBadge",
+        ReadinessLevel.Warning => "WarningBadge",
+        ReadinessLevel.Error => "ErrorBadge",
+        ReadinessLevel.Ready => "ReadyBadge",
+        _ => throw new ArgumentOutOfRangeException(
+          nameof(status), status.Level, "Unknown readiness level."),
+      };
       badge.Style = (Style)this.FindResource(styleKey);
-      text.Text = content;
+      text.Text = status.Badge;
     }
 
     private bool TryNormalizeOpcAddress(
@@ -354,130 +282,60 @@ namespace Spectrum {
       }
 
       bool running = this.op.Enabled;
-      this.powerButton.Content = running ? "Stop engine" : "Start engine";
+      string? selectedAudioName =
+        this.audioDevices.SelectedItem is AudioDevice selectedAudio
+          ? selectedAudio.name
+          : null;
+      bool opcValid = this.TryNormalizeOpcAddress(
+        this.config.domeBeagleboneOPCAddress, out _, out string? opcError);
+      int wandCount = this.op.OrientationInput.DevicesSnapshot().Count;
+      var receiver = this.op.OrientationInput.WandSerial.StatusSnapshot();
+      ShowReadinessSnapshot readiness = ShowReadinessEvaluator.Evaluate(
+        new ShowReadinessInput(
+          running,
+          selectedAudioName,
+          this.op.AudioInput.Volume,
+          this.config.domeEnabled,
+          opcValid,
+          opcError,
+          this.op.Telemetry.DomeBeagleboneOPCFPS,
+          wandCount,
+          this.config.wandSerialPort,
+          receiver.LastError,
+          this.webServerError,
+          WebServerPort));
+
+      this.powerButton.Content = readiness.PowerButtonText;
       this.powerButton.Style = (Style)this.FindResource(
         running ? "DestructiveButton" : "PrimaryButton");
       this.SetBadge(
         this.engineStatusBadge,
         this.engineStatusText,
-        running ? "ReadyBadge" : "DisabledBadge",
-        running ? "✓ Running" : "○ Stopped");
-      this.engineReadinessDetail.Text = running
-        ? "Running — live inputs and outputs are being updated."
-        : "Stopped — output is not being updated.";
-
-      bool hasSelectedAudio = this.audioDevices.SelectedItem is AudioDevice;
-      AudioDevice selectedAudio = hasSelectedAudio
-        ? (AudioDevice)this.audioDevices.SelectedItem
-        : default;
-      float signal = this.op.AudioInput.Volume;
-      this.audioSignalText.Text = $"Signal: {Math.Round(signal * 100):0}%";
-      bool audioReady = false;
-      if (!hasSelectedAudio) {
-        this.SetBadge(this.audioStatusBadge, this.audioStatusText,
-          "ErrorBadge", "! No input");
-        this.audioReadinessDetail.Text =
-          "Select an active capture device before starting the engine.";
-      } else if (!running) {
-        this.SetBadge(this.audioStatusBadge, this.audioStatusText,
-          "WarningBadge", "○ Configured");
-        this.audioReadinessDetail.Text = selectedAudio.name +
-          " — start the engine to check its signal.";
-        audioReady = true;
-      } else if (signal >= 0.005f) {
-        this.SetBadge(this.audioStatusBadge, this.audioStatusText,
-          "ReadyBadge", "✓ Signal ready");
-        this.audioReadinessDetail.Text = selectedAudio.name +
-          " — useful audio signal detected.";
-        audioReady = true;
-      } else {
-        this.SetBadge(this.audioStatusBadge, this.audioStatusText,
-          "WarningBadge", "⚠ No signal");
-        this.audioReadinessDetail.Text = selectedAudio.name +
-          " is selected, but the current signal is silent.";
-      }
-
-      int domeFps = this.op.Telemetry.DomeBeagleboneOPCFPS;
-      bool opcValid = this.TryNormalizeOpcAddress(
-        this.config.domeBeagleboneOPCAddress, out _, out string? opcError);
-      bool domeReady = !this.config.domeEnabled;
-      if (!this.config.domeEnabled) {
-        this.SetBadge(this.domeStatusBadge, this.domeStatusText,
-          "DisabledBadge", "○ Off");
-        this.domeReadinessDetail.Text =
-          "Dome output is intentionally off.";
-      } else if (!opcValid) {
-        this.SetBadge(this.domeStatusBadge, this.domeStatusText,
-          "ErrorBadge", "! Invalid address");
-        this.domeReadinessDetail.Text = "OPC address: " + opcError + ".";
-      } else if (!running) {
-        this.SetBadge(this.domeStatusBadge, this.domeStatusText,
-          "WarningBadge", "○ Waiting");
-        this.domeReadinessDetail.Text =
-          "Dome output is enabled; start the engine to connect.";
-      } else if (domeFps > 0) {
-        this.SetBadge(this.domeStatusBadge, this.domeStatusText,
-          "ReadyBadge", "✓ Sending");
-        this.domeReadinessDetail.Text =
-          "Frames are reaching the configured OPC controller.";
-        domeReady = true;
-      } else {
-        this.SetBadge(this.domeStatusBadge, this.domeStatusText,
-          "WarningBadge", "⚠ No frames");
-        this.domeReadinessDetail.Text =
-          "No OPC frames have been confirmed. Check the address and network.";
-      }
-
-      int wandCount = this.op.OrientationInput.DevicesSnapshot().Count;
-      this.connectedWandCountText.Text = wandCount +
-        (wandCount == 1 ? " connected device" : " connected devices");
-      var receiver = this.op.OrientationInput.WandSerial.StatusSnapshot();
-      if (wandCount > 0) {
-        this.SetBadge(this.homeWandStatusBadge, this.homeWandStatusText,
-          "ReadyBadge", "✓ Ready");
-        this.homeWandReadinessDetail.Text =
-          wandCount + (wandCount == 1 ? " wand is" : " wands are") +
-          " sending orientation data.";
-      } else if (string.IsNullOrEmpty(this.config.wandSerialPort)) {
-        this.SetBadge(this.homeWandStatusBadge, this.homeWandStatusText,
-          "WarningBadge", "⚠ No wands");
-        this.homeWandReadinessDetail.Text =
-          "No wands detected; no serial receiver port is selected.";
-      } else if (receiver.LastError != null) {
-        this.SetBadge(this.homeWandStatusBadge, this.homeWandStatusText,
-          "ErrorBadge", "! Receiver error");
-        this.homeWandReadinessDetail.Text = receiver.LastError;
-      } else {
-        this.SetBadge(this.homeWandStatusBadge, this.homeWandStatusText,
-          "WarningBadge", "⚠ No wands");
-        this.homeWandReadinessDetail.Text =
-          "Receiver configured, but no wand data is arriving.";
-      }
-
-      if (this.webServerError == null) {
-        this.webControllerStatus.Text = "Ready — listening on port " +
-          WebServerPort + ".";
-        this.webControllerStatus.Foreground =
-          (Brush)this.FindResource("SuccessBrush");
-      } else {
-        this.webControllerStatus.Text =
-          "Error — web controller could not start: " + this.webServerError;
-        this.webControllerStatus.Foreground =
-          (Brush)this.FindResource("ErrorBrush");
-      }
-
-      if (!hasSelectedAudio ||
-          (this.config.domeEnabled && !opcValid) ||
-          this.webServerError != null) {
-        this.SetBadge(this.overallReadinessBadge, this.overallReadinessText,
-          "ErrorBadge", "! Action required");
-      } else if (running && audioReady && domeReady) {
-        this.SetBadge(this.overallReadinessBadge, this.overallReadinessText,
-          "ReadyBadge", "✓ Ready for show");
-      } else {
-        this.SetBadge(this.overallReadinessBadge, this.overallReadinessText,
-          "WarningBadge", "⚠ Check readiness");
-      }
+        readiness.Engine);
+      this.engineReadinessDetail.Text = readiness.Engine.Detail;
+      this.SetBadge(
+        this.audioStatusBadge, this.audioStatusText, readiness.Audio);
+      this.audioReadinessDetail.Text = readiness.Audio.Detail;
+      this.audioSignalText.Text = readiness.AudioSignalText;
+      this.SetBadge(
+        this.domeStatusBadge, this.domeStatusText, readiness.Dome);
+      this.domeReadinessDetail.Text = readiness.Dome.Detail;
+      this.SetBadge(
+        this.homeWandStatusBadge,
+        this.homeWandStatusText,
+        readiness.Wand);
+      this.homeWandReadinessDetail.Text = readiness.Wand.Detail;
+      this.connectedWandCountText.Text =
+        readiness.ConnectedWandCountText;
+      this.webControllerStatus.Text = readiness.WebStatus;
+      this.webControllerStatus.Foreground = (Brush)this.FindResource(
+        readiness.WebLevel == ReadinessLevel.Ready
+          ? "SuccessBrush"
+          : "ErrorBrush");
+      this.SetBadge(
+        this.overallReadinessBadge,
+        this.overallReadinessText,
+        readiness.Overall);
     }
 
     private void ShowMidiSetup(object sender, RoutedEventArgs e) {
@@ -646,42 +504,28 @@ namespace Spectrum {
       this.midiNewDevicePresetName.Foreground = new SolidColorBrush(Colors.Black);
       this.midiNewDevicePresetName.FontStyle = FontStyles.Normal;
       var name = this.midiNewDevicePresetName.Text.Trim();
-      if (String.Equals(name, "New preset name")) {
+      if (String.Equals(name, MidiPresetEditor.NewPresetPlaceholder)) {
         this.midiNewDevicePresetName.Text = "";
       }
     }
 
     private void ClearMidiNewDevicePresetName() {
-      this.midiNewDevicePresetName.Text = "New preset name";
+      this.midiNewDevicePresetName.Text =
+        MidiPresetEditor.NewPresetPlaceholder;
       this.midiNewDevicePresetName.Foreground = new SolidColorBrush(Colors.Gray);
       this.midiNewDevicePresetName.FontStyle = FontStyles.Italic;
     }
 
-    private string? ValidateNewMidiPresetName(string presetName) {
-      var newPresetName = presetName.Trim();
-      if (
-        String.IsNullOrEmpty(newPresetName) ||
-        String.Equals(newPresetName, "New preset name") ||
-        this.MidiPresetNameExists(newPresetName)
-      ) {
-        return null;
-      }
-      return newPresetName;
-    }
-
     private MidiPreset? AddNewMidiPresetWithName(string presetName) {
-      var newPresetName = this.ValidateNewMidiPresetName(presetName);
-      if (newPresetName == null) {
+      if (!this.midiPresetEditor.TryCreatePreset(
+          presetName, out MidiPreset? newPreset)) {
         return null;
       }
-      int newID = this.getNextMidiPresetID();
-      var newPreset = new MidiPreset() { id = newID, Name = newPresetName };
-      this.AddMidiPreset(newPreset);
+      this.AddMidiPresetToControls(newPreset);
       return newPreset;
     }
 
-    private void AddMidiPreset(MidiPreset preset) {
-      this.config.UpsertMidiPreset(preset.id, preset);
+    private void AddMidiPresetToControls(MidiPreset preset) {
       this.midiNewDevicePreset.Items.Insert(
         this.midiNewDevicePreset.Items.Count - 1,
         preset.Name
@@ -689,16 +533,6 @@ namespace Spectrum {
       this.midiPresetIndices.Add(preset.id);
 
       this.midiPresetList.Items.Add(preset.Name);
-    }
-
-    private int getNextMidiPresetID() {
-      int newID = -1;
-      foreach (var pair in this.config.midiPresets) {
-        if (pair.Key > newID) {
-          newID = pair.Key;
-        }
-      }
-      return newID + 1;
     }
 
     private void MidiAddDeviceClicked(object sender, RoutedEventArgs e) {
@@ -731,9 +565,11 @@ namespace Spectrum {
         DeviceID = deviceID,
         PresetName = presetName,
       });
-      var newDevices = new Dictionary<int, int>(this.config.midiDevices);
-      newDevices.Add(deviceID, presetID);
-      this.config.ReplaceMidiDevices(newDevices);
+      if (!this.midiPresetEditor.TryAssignDevice(deviceID, presetID)) {
+        this.LoadMidiDevices();
+        this.RefreshMidiDevices(null, null);
+        return;
+      }
       this.midiDeviceIndices.RemoveAt(this.midiDevices.SelectedIndex);
       this.midiDevices.Items.RemoveAt(this.midiDevices.SelectedIndex);
       this.midiDevices.SelectedIndex = -1;
@@ -762,11 +598,12 @@ namespace Spectrum {
           MessageBoxImage.Warning) != MessageBoxResult.Yes) {
         return;
       }
-      var newDevices = new Dictionary<int, int>(this.config.midiDevices);
       MidiDeviceEntry item = selected;
-      var presetIndex = newDevices[item.DeviceID];
-      newDevices.Remove(item.DeviceID);
-      this.config.ReplaceMidiDevices(newDevices);
+      if (!this.midiPresetEditor.TryRemoveDevice(
+          item.DeviceID, out int presetIndex)) {
+        this.LoadMidiDevices();
+        return;
+      }
       this.midiDeviceList.Items.RemoveAt(this.midiDeviceList.SelectedIndex);
       this.RefreshMidiDevices(null, null);
 
@@ -795,19 +632,25 @@ namespace Spectrum {
 
     private void MidiAddPresetClicked(object sender, RoutedEventArgs e) {
       if (this.currentlyEditingPreset.HasValue) {
-        var newPresetName = this.ValidateNewMidiPresetName(this.midiNewPresetName.Text);
-        if (newPresetName == null) {
+        int presetId = this.currentlyEditingPreset.Value;
+        if (!this.midiPresetEditor.TryRenamePreset(
+            presetId,
+            this.midiNewPresetName.Text,
+            out MidiPreset? renamed)) {
           this.midiNewPresetName.Focus();
           return;
         }
-        int presetId = this.currentlyEditingPreset.Value;
-        MidiPreset renamed = this.config.midiPresets[presetId].ToPreset();
-        renamed.Name = newPresetName;
-        this.config.UpsertMidiPreset(presetId, renamed);
-        var presetIndex = this.midiPresetIndices[this.currentlyEditingPreset.Value];
+        int presetIndex = this.midiPresetIndices.IndexOf(presetId);
+        if (presetIndex < 0) {
+          this.midiPresetList.Items.Clear();
+          this.LoadPresets();
+          this.LoadMidiDevices();
+          this.ClearMidiNewPresetName();
+          return;
+        }
         this.LoadMidiDevices();
-        this.midiPresetList.Items[presetIndex] = newPresetName;
-        this.midiNewDevicePreset.Items[presetIndex] = newPresetName;
+        this.midiPresetList.Items[presetIndex] = renamed.Name;
+        this.midiNewDevicePreset.Items[presetIndex] = renamed.Name;
       } else {
         var result = this.AddNewMidiPresetWithName(this.midiNewPresetName.Text);
         if (result == null) {
@@ -832,7 +675,10 @@ namespace Spectrum {
         return;
       }
       var presetID = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
-      this.config.RemoveMidiPreset(presetID);
+      if (!this.midiPresetEditor.TryDeletePreset(presetID)) {
+        this.midiDeletePreset.IsEnabled = false;
+        return;
+      }
       this.midiPresetIndices.RemoveAt(this.midiPresetList.SelectedIndex);
       this.midiNewDevicePreset.Items.RemoveAt(this.midiPresetList.SelectedIndex);
       this.midiPresetList.Items.RemoveAt(this.midiPresetList.SelectedIndex);
@@ -854,7 +700,8 @@ namespace Spectrum {
         return;
       }
       var presetID = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
-      this.midiDeletePreset.IsEnabled = !this.config.midiDevices.ContainsValue(presetID);
+      this.midiDeletePreset.IsEnabled =
+        this.midiPresetEditor.CanDeletePreset(presetID);
       this.midiClonePreset.IsEnabled = true;
       this.midiRenamePreset.IsEnabled = true;
       this.midiAddBinding.IsEnabled = true;
@@ -867,34 +714,16 @@ namespace Spectrum {
       }
     }
 
-    private bool MidiPresetNameExists(string name) {
-      foreach (var pair in this.config.midiPresets) {
-        if (pair.Value.Name == name) {
-          return true;
-        }
-      }
-      return false;
-    }
-
     private void MidiClonePresetClicked(object sender, RoutedEventArgs e) {
       if (this.midiPresetList.SelectedIndex < 0) {
         return;
       }
       var presetID = this.midiPresetIndices[this.midiPresetList.SelectedIndex];
-      MidiPreset clonedPreset = this.config.midiPresets[presetID].ToPreset();
-      clonedPreset.id = this.getNextMidiPresetID();
-
-      string newName = clonedPreset.Name + " (clone)";
-      int i = 1;
-      while (true) {
-        if (!this.MidiPresetNameExists(newName)) {
-          break;
-        }
-        newName = clonedPreset.Name + " (clone " + ++i + ")";
+      if (!this.midiPresetEditor.TryClonePreset(
+          presetID, out MidiPreset? clonedPreset)) {
+        return;
       }
-      clonedPreset.Name = newName;
-
-      this.AddMidiPreset(clonedPreset);
+      this.AddMidiPresetToControls(clonedPreset);
     }
 
     private void MidiRenamePresetClicked(object sender, RoutedEventArgs e) {
@@ -942,13 +771,13 @@ namespace Spectrum {
       this.midiNewPresetName.Foreground = new SolidColorBrush(Colors.Black);
       this.midiNewPresetName.FontStyle = FontStyles.Normal;
       var name = this.midiNewPresetName.Text.Trim();
-      if (String.Equals(name, "New preset name")) {
+      if (String.Equals(name, MidiPresetEditor.NewPresetPlaceholder)) {
         this.midiNewPresetName.Text = "";
       }
     }
 
     private void ClearMidiNewPresetName() {
-      this.midiNewPresetName.Text = "New preset name";
+      this.midiNewPresetName.Text = MidiPresetEditor.NewPresetPlaceholder;
       this.midiNewPresetName.Foreground = new SolidColorBrush(Colors.Gray);
       this.midiNewPresetName.FontStyle = FontStyles.Italic;
     }
@@ -1242,50 +1071,23 @@ namespace Spectrum {
     }
 
     private void OpenVJHUD(object sender, RoutedEventArgs e) {
-      this.vjHUDWindow = new VJHUDWindow(
-        this.config, this.op.BeatBroadcaster, this.op.OrientationInput);
-      this.vjHUDWindow.Closed += VJHUDClosed;
-      this.vjHUDWindow.Show();
+      this.childWindows.OpenVjHud();
     }
 
     private void CloseVJHUD(object sender, RoutedEventArgs e) {
-      this.vjHUDWindow?.Close();
-      this.vjHUDWindow = null;
-    }
-
-    private void VJHUDClosed(object? sender, EventArgs e) {
-      this.config.vjHUDEnabled = false;
+      this.childWindows.CloseVjHud();
     }
 
     private void OpenDomeSimulator(object sender, RoutedEventArgs e) {
-      this.domeSimulatorWindow = new DomeSimulatorWindow(
-        this.config, this.op.DomeOutput);
-      this.domeSimulatorWindow.Closed += DomeSimulatorClosed;
-      this.domeSimulatorWindow.Show();
+      this.childWindows.OpenDomeSimulator();
     }
 
     private void CloseDomeSimulator(object sender, RoutedEventArgs e) {
-      this.domeSimulatorWindow?.Close();
-      this.domeSimulatorWindow = null;
-    }
-
-    private void DomeSimulatorClosed(object? sender, EventArgs e) {
-      this.config.domeSimulationEnabled = false;
+      this.childWindows.CloseDomeSimulator();
     }
 
     private void OpenDomeMapping(object sender, RoutedEventArgs e) {
-      if (this.domeMappingWindow != null) {
-        this.domeMappingWindow.Activate();
-        return;
-      }
-      this.domeMappingWindow = new DomeMappingWindow(
-        this.domeCalibrationController, this.advisoryLocks);
-      this.domeMappingWindow.Closed += DomeMappingClosed;
-      this.domeMappingWindow.Show();
-    }
-
-    private void DomeMappingClosed(object? sender, EventArgs e) {
-      this.domeMappingWindow = null;
+      this.childWindows.OpenDomeMapping();
     }
 
     private void InitWandSerialUI() {
@@ -1309,24 +1111,14 @@ namespace Spectrum {
       try {
         var selector = this.wandSerialPortSelector;
         selector.Items.Clear();
-        selector.Items.Add(new PortItem { Display = "(none)", Value = "" });
-
         string configured = this.config.wandSerialPort ?? "";
-        bool configuredPresent = false;
-        foreach (var port in WandSerialReceiver.AvailablePorts()) {
-          selector.Items.Add(new PortItem { Display = port, Value = port });
-          if (port == configured) {
-            configuredPresent = true;
-          }
-        }
-        if (!string.IsNullOrEmpty(configured) && !configuredPresent) {
-          selector.Items.Add(new PortItem {
-            Display = configured + " (missing)",
-            Value = configured,
-          });
+        foreach (WandSerialPortOption option in
+            WandSerialPresentationModel.BuildPortOptions(
+              configured, WandSerialReceiver.AvailablePorts())) {
+          selector.Items.Add(option);
         }
 
-        foreach (PortItem item in selector.Items) {
+        foreach (WandSerialPortOption item in selector.Items) {
           if (item.Value == configured) {
             selector.SelectedItem = item;
             break;
@@ -1350,55 +1142,32 @@ namespace Spectrum {
       if (this.repopulatingWandPorts) {
         return;
       }
-      if (this.wandSerialPortSelector.SelectedItem is PortItem item) {
+      if (this.wandSerialPortSelector.SelectedItem is
+          WandSerialPortOption item) {
         this.config.wandSerialPort = item.Value;
       }
     }
 
     private void UpdateWandReceiverStatus(object? sender, EventArgs e) {
-      var status = this.op.OrientationInput.WandSerial.StatusSnapshot();
-      string text;
-      Brush color;
-      if (string.IsNullOrEmpty(this.config.wandSerialPort)) {
-        text = "No port selected";
-        color = Brushes.Gray;
-      } else if (status.LastError != null) {
-        text = "Error: " + status.LastError;
-        color = Brushes.OrangeRed;
-      } else if (!status.PortOpen) {
-        text = "Opening…";
-        color = Brushes.Gray;
-      } else {
-        double since = Math.Min(
-          status.MillisSinceLastHeartbeat, status.MillisSinceLastFrame);
-        if (since < WandSerialReceiver.RECEIVER_ALIVE_MS) {
-          text = "Receiver connected (" +
-            (since / 1000.0).ToString("0.0") + " s ago)";
-          color = Brushes.ForestGreen;
-        } else {
-          text = "Port open — no data";
-          color = Brushes.OrangeRed;
-        }
-      }
-      this.wandReceiverStatus.Text = text;
-      this.wandReceiverStatus.Foreground = color;
+      WandSerialPresentation presentation =
+        WandSerialPresentationModel.EvaluateStatus(
+          this.config.wandSerialPort,
+          this.op.OrientationInput.WandSerial.StatusSnapshot());
+      this.wandReceiverStatus.Text = presentation.Text;
+      this.wandReceiverStatus.Foreground = presentation.Kind switch {
+        WandSerialPresentationKind.Inactive => Brushes.Gray,
+        WandSerialPresentationKind.Ready => Brushes.ForestGreen,
+        WandSerialPresentationKind.Warning => Brushes.OrangeRed,
+        WandSerialPresentationKind.Error => Brushes.OrangeRed,
+        _ => throw new ArgumentOutOfRangeException(
+          nameof(presentation),
+          presentation.Kind,
+          "Unknown wand receiver presentation."),
+      };
     }
 
     private void OpenWandStatus(object sender, RoutedEventArgs e) {
-      if (this.wandStatusWindow != null) {
-        this.wandStatusWindow.Activate();
-        return;
-      }
-      this.wandStatusWindow = new WandStatusWindow(
-        this.config,
-        this.op.OrientationInput
-      );
-      this.wandStatusWindow.Closed += WandStatusClosed;
-      this.wandStatusWindow.Show();
-    }
-
-    private void WandStatusClosed(object? sender, EventArgs e) {
-      this.wandStatusWindow = null;
+      this.childWindows.OpenWandStatus();
     }
 
   }

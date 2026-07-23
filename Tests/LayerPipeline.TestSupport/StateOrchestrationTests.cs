@@ -237,7 +237,10 @@ namespace Spectrum.LayerPipeline.Tests {
         }
       };
 
-      Task.Run(() => config.domeBrightness = 0.75).GetAwaiter().GetResult();
+      RunOnDedicatedThread(() => {
+        config.domeBrightness = 0.75;
+        return true;
+      });
       Assert(Math.Abs(config.domeBrightness - 0.1) < 0.000001 &&
           notifications == 0 && dispatcher.PendingCount == 1,
         "an off-thread configuration write bypassed the dispatcher");
