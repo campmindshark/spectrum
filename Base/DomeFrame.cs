@@ -460,7 +460,7 @@ namespace Spectrum.Base {
           int x = Cell(pixels[i].TopDownX);
           int y = Cell(pixels[i].TopDownY);
           (int X, int Y) key = (x, y);
-          if (!pending.TryGetValue(key, out List<int> bucket)) {
+          if (!pending.TryGetValue(key, out List<int>? bucket)) {
             bucket = new List<int>();
             pending.Add(key, bucket);
           }
@@ -534,7 +534,7 @@ namespace Spectrum.Base {
         ref int nearest, ref double nearestDistanceSq
       ) {
         if (!this.buckets.TryGetValue(
-            (cellX, cellY), out int[] candidates)) {
+            (cellX, cellY), out int[]? candidates) || candidates == null) {
           return;
         }
         for (int candidateIndex = 0;

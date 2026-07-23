@@ -85,7 +85,9 @@ namespace Spectrum.Base {
       DomeFrame dest = ctx.Dest;
       LEDDomeOutputPixel[] pixels = dest.pixels;
       LEDDomeOutputPixel[] maskPixels = ctx.Src.pixels;
-      LEDDomeOutputPixel[] snapshot = ctx.Snapshot.pixels;
+      LEDDomeOutputPixel[] snapshot = (ctx.Snapshot ??
+        throw new InvalidOperationException(
+          "Kaleidoscope requires a destination snapshot.")).pixels;
       for (int i = 0; i < pixels.Length; i++) {
         double mask = opacity * maskPixels[i].a;
         if (mask == 0) {

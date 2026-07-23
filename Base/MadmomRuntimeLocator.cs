@@ -19,7 +19,7 @@ namespace Spectrum.Base {
   /// lets both platform frontends use the same release layout.
   /// </summary>
   internal static class MadmomRuntimeLocator {
-    public static MadmomRuntimePaths Find(
+    public static MadmomRuntimePaths? Find(
       string startDirectory,
       bool useWindowsLayout
     ) {
@@ -31,7 +31,7 @@ namespace Spectrum.Base {
       var directory = new DirectoryInfo(Path.GetFullPath(startDirectory));
       while (directory != null) {
         string madmomRoot = Path.Combine(directory.FullName, "Madmom");
-        MadmomRuntimePaths packaged = FindInEnvironment(
+        MadmomRuntimePaths? packaged = FindInEnvironment(
           Path.Combine(madmomRoot, "runtime"),
           useWindowsLayout,
           isPackagedRuntime: true);
@@ -40,7 +40,7 @@ namespace Spectrum.Base {
         }
 
         foreach (string environmentName in new[] { ".build-env", "env" }) {
-          MadmomRuntimePaths development = FindInEnvironment(
+          MadmomRuntimePaths? development = FindInEnvironment(
             Path.Combine(madmomRoot, environmentName),
             useWindowsLayout,
             isPackagedRuntime: false);
@@ -53,7 +53,7 @@ namespace Spectrum.Base {
       return null;
     }
 
-    private static MadmomRuntimePaths FindInEnvironment(
+    private static MadmomRuntimePaths? FindInEnvironment(
       string environmentRoot,
       bool useWindowsLayout,
       bool isPackagedRuntime

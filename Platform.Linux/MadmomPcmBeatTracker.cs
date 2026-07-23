@@ -39,7 +39,7 @@ namespace Spectrum.Platform.Linux {
     public MadmomPcmBeatTracker(BeatBroadcaster beat) : this(
       beat,
       () => {
-        MadmomRuntimePaths runtime = MadmomRuntimeLocator.Find(
+        MadmomRuntimePaths? runtime = MadmomRuntimeLocator.Find(
           AppContext.BaseDirectory,
           useWindowsLayout: false);
         if (runtime == null) {

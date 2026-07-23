@@ -96,7 +96,9 @@ namespace Spectrum.Base {
       double maximum = Math.Max(options.DotMinimum, options.DotMaximum);
       LEDDomeOutputPixel[] pixels = ctx.Dest.pixels;
       LEDDomeOutputPixel[] mask = ctx.Src.pixels;
-      LEDDomeOutputPixel[] snapshot = ctx.Snapshot.pixels;
+      LEDDomeOutputPixel[] snapshot = (ctx.Snapshot ??
+        throw new InvalidOperationException(
+          "Halftone requires a destination snapshot.")).pixels;
 
       for (int i = 0; i < pixels.Length; i++) {
         double adjustmentMask = opacity * mask[i].a;

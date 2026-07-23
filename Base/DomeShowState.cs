@@ -39,11 +39,11 @@ namespace Spectrum.Base {
   }
 
   public sealed record DomePaletteSnapshot(
-    string Name,
+    string? Name,
     ImmutableArray<DomeColorSnapshot?> Colors
   ) {
     public DomePalette ToPalette() {
-      var colors = new LEDColor[DomePalette.SlotCount];
+      var colors = new LEDColor?[DomePalette.SlotCount];
       for (int i = 0; i < colors.Length; i++) {
         DomeColorSnapshot? color = i < this.Colors.Length
           ? this.Colors[i]
@@ -62,7 +62,7 @@ namespace Spectrum.Base {
     ) {
       var result = new List<DomePalette>(palettes.Length);
       foreach (DomePaletteSnapshot palette in palettes) {
-        result.Add(palette?.ToPalette());
+        result.Add(palette.ToPalette());
       }
       return result;
     }
@@ -108,19 +108,18 @@ namespace Spectrum.Base {
         0,
         1);
 
-    public DomePaletteSnapshot ResolvePalette(int index) {
+    public DomePaletteSnapshot? ResolvePalette(int index) {
       if (this.Palettes.IsDefaultOrEmpty) {
         return null;
       }
-      if (index < 0 || index >= this.Palettes.Length ||
-          this.Palettes[index] == null) {
+      if (index < 0 || index >= this.Palettes.Length) {
         index = 0;
       }
       return this.Palettes[index];
     }
 
     public static ImmutableArray<DomePaletteSnapshot> CompilePalettes(
-      IReadOnlyList<DomePalette> palettes
+      IReadOnlyList<DomePalette?>? palettes
     ) {
       if (palettes == null || palettes.Count == 0) {
         return ImmutableArray<DomePaletteSnapshot>.Empty;
@@ -130,9 +129,10 @@ namespace Spectrum.Base {
       for (int paletteIndex = 0;
           paletteIndex < palettes.Count;
           paletteIndex++) {
-        DomePalette palette = palettes[paletteIndex];
+        DomePalette? palette = palettes[paletteIndex];
         if (palette == null) {
-          compiled.Add(null);
+          compiled.Add(new DomePaletteSnapshot(
+            null, ImmutableArray<DomeColorSnapshot?>.Empty));
           continue;
         }
         var colors = ImmutableArray.CreateBuilder<DomeColorSnapshot?>(
@@ -140,7 +140,7 @@ namespace Spectrum.Base {
         for (int colorIndex = 0;
             colorIndex < DomePalette.SlotCount;
             colorIndex++) {
-          LEDColor color = palette.Colors != null &&
+          LEDColor? color = palette.Colors != null &&
               colorIndex < palette.Colors.Length
             ? palette.Colors[colorIndex]
             : null;

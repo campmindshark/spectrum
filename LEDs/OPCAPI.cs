@@ -72,7 +72,7 @@ namespace Spectrum.LEDs {
     private readonly int port;
     private readonly double minSendIntervalMs;
     private Socket socket;
-    private IAsyncResult connectAttempt;
+    private IAsyncResult? connectAttempt;
     private long connectAttemptStartedTimestamp;
     private long nextConnectAttemptTimestamp;
     private readonly object connectionLock = new object();
@@ -83,7 +83,7 @@ namespace Spectrum.LEDs {
     // reconnect reset.
     private volatile Dictionary<byte, ChannelBuffer> channels;
     // Reusable OPC wire buffer; grown (never shrunk) to fit the largest frame.
-    private byte[] sendBuffer;
+    private byte[] sendBuffer = Array.Empty<byte>();
     private readonly bool separateThread;
     private readonly Action<int> setFPS;
     private readonly Stopwatch frameRateStopwatch;
@@ -136,7 +136,7 @@ namespace Spectrum.LEDs {
         this.defaultChannel = Convert.ToByte(parts[2]);
         this.defaultChannelSet = true;
       }
-      this.InitializeSocket();
+      this.socket = CreateSocket();
       this.channels = new Dictionary<byte, ChannelBuffer>();
       // Pre-create the default channel so the common single-channel path never
       // has to structurally modify the dictionary at runtime.
@@ -156,12 +156,12 @@ namespace Spectrum.LEDs {
     }
 
     private volatile bool active;
-    private Thread outputThread;
+    private Thread? outputThread;
     // Cooperative stop flag for OutputThread, replacing Thread.Abort().
     private volatile bool outputThreadStop;
     private readonly object lockObject = new object();
 
-    internal WaitHandle PendingConnectWaitHandle {
+    internal WaitHandle? PendingConnectWaitHandle {
       get {
         lock (this.connectionLock) {
           return this.connectAttempt?.AsyncWaitHandle;
@@ -176,7 +176,7 @@ namespace Spectrum.LEDs {
         }
       }
       set {
-        Thread threadToJoin = null;
+        Thread? threadToJoin = null;
         lock (this.lockObject) {
           if (this.active == value) {
             return;
@@ -209,8 +209,8 @@ namespace Spectrum.LEDs {
       }
     }
 
-    private void InitializeSocket() {
-      this.socket = new Socket(
+    private static Socket CreateSocket() {
+      var socket = new Socket(
         AddressFamily.InterNetwork,
         SocketType.Stream,
         ProtocolType.Tcp
@@ -219,7 +219,8 @@ namespace Spectrum.LEDs {
       // coalesced/delayed by the TCP stack, adding latency between "frame ready"
       // and "frame on the wire" and making the OPC output rate uneven. The frame
       // is already a single Send(), so coalescing buys us nothing.
-      this.socket.NoDelay = true;
+      socket.NoDelay = true;
+      return socket;
     }
 
     // Starts or polls one asynchronous connection attempt. This method never
@@ -277,7 +278,7 @@ namespace Spectrum.LEDs {
     private void DisconnectSocket() {
       lock (this.connectionLock) {
         this.CloseSocket();
-        this.InitializeSocket();
+        this.socket = CreateSocket();
         this.connectAttempt = null;
         this.connectAttemptStartedTimestamp = 0;
         this.nextConnectAttemptTimestamp = 0;
@@ -299,7 +300,7 @@ namespace Spectrum.LEDs {
 
     private void ReplaceSocketForRetry() {
       this.CloseSocket();
-      this.InitializeSocket();
+      this.socket = CreateSocket();
       this.connectAttempt = null;
       this.connectAttemptStartedTimestamp = 0;
       this.nextConnectAttemptTimestamp =
@@ -308,7 +309,7 @@ namespace Spectrum.LEDs {
 
     private void CloseSocket() {
       try {
-        this.socket?.Close();
+        this.socket.Close();
       } catch (Exception e) {
         Debug.WriteLine("OPCAPI: error closing socket: " + e);
       }
@@ -347,7 +348,7 @@ namespace Spectrum.LEDs {
           Volatile.Write(ref this.sentGeneration, sendingGeneration);
           return false;
         }
-        if (this.sendBuffer == null || this.sendBuffer.Length < totalLength) {
+        if (this.sendBuffer.Length < totalLength) {
           this.sendBuffer = new byte[totalLength];
         }
         byte[] bytes = this.sendBuffer;
@@ -538,12 +539,14 @@ namespace Spectrum.LEDs {
     // enumeration of the channels dictionary in Flush()/Update(); the common
     // case (channel already exists) reads the dictionary lock-free.
     private ChannelBuffer GetOrCreateChannel(byte channelIndex) {
-      ChannelBuffer channel;
-      if (this.channels.TryGetValue(channelIndex, out channel)) {
+      ChannelBuffer? channel;
+      if (this.channels.TryGetValue(channelIndex, out channel) &&
+          channel != null) {
         return channel;
       }
       lock (this.lockObject) {
-        if (!this.channels.TryGetValue(channelIndex, out channel)) {
+        if (!this.channels.TryGetValue(channelIndex, out channel) ||
+            channel == null) {
           channel = new ChannelBuffer(InitialChannelCapacity);
           // Copy-on-write the dictionary so a concurrent lock-free reader in
           // SetPixel never observes a half-mutated Dictionary.

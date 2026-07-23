@@ -76,9 +76,9 @@ namespace Spectrum.LEDs {
       { 348, 358 }                                                          // 6
     };
 
-    private static double[,] points;
+    private static readonly double[,] points =
+      new double[handDrawnPoints.GetLength(0), 2];
     private static void InitPoints() {
-      points = new double[handDrawnPoints.GetLength(0), 2];
       for (int i = 0; i < handDrawnPoints.GetLength(0); i++) {
         points[i, 0] = (((double)handDrawnPoints[i,0])-70.0)/557.0;
         points[i, 1] = (((double)handDrawnPoints[i, 1]) - 86) / 551.0;

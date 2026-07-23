@@ -7,17 +7,17 @@ namespace Spectrum.Base {
   // API. Serializer DTOs are converted at publication boundaries and never
   // escape through Configuration.
   public sealed record DomeLayerView(
-    string InstanceId,
-    string VisualizerKey,
+    string? InstanceId,
+    string? VisualizerKey,
     string BlendMode,
     double Opacity,
     bool Enabled,
-    string Notes,
+    string? Notes,
     ImmutableDictionary<string, double> RendererParams,
     ImmutableDictionary<string, double> OperationParams
   ) {
     public static DomeLayerView FromSettings(DomeLayerSettings settings) =>
-      settings == null ? null : new DomeLayerView(
+      new DomeLayerView(
         settings.InstanceId,
         settings.VisualizerKey,
         settings.BlendMode,
@@ -47,14 +47,16 @@ namespace Spectrum.Base {
     };
 
     public static ImmutableArray<DomeLayerView> Compile(
-      IReadOnlyList<DomeLayerSettings> settings
+      IReadOnlyList<DomeLayerSettings>? settings
     ) {
       if (settings == null || settings.Count == 0) {
         return ImmutableArray<DomeLayerView>.Empty;
       }
       var result = ImmutableArray.CreateBuilder<DomeLayerView>(settings.Count);
       foreach (DomeLayerSettings layer in settings) {
-        result.Add(FromSettings(layer));
+        if (layer != null) {
+          result.Add(FromSettings(layer));
+        }
       }
       return result.MoveToImmutable();
     }
@@ -64,20 +66,22 @@ namespace Spectrum.Base {
     ) {
       var result = new List<DomeLayerSettings>(layers.Length);
       foreach (DomeLayerView layer in layers) {
-        result.Add(layer?.ToSettings());
+        if (layer != null) {
+          result.Add(layer.ToSettings());
+        }
       }
       return result;
     }
   }
 
   public sealed record DomeSceneView(
-    string Name,
+    string? Name,
     ImmutableArray<DomeLayerView> Layers,
     double GlobalFadeSpeed,
     double GlobalHueSpeed
   ) {
     public static DomeSceneView FromScene(DomeScene scene) =>
-      scene == null ? null : new DomeSceneView(
+      new DomeSceneView(
         scene.Name,
         DomeLayerView.Compile(scene.Layers),
         scene.GlobalFadeSpeed,
@@ -91,14 +95,16 @@ namespace Spectrum.Base {
     };
 
     public static ImmutableArray<DomeSceneView> Compile(
-      IReadOnlyList<DomeScene> scenes
+      IReadOnlyList<DomeScene>? scenes
     ) {
       if (scenes == null || scenes.Count == 0) {
         return ImmutableArray<DomeSceneView>.Empty;
       }
       var result = ImmutableArray.CreateBuilder<DomeSceneView>(scenes.Count);
       foreach (DomeScene scene in scenes) {
-        result.Add(FromScene(scene));
+        if (scene != null) {
+          result.Add(FromScene(scene));
+        }
       }
       return result.MoveToImmutable();
     }
@@ -108,7 +114,9 @@ namespace Spectrum.Base {
     ) {
       var result = new List<DomeScene>(scenes.Length);
       foreach (DomeSceneView scene in scenes) {
-        result.Add(scene?.ToScene());
+        if (scene != null) {
+          result.Add(scene.ToScene());
+        }
       }
       return result;
     }
@@ -116,12 +124,12 @@ namespace Spectrum.Base {
 
   public interface IMidiBindingView {
     int BindingType { get; }
-    string BindingName { get; }
+    string? BindingName { get; }
     IMidiBindingConfig ToConfig();
   }
 
   public sealed record TapTempoMidiBindingView(
-    string BindingName,
+    string? BindingName,
     MidiCommandType ButtonType,
     int ButtonIndex
   ) : IMidiBindingView {
@@ -134,9 +142,9 @@ namespace Spectrum.Base {
   }
 
   public sealed record ContinuousKnobMidiBindingView(
-    string BindingName,
+    string? BindingName,
     int KnobIndex,
-    string ConfigPropertyName,
+    string? ConfigPropertyName,
     double StartValue,
     double EndValue
   ) : IMidiBindingView {
@@ -152,9 +160,9 @@ namespace Spectrum.Base {
   }
 
   public sealed record DiscreteKnobMidiBindingView(
-    string BindingName,
+    string? BindingName,
     int KnobIndex,
-    string ConfigPropertyName,
+    string? ConfigPropertyName,
     int NumPossibleValues
   ) : IMidiBindingView {
     public int BindingType => 2;
@@ -167,9 +175,9 @@ namespace Spectrum.Base {
   }
 
   public sealed record DiscreteLogarithmicKnobMidiBindingView(
-    string BindingName,
+    string? BindingName,
     int KnobIndex,
-    string ConfigPropertyName,
+    string? ConfigPropertyName,
     int NumPossibleValues,
     double StartValue
   ) : IMidiBindingView {
@@ -185,7 +193,7 @@ namespace Spectrum.Base {
   }
 
   public sealed record AdsrLevelDriverMidiBindingView(
-    string BindingName,
+    string? BindingName,
     int IndexRangeStart
   ) : IMidiBindingView {
     public int BindingType => 4;
@@ -198,18 +206,18 @@ namespace Spectrum.Base {
 
   public sealed record MidiPresetView(
     int Id,
-    string Name,
+    string? Name,
     ImmutableArray<IMidiBindingView> Bindings
   ) {
     public static MidiPresetView FromPreset(MidiPreset preset) {
-      if (preset == null) {
-        return null;
-      }
       var bindings = ImmutableArray.CreateBuilder<IMidiBindingView>(
         preset.Bindings?.Count ?? 0);
       if (preset.Bindings != null) {
         foreach (IMidiBindingConfig binding in preset.Bindings) {
-          bindings.Add(FromBinding(binding));
+          IMidiBindingView? view = FromBinding(binding);
+          if (view != null) {
+            bindings.Add(view);
+          }
         }
       }
       return new MidiPresetView(
@@ -219,7 +227,9 @@ namespace Spectrum.Base {
     public MidiPreset ToPreset() {
       var bindings = new List<IMidiBindingConfig>(this.Bindings.Length);
       foreach (IMidiBindingView binding in this.Bindings) {
-        bindings.Add(binding?.ToConfig());
+        if (binding != null) {
+          bindings.Add(binding.ToConfig());
+        }
       }
       return new MidiPreset {
         id = this.Id,
@@ -236,12 +246,14 @@ namespace Spectrum.Base {
       }
       var result = ImmutableDictionary.CreateBuilder<int, MidiPresetView>();
       foreach (KeyValuePair<int, MidiPreset> pair in presets) {
-        result[pair.Key] = FromPreset(pair.Value);
+        if (pair.Value != null) {
+          result[pair.Key] = FromPreset(pair.Value);
+        }
       }
       return result.ToImmutable();
     }
 
-    private static IMidiBindingView FromBinding(IMidiBindingConfig binding) {
+    private static IMidiBindingView? FromBinding(IMidiBindingConfig? binding) {
       return binding switch {
         null => null,
         TapTempoMidiBindingConfig value => new TapTempoMidiBindingView(

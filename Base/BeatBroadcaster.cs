@@ -43,12 +43,12 @@ namespace Spectrum.Base {
     private int measureLength = -1;
     private TimeRelativeTo timeRelativeTo = TimeRelativeTo.Timestamp;
     private readonly Timer tapTempoConclusionTimer = new Timer(tapTempoConclusionTime);
-    private readonly MidiLevelDriverInstance[] driversByChannel = new MidiLevelDriverInstance[] {
+    private readonly MidiLevelDriverInstance?[] driversByChannel = new MidiLevelDriverInstance?[] {
       null, null, null, null, null, null, null, null,
     };
     private long lastChannelInteractionTime = 0;
 
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public BeatBroadcaster(Configuration config) {
       this.settings = config as IRuntimeSettingsConfiguration ??
@@ -162,7 +162,7 @@ namespace Spectrum.Base {
       );
     }
 
-    private void TapTempoConcluded(object sender, ElapsedEventArgs e) {
+    private void TapTempoConcluded(object? sender, ElapsedEventArgs? e) {
       this.PropertyChanged?.Invoke(
         this,
         new PropertyChangedEventArgs("TapTempoActive")
@@ -262,9 +262,10 @@ namespace Spectrum.Base {
 
     public void MidiReleaseOnChannel(int channelIndex) {
       lock (this.beatLock) {
-        if (this.driversByChannel[channelIndex] != null) {
+        MidiLevelDriverInstance? driver = this.driversByChannel[channelIndex];
+        if (driver != null) {
           long now = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-          this.driversByChannel[channelIndex].ReleaseTimestamp = now;
+          driver.ReleaseTimestamp = now;
           this.lastChannelInteractionTime = now;
         }
       }

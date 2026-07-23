@@ -147,7 +147,7 @@ namespace Spectrum.Platform.Linux {
         AudioSettingsSnapshot settings =
           this.runtimeSettings.AudioSettingsSnapshot;
         this.beatTracker.Enabled = settings.BeatInput == 1;
-        string deviceId = settings.DeviceId;
+        string? deviceId = settings.DeviceId;
         if (string.IsNullOrWhiteSpace(deviceId)) {
           Volatile.Write(
             ref this.captureError, "No ALSA capture device is selected.");

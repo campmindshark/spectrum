@@ -11,25 +11,25 @@ namespace Spectrum.Base {
   public enum MidiCommandType : byte { Knob, Note, Program }
 
   public readonly struct BindingInvocation {
-    public string Message { get; }
-    public Task Completion { get; }
+    public string? Message { get; }
+    public Task? Completion { get; }
 
-    public BindingInvocation(string message, Task completion = null) {
+    public BindingInvocation(string? message, Task? completion = null) {
       this.Message = message;
       this.Completion = completion;
     }
   }
 
   public struct Binding {
-    public BindingKey key;
+    public BindingKey? key;
     public delegate BindingInvocation bindingCallback(int index, double val);
-    public bindingCallback callback;
-    public IMidiBindingConfig config;
+    public bindingCallback? callback;
+    public IMidiBindingConfig? config;
   }
 
   public class MidiPreset : ICloneable {
     public int id { get; set; }
-    public string Name { get; set; }
+    public string? Name { get; set; }
     public List<IMidiBindingConfig> Bindings { get; set; } = new List<IMidiBindingConfig>();
 
     public object Clone() {
@@ -53,7 +53,7 @@ namespace Spectrum.Base {
   public interface IMidiBindingConfig : ICloneable {
 
     int BindingType { get; set; }
-    string BindingName { get; set; }
+    string? BindingName { get; set; }
 
     // `beat` is the live tempo service (owned by the Operator, not part of
     // Configuration); only the tap-tempo and ADSR bindings use it.
@@ -67,7 +67,7 @@ namespace Spectrum.Base {
   public abstract class MidiBindingConfig : IMidiBindingConfig {
 
     public int BindingType { get; set; }
-    public string BindingName { get; set; }
+    public string? BindingName { get; set; }
 
     public abstract object Clone();
 
@@ -76,13 +76,13 @@ namespace Spectrum.Base {
       BeatBroadcaster beat,
       ApplicationStateDispatcher stateDispatcher);
 
-    public static string ConfigurationPropertyError(
-      string propertyName, Type assignedType
+    public static string? ConfigurationPropertyError(
+      string? propertyName, Type assignedType
     ) {
       if (string.IsNullOrWhiteSpace(propertyName)) {
         return "configuration property name is required";
       }
-      PropertyInfo property = typeof(Configuration).GetProperty(propertyName);
+      PropertyInfo? property = typeof(Configuration).GetProperty(propertyName);
       if (property == null) {
         return "config property \"" + propertyName +
           "\" no longer exists; rebind this knob";
@@ -100,13 +100,19 @@ namespace Spectrum.Base {
     }
 
     protected static PropertyInfo ResolveConfigurationProperty(
-      string propertyName, Type assignedType
+      string? propertyName, Type assignedType
     ) {
-      string error = ConfigurationPropertyError(propertyName, assignedType);
+      string? error = ConfigurationPropertyError(propertyName, assignedType);
       if (error != null) {
         throw new InvalidOperationException(error);
       }
-      return typeof(Configuration).GetProperty(propertyName);
+      if (propertyName == null) {
+        throw new InvalidOperationException(
+          "Configuration property name disappeared during resolution.");
+      }
+      PropertyInfo? property = typeof(Configuration).GetProperty(propertyName);
+      return property ?? throw new InvalidOperationException(
+        "Configuration property disappeared during binding resolution.");
     }
 
   }

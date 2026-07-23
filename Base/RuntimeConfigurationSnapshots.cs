@@ -21,18 +21,18 @@ namespace Spectrum.Base {
         ImmutableDictionary<string, int>.Empty,
         ImmutableDictionary<string, int>.Empty);
 
-    public int FireGeneration(string instanceId) =>
+    public int FireGeneration(string? instanceId) =>
       instanceId != null && this.FireGenerations.TryGetValue(
         instanceId, out int generation) ? generation : 0;
 
-    public int ClearGeneration(string instanceId) =>
+    public int ClearGeneration(string? instanceId) =>
       instanceId != null && this.ClearGenerations.TryGetValue(
         instanceId, out int generation) ? generation : 0;
   }
 
   public sealed record AudioSettingsSnapshot(
     long Generation,
-    string DeviceId,
+    string? DeviceId,
     int BeatInput
   ) {
     public static AudioSettingsSnapshot Empty { get; } =

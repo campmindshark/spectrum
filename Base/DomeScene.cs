@@ -19,10 +19,10 @@ namespace Spectrum.Base {
   // not regenerated: recalling a scene resumes runtime state for an existing
   // matching instance; a different ID or renderer kind creates fresh state.
   public class DomeScene {
-    public string Name { get; set; }
+    public string? Name { get; set; }
 
     // Deep copy of a domeLayerStack, index 0 = background (bottom), last = front.
-    public List<DomeLayerSettings> Layers { get; set; }
+    public List<DomeLayerSettings>? Layers { get; set; }
 
     // The two cross-layer globals captured in the snapshot (see
     // Configuration.domeGlobalFadeSpeed / domeGlobalHueSpeed).

@@ -74,7 +74,9 @@ namespace Spectrum.Base {
         % DomeFrame.NeighborDirections;
       LEDDomeOutputPixel[] pixels = dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
-      LEDDomeOutputPixel[] snapshot = ctx.Snapshot.pixels;
+      LEDDomeOutputPixel[] snapshot = (ctx.Snapshot ??
+        throw new InvalidOperationException(
+          "Chromatic fringe requires a destination snapshot.")).pixels;
       double o = ctx.Opacity;
       for (int i = 0; i < pixels.Length; i++) {
         double mask = o * src[i].a;
@@ -136,7 +138,9 @@ namespace Spectrum.Base {
       int down = DomeFrame.DirBin(3 * Math.PI / 2);
       LEDDomeOutputPixel[] pixels = dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
-      LEDDomeOutputPixel[] snapshot = ctx.Snapshot.pixels;
+      LEDDomeOutputPixel[] snapshot = (ctx.Snapshot ??
+        throw new InvalidOperationException(
+          "Edge spectrum requires a destination snapshot.")).pixels;
       double o = ctx.Opacity;
       for (int i = 0; i < pixels.Length; i++) {
         double mask = o * src[i].a;
@@ -207,7 +211,9 @@ namespace Spectrum.Base {
       dest.EnsureNeighborTable();
       LEDDomeOutputPixel[] pixels = dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
-      LEDDomeOutputPixel[] snapshot = ctx.Snapshot.pixels;
+      LEDDomeOutputPixel[] snapshot = (ctx.Snapshot ??
+        throw new InvalidOperationException(
+          "Refraction requires a destination snapshot.")).pixels;
       double o = ctx.Opacity;
       for (int i = 0; i < pixels.Length; i++) {
         // The field magnitude is both how far the sample is displaced and how

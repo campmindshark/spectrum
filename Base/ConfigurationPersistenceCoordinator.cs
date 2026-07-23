@@ -20,11 +20,11 @@ namespace Spectrum.Base {
     private readonly ConfigurationFileStore<T> store;
     private readonly ApplicationStateDispatcher stateDispatcher;
     private readonly TimeSpan debounceDelay;
-    private readonly Func<string, bool> shouldSaveProperty;
+    private readonly Func<string?, bool> shouldSaveProperty;
     private readonly Func<bool> saveEnabled;
     private readonly Action<Exception> reportSaveError;
     private readonly object gate = new();
-    private Timer timer;
+    private Timer? timer;
     private long generation;
     private bool savePending;
     private bool disposed;
@@ -34,9 +34,9 @@ namespace Spectrum.Base {
       ConfigurationFileStore<T> store,
       ApplicationStateDispatcher stateDispatcher,
       TimeSpan debounceDelay,
-      Func<string, bool> shouldSaveProperty = null,
-      Func<bool> saveEnabled = null,
-      Action<Exception> reportSaveError = null
+      Func<string?, bool>? shouldSaveProperty = null,
+      Func<bool>? saveEnabled = null,
+      Action<Exception>? reportSaveError = null
     ) {
       this.value = value ?? throw new ArgumentNullException(nameof(value));
       this.store = store ?? throw new ArgumentNullException(nameof(store));
@@ -78,9 +78,9 @@ namespace Spectrum.Base {
     }
 
     private void ValueChanged(
-      object sender, PropertyChangedEventArgs eventArgs
+      object? sender, PropertyChangedEventArgs eventArgs
     ) {
-      if (!this.shouldSaveProperty(eventArgs?.PropertyName)) {
+      if (!this.shouldSaveProperty(eventArgs.PropertyName)) {
         return;
       }
       // Suppression is checked when the change occurs as well as when the

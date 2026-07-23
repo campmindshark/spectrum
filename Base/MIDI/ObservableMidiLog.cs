@@ -9,7 +9,7 @@ using System.Collections.Concurrent;
 namespace Spectrum.Base {
 
   public struct MidiLogMessage {
-    public string message;
+    public string? message;
     public DateTime time;
   }
 
@@ -20,7 +20,7 @@ namespace Spectrum.Base {
     private readonly BlockingCollection<MidiLogMessage> messages
       = new BlockingCollection<MidiLogMessage>(bufferSize);
 
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public void Append(string message) {
       lock (this.messages) {

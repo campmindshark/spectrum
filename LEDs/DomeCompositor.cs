@@ -10,9 +10,9 @@ namespace Spectrum.LEDs {
   // configuration, palettes, and simulator publication remain in the output.
   public sealed class DomeCompositor {
     private readonly Func<DomeFrame> createFrame;
-    private readonly OrientationAngleProvider orientation;
+    private readonly OrientationAngleProvider? orientation;
     private readonly Func<double> elapsedSeconds;
-    private readonly Func<int, double, int> paletteColor;
+    private readonly Func<int, double, int>? paletteColor;
     private readonly FrameClock clock = new FrameClock();
     private readonly Dictionary<CompositeHistoryKey, CompositeFrameHistory>
       histories = new();
@@ -20,15 +20,15 @@ namespace Spectrum.LEDs {
     private readonly List<CompositeHistoryKey> staleHistories = new();
     private readonly HashSet<ILayerRenderer> hueAdvancedRenderers = new();
     private RenderPlan plan = RenderPlan.Empty;
-    private DomeFrame destination;
-    private DomeFrame scratch;
+    private DomeFrame? destination;
+    private DomeFrame? scratch;
     private double seconds;
 
     public DomeCompositor(
       Func<DomeFrame> createFrame,
-      OrientationAngleProvider orientation = null,
-      Func<double> elapsedSeconds = null,
-      Func<int, double, int> paletteColor = null
+      OrientationAngleProvider? orientation = null,
+      Func<double>? elapsedSeconds = null,
+      Func<int, double, int>? paletteColor = null
     ) {
       this.createFrame = createFrame ??
         throw new ArgumentNullException(nameof(createFrame));
@@ -56,11 +56,11 @@ namespace Spectrum.LEDs {
 
     // Returns null when no scheduled renderer contributed, preserving the old
     // "hold last frame / leave diagnostic output alone" contract.
-    public DomeFrame Compose() {
+    public DomeFrame? Compose() {
       return this.Compose(this.Plan);
     }
 
-    public DomeFrame Compose(RenderPlan current) {
+    public DomeFrame? Compose(RenderPlan? current) {
       this.seconds += Math.Max(0, this.elapsedSeconds());
       current ??= RenderPlan.Empty;
       bool hasAvailableLayer = false;
@@ -78,30 +78,42 @@ namespace Spectrum.LEDs {
           orientationUpdated = true;
         }
         if (!hasAvailableLayer) {
-          this.destination ??= this.createFrame();
+          this.destination ??= this.createFrame() ??
+            throw new InvalidOperationException(
+              "The compositor frame factory returned null.");
           this.destination.ResetComposite();
           hasAvailableLayer = true;
         }
+        DomeFrame destination = this.destination ??
+          throw new InvalidOperationException(
+            "The compositor destination frame was not initialized.");
         DomeFrame source = layer.Renderer.Frame;
         bool needsSnapshot = (layer.Operation.Requirements &
           CompositeRequirements.ReadsDestinationNeighbors) != 0;
+        DomeFrame? snapshot = null;
         if (needsSnapshot) {
-          this.scratch ??= this.createFrame();
-          this.scratch.CopyFrom(this.destination);
+          this.scratch ??= this.createFrame() ??
+            throw new InvalidOperationException(
+              "The compositor scratch-frame factory returned null.");
+          snapshot = this.scratch ??
+            throw new InvalidOperationException(
+              "The compositor scratch frame was not initialized.");
+          snapshot.CopyFrom(destination);
         }
-        CompositeFrameHistory history = null;
+        CompositeFrameHistory? history = null;
         if ((layer.Operation.Requirements &
             CompositeRequirements.ReadsHistory) != 0) {
           var key = new CompositeHistoryKey(
             layer.Snapshot.Id, layer.Operation.Id);
           this.activeHistories.Add(key);
-          if (!this.histories.TryGetValue(key, out history)) {
+          if (!this.histories.TryGetValue(key, out history) ||
+              history == null) {
             history = new CompositeFrameHistory();
             this.histories.Add(key, history);
           }
         }
         layer.Operation.Execute(new DomeBlendContext(
-          this.destination, source, needsSnapshot ? this.scratch : null,
+          destination, source, snapshot,
           layer.OperationOptions, layer.Snapshot.Opacity, this.seconds,
           this.orientation, history, this.paletteColor));
       }

@@ -66,10 +66,10 @@ namespace Spectrum.Base {
     // scene with the same name (case-insensitive). Returns (false, error) on a
     // bad name or when the cap is hit and the name is new; the caller (each UI)
     // is responsible for confirming an overwrite before calling.
-    public (bool ok, string error) Save(string name) {
+    public (bool ok, string? error) Save(string? name) {
       name = name == null ? null : name.Trim();
-      (bool ok, string error) = ValidateName(name);
-      if (!ok) {
+      (bool ok, string? error) = ValidateName(name);
+      if (!ok || name == null) {
         return (false, error);
       }
       var scene = new DomeScene {
@@ -110,19 +110,22 @@ namespace Spectrum.Base {
     // Recall the named scene: deep-copy its layers (preserving instance IDs),
     // run them through the shared validator, then publish the stack and both
     // globals as one immutable show-state generation.
-    public (bool ok, string error) Apply(string name) {
-      DomeSceneView scene = Find(this.config.domeScenes, name);
+    public (bool ok, string? error) Apply(string? name) {
+      DomeSceneView? scene = Find(this.config.domeScenes, name);
       if (scene == null) {
         return (false, "no scene named " + name);
       }
       // Validate produces a fresh list of fresh DomeLayerSettings (with fresh
       // parameter bags) without mutating its input, so the published stack never
       // aliases the stored scene — no separate deep copy needed here.
-      (List<DomeLayerSettings> stack, string error) =
+      (List<DomeLayerSettings>? stack, string? error) =
         StackValidator.Validate(
           DomeLayerView.ToSettings(scene.Layers), this.layerCatalog);
       if (error != null) {
         return (false, error);
+      }
+      if (stack == null) {
+        return (false, "scene validation returned no layer stack");
       }
       this.showState.ApplyDomeShowState(new DomeShowStateUpdate(
         stack,
@@ -137,7 +140,7 @@ namespace Spectrum.Base {
     }
 
     // Remove the named scene. A no-op (still ok) if it doesn't exist.
-    public (bool ok, string error) Delete(string name) {
+    public (bool ok, string? error) Delete(string? name) {
       List<DomeScene> current = DomeSceneView.ToScenes(this.config.domeScenes);
       if (current.Count == 0) {
         return (true, null);
@@ -156,10 +159,12 @@ namespace Spectrum.Base {
 
     // Rename a scene. Fails on a bad new name, an unknown old name, or a
     // collision with a different existing scene.
-    public (bool ok, string error) Rename(string oldName, string newName) {
+    public (bool ok, string? error) Rename(
+      string? oldName, string? newName
+    ) {
       newName = newName == null ? null : newName.Trim();
-      (bool ok, string error) = ValidateName(newName);
-      if (!ok) {
+      (bool ok, string? error) = ValidateName(newName);
+      if (!ok || newName == null) {
         return (false, error);
       }
       List<DomeScene> current = DomeSceneView.ToScenes(this.config.domeScenes);
@@ -190,7 +195,7 @@ namespace Spectrum.Base {
       return (true, null);
     }
 
-    private static (bool ok, string error) ValidateName(string name) {
+    private static (bool ok, string? error) ValidateName(string? name) {
       if (string.IsNullOrEmpty(name)) {
         return (false, "scene name must not be empty");
       }
@@ -200,9 +205,9 @@ namespace Spectrum.Base {
       return (true, null);
     }
 
-    private static DomeSceneView Find(
+    private static DomeSceneView? Find(
       System.Collections.Immutable.ImmutableArray<DomeSceneView> scenes,
-      string name
+      string? name
     ) {
       if (name == null) {
         return null;
@@ -215,7 +220,7 @@ namespace Spectrum.Base {
       return null;
     }
 
-    private static bool NameEquals(string a, string b) =>
+    private static bool NameEquals(string? a, string? b) =>
       string.Equals(a, b, System.StringComparison.OrdinalIgnoreCase);
 
   }

@@ -28,7 +28,7 @@ namespace Spectrum.Base {
     bool Enabled,
     ImmutableDictionary<string, ParameterValue> RendererParameters,
     ImmutableDictionary<string, ParameterValue> OperationParameters,
-    string Notes
+    string? Notes
   );
 
   public sealed record LayerStackSnapshot(
@@ -149,8 +149,8 @@ namespace Spectrum.Base {
     IReadOnlyList<DomeLayerParam> Parameters,
     Func<ImmutableDictionary<string, ParameterValue>,
       ILayerRendererOptions> CompileOptions,
-    LayerActionDefinition FireAction = null,
-    LayerActionDefinition ClearAction = null
+    LayerActionDefinition? FireAction = null,
+    LayerActionDefinition? ClearAction = null
   );
 
   public sealed class LayerCatalog {
@@ -199,7 +199,7 @@ namespace Spectrum.Base {
       this.byId = map.ToImmutable();
     }
 
-    public bool TryGet(string id, out LayerDefinition definition) {
+    public bool TryGet(string? id, out LayerDefinition? definition) {
       if (id == null) {
         definition = null;
         return false;
@@ -207,13 +207,15 @@ namespace Spectrum.Base {
       return this.byId.TryGetValue(id, out definition);
     }
 
-    public LayerDefinition Get(string id) =>
-      this.TryGet(id, out LayerDefinition definition) ? definition : null;
+    public LayerDefinition? Get(string? id) =>
+      this.TryGet(id, out LayerDefinition? definition) ? definition : null;
 
-    public IReadOnlyList<DomeLayerParam> ParametersFor(string id) =>
-      this.TryGet(id, out LayerDefinition definition)
+    public IReadOnlyList<DomeLayerParam> ParametersFor(string? id) {
+      return this.TryGet(id, out LayerDefinition? definition) &&
+          definition != null
         ? definition.Parameters
         : Array.Empty<DomeLayerParam>();
+    }
 
     public LayerCatalog BindFactories(
       IReadOnlyDictionary<string, Func<LayerRendererRuntime, ILayerRenderer>> factories
@@ -230,7 +232,7 @@ namespace Spectrum.Base {
       return new LayerCatalog(this.definitions.Select(definition => {
         if (!factories.TryGetValue(
           definition.Id,
-          out Func<LayerRendererRuntime, ILayerRenderer> factory
+          out Func<LayerRendererRuntime, ILayerRenderer>? factory
         )) {
           throw new InvalidOperationException(
             "No renderer factory registered for layer " + definition.Id);
@@ -248,22 +250,31 @@ namespace Spectrum.Base {
       this.catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
     }
 
-    public (LayerStackSnapshot snapshot, string error) CreateSnapshot(
-      IReadOnlyList<DomeLayerSettings> layers
+    public (LayerStackSnapshot? snapshot, string? error) CreateSnapshot(
+      IReadOnlyList<DomeLayerSettings>? layers
     ) {
-      (List<DomeLayerSettings> normalized, string error) =
+      (List<DomeLayerSettings>? normalized, string? error) =
         this.Normalize(layers);
       if (error != null) {
         return (null, error);
       }
+      if (normalized == null) {
+        return (null, "layer normalization returned no stack");
+      }
       var snapshots = ImmutableArray.CreateBuilder<LayerSnapshot>(
         normalized.Count);
       foreach (DomeLayerSettings layer in normalized) {
-        LayerDefinition definition = this.catalog.Get(layer.VisualizerKey);
-        DomeBlend operation = DomeBlend.FromId(layer.BlendMode);
+        string rendererId = layer.VisualizerKey ??
+          throw new InvalidOperationException("Normalized layer has no renderer ID.");
+        string instanceId = layer.InstanceId ??
+          throw new InvalidOperationException("Normalized layer has no instance ID.");
+        LayerDefinition definition = this.catalog.Get(rendererId) ??
+          throw new InvalidOperationException("Normalized layer renderer is unknown.");
+        DomeBlend operation = DomeBlend.FromId(layer.BlendMode) ??
+          throw new InvalidOperationException("Normalized layer blend is unknown.");
         snapshots.Add(new LayerSnapshot(
-          new LayerInstanceId(layer.InstanceId),
-          layer.VisualizerKey,
+          new LayerInstanceId(instanceId),
+          rendererId,
           operation.Id,
           layer.Opacity,
           layer.Enabled,
@@ -274,8 +285,8 @@ namespace Spectrum.Base {
       return (new LayerStackSnapshot(snapshots.MoveToImmutable()), null);
     }
 
-    public (List<DomeLayerSettings> stack, string error) Normalize(
-      IReadOnlyList<DomeLayerSettings> layers
+    public (List<DomeLayerSettings>? stack, string? error) Normalize(
+      IReadOnlyList<DomeLayerSettings>? layers
     ) {
       if (layers == null) {
         return (null, "layers must not be null");
@@ -292,7 +303,7 @@ namespace Spectrum.Base {
         if (!this.catalog.TryGet(layer.VisualizerKey, out _)) {
           return (null, "unknown visualizer key: " + layer.VisualizerKey);
         }
-        DomeBlend operation = DomeBlend.FromId(layer.BlendMode);
+        DomeBlend? operation = DomeBlend.FromId(layer.BlendMode);
         if (operation == null) {
           return (null, "unknown blend mode: " + layer.BlendMode);
         }
@@ -305,7 +316,7 @@ namespace Spectrum.Base {
         if (!ids.Add(id)) {
           return (null, "duplicate layer instance id: " + id);
         }
-        string notes = layer.Notes;
+        string? notes = layer.Notes;
         if (notes != null && notes.Length > StackValidator.MaxNotesLength) {
           notes = notes.Substring(0, StackValidator.MaxNotesLength);
         }
@@ -327,7 +338,7 @@ namespace Spectrum.Base {
 
     private static ImmutableDictionary<string, ParameterValue> CompileParameters(
       IReadOnlyList<DomeLayerParam> schema,
-      IReadOnlyDictionary<string, double> values
+      IReadOnlyDictionary<string, double>? values
     ) {
       var result = ImmutableDictionary.CreateBuilder<string, ParameterValue>(
         StringComparer.Ordinal);
@@ -359,7 +370,7 @@ namespace Spectrum.Base {
   public sealed record LayerRendererBinding(
     ILayerRenderer Renderer,
     bool Created,
-    ILayerRenderer ReplacedRenderer
+    ILayerRenderer? ReplacedRenderer
   );
 
   // The sole owner of layer-renderer instances and their mutable runtime
@@ -384,14 +395,14 @@ namespace Spectrum.Base {
       if (layer == null) {
         throw new ArgumentNullException(nameof(layer));
       }
-      if (this.entries.TryGetValue(layer.Id, out Entry existing) &&
+      if (this.entries.TryGetValue(layer.Id, out Entry? existing) &&
           existing.RendererId == layer.RendererId) {
         existing.Runtime.Publish(layer);
         return new LayerRendererBinding(existing.Renderer, false, null);
       }
 
       Entry created = this.CreateEntry(layer);
-      ILayerRenderer replaced = existing?.Renderer;
+      ILayerRenderer? replaced = existing?.Renderer;
       this.entries[layer.Id] = created;
       return new LayerRendererBinding(created.Renderer, true, replaced);
     }
@@ -455,7 +466,7 @@ namespace Spectrum.Base {
 
       internal void Resolve(LayerSnapshot layer) {
         if (this.owner.entries.TryGetValue(
-            layer.Id, out Entry existing) &&
+            layer.Id, out Entry? existing) &&
             existing.RendererId == layer.RendererId) {
           LayerRendererRuntime.RuntimeState prepared =
             existing.Runtime.Prepare(layer);
@@ -473,11 +484,11 @@ namespace Spectrum.Base {
           candidate.Renderer, true, existing?.Renderer));
       }
 
-      public ILayerRenderer Get(LayerSnapshot layer) {
+      public ILayerRenderer? Get(LayerSnapshot? layer) {
         if (layer == null) {
           return null;
         }
-        return this.resolved.TryGetValue(layer.Id, out Entry entry) &&
+        return this.resolved.TryGetValue(layer.Id, out Entry? entry) &&
           entry.RendererId == layer.RendererId
             ? entry.Renderer
             : null;
@@ -516,11 +527,11 @@ namespace Spectrum.Base {
       }
     }
 
-    public ILayerRenderer Get(LayerSnapshot layer) {
+    public ILayerRenderer? Get(LayerSnapshot? layer) {
       if (layer == null) {
         return null;
       }
-      return this.entries.TryGetValue(layer.Id, out Entry entry) &&
+      return this.entries.TryGetValue(layer.Id, out Entry? entry) &&
         entry.RendererId == layer.RendererId
           ? entry.Renderer
           : null;
@@ -547,7 +558,7 @@ namespace Spectrum.Base {
   public sealed class RenderPlanCompiler {
     public RenderPlan Compile(
       LayerStackSnapshot snapshot,
-      Func<LayerSnapshot, ILayerRenderer> rendererResolver
+      Func<LayerSnapshot, ILayerRenderer?> rendererResolver
     ) {
       if (snapshot == null || snapshot.Layers.IsDefaultOrEmpty) {
         return RenderPlan.Empty;
@@ -558,8 +569,8 @@ namespace Spectrum.Base {
         if (!layer.Enabled) {
           continue;
         }
-        ILayerRenderer renderer = rendererResolver(layer);
-        DomeBlend operation = DomeBlend.FromId(layer.OperationId);
+        ILayerRenderer? renderer = rendererResolver(layer);
+        DomeBlend? operation = DomeBlend.FromId(layer.OperationId);
         if (renderer == null || operation == null) {
           continue;
         }

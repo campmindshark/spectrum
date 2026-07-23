@@ -27,7 +27,7 @@ namespace Spectrum.Base {
 
     public DedicatedThreadApplicationStateDispatcher(
       string threadName = "Spectrum application state",
-      Action<Exception> reportUnhandledException = null
+      Action<Exception>? reportUnhandledException = null
     ) {
       if (string.IsNullOrWhiteSpace(threadName)) {
         throw new ArgumentException(

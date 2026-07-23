@@ -109,7 +109,7 @@ namespace Spectrum.Base {
       for (int copy = 1; copy <= copyCount; copy++) {
         if (!ctx.History.TryGetAtOrBefore(
             ctx.Seconds - copy * options.Delay,
-            out int[] historicalColors)) {
+            out int[]? historicalColors)) {
           continue;
         }
         double angle = copy * options.Rotation;

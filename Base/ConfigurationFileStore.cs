@@ -10,7 +10,7 @@ namespace Spectrum.Base {
 
   public sealed record ConfigurationLoadResult<T>(
     T Value,
-    string SourcePath,
+    string? SourcePath,
     IReadOnlyList<ConfigurationLoadFailure> Failures
   );
 
@@ -89,9 +89,9 @@ namespace Spectrum.Base {
       }
 
       lock (this.saveLock) {
-        Exception failure = null;
+        Exception? failure = null;
         try {
-          string directory = Path.GetDirectoryName(this.PrimaryPath);
+          string? directory = Path.GetDirectoryName(this.PrimaryPath);
           if (!string.IsNullOrEmpty(directory)) {
             Directory.CreateDirectory(directory);
           }

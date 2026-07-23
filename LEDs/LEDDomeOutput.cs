@@ -171,14 +171,14 @@ namespace Spectrum.LEDs {
       new Tuple<int, int>(4, 4), new Tuple<int, int>(0, 4),
     };
 
-    private OPCAPI opcAPI;
+    private OPCAPI? opcAPI;
     private TimeSpan? opcMinSendInterval;
     private readonly Configuration config;
     private readonly IRuntimeSettingsConfiguration runtimeSettings;
     // Live counters, not config: the OPC send rate is reported here.
     private readonly RuntimeTelemetry telemetry;
 
-    internal WaitHandle PendingOpcConnectWaitHandle =>
+    internal WaitHandle? PendingOpcConnectWaitHandle =>
       this.opcAPI?.PendingConnectWaitHandle;
     // The tempo service (owned by the Operator, not part of Configuration),
     // read for the beat-synced flash-off in the per-frame color cache.
@@ -188,7 +188,7 @@ namespace Spectrum.LEDs {
     private DomeRenderGeneration renderGeneration;
     // Operator-thread-only frame capture. Visualizers, compositor palette
     // effects, and global hue all read through this same accepted generation.
-    private DomeRenderGeneration frameRenderGeneration;
+    private DomeRenderGeneration? frameRenderGeneration;
     private DomeRuntimeFrameSnapshot frameRuntimeSettings =
       DomeRuntimeFrameSnapshot.Empty;
     private DomeOutputSettingsSnapshot frameOutputSettings =
@@ -200,7 +200,7 @@ namespace Spectrum.LEDs {
       Volatile.Read(ref this.appliedMappingGeneration);
     internal long AppliedTransportGeneration =>
       Volatile.Read(ref this.appliedTransportGeneration);
-    internal event Action OutputSettingsApplied;
+    internal event Action? OutputSettingsApplied;
     private int outputSettingsPending;
     private static readonly int maxStripLength;
 
@@ -231,12 +231,13 @@ namespace Spectrum.LEDs {
     // configuration value.
     private readonly int[,] portForPath =
       new int[NumDomeBoxes, NumPortsPerBox];
-    private DomeOutputMapping outputMapping;
+    private DomeOutputMapping outputMapping = new DomeOutputMapping(
+      Array.Empty<int>(), Array.Empty<int>());
     // Touched only by the operator thread. Comparing mapping snapshots makes an
     // output-map transition clear OPC's persistent next frame exactly when the
     // first frame using that new projection is written.
-    private DomeOutputMapping lastWireMapping;
-    private DomeTopology topology;
+    private DomeOutputMapping? lastWireMapping;
+    private DomeTopology? topology;
 
     private static int calculateMaxStripLength() {
       int maxLength = 0;
@@ -271,7 +272,7 @@ namespace Spectrum.LEDs {
     // simply never follows and the blends use their static angle.
     public LEDDomeOutput(
       Configuration config, RuntimeTelemetry telemetry, BeatBroadcaster beat,
-      OrientationAngleProvider orientationAngle = null
+      OrientationAngleProvider? orientationAngle = null
     ) {
       this.config = config;
       this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
@@ -314,7 +315,7 @@ namespace Spectrum.LEDs {
     }
 
     private static bool IsValidPermutation(
-      IReadOnlyList<int> mapping, int count
+      IReadOnlyList<int>? mapping, int count
     ) {
       if (mapping == null || mapping.Count != count) {
         return false;
@@ -329,7 +330,7 @@ namespace Spectrum.LEDs {
       return true;
     }
 
-    public static bool IsValidPortMapping(int[] mapping) =>
+    public static bool IsValidPortMapping(int[]? mapping) =>
       IsValidPermutation(mapping, NumPortsPerBox);
 
     // Rebuilds both wiring permutations and atomically replaces the immutable
@@ -353,13 +354,15 @@ namespace Spectrum.LEDs {
       bool hasPerBoxMappings =
         configuredMappings.Length == NumDomeBoxes;
       for (int box = 0; box < NumDomeBoxes; box++) {
-        IReadOnlyList<int> portMapping = hasPerBoxMappings
+        IReadOnlyList<int>? portMapping = hasPerBoxMappings
           ? configuredMappings[box]
           : null;
         bool portMappingValid =
           IsValidPermutation(portMapping, NumPortsPerBox);
         for (int port = 0; port < NumPortsPerBox; port++) {
-          int path = portMappingValid ? portMapping[port] : port;
+          int path = portMappingValid && portMapping != null
+            ? portMapping[port]
+            : port;
           this.portForPath[box, path] = port;
         }
       }
@@ -391,13 +394,13 @@ namespace Spectrum.LEDs {
 
     // Cached snapshot of `visualizers`, rebuilt only when a visualizer is
     // registered (startup) rather than allocated fresh every Operator frame.
-    private Visualizer[] visualizersArray;
+    private Visualizer[]? visualizersArray;
     public Visualizer[] GetVisualizers() {
       return this.visualizersArray
         ?? (this.visualizersArray = this.visualizers.ToArray());
     }
 
-    private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
+    private void ConfigUpdated(object? sender, PropertyChangedEventArgs e) {
       if (e.PropertyName == nameof(this.config.domeCableMapping) ||
           e.PropertyName == nameof(this.config.domePortMappings) ||
           e.PropertyName == nameof(this.config.domeBeagleboneOPCAddress) ||
@@ -512,7 +515,7 @@ namespace Spectrum.LEDs {
       // GetGradientColor cache note in EnsureFrameColorCache.
       DomeRenderGeneration frameGeneration =
         this.frameRenderGeneration ?? Volatile.Read(ref this.renderGeneration);
-      DomeFrame completed = this.compositor.Compose(frameGeneration.Plan);
+      DomeFrame? completed = this.compositor.Compose(frameGeneration.Plan);
       if (completed != null) {
         this.WriteBuffer(completed);
         this.Flush();
@@ -564,7 +567,7 @@ namespace Spectrum.LEDs {
     }
 
     public DomeShowStateSnapshot BeginOperatorFrame(
-      DomeRuntimeFrameSnapshot runtimeSettings = null
+      DomeRuntimeFrameSnapshot? runtimeSettings = null
     ) {
       DomeRenderGeneration generation =
         Volatile.Read(ref this.renderGeneration) ?? DomeRenderGeneration.Empty;
@@ -653,9 +656,9 @@ namespace Spectrum.LEDs {
     private bool frameFlashedOff;
     private double frameBrightness;
 
-    private void EnsureFrameColorCache() {
+    private DomeRenderGeneration EnsureFrameColorCache() {
       if (this.frameColorCacheValid) {
-        return;
+        return this.frameRenderGeneration ?? DomeRenderGeneration.Empty;
       }
       this.frameFlashedOff = this.beat.CurrentlyFlashedOff;
       this.frameBrightness =
@@ -664,6 +667,7 @@ namespace Spectrum.LEDs {
       this.frameRenderGeneration ??=
         Volatile.Read(ref this.renderGeneration) ?? DomeRenderGeneration.Empty;
       this.frameColorCacheValid = true;
+      return this.frameRenderGeneration;
     }
 
     // Ordered per-pixel/flush commands for diagnostic visualizers. Normal
@@ -680,13 +684,13 @@ namespace Spectrum.LEDs {
 
     private readonly object simulatorFrameGate = new object();
     private volatile bool simulatorHasConsumer;
-    private int[] latestSimulatorFrame;
+    private int[]? latestSimulatorFrame;
     // Set on the operator thread when WriteBuffer publishes a mailbox frame;
     // Flush then knows it needn't also enqueue a redundant redraw command.
     private bool simulatorFramePublishedSinceFlush;
     private readonly object webSimulatorFrameGate = new object();
     private volatile bool webSimulatorHasConsumer;
-    private int[] latestWebSimulatorFrame;
+    private int[]? latestWebSimulatorFrame;
     private bool webSimulatorFramePublishedSinceFlush;
     private long nextWebSimulatorFrameTimestamp;
     public const int WebSimulatorFramesPerSecond = 60;
@@ -698,7 +702,7 @@ namespace Spectrum.LEDs {
     public bool SimulatorHasConsumer {
       get { return this.simulatorHasConsumer; }
       set {
-        int[] abandoned = null;
+        int[]? abandoned = null;
         lock (this.simulatorFrameGate) {
           this.simulatorHasConsumer = value;
           if (!value) {
@@ -715,7 +719,7 @@ namespace Spectrum.LEDs {
     public bool WebSimulatorHasConsumer {
       get { return this.webSimulatorHasConsumer; }
       set {
-        int[] abandoned = null;
+        int[]? abandoned = null;
         lock (this.webSimulatorFrameGate) {
           this.webSimulatorHasConsumer = value;
           if (!value) {
@@ -774,7 +778,7 @@ namespace Spectrum.LEDs {
     // pooled array immediately; a frame already taken by the UI is owned by the
     // UI until ReturnSimulatorFrame is called.
     private bool PublishSimulatorFrame(int[] frame) {
-      int[] superseded = null;
+      int[]? superseded = null;
       lock (this.simulatorFrameGate) {
         if (!this.simulatorHasConsumer ||
             !this.OutputSettings.SimulationEnabled) {
@@ -794,7 +798,7 @@ namespace Spectrum.LEDs {
       return true;
     }
 
-    public bool TryTakeSimulatorFrame(out int[] frame) {
+    public bool TryTakeSimulatorFrame(out int[]? frame) {
       lock (this.simulatorFrameGate) {
         frame = this.latestSimulatorFrame;
         this.latestSimulatorFrame = null;
@@ -802,14 +806,14 @@ namespace Spectrum.LEDs {
       }
     }
 
-    public void ReturnSimulatorFrame(int[] frame) {
+    public void ReturnSimulatorFrame(int[]? frame) {
       if (frame != null) {
         ArrayPool<int>.Shared.Return(frame);
       }
     }
 
     private bool PublishWebSimulatorFrame(int[] frame) {
-      int[] superseded = null;
+      int[]? superseded = null;
       lock (this.webSimulatorFrameGate) {
         if (!this.webSimulatorHasConsumer) {
           return false;
@@ -824,7 +828,7 @@ namespace Spectrum.LEDs {
       return true;
     }
 
-    public bool TryTakeWebSimulatorFrame(out int[] frame) {
+    public bool TryTakeWebSimulatorFrame(out int[]? frame) {
       lock (this.webSimulatorFrameGate) {
         frame = this.latestWebSimulatorFrame;
         this.latestWebSimulatorFrame = null;
@@ -1095,14 +1099,14 @@ namespace Spectrum.LEDs {
     // A/B regions still match the installed paths even when a path crosses the
     // four-port boundary. Invalid mappings render the legacy identity layout.
     public static List<int> GetPhysicalCableStruts(
-      int boxIndex, int half, int[] portMapping
+      int boxIndex, int half, int[]? portMapping
     ) {
       bool valid = IsValidPortMapping(portMapping);
       var struts = new List<int>();
       int firstPort = half * StrandsPerCable;
       int endPort = firstPort + StrandsPerCable;
       for (int port = firstPort; port < endPort; port++) {
-        int path = valid ? portMapping[port] : port;
+        int path = valid && portMapping != null ? portMapping[port] : port;
         struts.AddRange(GetStripPathStruts(boxIndex, path));
       }
       return struts;
@@ -1113,7 +1117,7 @@ namespace Spectrum.LEDs {
       // Snapshot opcAPI once instead of null-checking + locking per pixel (P4).
       // The visualizers list is only mutated at registration time, so the
       // per-pixel lock in SetDevicePixel guarded nothing here.
-      OPCAPI opcAPI = this.opcAPI;
+      OPCAPI? opcAPI = this.opcAPI;
       bool simulationEnabled = this.ShouldEnqueueDomeCommand;
       // Even when this particular normal frame is skipped by the 60 FPS
       // sampler, Flush must not enqueue an empty diagnostic redraw command.
@@ -1138,9 +1142,9 @@ namespace Spectrum.LEDs {
       // Rent a whole-frame snapshot for the latest-frame mailbox. If the UI has
       // not consumed the previous frame, PublishSimulatorFrame replaces and
       // returns it instead of building a backlog.
-      int[] frame = simulationEnabled
+      int[]? frame = simulationEnabled
         ? ArrayPool<int>.Shared.Rent(buffer.pixels.Length) : null;
-      int[] webFrame = webSimulationEnabled
+      int[]? webFrame = webSimulationEnabled
         ? ArrayPool<int>.Shared.Rent(buffer.pixels.Length) : null;
       for (int i = 0; i < buffer.pixels.Length; i++) {
         LEDDomeOutputPixel pixel = buffer.pixels[i];
@@ -1149,21 +1153,21 @@ namespace Spectrum.LEDs {
         if (opcAPI != null) {
           opcAPI.SetPixel(totalPixelIndex, pixel.color);
         }
-        if (simulationEnabled) {
+        if (frame != null) {
           frame[i] = pixel.color;
         }
-        if (webSimulationEnabled) {
+        if (webFrame != null) {
           webFrame[i] = pixel.color;
         }
       }
-      if (simulationEnabled) {
+      if (frame != null) {
         if (this.PublishSimulatorFrame(frame)) {
           this.simulatorFramePublishedSinceFlush = true;
         } else {
           ArrayPool<int>.Shared.Return(frame);
         }
       }
-      if (webSimulationEnabled) {
+      if (webFrame != null) {
         if (this.PublishWebSimulatorFrame(webFrame)) {
           this.webSimulatorFramePublishedSinceFlush = true;
         } else {
@@ -1218,12 +1222,12 @@ namespace Spectrum.LEDs {
     // Resolve a relative color slot through the named palette selected by the
     // layer. The palette parameter is an index into config.domePalettes.
     public int GetSingleColor(int index, int paletteIndex = 0) {
-      this.EnsureFrameColorCache();
+      DomeRenderGeneration frameGeneration = this.EnsureFrameColorCache();
       if (this.frameFlashedOff) {
         return 0x000000;
       }
-      DomePaletteSnapshot palette =
-        this.frameRenderGeneration.ShowState.ResolvePalette(paletteIndex);
+      DomePaletteSnapshot? palette =
+        frameGeneration.ShowState.ResolvePalette(paletteIndex);
       return LEDColor.ScaleColor(
         palette == null ? 0x000000 : palette.GetSingleColor(index),
         this.frameBrightness
@@ -1237,12 +1241,12 @@ namespace Spectrum.LEDs {
       bool wrap,
       int paletteIndex = 0
     ) {
-      this.EnsureFrameColorCache();
+      DomeRenderGeneration frameGeneration = this.EnsureFrameColorCache();
       if (this.frameFlashedOff) {
         return 0x000000;
       }
-      DomePaletteSnapshot palette =
-        this.frameRenderGeneration.ShowState.ResolvePalette(paletteIndex);
+      DomePaletteSnapshot? palette =
+        frameGeneration.ShowState.ResolvePalette(paletteIndex);
       if (
         palette == null ||
         index < 0 || index >= palette.Colors.Length ||
@@ -1250,7 +1254,8 @@ namespace Spectrum.LEDs {
       ) {
         return 0x000000;
       }
-      if (!palette.Colors[index].Value.IsGradient) {
+      DomeColorSnapshot? selected = palette.Colors[index];
+      if (!selected.HasValue || !selected.Value.IsGradient) {
         return LEDColor.ScaleColor(
           palette.GetSingleColor(index),
           this.frameBrightness
@@ -1288,7 +1293,7 @@ namespace Spectrum.LEDs {
         throw new ArgumentOutOfRangeException(
           nameof(paletteIndex), "Palette index cannot be negative.");
       }
-      this.EnsureFrameColorCache();
+      DomeRenderGeneration frameGeneration = this.EnsureFrameColorCache();
       if (this.frameFlashedOff) {
         return 0x000000;
       }
@@ -1312,8 +1317,8 @@ namespace Spectrum.LEDs {
       } else if (scaledPixelPos > 1) {
         scaledPixelPos = 1;
       }
-      DomePaletteSnapshot palette =
-        this.frameRenderGeneration.ShowState.ResolvePalette(paletteIndex);
+      DomePaletteSnapshot? palette =
+        frameGeneration.ShowState.ResolvePalette(paletteIndex);
       if (
         palette == null ||
         palette.Colors.Length <= minColorIdx ||
@@ -1327,7 +1332,8 @@ namespace Spectrum.LEDs {
       ) {
         return 0x000000;
       }
-      if (!palette.Colors[minColorIdx].Value.IsGradient) {
+      DomeColorSnapshot? firstColor = palette.Colors[minColorIdx];
+      if (!firstColor.HasValue || !firstColor.Value.IsGradient) {
         return this.GetSingleColor(minColorIdx, paletteIndex);
       }
       // Blend Color1 of the two adjacent slots. Read the palette directly

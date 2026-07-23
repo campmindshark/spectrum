@@ -10,23 +10,23 @@ namespace Spectrum.Base {
   public class DomePalette : INotifyPropertyChanged {
     public const int SlotCount = 8;
 
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
-    public string Name { get; set; }
+    public string? Name { get; set; }
 
     // Public for XML serialization and detached editing. Live configuration
     // changes publish the edited DTO through ConfigurationEditor.
-    public LEDColor[] Colors { get; set; }
+    public LEDColor?[]? Colors { get; set; }
 
     public int GetSingleColor(int index) {
-      LEDColor color = ColorAt(index);
+      LEDColor? color = ColorAt(index);
       return color == null ? 0x000000 : color.Color1;
     }
 
     public int GetGradientColor(
       int index, double pixelPos, double focusPos, bool wrap
     ) {
-      LEDColor color = ColorAt(index);
+      LEDColor? color = ColorAt(index);
       if (color == null) {
         return 0x000000;
       }
@@ -35,15 +35,15 @@ namespace Spectrum.Base {
         : color.Color1;
     }
 
-    public void ReplaceColors(LEDColor[] values) {
+    public void ReplaceColors(LEDColor?[]? values) {
       this.Colors = CopyColors(values);
       this.CallPropertyChanged();
     }
 
-    public static LEDColor[] CopyColors(LEDColor[] source) {
-      var copy = new LEDColor[SlotCount];
+    public static LEDColor?[] CopyColors(LEDColor?[]? source) {
+      var copy = new LEDColor?[SlotCount];
       for (int i = 0; i < SlotCount; i++) {
-        LEDColor color = source != null && i < source.Length ? source[i] : null;
+        LEDColor? color = source != null && i < source.Length ? source[i] : null;
         copy[i] = color == null ? null : new LEDColor(color);
       }
       return copy;
@@ -54,7 +54,7 @@ namespace Spectrum.Base {
     [XmlIgnore]
     public int? this[int index, int whichColor] {
       get {
-        LEDColor color = ColorAt(index);
+        LEDColor? color = ColorAt(index);
         if (color == null) {
           return null;
         }
@@ -68,19 +68,19 @@ namespace Spectrum.Base {
       }
       set {
         ValidateIndex(index);
-        EnsureColors();
-        LEDColor current = this.Colors[index];
+        LEDColor?[] colors = this.EnsureColors();
+        LEDColor? current = colors[index];
         if (whichColor == 0) {
           if (!value.HasValue) {
-            this.Colors[index] = null;
+            colors[index] = null;
           } else if (current != null && current.IsGradient) {
-            this.Colors[index] = new LEDColor(value.Value, current.Color2);
+            colors[index] = new LEDColor(value.Value, current.Color2);
           } else {
-            this.Colors[index] = new LEDColor(value.Value);
+            colors[index] = new LEDColor(value.Value);
           }
         } else if (whichColor == 1) {
           int start = current == null ? 0x000000 : current.Color1;
-          this.Colors[index] = value.HasValue
+          colors[index] = value.HasValue
             ? new LEDColor(start, value.Value)
             : new LEDColor(start);
         } else {
@@ -90,17 +90,18 @@ namespace Spectrum.Base {
       }
     }
 
-    private LEDColor ColorAt(int index) {
+    private LEDColor? ColorAt(int index) {
       return index >= 0 && index < SlotCount &&
         this.Colors != null && index < this.Colors.Length
           ? this.Colors[index]
           : null;
     }
 
-    private void EnsureColors() {
+    private LEDColor?[] EnsureColors() {
       if (this.Colors == null || this.Colors.Length != SlotCount) {
         this.Colors = CopyColors(this.Colors);
       }
+      return this.Colors;
     }
 
     private static void ValidateIndex(int index) {

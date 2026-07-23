@@ -8,7 +8,7 @@ namespace Spectrum.Base {
   public class DiscreteLogarithmicKnobMidiBindingConfig : MidiBindingConfig {
 
     public int knobIndex { get; set; }
-    public string configPropertyName { get; set; }
+    public string? configPropertyName { get; set; }
     public int numPossibleValues { get; set; }
     public double startValue { get; set; }
 

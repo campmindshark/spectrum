@@ -35,8 +35,8 @@ namespace Spectrum.Base {
 
     // Validate and deep-copy `layers` into a publishable stack. Returns
     // (stack, null) on success or (null, error) on the first rule violation.
-    public static (List<DomeLayerSettings> stack, string error) Validate(
-      IReadOnlyList<DomeLayerSettings> layers,
+    public static (List<DomeLayerSettings>? stack, string? error) Validate(
+      IReadOnlyList<DomeLayerSettings>? layers,
       LayerCatalog catalog
     ) {
       if (layers == null) {
@@ -54,25 +54,25 @@ namespace Spectrum.Base {
     // persists as "all defaults". Never rejects — unknown keys are silently
     // dropped so a client on a newer/older schema still applies what it
     // understands. Always allocates a fresh dictionary, never aliasing `raw`.
-    public static Dictionary<string, double> SanitizeRendererParams(
+    public static Dictionary<string, double>? SanitizeRendererParams(
       LayerCatalog catalog,
-      string visualizerKey,
-      IReadOnlyDictionary<string, double> raw
+      string? visualizerKey,
+      IReadOnlyDictionary<string, double>? raw
     ) => Sanitize(
       catalog.ParametersFor(visualizerKey), raw);
 
-    public static Dictionary<string, double> SanitizeOperationParams(
-      DomeBlend operation, IReadOnlyDictionary<string, double> raw
+    public static Dictionary<string, double>? SanitizeOperationParams(
+      DomeBlend operation, IReadOnlyDictionary<string, double>? raw
     ) => Sanitize(operation.Params, raw);
 
-    private static Dictionary<string, double> Sanitize(
+    private static Dictionary<string, double>? Sanitize(
       IReadOnlyList<DomeLayerParam> schema,
-      IReadOnlyDictionary<string, double> raw
+      IReadOnlyDictionary<string, double>? raw
     ) {
       if (raw == null || raw.Count == 0) {
         return null;
       }
-      Dictionary<string, double> clean = null;
+      Dictionary<string, double>? clean = null;
       foreach (DomeLayerParam descriptor in schema) {
         Accumulate(descriptor, raw, ref clean);
       }
@@ -81,7 +81,7 @@ namespace Spectrum.Base {
 
     private static void Accumulate(
       DomeLayerParam descriptor, IReadOnlyDictionary<string, double> raw,
-      ref Dictionary<string, double> clean
+      ref Dictionary<string, double>? clean
     ) {
       if (!raw.TryGetValue(descriptor.Key, out double value)) {
         return;

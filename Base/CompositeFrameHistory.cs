@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Spectrum.Base {
 
@@ -12,7 +13,7 @@ namespace Spectrum.Base {
 
     private readonly List<Entry> entries = new();
     private readonly Stack<int[]> recycled = new();
-    private object operationState;
+    private object? operationState;
     private int first;
     private int pixelCount = -1;
 
@@ -49,7 +50,9 @@ namespace Spectrum.Base {
       this.entries.Add(new Entry(seconds, colors));
     }
 
-    internal bool TryGetAtOrBefore(double seconds, out int[] colors) {
+    internal bool TryGetAtOrBefore(
+      double seconds, [NotNullWhen(true)] out int[]? colors
+    ) {
       colors = null;
       if (this.Count == 0 || seconds < this.entries[this.first].Seconds) {
         return false;

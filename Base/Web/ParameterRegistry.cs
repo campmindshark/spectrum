@@ -27,7 +27,7 @@ namespace Spectrum.Base {
 
     public IReadOnlyCollection<ParameterDescriptor> All => this.byKey.Values;
 
-    public bool TryGet(string key, out ParameterDescriptor descriptor) =>
+    public bool TryGet(string key, out ParameterDescriptor? descriptor) =>
       this.byKey.TryGetValue(key, out descriptor);
 
     // Whether a caller with the given role may see/touch this parameter.

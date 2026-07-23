@@ -69,7 +69,7 @@ namespace Spectrum.Base {
     // blend runs — non-null when requirements include destination neighbors.
     // Spatial blends read neighbors from here so the effect never smears
     // order-dependently along the pixel array they are mutating.
-    public DomeFrame Snapshot { get; }
+    public DomeFrame? Snapshot { get; }
     // Typed, validated operation options compiled when the stack changed.
     public ICompositeOptions Options { get; }
     // The layer's opacity, 0..1, applied before the blend.
@@ -80,20 +80,20 @@ namespace Spectrum.Base {
     // Live wand angle source for the prism blends' "Follow Orientation"
     // option. Nullable — a dome wired up without an
     // orientation source simply never follows.
-    public OrientationAngleProvider Orientation { get; }
+    public OrientationAngleProvider? Orientation { get; }
     // Per-layer retained composite frames for stateful adjustment operations.
     // Null unless the operation declares ReadsHistory.
-    public CompositeFrameHistory History { get; }
+    public CompositeFrameHistory? History { get; }
     // Resolve one color from a configured named palette at a normalized
     // position. Hosts without a palette service may leave this null; palette-
     // aware operations then preserve the sampled composite's color.
-    public Func<int, double, int> PaletteColor { get; }
+    public Func<int, double, int>? PaletteColor { get; }
     public DomeBlendContext(
-      DomeFrame dest, DomeFrame src, DomeFrame snapshot,
+      DomeFrame dest, DomeFrame src, DomeFrame? snapshot,
       ICompositeOptions options,
-      double opacity, double seconds, OrientationAngleProvider orientation,
-      CompositeFrameHistory history = null,
-      Func<int, double, int> paletteColor = null
+      double opacity, double seconds, OrientationAngleProvider? orientation,
+      CompositeFrameHistory? history = null,
+      Func<int, double, int>? paletteColor = null
     ) {
       this.Dest = dest ?? throw new ArgumentNullException(nameof(dest));
       this.Src = src ?? throw new ArgumentNullException(nameof(src));
@@ -219,7 +219,7 @@ namespace Spectrum.Base {
     // The registered blend identified by `id`, or null if unknown. A scan of the
     // small registry; callers cache the result (render plans, the UIs' row
     // models) so this never runs per frame.
-    public static DomeBlend FromId(string id) {
+    public static DomeBlend? FromId(string? id) {
       if (id == null) {
         return null;
       }

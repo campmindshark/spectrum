@@ -18,17 +18,17 @@ namespace Spectrum.Base {
   // See LayerCatalog for visualizer schemas and DomeBlend.Params for the
   // per-blend schemas.
   public sealed class DomeLayerParam {
-    public string Key { get; set; }              // unique within the visualizer
-    public string Label { get; set; }            // shown in both UIs
+    public string Key { get; set; } = string.Empty; // unique within the visualizer
+    public string Label { get; set; } = string.Empty; // shown in both UIs
     public DomeLayerParamType Type { get; set; }
     public double Min { get; set; }              // Double sliders
     public double Max { get; set; }
     public double Step { get; set; }
-    public string[] Options { get; set; }        // Enum labels (index == value)
+    public string[]? Options { get; set; }       // Enum labels (index == value)
     public double Default { get; set; }
     // Date params may use Default = 0 to mean today's date in this zone. The
     // dynamic value is resolved before it reaches either UI or the renderer.
-    public string TimeZoneId { get; set; }
+    public string? TimeZoneId { get; set; }
     // true => read by the compositor (CompositeBlend) once per frame, never by
     // the visualizer. false => read by the visualizer in Visualize().
     public bool CompositorConsumed { get; set; }
@@ -49,7 +49,7 @@ namespace Spectrum.Base {
         utcNow ?? DateTime.UtcNow, descriptor.TimeZoneId);
     }
 
-    public static int CurrentDate(DateTime utc, string timeZoneId) {
+    public static int CurrentDate(DateTime utc, string? timeZoneId) {
       DateTime normalizedUtc = utc.Kind == DateTimeKind.Utc
         ? utc : utc.ToUniversalTime();
       DateTime local = TimeZoneInfo.ConvertTimeFromUtc(
@@ -83,7 +83,7 @@ namespace Spectrum.Base {
       }
     }
 
-    public static bool TryParse(string text, out double value) {
+    public static bool TryParse(string? text, out double value) {
       value = 0;
       if (!DateTime.TryParseExact(
           text, "yyyy-MM-dd", CultureInfo.InvariantCulture,
@@ -99,7 +99,7 @@ namespace Spectrum.Base {
         ? date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
         : string.Empty;
 
-    public static DateTime MidnightUtc(double value, string timeZoneId) {
+    public static DateTime MidnightUtc(double value, string? timeZoneId) {
       if (!TryDecode(value, out DateTime date)) {
         throw new ArgumentOutOfRangeException(
           nameof(value), "Date values must use yyyyMMdd encoding.");
@@ -109,13 +109,13 @@ namespace Spectrum.Base {
         FindTimeZone(timeZoneId));
     }
 
-    private static TimeZoneInfo FindTimeZone(string timeZoneId) {
+    private static TimeZoneInfo FindTimeZone(string? timeZoneId) {
       string requested = string.IsNullOrWhiteSpace(timeZoneId)
         ? TimeZoneInfo.Utc.Id : timeZoneId;
       try {
         return TimeZoneInfo.FindSystemTimeZoneById(requested);
       } catch (TimeZoneNotFoundException) {
-        string fallback = requested == PacificTimeZoneId
+        string? fallback = requested == PacificTimeZoneId
           ? PacificIanaTimeZoneId
           : requested == PacificIanaTimeZoneId
             ? PacificTimeZoneId
@@ -139,9 +139,9 @@ namespace Spectrum.Base {
     // Stable identity of this configured occurrence. LayerStackService assigns
     // one when a caller omits it, and every writer then persists it. Renderer
     // IDs identify kinds; instance IDs identify layers.
-    public string InstanceId { get; set; }
+    public string? InstanceId { get; set; }
     // Stable string id of the layerable visualizer, e.g. "radial".
-    public string VisualizerKey { get; set; }
+    public string? VisualizerKey { get; set; }
     // The DomeBlend.Id of how this layer combines with the composite below
     // it. A string (not the blend object) because it is the persisted stable ID.
     // Resolve with DomeBlend.FromId; consumers cache the result.
@@ -155,7 +155,7 @@ namespace Spectrum.Base {
     // things monochrome"). Null by default; never populated by defaults or
     // schema logic, purely user-authored. Carried through scenes like every
     // other field on this POCO (DomeScene.Layers reuses DomeLayerSettings).
-    public string Notes { get; set; }
+    public string? Notes { get; set; }
 
     // Per-renderer and per-operation parameter overrides. Separate bags make
     // ownership explicit and allow a renderer and operation to use the same key
@@ -165,11 +165,11 @@ namespace Spectrum.Base {
     // Add-ing into the existing instance, so a non-null initializer would
     // double-up the persisted entries on load — the same null-by-default rule
     // domeLayerStack and domeCableMapping already follow.
-    public Dictionary<string, double> RendererParams { get; set; }
-    public Dictionary<string, double> OperationParams { get; set; }
+    public Dictionary<string, double>? RendererParams { get; set; }
+    public Dictionary<string, double>? OperationParams { get; set; }
 
-    public static DomeLayerSettings ForInstance(
-      IList<DomeLayerSettings> stack, string instanceId
+    public static DomeLayerSettings? ForInstance(
+      IList<DomeLayerSettings>? stack, string? instanceId
     ) {
       if (stack == null || instanceId == null) {
         return null;

@@ -14,10 +14,10 @@ namespace Spectrum.Base {
   // event. Created and exposed by the Operator.
   public class RuntimeTelemetry : INotifyPropertyChanged {
 
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     private void SetField<T>(ref T field, T value,
-        [CallerMemberName] string name = null) {
+        [CallerMemberName] string? name = null) {
       if (EqualityComparer<T>.Default.Equals(field, value)) {
         return;
       }
@@ -43,8 +43,8 @@ namespace Spectrum.Base {
     // Null while the current layer generation is valid. If construction or
     // compilation fails, the operator retains the previous plan and publishes
     // the rejection reason here for native/web diagnostics.
-    private string layerPlanError;
-    public string LayerPlanError {
+    private string? layerPlanError;
+    public string? LayerPlanError {
       get => this.layerPlanError;
       set => this.SetField(ref this.layerPlanError, value);
     }

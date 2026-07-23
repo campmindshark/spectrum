@@ -8,7 +8,7 @@ namespace Spectrum.Base {
   public class ContinuousKnobMidiBindingConfig : MidiBindingConfig {
 
     public int knobIndex { get; set; }
-    public string configPropertyName { get; set; }
+    public string? configPropertyName { get; set; }
     public double startValue { get; set; }
     public double endValue { get; set; }
 

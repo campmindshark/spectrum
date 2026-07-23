@@ -39,16 +39,16 @@ namespace Spectrum.Base {
     // wire/config identifier; these values are the only strings a UI should
     // present as the control name, help text, and unit.
     public string Label { get; }
-    public string Description { get; }
-    public string Unit { get; }
+    public string? Description { get; }
+    public string? Unit { get; }
 
     protected ParameterDescriptor(
       string key,
       ControlRole role,
       string type,
-      string label = null,
-      string description = null,
-      string unit = null
+      string? label = null,
+      string? description = null,
+      string? unit = null
     ) {
       this.Key = key;
       this.Role = role;
@@ -63,18 +63,18 @@ namespace Spectrum.Base {
 
     // Validate/clamp/convert a raw incoming value. Throws ArgumentException if
     // the value cannot be coerced into the valid range/type.
-    public abstract object Coerce(object raw);
+    public abstract object Coerce(object? raw);
 
     // Apply an already-Coerce()d value to the Configuration. Must only be
     // called on the serialization thread (via ApplicationStateDispatcher).
     public abstract void Set(Configuration config, object coerced);
 
     // Optional UI-generation metadata; null when not applicable.
-    public virtual object Min => null;
-    public virtual object Max => null;
-    public virtual IReadOnlyList<string> Options => null;
+    public virtual object? Min => null;
+    public virtual object? Max => null;
+    public virtual IReadOnlyList<string>? Options => null;
 
-    protected static double ToDouble(object raw) {
+    protected static double ToDouble(object? raw) {
       try {
         return Convert.ToDouble(raw, CultureInfo.InvariantCulture);
       } catch (Exception e) when (e is FormatException || e is InvalidCastException) {
@@ -82,7 +82,7 @@ namespace Spectrum.Base {
       }
     }
 
-    protected static int ToInt(object raw) {
+    protected static int ToInt(object? raw) {
       // Accept JSON numbers that arrive as doubles ("2.0") but reject
       // genuinely fractional values.
       double d = ToDouble(raw);
@@ -107,9 +107,9 @@ namespace Spectrum.Base {
       double max,
       Func<Configuration, double> get,
       Action<Configuration, double> set,
-      string label = null,
-      string description = null,
-      string unit = null
+      string? label = null,
+      string? description = null,
+      string? unit = null
     ) : base(key, role, "double", label, description, unit) {
       this.min = min;
       this.max = max;
@@ -119,7 +119,7 @@ namespace Spectrum.Base {
 
     public override object Get(Configuration config) => this.get(config);
 
-    public override object Coerce(object raw) {
+    public override object Coerce(object? raw) {
       double v = ToDouble(raw);
       if (double.IsNaN(v) || double.IsInfinity(v)) {
         throw new ArgumentException("value is not a finite number");
@@ -148,9 +148,9 @@ namespace Spectrum.Base {
       int max,
       Func<Configuration, int> get,
       Action<Configuration, int> set,
-      string label = null,
-      string description = null,
-      string unit = null
+      string? label = null,
+      string? description = null,
+      string? unit = null
     ) : base(key, role, "int", label, description, unit) {
       this.min = min;
       this.max = max;
@@ -160,7 +160,7 @@ namespace Spectrum.Base {
 
     public override object Get(Configuration config) => this.get(config);
 
-    public override object Coerce(object raw) =>
+    public override object Coerce(object? raw) =>
       Math.Clamp(ToInt(raw), this.min, this.max);
 
     public override void Set(Configuration config, object coerced) =>
@@ -180,9 +180,9 @@ namespace Spectrum.Base {
       ControlRole role,
       Func<Configuration, bool> get,
       Action<Configuration, bool> set,
-      string label = null,
-      string description = null,
-      string unit = null
+      string? label = null,
+      string? description = null,
+      string? unit = null
     ) : base(key, role, "bool", label, description, unit) {
       this.get = get;
       this.set = set;
@@ -190,7 +190,7 @@ namespace Spectrum.Base {
 
     public override object Get(Configuration config) => this.get(config);
 
-    public override object Coerce(object raw) {
+    public override object Coerce(object? raw) {
       if (raw is bool b) {
         return b;
       }
@@ -209,7 +209,7 @@ namespace Spectrum.Base {
     private readonly Func<Configuration, string> get;
     private readonly Action<Configuration, string> set;
     private readonly int maxLength;
-    private readonly Func<string, string> normalize;
+    private readonly Func<string, string>? normalize;
 
     public StringParameter(
       string key,
@@ -217,10 +217,10 @@ namespace Spectrum.Base {
       Func<Configuration, string> get,
       Action<Configuration, string> set,
       int maxLength = 256,
-      string label = null,
-      string description = null,
-      string unit = null,
-      Func<string, string> normalize = null
+      string? label = null,
+      string? description = null,
+      string? unit = null,
+      Func<string, string>? normalize = null
     ) : base(key, role, "string", label, description, unit) {
       this.get = get;
       this.set = set;
@@ -230,11 +230,12 @@ namespace Spectrum.Base {
 
     public override object Get(Configuration config) => this.get(config);
 
-    public override object Coerce(object raw) {
+    public override object Coerce(object? raw) {
       if (raw == null) {
         throw new ArgumentException("value is null");
       }
-      string s = raw as string ?? raw.ToString();
+      string s = raw as string ?? raw.ToString() ??
+        throw new ArgumentException("value has no string representation");
       if (s.Length > this.maxLength) {
         throw new ArgumentException("value exceeds " + this.maxLength + " chars");
       }
@@ -265,9 +266,9 @@ namespace Spectrum.Base {
       IReadOnlyList<string> options,
       Func<Configuration, int> get,
       Action<Configuration, int> set,
-      string label = null,
-      string description = null,
-      string unit = null
+      string? label = null,
+      string? description = null,
+      string? unit = null
     ) : base(key, role, "enum", label, description, unit) {
       this.options = options;
       this.get = get;
@@ -276,7 +277,7 @@ namespace Spectrum.Base {
 
     public override object Get(Configuration config) => this.get(config);
 
-    public override object Coerce(object raw) {
+    public override object Coerce(object? raw) {
       int v = ToInt(raw);
       if (v < 0 || v >= this.options.Count) {
         throw new ArgumentException(
