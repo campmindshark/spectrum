@@ -1,3 +1,5 @@
+#nullable enable
+
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -21,7 +23,7 @@ namespace Spectrum.Base {
    */
   public interface IAudioDeviceProvider {
     string BackendName { get; }
-    string LastError { get; }
+    string? LastError { get; }
     IReadOnlyList<AudioCaptureDevice> GetAvailableDevices();
   }
 

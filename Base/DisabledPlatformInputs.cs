@@ -1,3 +1,5 @@
+#nullable enable
+
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -28,7 +30,7 @@ namespace Spectrum.Base {
       public bool Enabled => true;
       public float Volume => 0;
       public string BackendName => "Disabled";
-      public string LastError => null;
+      public string? LastError => null;
       public IReadOnlyList<AudioCaptureDevice> GetAvailableDevices() =>
         Array.Empty<AudioCaptureDevice>();
       public void OperatorUpdate() { }

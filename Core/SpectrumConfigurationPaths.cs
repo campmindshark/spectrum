@@ -1,3 +1,5 @@
+#nullable enable
+
 using System;
 using System.IO;
 
@@ -28,7 +30,7 @@ namespace Spectrum {
      */
     public static SpectrumConfigurationPaths ForHeadlessHost(
       string packagedDefaultPath,
-      string dataDirectory = null
+      string? dataDirectory = null
     ) => ForHeadlessHost(
       packagedDefaultPath,
       dataDirectory,
@@ -40,8 +42,8 @@ namespace Spectrum {
 
     internal static SpectrumConfigurationPaths ForHeadlessHost(
       string packagedDefaultPath,
-      string dataDirectory,
-      Func<string, string> getEnvironmentVariable,
+      string? dataDirectory,
+      Func<string, string?> getEnvironmentVariable,
       string userProfileDirectory,
       string localApplicationDataDirectory,
       bool isWindows
@@ -55,7 +57,7 @@ namespace Spectrum {
         throw new ArgumentNullException(nameof(getEnvironmentVariable));
       }
 
-      string selectedDirectory = dataDirectory;
+      string? selectedDirectory = dataDirectory;
       if (string.IsNullOrWhiteSpace(selectedDirectory)) {
         selectedDirectory = getEnvironmentVariable("SPECTRUM_DATA_DIR");
       }
@@ -68,7 +70,7 @@ namespace Spectrum {
           selectedDirectory = Path.Combine(
             localApplicationDataDirectory, "Spectrum");
         } else {
-          string xdgConfigHome =
+          string? xdgConfigHome =
             getEnvironmentVariable("XDG_CONFIG_HOME");
           if (string.IsNullOrWhiteSpace(xdgConfigHome) ||
               !Path.IsPathFullyQualified(xdgConfigHome)) {
@@ -86,8 +88,8 @@ namespace Spectrum {
     }
 
     private static SpectrumConfigurationPaths InDataDirectory(
-      string dataDirectory,
-      string defaultPath
+      string? dataDirectory,
+      string? defaultPath
     ) {
       if (string.IsNullOrWhiteSpace(dataDirectory)) {
         throw new ArgumentException(

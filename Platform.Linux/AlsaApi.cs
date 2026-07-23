@@ -33,14 +33,14 @@ namespace Spectrum.Platform.Linux {
           if (hint == IntPtr.Zero) {
             break;
           }
-          string id = ReadHint(hint, "NAME");
-          string direction = ReadHint(hint, "IOID");
+          string? id = ReadHint(hint, "NAME");
+          string? direction = ReadHint(hint, "IOID");
           if (string.IsNullOrWhiteSpace(id) ||
               string.Equals(direction, "Output", StringComparison.OrdinalIgnoreCase) ||
               string.Equals(id, "null", StringComparison.OrdinalIgnoreCase)) {
             continue;
           }
-          string description = ReadHint(hint, "DESC");
+          string? description = ReadHint(hint, "DESC");
           description = string.IsNullOrWhiteSpace(description)
             ? id
             : description.Replace('\n', ' ').Replace('\r', ' ').Trim();
@@ -71,7 +71,7 @@ namespace Spectrum.Platform.Linux {
         throw new ArgumentOutOfRangeException(nameof(framesPerRead));
       }
 
-      Exception stereoFailure = null;
+      Exception stereoFailure;
       try {
         return OpenConfigured(
           deviceId, sampleRate, framesPerRead, channels: 2);
@@ -117,7 +117,7 @@ namespace Spectrum.Platform.Linux {
       }
     }
 
-    private static string ReadHint(IntPtr hint, string key) {
+    private static string? ReadHint(IntPtr hint, string key) {
       IntPtr value = snd_device_name_get_hint(hint, key);
       if (value == IntPtr.Zero) {
         return null;
@@ -133,7 +133,7 @@ namespace Spectrum.Platform.Linux {
       if (result >= 0) {
         return;
       }
-      string detail = Marshal.PtrToStringAnsi(snd_strerror(result));
+      string? detail = Marshal.PtrToStringAnsi(snd_strerror(result));
       throw new InvalidOperationException(
         "Failed to " + operation + ": " + (detail ?? "ALSA error " + result));
     }

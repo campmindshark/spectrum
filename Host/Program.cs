@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -13,7 +14,8 @@ namespace Spectrum.Host {
     private const int DefaultWebPort = 8080;
 
     private static async Task<int> Main(string[] args) {
-      if (!HostOptions.TryParse(args, out HostOptions options, out string error)) {
+      if (!HostOptions.TryParse(
+            args, out HostOptions? options, out string? error)) {
         Console.Error.WriteLine(error);
         Console.Error.WriteLine(HostOptions.Usage);
         return 2;
@@ -44,8 +46,8 @@ namespace Spectrum.Host {
         stream => new XmlSerializer<SpectrumConfigurationDocument>()
           .Deserialize(stream).ToConfiguration());
 
-      ConsoleCancelEventHandler cancelHandler = null;
-      PosixSignalRegistration terminate = null;
+      ConsoleCancelEventHandler? cancelHandler = null;
+      PosixSignalRegistration? terminate = null;
       ISpectrumInputFactory inputFactory = OperatingSystem.IsLinux()
         ? new LinuxSpectrumInputFactory()
         : new DisabledSpectrumInputFactory();
@@ -127,7 +129,7 @@ namespace Spectrum.Host {
     }
 
     private sealed record HostOptions(
-      string DataDirectory,
+      string? DataDirectory,
       int WebPort,
       bool CheckOnly,
       bool Help
@@ -144,10 +146,10 @@ namespace Spectrum.Host {
 
       public static bool TryParse(
         string[] args,
-        out HostOptions options,
-        out string error
+        [NotNullWhen(true)] out HostOptions? options,
+        [NotNullWhen(false)] out string? error
       ) {
-        string dataDirectory = null;
+        string? dataDirectory = null;
         int port = DefaultWebPort;
         bool checkOnly = false;
         bool help = false;

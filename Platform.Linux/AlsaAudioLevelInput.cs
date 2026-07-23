@@ -22,12 +22,12 @@ namespace Spectrum.Platform.Linux {
     private readonly IAlsaApi alsa;
     private readonly IPcmBeatTracker beatTracker;
     private readonly TimeSpan retryDelay;
-    private CancellationTokenSource cancellation;
-    private Thread worker;
+    private CancellationTokenSource? cancellation;
+    private Thread? worker;
     private bool active;
     private float volume;
-    private string captureError;
-    private string discoveryError;
+    private string? captureError;
+    private string? discoveryError;
     private bool disposed;
 
     public AlsaAudioLevelInput(
@@ -65,7 +65,8 @@ namespace Spectrum.Platform.Linux {
         }
       }
       set {
-        Thread threadToJoin = null;
+        Thread? threadToJoin = null;
+        CancellationTokenSource? cancellationToDispose = null;
         lock (this.lifecycleLock) {
           this.ThrowIfDisposed();
           if (this.active == value) {
@@ -73,29 +74,30 @@ namespace Spectrum.Platform.Linux {
           }
           this.active = value;
           if (value) {
-            this.cancellation = new CancellationTokenSource();
-            this.worker = new Thread(
-              () => this.CaptureLoop(this.cancellation.Token)) {
+            var cancellation = new CancellationTokenSource();
+            var worker = new Thread(
+              () => this.CaptureLoop(cancellation.Token)) {
               IsBackground = true,
               Name = "Spectrum ALSA capture",
             };
-            this.worker.Start();
+            this.cancellation = cancellation;
+            this.worker = worker;
+            worker.Start();
           } else {
-            this.cancellation.Cancel();
+            cancellationToDispose = this.cancellation;
+            cancellationToDispose?.Cancel();
             // Stop the child before joining capture. If it has stopped reading
             // stdin, terminating it releases any pending pipe write promptly.
             this.beatTracker.Enabled = false;
             threadToJoin = this.worker;
             this.worker = null;
+            this.cancellation = null;
           }
         }
         if (threadToJoin != null && threadToJoin != Thread.CurrentThread) {
           threadToJoin.Join();
-          lock (this.lifecycleLock) {
-            this.cancellation.Dispose();
-            this.cancellation = null;
-          }
         }
+        cancellationToDispose?.Dispose();
         if (!value) {
           Volatile.Write(ref this.volume, 0);
         }
@@ -106,7 +108,7 @@ namespace Spectrum.Platform.Linux {
     public bool Enabled => true;
     public float Volume => Volatile.Read(ref this.volume);
     public string BackendName => "ALSA";
-    public string LastError =>
+    public string? LastError =>
       Volatile.Read(ref this.discoveryError) ??
       Volatile.Read(ref this.captureError) ??
       (this.runtimeSettings.AudioSettingsSnapshot.BeatInput == 1

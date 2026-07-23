@@ -1,6 +1,7 @@
 using Spectrum.Base;
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 
@@ -8,7 +9,7 @@ namespace Spectrum.Platform.Linux {
 
   internal interface IPcmBeatTracker : IDisposable {
     bool Enabled { get; set; }
-    string LastError { get; }
+    string? LastError { get; }
     void Write(short[] samples, int sampleCount, int channels);
   }
 
@@ -25,15 +26,15 @@ namespace Spectrum.Platform.Linux {
     private readonly BeatBroadcaster beat;
     private readonly Func<ProcessStartInfo> startInfoFactory;
     private readonly long restartDelayTicks;
-    private Process process;
+    private Process? process;
     private bool enabled;
     private bool disposed;
     private long nextStartAttempt;
-    private string lastError;
-    private string lastStandardError;
+    private string? lastError;
+    private string? lastStandardError;
     private byte[] monoPcm = Array.Empty<byte>();
 
-    internal event Action StatusChanged;
+    internal event Action? StatusChanged;
 
     public MadmomPcmBeatTracker(BeatBroadcaster beat) : this(
       beat,
@@ -88,7 +89,7 @@ namespace Spectrum.Platform.Linux {
       }
     }
 
-    public string LastError {
+    public string? LastError {
       get {
         lock (this.lifecycleLock) {
           return this.lastError;
@@ -107,12 +108,12 @@ namespace Spectrum.Platform.Linux {
         throw new ArgumentOutOfRangeException(nameof(channels));
       }
 
-      Process target;
+      Process? target;
       Stream input;
       int byteCount;
       lock (this.lifecycleLock) {
         this.ThrowIfDisposed();
-        if (!this.enabled || !this.EnsureProcessLocked()) {
+        if (!this.enabled || (target = this.EnsureProcessLocked()) == null) {
           return;
         }
         byteCount = EncodeMonoPcm(
@@ -120,7 +121,6 @@ namespace Spectrum.Platform.Linux {
         if (byteCount == 0) {
           return;
         }
-        target = this.process;
         input = target.StandardInput.BaseStream;
       }
 
@@ -152,16 +152,16 @@ namespace Spectrum.Platform.Linux {
       }
     }
 
-    private bool EnsureProcessLocked() {
+    private Process? EnsureProcessLocked() {
       if (this.process != null) {
-        return true;
+        return this.process;
       }
       long now = Stopwatch.GetTimestamp();
       if (now < this.nextStartAttempt) {
-        return false;
+        return null;
       }
 
-      Process started = null;
+      Process? started = null;
       try {
         ProcessStartInfo start = this.startInfoFactory() ??
           throw new InvalidOperationException(
@@ -178,7 +178,7 @@ namespace Spectrum.Platform.Linux {
         started.BeginOutputReadLine();
         started.BeginErrorReadLine();
         started.EnableRaisingEvents = true;
-        return true;
+        return started;
       } catch (Exception error) {
         if (ReferenceEquals(this.process, started)) {
           this.process = null;
@@ -186,7 +186,7 @@ namespace Spectrum.Platform.Linux {
         DisposeProcess(started, terminate: true);
         this.DelayNextStartLocked(
           "Could not start the Madmom PCM tracker: " + error.Message);
-        return false;
+        return null;
       }
     }
 
@@ -216,7 +216,7 @@ namespace Spectrum.Platform.Linux {
       short[] samples,
       int sampleCount,
       int channels,
-      ref byte[] destination
+      [NotNull] ref byte[]? destination
     ) {
       int frameCount = sampleCount / channels;
       int byteCount = checked(frameCount * sizeof(short));
@@ -243,7 +243,7 @@ namespace Spectrum.Platform.Linux {
       }
     }
 
-    internal static bool TryParseBeat(string line, out long milliseconds) {
+    internal static bool TryParseBeat(string? line, out long milliseconds) {
       milliseconds = 0;
       return line != null &&
         line.StartsWith("BEAT:", StringComparison.Ordinal) &&
@@ -268,7 +268,7 @@ namespace Spectrum.Platform.Linux {
       }
     }
 
-    private void ProcessExited(object sender, EventArgs e) {
+    private void ProcessExited(object? sender, EventArgs e) {
       var exited = sender as Process;
       if (exited == null) {
         return;
@@ -313,12 +313,12 @@ namespace Spectrum.Platform.Linux {
     }
 
     private void StopProcessLocked() {
-      Process toStop = this.process;
+      Process? toStop = this.process;
       this.process = null;
       DisposeProcess(toStop, terminate: true);
     }
 
-    private void DisposeProcess(Process target, bool terminate) {
+    private void DisposeProcess(Process? target, bool terminate) {
       if (target == null) {
         return;
       }
