@@ -18,20 +18,20 @@ namespace Spectrum {
     }
     // Always executable; no state changes, so the standard add/remove-nop form
     // satisfies ICommand without an unused backing field.
-    public event EventHandler CanExecuteChanged { add { } remove { } }
-    public bool CanExecute(object parameter) => true;
-    public void Execute(object parameter) => this.execute();
+    public event EventHandler? CanExecuteChanged { add { } remove { } }
+    public bool CanExecute(object? parameter) => true;
+    public void Execute(object? parameter) => this.execute();
   }
 
   // One selectable visualizer in a layer row's picker.
   public class DomeLayerVisualizerOption {
-    public string Key { get; set; }
-    public string Label { get; set; }
+    public string Key { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
   }
 
   public class DomeLayerOperationOption {
-    public string Id { get; set; }
-    public string Label { get; set; }
+    public string Id { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
   }
 
   // View-model wrapping one DomeLayerParam descriptor plus its current value for
@@ -41,15 +41,15 @@ namespace Spectrum {
   // owning row republishes. Values are always stored as double (Bool 0/1, Enum
   // index, Color a packed 0xRRGGBB int, Date as yyyyMMdd).
   public class LayerParamViewModel : INotifyPropertyChanged {
-    public event PropertyChangedEventHandler PropertyChanged;
-    public event Action Changed;
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public event Action? Changed;
 
     private readonly DomeLayerParam descriptor;
-    private readonly IReadOnlyList<string> optionOverride;
+    private readonly IReadOnlyList<string>? optionOverride;
 
     public LayerParamViewModel(
       DomeLayerParam descriptor, double value, bool isOperationParameter,
-      IReadOnlyList<string> optionOverride = null
+      IReadOnlyList<string>? optionOverride = null
     ) {
       this.descriptor = descriptor;
       this.optionOverride = optionOverride;
@@ -66,7 +66,7 @@ namespace Spectrum {
       : this.descriptor.Max;
     public double Step => this.descriptor.Step;
     public IReadOnlyList<string> Options =>
-      this.optionOverride ?? this.descriptor.Options;
+      this.optionOverride ?? this.descriptor.Options ?? Array.Empty<string>();
     public bool IsOperationParameter { get; }
 
     public bool IsDouble => this.descriptor.Type == DomeLayerParamType.Double;
@@ -162,24 +162,24 @@ namespace Spectrum {
   // republishes the whole stack to config; the reorder/remove buttons raise the
   // corresponding *Requested events the controller wires up.
   public class DomeLayerRowViewModel : INotifyPropertyChanged {
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
     // Raised when an editable field (visualizer / blend / opacity / mute) changes.
-    public event Action Changed;
-    public event Action<DomeLayerRowViewModel> RemoveRequested;
-    public event Action<DomeLayerRowViewModel> MoveUpRequested;
-    public event Action<DomeLayerRowViewModel> MoveDownRequested;
+    public event Action? Changed;
+    public event Action<DomeLayerRowViewModel>? RemoveRequested;
+    public event Action<DomeLayerRowViewModel>? MoveUpRequested;
+    public event Action<DomeLayerRowViewModel>? MoveDownRequested;
     // Manual trigger: the controller bumps this layer's
     // domeLayerFireCounters entry rather than mutating Params, so firing
     // never interleaves with the whole-stack Publish() snapshot swap.
-    public event Action<DomeLayerRowViewModel> FireRequested;
+    public event Action<DomeLayerRowViewModel>? FireRequested;
     // Manual clear, parallel to FireRequested: the controller bumps this layer's
     // domeLayerClearCounters entry so a layer can drop its live state.
-    public event Action<DomeLayerRowViewModel> ClearRequested;
+    public event Action<DomeLayerRowViewModel>? ClearRequested;
 
-    private readonly IReadOnlyList<string> paletteOptions;
+    private readonly IReadOnlyList<string>? paletteOptions;
 
     public DomeLayerRowViewModel(
-      IReadOnlyList<string> paletteOptions = null
+      IReadOnlyList<string>? paletteOptions = null
     ) {
       this.paletteOptions = paletteOptions;
       this.RemoveCommand = new RelayCommand(
@@ -238,9 +238,9 @@ namespace Spectrum {
       this.Changed?.Invoke();
     }
 
-    private string visualizerKey;
+    private string? visualizerKey;
     public string InstanceId { get; set; } = LayerInstanceId.NewId().Value;
-    public string VisualizerKey {
+    public string? VisualizerKey {
       get => this.visualizerKey;
       set {
         if (this.visualizerKey == value) {
@@ -268,18 +268,18 @@ namespace Spectrum {
       }
     }
 
-    private LayerDefinition CurrentDefinition =>
+    private LayerDefinition? CurrentDefinition =>
       DomeLayerCatalog.Metadata.Get(this.visualizerKey);
-    private LayerActionDefinition FireAction =>
+    private LayerActionDefinition? FireAction =>
       this.CurrentDefinition?.FireAction;
-    private LayerActionDefinition ClearAction =>
+    private LayerActionDefinition? ClearAction =>
       this.CurrentDefinition?.ClearAction;
     public bool HasFireAction => this.FireAction != null;
     public bool HasClearAction => this.ClearAction != null;
-    public string FireLabel => this.FireAction?.Label;
-    public string FireToolTip => this.FireAction?.ToolTip;
-    public string ClearLabel => this.ClearAction?.Label;
-    public string ClearToolTip => this.ClearAction?.ToolTip;
+    public string? FireLabel => this.FireAction?.Label;
+    public string? FireToolTip => this.FireAction?.ToolTip;
+    public string? ClearLabel => this.ClearAction?.Label;
+    public string? ClearToolTip => this.ClearAction?.ToolTip;
 
     private string blendMode = DomeBlend.Default.Id;
     public string BlendMode {
@@ -308,8 +308,8 @@ namespace Spectrum {
     // rebuild always accompanies a key/blend edit that already publishes, and
     // seeding happens before the row is wired up).
     private void RebuildParams(
-      IDictionary<string, double> rendererSeed,
-      IDictionary<string, double> operationSeed
+      IDictionary<string, double>? rendererSeed,
+      IDictionary<string, double>? operationSeed
     ) {
       foreach (LayerParamViewModel existing in this.Params) {
         existing.Changed -= this.OnParamChanged;
@@ -318,14 +318,15 @@ namespace Spectrum {
       AddParams(
         DomeLayerCatalog.Metadata.ParametersFor(this.visualizerKey),
         rendererSeed, false);
-      DomeBlend blend = DomeBlend.FromId(this.blendMode);
+      DomeBlend? blend = DomeBlend.FromId(this.blendMode);
       if (blend != null) {
         AddParams(blend.Params, operationSeed, true);
       }
     }
 
     private void AddParams(
-      IReadOnlyList<DomeLayerParam> schema, IDictionary<string, double> seed,
+      IReadOnlyList<DomeLayerParam> schema,
+      IDictionary<string, double>? seed,
       bool isOperationParameter
     ) {
       foreach (DomeLayerParam descriptor in schema) {
@@ -333,7 +334,7 @@ namespace Spectrum {
         if (seed != null && seed.TryGetValue(descriptor.Key, out double v)) {
           value = v;
         }
-        IReadOnlyList<string> options =
+        IReadOnlyList<string>? options =
           descriptor.Key == PaletteService.LayerParameterKey
             ? this.paletteOptions
             : null;
@@ -367,13 +368,13 @@ namespace Spectrum {
     // Called by the controller after constructing the row so loaded values
     // replace the defaults the setters installed.
     public void LoadParams(
-      IDictionary<string, double> rendererParams,
-      IDictionary<string, double> operationParams
+      IDictionary<string, double>? rendererParams,
+      IDictionary<string, double>? operationParams
     ) {
       this.RebuildParams(rendererParams, operationParams);
     }
 
-    internal LayerParamViewModel FindParam(string key) {
+    internal LayerParamViewModel? FindParam(string key) {
       foreach (LayerParamViewModel param in this.Params) {
         if (!param.IsOperationParameter && param.Key == key) {
           return param;
@@ -396,8 +397,8 @@ namespace Spectrum {
     }
 
     // Free-text note the user leaves for themselves about this layer.
-    private string notes;
-    public string Notes {
+    private string? notes;
+    public string? Notes {
       get => this.notes;
       set => this.Set(ref this.notes, value, nameof(Notes));
     }

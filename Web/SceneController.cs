@@ -19,7 +19,8 @@ namespace Spectrum.Web {
 
     // The list GET returns: just the saved scene names, in stored order.
     public sealed class ScenesState {
-      public IReadOnlyList<string> scenes { get; set; }
+      public IReadOnlyList<string> scenes { get; set; } =
+        System.Array.Empty<string>();
     }
 
     private readonly ApplicationStateDispatcher gateway;
@@ -43,20 +44,20 @@ namespace Spectrum.Web {
     // Save the current stack + globals under `name` (overwriting an existing
     // scene with that name). The whole save — reading the live stack and swapping
     // domeScenes — runs on the serialization thread inside the gateway action.
-    public async Task<(bool ok, string error)> SaveAsync(string name) {
-      (bool ok, string error) result = (false, "not run");
+    public async Task<(bool ok, string? error)> SaveAsync(string? name) {
+      (bool ok, string? error) result = (false, "not run");
       await this.gateway.InvokeAsync(() => result = this.service.Save(name));
       return result;
     }
 
-    public async Task<(bool ok, string error)> ApplyAsync(string name) {
-      (bool ok, string error) result = (false, "not run");
+    public async Task<(bool ok, string? error)> ApplyAsync(string? name) {
+      (bool ok, string? error) result = (false, "not run");
       await this.gateway.InvokeAsync(() => result = this.service.Apply(name));
       return result;
     }
 
-    public async Task<(bool ok, string error)> DeleteAsync(string name) {
-      (bool ok, string error) result = (false, "not run");
+    public async Task<(bool ok, string? error)> DeleteAsync(string? name) {
+      (bool ok, string? error) result = (false, "not run");
       await this.gateway.InvokeAsync(() => result = this.service.Delete(name));
       return result;
     }

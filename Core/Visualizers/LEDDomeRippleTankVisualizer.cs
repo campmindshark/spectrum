@@ -55,12 +55,16 @@ namespace Spectrum.Visualizers {
     // the wave grid.
     private const double TankFullWakeSpeedRadPerSecond = 5;
 
-    private double[] tankCur, tankPrev;
-    private double[] tankLap, tankGradX, tankGradY;
+    private double[] tankCur = Array.Empty<double>();
+    private double[] tankPrev = Array.Empty<double>();
+    private double[] tankLap = Array.Empty<double>();
+    private double[] tankGradX = Array.Empty<double>();
+    private double[] tankGradY = Array.Empty<double>();
     private bool tankLapDirty = true, tankGradDirty = true;
     private double tankStepAccumulator;
-    private int[] tankCell;
-    private double[] tankWeightX, tankWeightY;
+    private int[] tankCell = Array.Empty<int>();
+    private double[] tankWeightX = Array.Empty<double>();
+    private double[] tankWeightY = Array.Empty<double>();
     private int lastClearCounter = -1;
 
     private struct TankObjectState {
@@ -98,7 +102,7 @@ namespace Spectrum.Visualizers {
     public DomeFrame LayerBuffer => this.buffer;
     public bool Enabled { get; set; }
 
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() {
       return this.inputs
         ?? (this.inputs = new Input[] { this.orientationInput });

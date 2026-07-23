@@ -13,6 +13,7 @@ using System.Windows.Media;
 using Spectrum.Base;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -34,8 +35,8 @@ namespace Spectrum {
     // "(none)" writes the real port ("COM7" / "") into config.wandSerialPort,
     // not the label.
     private class PortItem {
-      public string Display { get; set; }
-      public string Value { get; set; }
+      public string Display { get; set; } = string.Empty;
+      public string Value { get; set; } = string.Empty;
       public override string ToString() => this.Display;
     }
 
@@ -52,38 +53,39 @@ namespace Spectrum {
         }
       }
 
-      public string PresetName { get; set; }
+      public string PresetName { get; set; } = string.Empty;
 
     }
 
     private class MidiBindingEntry {
-      public string BindingName { get; set; }
-      public string BindingTypeName { get; set; }
+      public string BindingName { get; set; } = string.Empty;
+      public string BindingTypeName { get; set; } = string.Empty;
     }
 
     private static readonly HashSet<string> ConfigPropertiesToRebootOn = new HashSet<string>() {
       nameof(SpectrumConfiguration.audioDeviceID),
       nameof(SpectrumConfiguration.domeOutputInSeparateThread),
     };
-    private Operator op;
+    // LoadConfig completes this composition root before the constructor starts
+    // the host or exposes the window.
+    private Operator op = null!;
     private SpectrumConfiguration config;
     private SpectrumHost<Operator, Web.SpectrumWebHost> host;
-    private ApplicationStateDispatcher applicationStateDispatcher;
     public static bool LoadingConfig { get; set; } = false;
-    private List<int> midiDeviceIndices;
-    private List<int> midiPresetIndices;
-    private DomeSimulatorWindow domeSimulatorWindow;
-    private DomeMappingWindow domeMappingWindow;
-    private VJHUDWindow vjHUDWindow;
-    private WandStatusWindow wandStatusWindow;
+    private List<int> midiDeviceIndices = new();
+    private List<int> midiPresetIndices = new();
+    private DomeSimulatorWindow? domeSimulatorWindow;
+    private DomeMappingWindow? domeMappingWindow;
+    private VJHUDWindow? vjHUDWindow;
+    private WandStatusWindow? wandStatusWindow;
     // Guards programmatic repopulate/preselect of wandSerialPortSelector so it
     // never writes config back; only a genuine user pick does.
     private bool repopulatingWandPorts = false;
-    private System.Windows.Threading.DispatcherTimer wandReceiverStatusTimer;
+    private System.Windows.Threading.DispatcherTimer? wandReceiverStatusTimer;
     private int? currentlyEditingPreset = null;
     private int? currentlyEditingBinding = null;
-    private Web.AdvisoryLockManager advisoryLocks = null;
-    private Web.DomeCalibrationController domeCalibrationController = null;
+    private Web.AdvisoryLockManager advisoryLocks = null!;
+    private Web.DomeCalibrationController domeCalibrationController = null!;
     private const int WebServerPort = 8080;
     // Spectrum is distributed as a portable application, so keep its mutable
     // state beside the executable. AppContext.BaseDirectory is stable when the
@@ -104,8 +106,8 @@ namespace Spectrum {
           .Deserialize(stream).ToConfiguration());
     private static readonly string WindowPlacementPath = Path.Combine(
       AppContext.BaseDirectory, "spectrum_window_state.json");
-    private string webServerError = null;
-    private System.Windows.Threading.DispatcherTimer readinessTimer;
+    private string? webServerError;
+    private System.Windows.Threading.DispatcherTimer? readinessTimer;
 
     public MainWindow() {
       this.InitializeComponent();
@@ -118,7 +120,7 @@ namespace Spectrum {
       this.InitializeReadinessDashboard();
     }
 
-    private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
+    private void ConfigUpdated(object? sender, PropertyChangedEventArgs e) {
       // The wand receiver-port combo has a host-dependent item set, so it can't
       // use the two-way WPF Bind() every other control gets. Instead re-run the
       // guarded repopulate + preselect when the value changes externally (e.g. a
@@ -213,15 +215,16 @@ namespace Spectrum {
       }
     }
 
+    [MemberNotNull(nameof(config), nameof(host))]
     private void LoadConfig() {
       MainWindow.LoadingConfig = true;
 
-      this.applicationStateDispatcher =
+      ApplicationStateDispatcher applicationStateDispatcher =
         new DispatcherApplicationStateDispatcher(
           this.Dispatcher);
       this.host = new SpectrumHost<Operator, Web.SpectrumWebHost>(
         ConfigStore,
-        this.applicationStateDispatcher,
+        applicationStateDispatcher,
         TimeSpan.FromMilliseconds(100),
         (config, dispatcher) => new Operator(
           config, dispatcher, new WindowsSpectrumInputFactory()),
@@ -282,8 +285,8 @@ namespace Spectrum {
       FrameworkElement element,
       DependencyProperty property,
       BindingMode mode = BindingMode.TwoWay,
-      IValueConverter converter = null,
-      object source = null
+      IValueConverter? converter = null,
+      object? source = null
     ) {
       var binding = new System.Windows.Data.Binding(configPath);
       binding.Source = source != null ? source : this.config;
@@ -295,7 +298,7 @@ namespace Spectrum {
     }
 
     private void InitializeReadinessDashboard() {
-      string host = null;
+      string? host = null;
       try {
         host = Dns.GetHostEntry(Dns.GetHostName()).AddressList
           .FirstOrDefault(address =>
@@ -335,8 +338,8 @@ namespace Spectrum {
 
     private bool TryNormalizeOpcAddress(
       string value,
-      out string normalized,
-      out string error
+      [NotNullWhen(true)] out string? normalized,
+      [NotNullWhen(false)] out string? error
     ) {
       try {
         normalized = Web.SpectrumParameters.NormalizeOpcAddress(value);
@@ -400,7 +403,7 @@ namespace Spectrum {
 
       int domeFps = this.op.Telemetry.DomeBeagleboneOPCFPS;
       bool opcValid = this.TryNormalizeOpcAddress(
-        this.config.domeBeagleboneOPCAddress, out _, out string opcError);
+        this.config.domeBeagleboneOPCAddress, out _, out string? opcError);
       bool domeReady = !this.config.domeEnabled;
       if (!this.config.domeEnabled) {
         this.SetBadge(this.domeStatusBadge, this.domeStatusText,
@@ -511,7 +514,7 @@ namespace Spectrum {
         return;
       }
       if (this.TryNormalizeOpcAddress(
-          this.domeBeagleboneOPCHostAndPort.Text, out _, out string error)) {
+          this.domeBeagleboneOPCHostAndPort.Text, out _, out string? error)) {
         this.domeOPCValidationStatus.Text =
           "Valid host and port format.";
         this.domeOPCValidationStatus.Foreground =
@@ -529,7 +532,7 @@ namespace Spectrum {
     ) {
       if (!this.TryNormalizeOpcAddress(
           this.domeBeagleboneOPCHostAndPort.Text,
-          out string normalized,
+          out string? normalized,
           out _)) {
         return;
       }
@@ -550,7 +553,7 @@ namespace Spectrum {
       this.UpdateReadinessDashboard();
     }
 
-    private void RefreshAudioDevices(object sender, RoutedEventArgs e) {
+    private void RefreshAudioDevices(object? sender, RoutedEventArgs? e) {
       this.op.Enabled = false;
 
       var audioDevices = AudioInput.AudioDevices;
@@ -577,7 +580,7 @@ namespace Spectrum {
     }
 
     // Refresh the list of available devices for the "Add device" panel
-    private void RefreshMidiDevices(object sender, RoutedEventArgs e) {
+    private void RefreshMidiDevices(object? sender, RoutedEventArgs? e) {
       var currentDevice = this.midiDevices.SelectedItem;
 
       this.midiDevices.Items.Clear();
@@ -602,7 +605,8 @@ namespace Spectrum {
       foreach (var pair in this.config.midiDevices) {
         this.midiDeviceList.Items.Add(new MidiDeviceEntry {
           DeviceID = pair.Key,
-          PresetName = this.config.midiPresets[pair.Value].Name,
+          PresetName = this.config.midiPresets[pair.Value].Name ??
+            "(unnamed preset)",
         });
       }
     }
@@ -657,7 +661,7 @@ namespace Spectrum {
       this.midiNewDevicePresetName.FontStyle = FontStyles.Italic;
     }
 
-    private string ValidateNewMidiPresetName(string presetName) {
+    private string? ValidateNewMidiPresetName(string presetName) {
       var newPresetName = presetName.Trim();
       if (
         String.IsNullOrEmpty(newPresetName) ||
@@ -669,7 +673,7 @@ namespace Spectrum {
       return newPresetName;
     }
 
-    private MidiPreset AddNewMidiPresetWithName(string presetName) {
+    private MidiPreset? AddNewMidiPresetWithName(string presetName) {
       var newPresetName = this.ValidateNewMidiPresetName(presetName);
       if (newPresetName == null) {
         return null;
@@ -717,12 +721,14 @@ namespace Spectrum {
         var result = this.AddNewMidiPresetWithName(this.midiNewDevicePresetName.Text);
         if (result == null) {
           this.midiNewDevicePresetName.Focus();
+          return;
         }
         presetID = result.id;
-        presetName = result.Name;
+        presetName = result.Name ?? "(unnamed preset)";
       } else {
         presetID = this.midiPresetIndices[this.midiNewDevicePreset.SelectedIndex];
-        presetName = this.config.midiPresets[presetID].Name;
+        presetName = this.config.midiPresets[presetID].Name ??
+          "(unnamed preset)";
       }
       var deviceID = this.midiDeviceIndices[this.midiDevices.SelectedIndex];
       this.midiDeviceList.Items.Add(new MidiDeviceEntry {
@@ -859,7 +865,7 @@ namespace Spectrum {
       foreach (var binding in this.config.midiPresets[presetID].Bindings) {
         ComboBoxItem item = (ComboBoxItem)this.midiBindingType.Items[binding.BindingType];
         this.midiBindingList.Items.Add(new MidiBindingEntry() {
-          BindingName = binding.BindingName,
+          BindingName = binding.BindingName ?? "(unnamed binding)",
           BindingTypeName = (string)(item.Content),
         });
       }
@@ -907,13 +913,16 @@ namespace Spectrum {
       this.midiAddPreset.Content = "Save";
       this.midiAddPreset.Margin = new Thickness(0, 0, 55, 0);
       this.midiCancelEditPreset.Visibility = Visibility.Visible;
-      this.midiNewPresetName.Text = this.config.midiPresets[presetID].Name;
+      this.midiNewPresetName.Text =
+        this.config.midiPresets[presetID].Name ?? string.Empty;
       this.midiNewPresetName.Focus();
       this.midiNewPresetName.SelectionStart = this.midiNewPresetName.Text.Length;
       this.midiNewPresetName.SelectionLength = 0;
     }
 
-    private void MidiCancelEditPresetClicked(object sender, RoutedEventArgs e) {
+    private void MidiCancelEditPresetClicked(
+      object? sender, RoutedEventArgs? e
+    ) {
       if (!this.currentlyEditingPreset.HasValue) {
         return;
       }
@@ -1004,6 +1013,8 @@ namespace Spectrum {
         return;
       }
 
+      int editingBindingIndex =
+        this.currentlyEditingBinding.GetValueOrDefault();
       bool editing = this.currentlyEditingBinding.HasValue;
       IMidiBindingConfig newBinding;
       if (this.midiBindingType.SelectedIndex == 0) {
@@ -1172,7 +1183,7 @@ namespace Spectrum {
       MidiPreset midiPreset =
         this.config.midiPresets[editedPresetId].ToPreset();
       if (editing) {
-        midiPreset.Bindings[this.currentlyEditingBinding.Value] = newBinding;
+        midiPreset.Bindings[editingBindingIndex] = newBinding;
       } else {
         midiPreset.Bindings.Add(newBinding);
       }
@@ -1202,9 +1213,9 @@ namespace Spectrum {
       ComboBoxItem item = (ComboBoxItem)this.midiBindingType.SelectedItem;
       string bindingTypeName = (string)item.Content;
       if (editing) {
-        int bindingIndex = this.currentlyEditingBinding.Value;
-        var entry = (MidiBindingEntry)this.midiBindingList.Items[bindingIndex];
-        this.midiBindingList.Items[bindingIndex] = new MidiBindingEntry() {
+        var entry = (MidiBindingEntry)
+          this.midiBindingList.Items[editingBindingIndex];
+        this.midiBindingList.Items[editingBindingIndex] = new MidiBindingEntry() {
           BindingName = newName,
           BindingTypeName = entry.BindingTypeName,
         };
@@ -1269,7 +1280,8 @@ namespace Spectrum {
       this.midiBindingEditLabel.Content = "Edit binding";
       this.midiAddBinding.Content = "Save";
       this.midiCancelEditBinding.Visibility = Visibility.Visible;
-      this.midiNewBindingName.Text = bindingConfig.BindingName;
+      this.midiNewBindingName.Text =
+        bindingConfig.BindingName ?? string.Empty;
       this.midiNewBindingName.Focus();
       this.midiNewBindingName.SelectionStart = this.midiNewBindingName.Text.Length;
       this.midiNewBindingName.SelectionLength = 0;
@@ -1302,7 +1314,9 @@ namespace Spectrum {
       }
     }
 
-    private void MidiCancelEditBindingClicked(object sender, RoutedEventArgs e) {
+    private void MidiCancelEditBindingClicked(
+      object? sender, RoutedEventArgs? e
+    ) {
       if (!this.currentlyEditingBinding.HasValue) {
         return;
       }
@@ -1461,11 +1475,11 @@ namespace Spectrum {
     }
 
     private void CloseVJHUD(object sender, RoutedEventArgs e) {
-      this.vjHUDWindow.Close();
+      this.vjHUDWindow?.Close();
       this.vjHUDWindow = null;
     }
 
-    private void VJHUDClosed(object sender, EventArgs e) {
+    private void VJHUDClosed(object? sender, EventArgs e) {
       this.config.vjHUDEnabled = false;
     }
 
@@ -1477,11 +1491,11 @@ namespace Spectrum {
     }
 
     private void CloseDomeSimulator(object sender, RoutedEventArgs e) {
-      this.domeSimulatorWindow.Close();
+      this.domeSimulatorWindow?.Close();
       this.domeSimulatorWindow = null;
     }
 
-    private void DomeSimulatorClosed(object sender, EventArgs e) {
+    private void DomeSimulatorClosed(object? sender, EventArgs e) {
       this.config.domeSimulationEnabled = false;
     }
 
@@ -1496,7 +1510,7 @@ namespace Spectrum {
       this.domeMappingWindow.Show();
     }
 
-    private void DomeMappingClosed(object sender, EventArgs e) {
+    private void DomeMappingClosed(object? sender, EventArgs e) {
       this.domeMappingWindow = null;
     }
 
@@ -1567,7 +1581,7 @@ namespace Spectrum {
       }
     }
 
-    private void UpdateWandReceiverStatus(object sender, EventArgs e) {
+    private void UpdateWandReceiverStatus(object? sender, EventArgs e) {
       var status = this.op.OrientationInput.WandSerial.StatusSnapshot();
       string text;
       Brush color;
@@ -1609,7 +1623,7 @@ namespace Spectrum {
       this.wandStatusWindow.Show();
     }
 
-    private void WandStatusClosed(object sender, EventArgs e) {
+    private void WandStatusClosed(object? sender, EventArgs e) {
       this.wandStatusWindow = null;
     }
 

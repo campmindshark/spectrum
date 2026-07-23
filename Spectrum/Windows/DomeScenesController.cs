@@ -51,7 +51,7 @@ namespace Spectrum {
       this.Refresh();
     }
 
-    private void OnConfigChanged(object sender, PropertyChangedEventArgs e) {
+    private void OnConfigChanged(object? sender, PropertyChangedEventArgs e) {
       if (e.PropertyName != nameof(this.config.domeScenes)) {
         return;
       }
@@ -73,7 +73,7 @@ namespace Spectrum {
 
     private void Refresh() {
       this.refreshing = true;
-      string selected = this.sceneCombo.SelectedItem as string;
+      string? selected = this.sceneCombo.SelectedItem as string;
       this.SceneNames.Clear();
       foreach (string name in this.service.Names()) {
         this.SceneNames.Add(name);
@@ -86,7 +86,7 @@ namespace Spectrum {
     }
 
     private void Save() {
-      string name = this.nameBox.Text?.Trim();
+      string? name = this.nameBox.Text?.Trim();
       if (string.IsNullOrEmpty(name)) {
         MessageBox.Show("Type a scene name to save.", "Scenes",
           MessageBoxButton.OK, MessageBoxImage.Information);
@@ -102,7 +102,7 @@ namespace Spectrum {
     }
 
     private void Load() {
-      string name = this.SceneTarget();
+      string? name = this.SceneTarget();
       if (name == null) {
         return;
       }
@@ -110,7 +110,7 @@ namespace Spectrum {
     }
 
     private void Delete() {
-      string name = this.SceneTarget();
+      string? name = this.SceneTarget();
       if (name == null) {
         return;
       }
@@ -123,8 +123,8 @@ namespace Spectrum {
     }
 
     // The scene Load/Delete act on: the combo selection, else the name box.
-    private string SceneTarget() {
-      string name = this.sceneCombo.SelectedItem as string;
+    private string? SceneTarget() {
+      string? name = this.sceneCombo.SelectedItem as string;
       if (string.IsNullOrEmpty(name)) {
         name = this.nameBox.Text?.Trim();
       }
@@ -145,7 +145,7 @@ namespace Spectrum {
       return false;
     }
 
-    private void Report((bool ok, string error) result) {
+    private void Report((bool ok, string? error) result) {
       if (!result.ok) {
         MessageBox.Show(result.error, "Scenes",
           MessageBoxButton.OK, MessageBoxImage.Warning);

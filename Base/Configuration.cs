@@ -19,7 +19,7 @@ namespace Spectrum.Base {
    */
   public interface Configuration : INotifyPropertyChanged {
 
-    string audioDeviceID { get; set; }
+    string? audioDeviceID { get; set; }
 
     bool domeEnabled { get; set; }
     bool midiInputEnabled { get; set; }
@@ -115,7 +115,7 @@ namespace Spectrum.Base {
   public interface ConfigurationEditor {
     void ReplaceDomeLayerStack(IReadOnlyList<DomeLayerSettings> value);
     void ReplaceDomeCableMapping(IReadOnlyList<int> value);
-    void ReplaceDomePortMappings(IReadOnlyList<DomePortMapping> value);
+    void ReplaceDomePortMappings(IReadOnlyList<DomePortMapping?> value);
     void ReplaceDomeLayerFireCounters(
       IReadOnlyDictionary<string, int> value);
     void ReplaceDomeLayerClearCounters(

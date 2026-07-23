@@ -16,9 +16,9 @@ namespace Spectrum {
       ConfigurationFileStore<SpectrumConfiguration> store,
       ApplicationStateDispatcher stateDispatcher,
       TimeSpan debounceDelay,
-      Func<bool> saveEnabled = null,
-      Action<ConfigurationLoadFailure> reportLoadFailure = null,
-      Action<Exception> reportSaveError = null
+      Func<bool>? saveEnabled = null,
+      Action<ConfigurationLoadFailure>? reportLoadFailure = null,
+      Action<Exception>? reportSaveError = null
     ) {
       if (store == null) {
         throw new ArgumentNullException(nameof(store));

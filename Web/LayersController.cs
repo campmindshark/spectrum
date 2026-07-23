@@ -22,57 +22,62 @@ namespace Spectrum.Web {
     // One layer as sent to / received from the client. Renderer and operation
     // parameters have distinct namespaces so equal keys can never collide.
     public sealed class LayerDto {
-      public string instanceId { get; set; }
-      public string visualizerKey { get; set; }
-      public string blendMode { get; set; }
+      public string? instanceId { get; set; }
+      public string? visualizerKey { get; set; }
+      public string? blendMode { get; set; }
       public double opacity { get; set; }
       public bool enabled { get; set; }
-      public string notes { get; set; }
-      public Dictionary<string, double> rendererParams { get; set; }
-      public Dictionary<string, double> operationParams { get; set; }
+      public string? notes { get; set; }
+      public Dictionary<string, double>? rendererParams { get; set; }
+      public Dictionary<string, double>? operationParams { get; set; }
     }
 
     // One param descriptor as sent to the client so it can build editors
     // generically (mirrors Base/DomeLayerParam; type is the enum name).
     public sealed class ParamDto {
-      public string key { get; set; }
-      public string label { get; set; }
-      public string type { get; set; }
+      public string key { get; set; } = "";
+      public string label { get; set; } = "";
+      public string type { get; set; } = "";
       public double min { get; set; }
       public double max { get; set; }
       public double step { get; set; }
-      public string[] options { get; set; }
+      public string[]? options { get; set; }
       public double @default { get; set; }
       public bool compositorConsumed { get; set; }
     }
 
     public sealed class VisualizerOptionDto {
-      public string key { get; set; }
-      public string label { get; set; }
+      public string key { get; set; } = "";
+      public string label { get; set; } = "";
       // Visualizer-consumed param schema for this visualizer (may be empty).
-      public IReadOnlyList<ParamDto> @params { get; set; }
-      public ActionDto fireAction { get; set; }
-      public ActionDto clearAction { get; set; }
+      public IReadOnlyList<ParamDto> @params { get; set; } =
+        Array.Empty<ParamDto>();
+      public ActionDto? fireAction { get; set; }
+      public ActionDto? clearAction { get; set; }
     }
 
     public sealed class ActionDto {
-      public string label { get; set; }
-      public string toolTip { get; set; }
+      public string label { get; set; } = "";
+      public string toolTip { get; set; } = "";
     }
 
     public sealed class OperationOptionDto {
-      public string id { get; set; }
-      public string label { get; set; }
-      public IReadOnlyList<ParamDto> @params { get; set; }
+      public string id { get; set; } = "";
+      public string label { get; set; } = "";
+      public IReadOnlyList<ParamDto> @params { get; set; } =
+        Array.Empty<ParamDto>();
     }
 
     // The full snapshot GET returns: the current stack plus the fixed pick-lists
     // (available visualizers and compositing operations) the client renders its
     // editors from. Each option carries its stable id, display label, and schema.
     public sealed class LayersState {
-      public IReadOnlyList<LayerDto> layers { get; set; }
-      public IReadOnlyList<VisualizerOptionDto> visualizers { get; set; }
-      public IReadOnlyList<OperationOptionDto> operations { get; set; }
+      public IReadOnlyList<LayerDto> layers { get; set; } =
+        Array.Empty<LayerDto>();
+      public IReadOnlyList<VisualizerOptionDto> visualizers { get; set; } =
+        Array.Empty<VisualizerOptionDto>();
+      public IReadOnlyList<OperationOptionDto> operations { get; set; } =
+        Array.Empty<OperationOptionDto>();
     }
 
     private readonly ApplicationStateDispatcher gateway;
@@ -185,7 +190,7 @@ namespace Spectrum.Web {
       return options;
     }
 
-    private static ActionDto ToDto(LayerActionDefinition action) =>
+    private static ActionDto? ToDto(LayerActionDefinition? action) =>
       action == null ? null : new ActionDto {
         label = action.Label,
         toolTip = action.ToolTip,
@@ -229,14 +234,14 @@ namespace Spectrum.Web {
     // duplicate instance IDs, out-of-range opacity, unknown blend names,
     // or an over-long stack, without touching config; scene apply routes
     // through the same validator so the two paths can't diverge.
-    public async Task<(bool ok, string error)> ReplaceAsync(
-      IReadOnlyList<LayerDto> layers
+    public async Task<(bool ok, string? error)> ReplaceAsync(
+      IReadOnlyList<LayerDto?>? layers
     ) {
       if (layers == null) {
         return (false, "body must be {\"layers\": [...]}");
       }
       var parsed = new List<DomeLayerSettings>(layers.Count);
-      foreach (LayerDto dto in layers) {
+      foreach (LayerDto? dto in layers) {
         if (dto == null || dto.visualizerKey == null) {
           return (false, "each layer needs a visualizerKey");
         }
@@ -246,7 +251,7 @@ namespace Spectrum.Web {
           // The wire carries the blend by DomeBlend.Id, the same string the
           // settings persist; the validator rejects names the registry
           // doesn't know.
-          BlendMode = dto.blendMode,
+          BlendMode = dto.blendMode ?? "",
           Opacity = dto.opacity,
           Enabled = dto.enabled,
           Notes = dto.notes,
@@ -254,10 +259,10 @@ namespace Spectrum.Web {
           OperationParams = dto.operationParams,
         });
       }
-      (List<DomeLayerSettings> newStack, string error) =
+      (List<DomeLayerSettings>? newStack, string? error) =
         StackValidator.Validate(parsed, BuiltInDomeLayerCatalog.Metadata);
-      if (error != null) {
-        return (false, error);
+      if (error != null || newStack == null) {
+        return (false, error ?? "layer validation returned no stack");
       }
       await this.gateway.InvokeAsync(
         () => this.editor.ReplaceDomeLayerStack(newStack));
@@ -271,18 +276,23 @@ namespace Spectrum.Web {
     // stack edit, so it doesn't route through ReplaceAsync/the "layers" frame.
     // The counter (not a bool) is race-free across clients: each Fire just
     // increments, none resets a shared flag.
-    public async Task<(bool ok, string error)> FireAsync(string instanceId) {
-      (bool ok, string error) result = (false, "not run");
+    public async Task<(bool ok, string? error)> FireAsync(string instanceId) {
+      (bool ok, string? error) result = (false, "not run");
       await this.gateway.InvokeAsync(() => {
-        (DomeLayerView layer, string error) = ResolveTarget(instanceId);
-        if (error != null) {
+        (DomeLayerView? layer, string? error) = ResolveTarget(instanceId);
+        if (error != null || layer == null) {
           result = (false, error);
           return;
         }
         var counters = new Dictionary<string, int>(
           this.config.domeLayerFireCounters);
-        counters.TryGetValue(layer.InstanceId, out int count);
-        counters[layer.InstanceId] = count + 1;
+        string? layerId = layer.InstanceId;
+        if (layerId == null) {
+          result = (false, "layer instance has no ID");
+          return;
+        }
+        counters.TryGetValue(layerId, out int count);
+        counters[layerId] = count + 1;
         this.editor.ReplaceDomeLayerFireCounters(counters);
         result = (true, null);
       });
@@ -293,25 +303,30 @@ namespace Spectrum.Web {
     // domeLayerClearCounters entry (mirrors DomeLayersController.ClearRow). A
     // layer that holds accumulated live state (Shooting Star) edge-detects the
     // bump and drops it; layers with no such state ignore it (harmless no-op).
-    public async Task<(bool ok, string error)> ClearAsync(string instanceId) {
-      (bool ok, string error) result = (false, "not run");
+    public async Task<(bool ok, string? error)> ClearAsync(string instanceId) {
+      (bool ok, string? error) result = (false, "not run");
       await this.gateway.InvokeAsync(() => {
-        (DomeLayerView layer, string error) = ResolveTarget(instanceId);
-        if (error != null) {
+        (DomeLayerView? layer, string? error) = ResolveTarget(instanceId);
+        if (error != null || layer == null) {
           result = (false, error);
           return;
         }
         var counters = new Dictionary<string, int>(
           this.config.domeLayerClearCounters);
-        counters.TryGetValue(layer.InstanceId, out int count);
-        counters[layer.InstanceId] = count + 1;
+        string? layerId = layer.InstanceId;
+        if (layerId == null) {
+          result = (false, "layer instance has no ID");
+          return;
+        }
+        counters.TryGetValue(layerId, out int count);
+        counters[layerId] = count + 1;
         this.editor.ReplaceDomeLayerClearCounters(counters);
         result = (true, null);
       });
       return result;
     }
 
-    private (DomeLayerView layer, string error) ResolveTarget(string id) {
+    private (DomeLayerView? layer, string? error) ResolveTarget(string id) {
       foreach (DomeLayerView layer in this.config.domeLayerStack) {
         if (layer != null && layer.InstanceId == id) {
           return (layer, null);

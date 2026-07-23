@@ -65,7 +65,7 @@ namespace Spectrum.Visualizers {
 
     // Reseeded whenever the `count` param changes; spotCount tracks the length
     // the current array was seeded for so we only rebuild on an actual change.
-    private Spot[] spots;
+    private Spot[] spots = Array.Empty<Spot>();
     private int spotCount;
 
     // Scratch list of this frame's moving-wand aim points, rebuilt each tick to
@@ -138,7 +138,7 @@ namespace Spectrum.Visualizers {
 
     public bool Enabled { get; set; }
 
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() {
       return this.inputs ?? (this.inputs = new Input[] { this.orientationInput });
     }

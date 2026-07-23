@@ -63,7 +63,7 @@ namespace Spectrum {
     public DomeFrame LayerBuffer => this.buffer;
     public bool Enabled { get; set; }
 
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() =>
       this.inputs ?? (this.inputs = new Input[] {
         this.audio, this.orientationInput,
@@ -108,7 +108,7 @@ namespace Spectrum {
       IReadOnlyDictionary<int, OrientationDevice> devices =
         this.orientationInput.OperatorFrameDevices;
       int spotlight = this.environment.SpotlightDeviceId;
-      OrientationDevice selected = null;
+      OrientationDevice? selected = null;
       if (spotlight >= 0) {
         devices.TryGetValue(spotlight, out selected);
       } else if (spotlight != -2) {
@@ -295,7 +295,7 @@ namespace Spectrum {
     public int EdgeCount => this.edges.Length;
 
     public GlassMosaicTopology(
-      int[,] lines, IReadOnlyList<Vector2> vertexPositions = null
+      int[,] lines, IReadOnlyList<Vector2>? vertexPositions = null
     ) {
       if (lines == null) {
         throw new ArgumentNullException(nameof(lines));
@@ -471,7 +471,7 @@ namespace Spectrum {
 
     private static Vector2 CenterOf(
       int a, int b, int c, int vertexCount,
-      IReadOnlyList<Vector2> vertexPositions
+      IReadOnlyList<Vector2>? vertexPositions
     ) {
       if (vertexPositions != null) {
         return (vertexPositions[a] + vertexPositions[b] +
@@ -499,7 +499,7 @@ namespace Spectrum {
 
     private sealed class TileGroup {
       public int Id;
-      public int[] Tiles;
+      public required int[] Tiles;
       public HashSet<int> Neighbors = new HashSet<int>();
       public double Angle;
     }

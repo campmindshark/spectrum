@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace Spectrum.LayerPipeline.Tests {
@@ -14,16 +15,16 @@ namespace Spectrum.LayerPipeline.Tests {
     private static void OwnershipPolicy() {
       var locks = new global::Spectrum.Web.AdvisoryLockManager(
         TimeSpan.FromMinutes(1));
-      string resource = global::Spectrum.Web.LockPolicy.ResourceForKey(
+      string? resource = global::Spectrum.Web.LockPolicy.ResourceForKey(
         "domeTestPattern");
       Assert(resource == "domeTest", "test-pattern lock policy changed");
 
-      string alice = locks.TryAcquire(resource, "Alice", out var acquired);
+      string? alice = locks.TryAcquire(resource, "Alice", out var acquired);
       Assert(!string.IsNullOrEmpty(alice), "first lock acquisition failed");
       Assert(acquired.resource == resource && acquired.holderName == "Alice",
         "acquisition returned the wrong owner");
 
-      string bob = locks.TryAcquire(resource, "Bob", out var blocked);
+      string? bob = locks.TryAcquire(resource, "Bob", out var blocked);
       Assert(bob == null && blocked.holderName == "Alice",
         "competing holder replaced the active lease");
       Assert(locks.CanWrite(resource, alice),
@@ -62,7 +63,7 @@ namespace Spectrum.LayerPipeline.Tests {
         threads[i] = new Thread(() => {
           ready.Signal();
           start.Wait();
-          string token = locks.TryAcquire(
+          string? token = locks.TryAcquire(
             "domeCalibration", "client-" + contender, out _);
           if (token != null) {
             tokens.Add(token);
@@ -86,7 +87,9 @@ namespace Spectrum.LayerPipeline.Tests {
         "concurrent acquisition published multiple leases");
     }
 
-    private static void Assert(bool condition, string message) {
+    private static void Assert(
+      [DoesNotReturnIf(false)] bool condition, string? message
+    ) {
       if (!condition) {
         throw new InvalidOperationException(message);
       }

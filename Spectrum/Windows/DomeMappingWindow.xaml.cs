@@ -33,7 +33,7 @@ namespace Spectrum {
 
     private DomeCalibrationController.CalibrationState state;
     private DomeProjection projection = DomeProjection.TopDown;
-    private string leaseToken;
+    private string? leaseToken;
     private bool actionInFlight;
 
     public DomeMappingWindow(
@@ -44,6 +44,7 @@ namespace Spectrum {
       this.controller = controller ??
         throw new ArgumentNullException(nameof(controller));
       this.locks = locks ?? throw new ArgumentNullException(nameof(locks));
+      this.state = this.controller.State();
       this.BuildDiagram();
       this.leaseHeartbeat = new DispatcherTimer {
         Interval = TimeSpan.FromSeconds(5),
@@ -80,7 +81,7 @@ namespace Spectrum {
       this.leaseToken = this.locks.TryAcquire(
         LockPolicy.DomeCalibration,
         NativeHolderName,
-        out AdvisoryLockManager.LockInfo current);
+        out AdvisoryLockManager.LockInfo? current);
       if (this.leaseToken == null) {
         string holder = current?.holderName ?? "another client";
         this.ShowError("Calibration is currently controlled by " + holder + ".");
@@ -99,7 +100,7 @@ namespace Spectrum {
       }
     }
 
-    private void RenewNativeLease(object sender, EventArgs e) {
+    private void RenewNativeLease(object? sender, EventArgs e) {
       if (this.leaseToken == null) {
         return;
       }
@@ -161,7 +162,7 @@ namespace Spectrum {
       this.actionInFlight = true;
       this.RenderState();
       try {
-        (bool ok, string error, var next) =
+        (bool ok, string? error, var next) =
           await this.controller.SaveAsync();
         this.state = next;
         if (!ok) {
@@ -239,7 +240,7 @@ namespace Spectrum {
       this.lockWarning.Visibility = ownsLock
         ? Visibility.Collapsed : Visibility.Visible;
       if (!ownsLock) {
-        AdvisoryLockManager.LockInfo held =
+        AdvisoryLockManager.LockInfo? held =
           this.locks.Get(LockPolicy.DomeCalibration);
         this.lockWarning.Text = held == null
           ? "Calibration is active without a current lease; waiting for it to be cancelled."
@@ -500,7 +501,7 @@ namespace Spectrum {
       this.candidateLabel.Text = label;
     }
 
-    private void ShowError(string message) {
+    private void ShowError(string? message) {
       this.statusLabel.Foreground = (Brush)this.FindResource("ErrorBrush");
       this.statusLabel.Text = message ?? "Calibration could not continue.";
     }

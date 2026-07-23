@@ -60,7 +60,9 @@ namespace Spectrum {
       for (int offset = 0; offset < this.layoutsByCenterOffset.Length; offset++) {
         this.layoutsByCenterOffset[offset] = this.BuildLayouts(offset);
       }
-      this.UpdateLayouts();
+      this.partLayout = this.layoutsByCenterOffset[0][0];
+      this.indexLayout = this.layoutsByCenterOffset[0][1];
+      this.sectionLayout = this.layoutsByCenterOffset[0][2];
     }
 
     private readonly StrutLayout spokeLayout;
@@ -152,7 +154,7 @@ namespace Spectrum {
       }
     }
 
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() {
       return this.inputs ?? (this.inputs = new Input[] { this.audio });
     }

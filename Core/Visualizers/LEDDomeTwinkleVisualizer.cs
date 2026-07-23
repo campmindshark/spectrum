@@ -61,7 +61,7 @@ namespace Spectrum.Visualizers {
     public bool Enabled { get; set; }
 
     // Center-free and input-free: the twinkle has no data source of its own.
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() {
       return this.inputs ?? (this.inputs = new Input[] { });
     }

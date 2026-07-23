@@ -71,11 +71,11 @@ namespace Spectrum {
 
     // Status (all under stateLock). Last-seen timestamps are nullable so "never
     // happened yet" is distinguishable from "0 ms ago".
-    private string statusPortName;
+    private string? statusPortName;
     private bool portOpen;
     private long? lastHeartbeatTs;
     private long? lastFrameTs;
-    private string lastError;
+    private string? lastError;
 
     public WandSerialReceiver(Configuration config, OrientationInput sink) {
       this.config = config;
@@ -107,7 +107,7 @@ namespace Spectrum {
       this.wake.Set();
     }
 
-    private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
+    private void ConfigUpdated(object? sender, PropertyChangedEventArgs e) {
       if (e.PropertyName == nameof(this.config.wandSerialPort)) {
         lock (this.stateLock) {
           this.targetPort =
@@ -153,13 +153,13 @@ namespace Spectrum {
 
     internal static string[] MergeLinuxPortNames(
       IEnumerable<string> nativePorts,
-      IEnumerable<KeyValuePair<string, string>> aliases
+      IEnumerable<KeyValuePair<string, string?>> aliases
     ) {
       var result = new List<string>();
       var seenNames = new HashSet<string>(StringComparer.Ordinal);
       var representedTargets = new HashSet<string>(StringComparer.Ordinal);
 
-      foreach (var alias in aliases) {
+      foreach (KeyValuePair<string, string?> alias in aliases) {
         string aliasName = NormalizeDevicePath(alias.Key);
         string target = NormalizeDevicePath(alias.Value);
         if (string.IsNullOrEmpty(aliasName) ||
@@ -185,7 +185,7 @@ namespace Spectrum {
       return result.ToArray();
     }
 
-    private static IEnumerable<KeyValuePair<string, string>>
+    private static IEnumerable<KeyValuePair<string, string?>>
       EnumerateLinuxPortAliases(params string[] directories) {
       foreach (string directory in directories) {
         string[] entries;
@@ -201,7 +201,7 @@ namespace Spectrum {
         }
 
         foreach (string entry in entries) {
-          string target = null;
+          string? target = null;
           try {
             target = File.ResolveLinkTarget(entry, returnFinalTarget: true)
               ?.FullName;
@@ -212,12 +212,12 @@ namespace Spectrum {
             // Keep the visible alias even when its target cannot be inspected;
             // opening it remains safely contained by the serial worker.
           }
-          yield return new KeyValuePair<string, string>(entry, target);
+          yield return new KeyValuePair<string, string?>(entry, target);
         }
       }
     }
 
-    private static string NormalizeDevicePath(string path) {
+    private static string NormalizeDevicePath(string? path) {
       if (string.IsNullOrWhiteSpace(path)) {
         return "";
       }
@@ -465,18 +465,18 @@ namespace Spectrum {
   // The millis-since fields are large finite sentinels (not ∞) when the
   // corresponding event has never been seen, so they serialize to JSON.
   public readonly struct WandSerialStatus {
-    public string PortName { get; }
+    public string? PortName { get; }
     public bool PortOpen { get; }
     public double MillisSinceLastHeartbeat { get; }
     public double MillisSinceLastFrame { get; }
-    public string LastError { get; }
+    public string? LastError { get; }
 
     public WandSerialStatus(
-      string portName,
+      string? portName,
       bool portOpen,
       double millisSinceLastHeartbeat,
       double millisSinceLastFrame,
-      string lastError
+      string? lastError
     ) {
       this.PortName = portName;
       this.PortOpen = portOpen;

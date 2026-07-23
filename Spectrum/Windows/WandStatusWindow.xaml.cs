@@ -38,7 +38,7 @@ namespace Spectrum {
     private readonly OrientationInput orientation;
     private readonly ObservableCollection<WandRow> rows =
       new ObservableCollection<WandRow>();
-    private DispatcherTimer timer;
+    private DispatcherTimer? timer;
 
     public WandStatusWindow(Configuration config, OrientationInput orientation) {
       this.InitializeComponent();
@@ -62,7 +62,7 @@ namespace Spectrum {
       }
     }
 
-    private void Refresh(object sender, EventArgs e) {
+    private void Refresh(object? sender, EventArgs? e) {
       var snapshot = this.orientation.DevicesSnapshot();
       var statsSnapshot = this.orientation.ConnectionStatsSnapshot();
 
@@ -132,12 +132,12 @@ namespace Spectrum {
     private static readonly Brush FairBrush = Frozen(0x8A, 0x5A, 0x00);
     private static readonly Brush PoorBrush = Frozen(0xB3, 0x26, 0x1E);
 
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public int DeviceId { get; }
     public string TypeName { get; }
 
-    private string action;
+    private string action = string.Empty;
     public string Action {
       get => this.action;
       private set => this.Set(ref this.action, value, nameof(this.Action));
@@ -145,62 +145,62 @@ namespace Spectrum {
 
     // "Moving" while the device's motion detection considers it in use (and
     // thus visualized); "Still" while it only transmits.
-    private string motion;
+    private string motion = string.Empty;
     public string Motion {
       get => this.motion;
       private set => this.Set(ref this.motion, value, nameof(this.Motion));
     }
 
-    private string orientation;
+    private string orientation = string.Empty;
     public string Orientation {
       get => this.orientation;
       private set =>
         this.Set(ref this.orientation, value, nameof(this.Orientation));
     }
 
-    private string speed;
+    private string speed = string.Empty;
     public string Speed {
       get => this.speed;
       private set => this.Set(ref this.speed, value, nameof(this.Speed));
     }
 
-    private string rate;
+    private string rate = string.Empty;
     public string Rate {
       get => this.rate;
       private set => this.Set(ref this.rate, value, nameof(this.Rate));
     }
 
-    private string jitter;
+    private string jitter = string.Empty;
     public string Jitter {
       get => this.jitter;
       private set => this.Set(ref this.jitter, value, nameof(this.Jitter));
     }
 
-    private string loss;
+    private string loss = string.Empty;
     public string Loss {
       get => this.loss;
       private set => this.Set(ref this.loss, value, nameof(this.Loss));
     }
 
-    private string dataRate;
+    private string dataRate = string.Empty;
     public string DataRate {
       get => this.dataRate;
       private set => this.Set(ref this.dataRate, value, nameof(this.DataRate));
     }
 
-    private string packets;
+    private string packets = string.Empty;
     public string Packets {
       get => this.packets;
       private set => this.Set(ref this.packets, value, nameof(this.Packets));
     }
 
-    private string lastSeen;
+    private string lastSeen = string.Empty;
     public string LastSeen {
       get => this.lastSeen;
       private set => this.Set(ref this.lastSeen, value, nameof(this.LastSeen));
     }
 
-    private string quality;
+    private string quality = string.Empty;
     public string Quality {
       get => this.quality;
       private set => this.Set(ref this.quality, value, nameof(this.Quality));
@@ -233,7 +233,7 @@ namespace Spectrum {
     // Invoked with this row's DeviceId when IsSpotlight transitions to true from
     // the UI. The host wires this to its spotlight setter; null is a no-op (the
     // read-only diagnostics window).
-    public Action<int> SpotlightRequested;
+    public Action<int>? SpotlightRequested;
 
     public WandRow(
       int deviceId, OrientationDevice device, OrientationDeviceStats stats) {

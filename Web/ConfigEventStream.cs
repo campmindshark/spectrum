@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
@@ -67,7 +68,8 @@ namespace Spectrum.Web {
           }
           var frameKey = new FrameKey(kind, key);
           if (this.byKey.TryGetValue(
-              frameKey, out LinkedListNode<PendingFrame> existing)) {
+              frameKey, out LinkedListNode<PendingFrame>? existing) &&
+              existing != null) {
             existing.Value = new PendingFrame(frameKey, payload);
             return;
           }
@@ -92,9 +94,9 @@ namespace Spectrum.Web {
         }
       }
 
-      private bool TryRead(out string payload) {
+      private bool TryRead([NotNullWhen(true)] out string? payload) {
         lock (this.gate) {
-          LinkedListNode<PendingFrame> first = this.pending.First;
+          LinkedListNode<PendingFrame>? first = this.pending.First;
           if (first == null) {
             payload = null;
             return false;
@@ -120,7 +122,7 @@ namespace Spectrum.Web {
           this.subscriber = subscriber;
         }
 
-        public bool TryRead(out string payload) =>
+        public bool TryRead([NotNullWhen(true)] out string? payload) =>
           this.subscriber.TryRead(out payload);
 
         public async IAsyncEnumerable<string> ReadAllAsync(
@@ -129,11 +131,11 @@ namespace Spectrum.Web {
           ChannelReader<bool> signalReader = this.subscriber.readable.Reader;
           while (await signalReader.WaitToReadAsync(cancellationToken)) {
             while (signalReader.TryRead(out _)) { }
-            while (this.subscriber.TryRead(out string payload)) {
+            while (this.subscriber.TryRead(out string? payload)) {
               yield return payload;
             }
           }
-          while (this.subscriber.TryRead(out string payload)) {
+          while (this.subscriber.TryRead(out string? payload)) {
             yield return payload;
           }
         }
@@ -142,14 +144,14 @@ namespace Spectrum.Web {
 
     private readonly ParameterRegistry registry;
     private readonly Configuration config;
-    private readonly BeatBroadcaster beat;
+    private readonly BeatBroadcaster? beat;
     // Live engine counters (FPS), split out of Configuration; raises its own
     // PropertyChanged from the operator/OPC threads.
-    private readonly RuntimeTelemetry telemetry;
+    private readonly RuntimeTelemetry? telemetry;
     // The engine on/off source. Its EnabledChanged fires outside Configuration
     // entirely (Enabled is live Operator state, not a config property), so it
     // gets its own subscription and its own frame kind ("operator").
-    private readonly Operator op;
+    private readonly Operator? op;
     // Telemetry items indexed by the PropertyChanged name that triggers them,
     // split by which object raises that event.
     private readonly Dictionary<string, TelemetryItem> runtimeTelemetry =
@@ -158,17 +160,17 @@ namespace Spectrum.Web {
       new Dictionary<string, TelemetryItem>();
     private readonly ConcurrentDictionary<Guid, Subscriber> subscribers =
       new ConcurrentDictionary<Guid, Subscriber>();
-    private readonly Action<DomeShowStateSnapshot> showSnapshotCaptured;
+    private readonly Action<DomeShowStateSnapshot>? showSnapshotCaptured;
 
     public ConfigEventStream(
-      ParameterRegistry registry, Configuration config, Operator op,
-      RuntimeTelemetry telemetry, BeatBroadcaster beat
+      ParameterRegistry registry, Configuration config, Operator? op,
+      RuntimeTelemetry? telemetry, BeatBroadcaster? beat
     ) : this(registry, config, op, telemetry, beat, null) { }
 
     internal ConfigEventStream(
-      ParameterRegistry registry, Configuration config, Operator op,
-      RuntimeTelemetry telemetry, BeatBroadcaster beat,
-      Action<DomeShowStateSnapshot> showSnapshotCaptured
+      ParameterRegistry registry, Configuration config, Operator? op,
+      RuntimeTelemetry? telemetry, BeatBroadcaster? beat,
+      Action<DomeShowStateSnapshot>? showSnapshotCaptured
     ) {
       this.registry = registry;
       this.config = config;
@@ -206,7 +208,7 @@ namespace Spectrum.Web {
     }
 
     public void Unsubscribe(Guid id) {
-      if (this.subscribers.TryRemove(id, out Subscriber sub)) {
+      if (this.subscribers.TryRemove(id, out Subscriber? sub) && sub != null) {
         sub.Complete();
       }
     }
@@ -238,7 +240,7 @@ namespace Spectrum.Web {
     // Fires on the UI/Dispatcher thread — every config write funnels through
     // the gateway or the native GUI. Reading a scalar and fanning a string onto
     // thread-safe channels is safe regardless.
-    private void OnConfigChanged(object sender, PropertyChangedEventArgs e) {
+    private void OnConfigChanged(object? sender, PropertyChangedEventArgs e) {
       if (e.PropertyName == null) {
         return;
       }
@@ -255,7 +257,8 @@ namespace Spectrum.Web {
         // browser-visible states.
         return;
       }
-      if (this.registry.TryGet(e.PropertyName, out ParameterDescriptor d)) {
+      if (this.registry.TryGet(
+          e.PropertyName, out ParameterDescriptor? d) && d != null) {
         object value = d.Get(this.config);
         this.Fan("param", d.Key, value, d);
         return;
@@ -325,16 +328,18 @@ namespace Spectrum.Web {
 
     // Fires on the Operator/OPC threads (the FPS counters' writers); fanning
     // onto the thread-safe channels is safe from there.
-    private void OnTelemetryChanged(object sender, PropertyChangedEventArgs e) {
+    private void OnTelemetryChanged(object? sender, PropertyChangedEventArgs e) {
       if (e.PropertyName != null &&
-          this.runtimeTelemetry.TryGetValue(e.PropertyName, out TelemetryItem item)) {
+          this.runtimeTelemetry.TryGetValue(
+            e.PropertyName, out TelemetryItem? item) && item != null) {
         this.Fan("telemetry", item.Key, SafeRead(item), null);
       }
     }
 
-    private void OnBeatChanged(object sender, PropertyChangedEventArgs e) {
+    private void OnBeatChanged(object? sender, PropertyChangedEventArgs e) {
       if (e.PropertyName != null &&
-          this.beatTelemetry.TryGetValue(e.PropertyName, out TelemetryItem item)) {
+          this.beatTelemetry.TryGetValue(
+            e.PropertyName, out TelemetryItem? item) && item != null) {
         this.Fan("telemetry", item.Key, SafeRead(item), null);
       }
     }
@@ -350,7 +355,7 @@ namespace Spectrum.Web {
     // role-gated parameter change (maintenance-only params only reach
     // maintenance subscribers); a null gate is telemetry, sent to everyone.
     private void Fan(
-      string kind, string key, object value, ParameterDescriptor gate
+      string kind, string key, object? value, ParameterDescriptor? gate
     ) {
       string payload = Frame(kind, key, value);
       foreach (Subscriber sub in this.subscribers.Values) {
@@ -360,7 +365,7 @@ namespace Spectrum.Web {
       }
     }
 
-    private object SafeRead(TelemetryItem item) {
+    private object? SafeRead(TelemetryItem item) {
       try {
         return item.Read(this.telemetry, this.beat);
       } catch (Exception) {
@@ -370,7 +375,7 @@ namespace Spectrum.Web {
       }
     }
 
-    private static string Frame(string kind, string key, object value) =>
+    private static string Frame(string kind, string key, object? value) =>
       JsonSerializer.Serialize(new { kind, key, value });
 
     public void Dispose() {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Spectrum.Base;
 
 namespace Spectrum.LayerPipeline.Tests {
@@ -32,7 +33,7 @@ namespace Spectrum.LayerPipeline.Tests {
       });
       var service = new PaletteService(config);
 
-      (bool added, string addError) = service.Add(
+      (bool added, string? addError) = service.Add(
         "Warm variation", config.domePalettes[0].ToPalette().Colors);
       Assert(added, addError);
       Assert(config.domePalettes.Length == 4 &&
@@ -42,12 +43,12 @@ namespace Spectrum.LayerPipeline.Tests {
           config.domePalettes[3].Colors[0],
         "palette copy changed its source colors");
 
-      (bool renamed, string renameError) = service.Rename("Cool", "Ocean");
+      (bool renamed, string? renameError) = service.Rename("Cool", "Ocean");
       Assert(renamed, renameError);
       Assert(config.domePalettes[1].Name == "Ocean",
         "palette was not renamed in place");
 
-      (bool deleted, string deleteError) = service.Delete("Ocean");
+      (bool deleted, string? deleteError) = service.Delete("Ocean");
       Assert(deleted, deleteError);
       Assert(config.domePalettes.Length == 3 &&
           config.domePalettes[1].Name == "Mono",
@@ -65,13 +66,13 @@ namespace Spectrum.LayerPipeline.Tests {
       var config = DirectConfig(Palette("Blue hour", 0x102030));
       config.ReplaceDomeLayerStack(new List<DomeLayerSettings>());
       var scenes = new SceneService(config, DomeLayerCatalog.Metadata);
-      (bool saved, string saveError) = scenes.Save("Look");
+      (bool saved, string? saveError) = scenes.Save("Look");
       Assert(saved, saveError);
 
-      (bool replaced, string replaceError) = new PaletteService(config)
+      (bool replaced, string? replaceError) = new PaletteService(config)
         .ReplaceColors("Blue hour", new[] { new LEDColor(0x13579B) });
       Assert(replaced, replaceError);
-      (bool applied, string applyError) = scenes.Apply("Look");
+      (bool applied, string? applyError) = scenes.Apply("Look");
       Assert(applied, applyError);
       Assert(config.domePalettes[0].GetSingleColor(0) == 0x13579B,
         "scene recall overwrote a named live palette");
@@ -104,7 +105,7 @@ namespace Spectrum.LayerPipeline.Tests {
       };
 
     private static void AssertColor(
-      LEDColor actual, int color1, int? color2, string message
+      LEDColor? actual, int color1, int? color2, string message
     ) {
       Assert(actual != null, message + ": color is null");
       Assert(actual.Color1 == color1, message + ": first endpoint changed");
@@ -116,7 +117,9 @@ namespace Spectrum.LayerPipeline.Tests {
       }
     }
 
-    private static void Assert(bool condition, string message) {
+    private static void Assert(
+      [DoesNotReturnIf(false)] bool condition, string? message
+    ) {
       if (!condition) {
         throw new InvalidOperationException(message);
       }

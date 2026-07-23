@@ -39,7 +39,7 @@ namespace Spectrum {
     private readonly object lifecycleLock = new object();
     private readonly SpectrumConfigurationSession configurationSession;
     private readonly HashSet<string> rebootPropertyNames;
-    private readonly Action<Exception> reportServiceStartError;
+    private readonly Action<Exception>? reportServiceStartError;
     private int lifecycleState;
 
     public SpectrumHost(
@@ -53,11 +53,11 @@ namespace Spectrum {
         ApplicationStateDispatcher,
         TRuntime,
         TService> createService,
-      IEnumerable<string> rebootPropertyNames = null,
-      Func<bool> saveEnabled = null,
-      Action<ConfigurationLoadFailure> reportLoadFailure = null,
-      Action<Exception> reportSaveError = null,
-      Action<Exception> reportServiceStartError = null
+      IEnumerable<string>? rebootPropertyNames = null,
+      Func<bool>? saveEnabled = null,
+      Action<ConfigurationLoadFailure>? reportLoadFailure = null,
+      Action<Exception>? reportSaveError = null,
+      Action<Exception>? reportServiceStartError = null
     ) {
       if (configurationStore == null) {
         throw new ArgumentNullException(nameof(configurationStore));
@@ -84,7 +84,7 @@ namespace Spectrum {
         reportLoadFailure,
         reportSaveError);
 
-      TRuntime runtime = null;
+      TRuntime? runtime = null;
       try {
         runtime = createRuntime(
           this.configurationSession.Configuration, stateDispatcher) ??
@@ -121,7 +121,7 @@ namespace Spectrum {
 
     public TService Service { get; }
 
-    public Exception ServiceStartError { get; private set; }
+    public Exception? ServiceStartError { get; private set; }
 
     /**
      * Starts the optional frontend service. A bind/start failure is recorded
@@ -149,7 +149,7 @@ namespace Spectrum {
     }
 
     private void ConfigurationUpdated(
-      object sender, PropertyChangedEventArgs e
+      object? sender, PropertyChangedEventArgs e
     ) {
       if (e.PropertyName != null &&
           this.rebootPropertyNames.Contains(e.PropertyName)) {

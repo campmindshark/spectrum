@@ -44,7 +44,7 @@ namespace Spectrum.Visualizers {
     // 10 FPS at normal playback. Above 1x, the keyframe rate ramps to 60 FPS at
     // 8x, and adjacent sky keyframes are blended on every engine frame.
     private long lastRenderBucket = long.MinValue;
-    private AstronomyLayerOptions lastOptions;
+    private AstronomyLayerOptions? lastOptions;
     private int configuredStartDate = int.MinValue;
     private double configuredTimeOffset = double.NaN;
     private double configuredPlaybackSpeed = double.NaN;
@@ -53,7 +53,7 @@ namespace Spectrum.Visualizers {
     private bool resumeFromStoppedOffset;
     private DateTime playbackAnchorUtc;
     private long interpolationSegment = long.MinValue;
-    private AstronomyLayerOptions interpolationOptions;
+    private AstronomyLayerOptions? interpolationOptions;
 
     public LEDDomeAstronomyVisualizer(
       DomeLayerEnvironment environment,
@@ -78,7 +78,7 @@ namespace Spectrum.Visualizers {
     internal bool PlaybackActive => this.playbackActive;
     internal double PlaybackStartOffset => this.playbackStartOffset;
 
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() {
       return this.inputs ?? (this.inputs = Array.Empty<Input>());
     }

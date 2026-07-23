@@ -55,7 +55,7 @@ namespace Spectrum {
       }
     }
 
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() {
       return this.inputs ?? (this.inputs = new Input[0]);
     }
@@ -88,7 +88,7 @@ namespace Spectrum {
         snake.Enqueue(triangleSegments[0]);
       }
 
-      TriangleSegment nextTriangle = null;
+      TriangleSegment? nextTriangle = null;
 
       int attemptCount = 0;
       while (nextTriangle == null || snake.Contains(nextTriangle)) {
@@ -102,14 +102,17 @@ namespace Spectrum {
       if (snake.Count() > snakeLength) {
         SetTriangleColor(snake.Dequeue(), trailingColor);
       }
-      snake.Enqueue(nextTriangle);
-      SetTriangleColor(nextTriangle, snakeColor);
+      TriangleSegment selected = nextTriangle ?? triangleSegments[0];
+      snake.Enqueue(selected);
+      SetTriangleColor(selected, snakeColor);
     }
 
-    private TriangleSegment GetNextTriangle(TriangleSegment currentTriangle) {
+    private TriangleSegment? GetNextTriangle(
+      TriangleSegment currentTriangle
+    ) {
       int startingDirection = this.random.Next(0, 4);
       int direction = startingDirection;
-      TriangleSegment nextTriangle = null;
+      TriangleSegment? nextTriangle = null;
       while (true) {
         nextTriangle = GetDirectionalTriangle(currentTriangle, direction++);
         if (nextTriangle != null) {
@@ -126,7 +129,9 @@ namespace Spectrum {
       }
     }
 
-    private static TriangleSegment GetDirectionalTriangle(TriangleSegment currentTriangle, int direction) {
+    private static TriangleSegment? GetDirectionalTriangle(
+      TriangleSegment currentTriangle, int direction
+    ) {
       switch (direction) {
         case 0: return currentTriangle.SegmentToLeft;
         case 1: return currentTriangle.SegmentAbove;
@@ -155,10 +160,10 @@ namespace Spectrum {
     public Strut SecondStrut { get; }
     public Strut ThirdStrut { get; }
 
-    public TriangleSegment SegmentAbove { get; set; }
-    public TriangleSegment SegmentBelow { get; set; }
-    public TriangleSegment SegmentToLeft { get; set; }
-    public TriangleSegment SegmentToRight { get; set; }
+    public TriangleSegment? SegmentAbove { get; set; }
+    public TriangleSegment? SegmentBelow { get; set; }
+    public TriangleSegment? SegmentToLeft { get; set; }
+    public TriangleSegment? SegmentToRight { get; set; }
 
     public bool PointsUp { get; }
 

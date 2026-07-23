@@ -21,8 +21,8 @@ namespace Spectrum.Audio {
     private readonly BeatBroadcaster beat;
 
     private readonly object lifecycleLock = new object();
-    private Process process;
-    private Timer restartTimer;
+    private Process? process;
+    private Timer? restartTimer;
     private int restartGeneration;
 
     public MadmomHandler(Configuration config, AudioInput audio, BeatBroadcaster beat) {
@@ -36,7 +36,7 @@ namespace Spectrum.Audio {
       this.config.PropertyChanged += ConfigUpdated;
     }
 
-    private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
+    private void ConfigUpdated(object? sender, PropertyChangedEventArgs e) {
       if (e.PropertyName == nameof(this.config.audioDeviceID) ||
           e.PropertyName == nameof(this.config.beatInput)) {
         this.UpdateEnabled();
@@ -85,8 +85,11 @@ namespace Spectrum.Audio {
         return;
       }
 
-      MadmomRuntimePaths runtime = MadmomRuntimeLocator.Find(
-        Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+      string runtimeSearchDirectory =
+        Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ??
+        AppContext.BaseDirectory;
+      MadmomRuntimePaths? runtime = MadmomRuntimeLocator.Find(
+        runtimeSearchDirectory,
         OperatingSystem.IsWindows());
       if (runtime == null) {
         Debug.WriteLine(
@@ -97,10 +100,13 @@ namespace Spectrum.Audio {
         return;
       }
 
-      Process started = null;
+      Process? started = null;
       try {
         ProcessStartInfo start = new ProcessStartInfo();
-        start.WorkingDirectory = Path.GetDirectoryName(runtime.TrackerPath);
+        start.WorkingDirectory =
+          Path.GetDirectoryName(runtime.TrackerPath) ??
+          throw new InvalidOperationException(
+            "The Madmom tracker path has no parent directory.");
         start.FileName = runtime.PythonPath;
         start.ArgumentList.Add(runtime.TrackerPath);
         // Keep the legacy boolean form compatible with an already-created
@@ -137,7 +143,7 @@ namespace Spectrum.Audio {
       }
     }
 
-    private void ProcessExited(object sender, EventArgs e) {
+    private void ProcessExited(object? sender, EventArgs e) {
       var exited = sender as Process;
       if (exited == null) {
         return;
@@ -166,12 +172,12 @@ namespace Spectrum.Audio {
     }
 
     private void StopProcessLocked() {
-      Process toStop = this.process;
+      Process? toStop = this.process;
       this.process = null;
       this.DisposeProcess(toStop, true);
     }
 
-    private void DisposeProcess(Process target, bool terminate) {
+    private void DisposeProcess(Process? target, bool terminate) {
       if (target == null) {
         return;
       }
@@ -206,13 +212,15 @@ namespace Spectrum.Audio {
       );
     }
 
-    private void RestartProcess(object state) {
-      int generation = (int)state;
+    private void RestartProcess(object? state) {
+      if (state is not int generation) {
+        return;
+      }
       lock (this.lifecycleLock) {
         if (generation != this.restartGeneration) {
           return;
         }
-        Timer completedTimer = this.restartTimer;
+        Timer? completedTimer = this.restartTimer;
         this.restartTimer = null;
         completedTimer?.Dispose();
         this.TryStartProcessLocked();
@@ -221,13 +229,13 @@ namespace Spectrum.Audio {
 
     private void CancelRestartLocked() {
       this.restartGeneration++;
-      Timer cancelledTimer = this.restartTimer;
+      Timer? cancelledTimer = this.restartTimer;
       this.restartTimer = null;
       cancelledTimer?.Dispose();
     }
 
     private void BeatDetected(object sender, DataReceivedEventArgs e) {
-      string line = e.Data;
+      string? line = e.Data;
       if (line == null || !line.StartsWith("BEAT:")) {
         return;
       }

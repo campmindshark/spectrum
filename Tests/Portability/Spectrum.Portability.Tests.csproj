@@ -3,6 +3,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Spectrum.Portability.Tests</RootNamespace>
     <GenerateTestingPlatformEntryPoint>false</GenerateTestingPlatformEntryPoint>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Base\Base.csproj" />

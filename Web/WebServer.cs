@@ -36,11 +36,11 @@ namespace Spectrum.Web {
     private readonly SceneController scenes;
     private readonly PaletteController palettes;
     private readonly AudioDeviceController audio;
-    private readonly WebDomeSimulator domeSimulator;
-    private readonly Action<Exception> reportBackgroundError;
+    private readonly WebDomeSimulator? domeSimulator;
+    private readonly Action<Exception>? reportBackgroundError;
     private readonly int port;
-    private WebApplication app;
-    private Task hostLifetimeTask;
+    private WebApplication? app;
+    private Task? hostLifetimeTask;
 
     // Advisory-lock lease token, carried on writes to a locked resource and on
     // every calibration action.
@@ -57,8 +57,8 @@ namespace Spectrum.Web {
     // the native contract: once nobody holds the domeCalibration lease, a
     // still-active flow is auto-cancelled and the dome hands back to the normal
     // visualizers.
-    private CancellationTokenSource calibrationWatchdogCancellation;
-    private Task calibrationWatchdogTask;
+    private CancellationTokenSource? calibrationWatchdogCancellation;
+    private Task? calibrationWatchdogTask;
     private static readonly TimeSpan CalibrationWatchdogInterval =
       TimeSpan.FromSeconds(3);
 
@@ -74,9 +74,9 @@ namespace Spectrum.Web {
       SceneController scenes,
       PaletteController palettes,
       AudioDeviceController audio,
-      WebDomeSimulator domeSimulator,
+      WebDomeSimulator? domeSimulator,
       int port,
-      Action<Exception> reportBackgroundError = null
+      Action<Exception>? reportBackgroundError = null
     ) {
       this.controls = controls;
       this.events = events;
@@ -107,26 +107,26 @@ namespace Spectrum.Web {
       // Listen on all interfaces so phones on the LAN can reach it.
       builder.WebHost.UseUrls($"http://0.0.0.0:{this.port}");
 
-      this.app = builder.Build();
+      WebApplication app = builder.Build();
 
       if (this.domeSimulator != null) {
-        this.app.UseWebSockets();
+        app.UseWebSockets();
       }
-      this.app.UseDefaultFiles();
-      this.app.UseStaticFiles();
+      app.UseDefaultFiles();
+      app.UseStaticFiles();
 
-      this.MapApi(this.app);
+      this.MapApi(app);
 
       // Confirm the listener is bound before returning. Start() is called once
       // during window construction, where synchronously observing this short
       // startup operation is preferable to silently discarding a faulted
       // RunAsync task (for example when the port is already occupied).
       try {
-        this.app.StartAsync().GetAwaiter().GetResult();
-        this.hostLifetimeTask = this.app.WaitForShutdownAsync();
+        app.StartAsync().GetAwaiter().GetResult();
+        this.hostLifetimeTask = app.WaitForShutdownAsync();
+        this.app = app;
       } catch {
-        this.app.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        this.app = null;
+        app.DisposeAsync().AsTask().GetAwaiter().GetResult();
         throw;
       }
 
@@ -136,27 +136,34 @@ namespace Spectrum.Web {
     }
 
     public async Task StopAsync() {
-      if (this.calibrationWatchdogCancellation != null) {
-        this.calibrationWatchdogCancellation.Cancel();
+      CancellationTokenSource? watchdogCancellation =
+        this.calibrationWatchdogCancellation;
+      Task? watchdogTask = this.calibrationWatchdogTask;
+      if (watchdogCancellation != null) {
+        watchdogCancellation.Cancel();
         try {
-          await this.calibrationWatchdogTask.ConfigureAwait(false);
+          if (watchdogTask != null) {
+            await watchdogTask.ConfigureAwait(false);
+          }
         } catch (OperationCanceledException)
-            when (this.calibrationWatchdogCancellation.IsCancellationRequested) {
+            when (watchdogCancellation.IsCancellationRequested) {
           // Cancellation is the normal watchdog shutdown path.
         } finally {
-          this.calibrationWatchdogCancellation.Dispose();
+          watchdogCancellation.Dispose();
           this.calibrationWatchdogCancellation = null;
           this.calibrationWatchdogTask = null;
         }
       }
-      if (this.app != null) {
-        await this.app.StopAsync(TimeSpan.FromSeconds(2))
+      WebApplication? app = this.app;
+      if (app != null) {
+        await app.StopAsync(TimeSpan.FromSeconds(2))
           .ConfigureAwait(false);
-        if (this.hostLifetimeTask != null) {
-          await this.hostLifetimeTask.ConfigureAwait(false);
+        Task? hostLifetimeTask = this.hostLifetimeTask;
+        if (hostLifetimeTask != null) {
+          await hostLifetimeTask.ConfigureAwait(false);
           this.hostLifetimeTask = null;
         }
-        await this.app.DisposeAsync().ConfigureAwait(false);
+        await app.DisposeAsync().ConfigureAwait(false);
         this.app = null;
       }
     }
@@ -206,10 +213,10 @@ namespace Spectrum.Web {
       // The routes do not exist when the startup feature flag is false. Merely
       // loading the control page therefore cannot activate or poll a disabled
       // simulator component.
-      if (this.domeSimulator != null) {
+      if (this.domeSimulator is WebDomeSimulator domeSimulator) {
         app.MapGet("/api/dome-simulator/geometry", () =>
-          Results.Json(this.domeSimulator.Geometry()));
-        app.Map("/api/dome-simulator/frames", this.domeSimulator.StreamAsync);
+          Results.Json(domeSimulator.Geometry()));
+        app.Map("/api/dome-simulator/frames", domeSimulator.StreamAsync);
       }
 
       // ---- Global engine on/off (the Start/Stop button) ----
@@ -235,7 +242,7 @@ namespace Spectrum.Web {
         Results.Json(await this.controls.DescribeAsync(ControlRole.User)));
 
       app.MapGet("/api/parameters/{key}", async (string key) => {
-        ParameterView view = await this.controls.ReadAsync(
+        ParameterView? view = await this.controls.ReadAsync(
           key, ControlRole.User);
         return view == null ? Results.NotFound() : Results.Json(view);
       });
@@ -250,8 +257,8 @@ namespace Spectrum.Web {
       app.MapGet("/api/layers", async () =>
         Results.Json(await this.layers.StateAsync()));
 
-      app.MapPut("/api/layers", async (LayersBody body) => {
-        (bool ok, string error) = await this.layers.ReplaceAsync(body?.layers);
+      app.MapPut("/api/layers", async (LayersBody? body) => {
+        (bool ok, string? error) = await this.layers.ReplaceAsync(body?.layers);
         return ok
           ? Results.Json(await this.layers.StateAsync())
           : Results.BadRequest(new { error });
@@ -261,7 +268,7 @@ namespace Spectrum.Web {
       // fire counter so a triggerable layer fires once. Not a stack edit, so it
       // returns no body and doesn't broadcast a "layers" frame.
       app.MapPost("/api/layers/{instanceId}/fire", async (string instanceId) => {
-        (bool ok, string error) = await this.layers.FireAsync(instanceId);
+        (bool ok, string? error) = await this.layers.FireAsync(instanceId);
         return ok ? Results.Ok() : Results.BadRequest(new { error });
       });
 
@@ -269,7 +276,7 @@ namespace Spectrum.Web {
       // clear counter so a layer holding live state (Shooting Star) drops it.
       // Parallel to fire — no body, no "layers" frame.
       app.MapPost("/api/layers/{instanceId}/clear", async (string instanceId) => {
-        (bool ok, string error) = await this.layers.ClearAsync(instanceId);
+        (bool ok, string? error) = await this.layers.ClearAsync(instanceId);
         return ok ? Results.Ok() : Results.BadRequest(new { error });
       });
 
@@ -281,22 +288,22 @@ namespace Spectrum.Web {
       app.MapGet("/api/scenes", async () =>
         Results.Json(await this.scenes.StateAsync()));
 
-      app.MapPost("/api/scenes", async (SceneBody body) => {
-        (bool ok, string error) = await this.scenes.SaveAsync(body?.name);
+      app.MapPost("/api/scenes", async (SceneBody? body) => {
+        (bool ok, string? error) = await this.scenes.SaveAsync(body?.name);
         return ok
           ? Results.Json(await this.scenes.StateAsync())
           : Results.BadRequest(new { error });
       });
 
       app.MapPost("/api/scenes/{name}/apply", async (string name) => {
-        (bool ok, string error) = await this.scenes.ApplyAsync(name);
+        (bool ok, string? error) = await this.scenes.ApplyAsync(name);
         return ok
           ? Results.Json(await this.scenes.StateAsync())
           : Results.BadRequest(new { error });
       });
 
       app.MapDelete("/api/scenes/{name}", async (string name) => {
-        (bool ok, string error) = await this.scenes.DeleteAsync(name);
+        (bool ok, string? error) = await this.scenes.DeleteAsync(name);
         return ok
           ? Results.Json(await this.scenes.StateAsync())
           : Results.BadRequest(new { error });
@@ -308,8 +315,8 @@ namespace Spectrum.Web {
       app.MapGet("/api/palettes", async () =>
         Results.Json(await this.palettes.StateAsync()));
 
-      app.MapPost("/api/palettes", async (PaletteBody body) => {
-        (bool ok, string error) = await this.palettes.AddAsync(
+      app.MapPost("/api/palettes", async (PaletteBody? body) => {
+        (bool ok, string? error) = await this.palettes.AddAsync(
           body?.name, body?.sourceName);
         return ok
           ? Results.Json(await this.palettes.StateAsync())
@@ -317,9 +324,9 @@ namespace Spectrum.Web {
       });
 
       app.MapPut("/api/palettes/{name}", async (
-        string name, PaletteLiveBody body
+        string name, PaletteLiveBody? body
       ) => {
-        (bool ok, string error) = await this.palettes.SetColorsAsync(
+        (bool ok, string? error) = await this.palettes.SetColorsAsync(
           name, body?.colors);
         return ok
           ? Results.Json(await this.palettes.StateAsync())
@@ -327,9 +334,9 @@ namespace Spectrum.Web {
       });
 
       app.MapPost("/api/palettes/{name}/rename", async (
-        string name, PaletteRenameBody body
+        string name, PaletteRenameBody? body
       ) => {
-        (bool ok, string error) = await this.palettes.RenameAsync(
+        (bool ok, string? error) = await this.palettes.RenameAsync(
           name, body?.newName);
         return ok
           ? Results.Json(await this.palettes.StateAsync())
@@ -337,7 +344,7 @@ namespace Spectrum.Web {
       });
 
       app.MapDelete("/api/palettes/{name}", async (string name) => {
-        (bool ok, string error) = await this.palettes.DeleteAsync(name);
+        (bool ok, string? error) = await this.palettes.DeleteAsync(name);
         return ok
           ? Results.Json(await this.palettes.StateAsync())
           : Results.BadRequest(new { error });
@@ -375,7 +382,7 @@ namespace Spectrum.Web {
           ControlRole.Maintenance)));
 
       app.MapGet("/api/maintenance/parameters/{key}", async (string key) => {
-        ParameterView view = await this.controls.ReadAsync(
+        ParameterView? view = await this.controls.ReadAsync(
           key, ControlRole.Maintenance);
         return view == null ? Results.NotFound() : Results.Json(view);
       });
@@ -402,13 +409,15 @@ namespace Spectrum.Web {
       app.MapPost("/api/maintenance/locks/{resource}", async (string resource, HttpContext ctx) => {
         string holderName = "operator";
         try {
-          AcquireBody body = await ctx.Request.ReadFromJsonAsync<AcquireBody>();
+          AcquireBody? body =
+            await ctx.Request.ReadFromJsonAsync<AcquireBody>();
           if (!string.IsNullOrWhiteSpace(body?.holderName)) {
             holderName = body.holderName;
           }
         } catch (JsonException) { /* empty body is fine */ }
 
-        string token = this.locks.TryAcquire(resource, holderName, out var current);
+        string? token = this.locks.TryAcquire(
+          resource, holderName, out AdvisoryLockManager.LockInfo current);
         if (token == null) {
           // Held by someone else.
           return Results.Json(new { error = "locked", holder = current },
@@ -418,14 +427,14 @@ namespace Spectrum.Web {
       });
 
       app.MapPost("/api/maintenance/locks/{resource}/heartbeat", (string resource, HttpContext ctx) => {
-        string token = ctx.Request.Headers[LockTokenHeader];
+        string token = ctx.Request.Headers[LockTokenHeader].ToString();
         return this.locks.TryRenew(resource, token)
           ? Results.Ok()
           : Results.Json(new { error = "not holder" }, statusCode: StatusCodes.Status409Conflict);
       });
 
       app.MapDelete("/api/maintenance/locks/{resource}", (string resource, HttpContext ctx) => {
-        string token = ctx.Request.Headers[LockTokenHeader];
+        string token = ctx.Request.Headers[LockTokenHeader].ToString();
         this.locks.TryRelease(resource, token);
         return Results.Ok();
       });
@@ -441,47 +450,48 @@ namespace Spectrum.Web {
         Results.Json(await this.calibration.StateAsync()));
 
       app.MapPost("/api/maintenance/calibration/start",
-        ([FromHeader(Name = LockTokenHeader)] string token) =>
+        ([FromHeader(Name = LockTokenHeader)] string? token) =>
           this.RunCalibration(token, c => c.StartAsync()));
 
       app.MapPost("/api/maintenance/calibration/navigate",
-        ([FromHeader(Name = LockTokenHeader)] string token,
-         DirectionBody body) =>
+        ([FromHeader(Name = LockTokenHeader)] string? token,
+         DirectionBody? body) =>
           this.RunCalibration(
             token, c => c.NavigateAsync(body?.direction ?? 0)));
 
       app.MapPost("/api/maintenance/calibration/confirm",
-        ([FromHeader(Name = LockTokenHeader)] string token) =>
+        ([FromHeader(Name = LockTokenHeader)] string? token) =>
           this.RunCalibration(token, c => c.ConfirmAsync()));
 
       app.MapPost("/api/maintenance/calibration/back",
-        ([FromHeader(Name = LockTokenHeader)] string token) =>
+        ([FromHeader(Name = LockTokenHeader)] string? token) =>
           this.RunCalibration(token, c => c.BackAsync()));
 
       app.MapPost("/api/maintenance/calibration/select-box",
-        ([FromHeader(Name = LockTokenHeader)] string token, BoxBody body) =>
+        ([FromHeader(Name = LockTokenHeader)] string? token, BoxBody? body) =>
           this.RunCalibration(
             token, c => c.SelectBoxAsync(body?.box ?? -1)));
 
       app.MapPost("/api/maintenance/calibration/apply-box-one",
-        ([FromHeader(Name = LockTokenHeader)] string token) =>
+        ([FromHeader(Name = LockTokenHeader)] string? token) =>
           this.RunCalibration(token, c => c.ApplyBoxOneAsync()));
 
       app.MapPost("/api/maintenance/calibration/recalibrate-box",
-        ([FromHeader(Name = LockTokenHeader)] string token, BoxBody body) =>
+        ([FromHeader(Name = LockTokenHeader)] string? token, BoxBody? body) =>
           this.RunCalibration(
             token, c => c.RecalibrateBoxAsync(body?.box ?? -1)));
 
       app.MapPost("/api/maintenance/calibration/cancel",
-        ([FromHeader(Name = LockTokenHeader)] string token) =>
+        ([FromHeader(Name = LockTokenHeader)] string? token) =>
           this.RunCalibration(token, c => c.CancelAsync()));
 
       app.MapPost("/api/maintenance/calibration/save",
-        async ([FromHeader(Name = LockTokenHeader)] string token) => {
+        async ([FromHeader(Name = LockTokenHeader)] string? token) => {
           if (!this.locks.HoldsLock(LockPolicy.DomeCalibration, token)) {
             return this.CalibrationLocked();
           }
-          (bool ok, string error, var state) = await this.calibration.SaveAsync();
+          (bool ok, string? error, var state) =
+            await this.calibration.SaveAsync();
           return ok
             ? Results.Json(state)
             : Results.BadRequest(new { error, state });
@@ -532,7 +542,7 @@ namespace Spectrum.Web {
     // with the current holder if the caller doesn't hold the lease, or 400 if
     // the action rejects its argument.
     private async Task<IResult> RunCalibration(
-      string token,
+      string? token,
       Func<DomeCalibrationController, Task<DomeCalibrationController.CalibrationState>> action
     ) {
       if (!this.locks.HoldsLock(LockPolicy.DomeCalibration, token)) {
@@ -586,7 +596,7 @@ namespace Spectrum.Web {
     }
 
     private async Task<IResult> HandleWrite(string key, HttpContext ctx, ControlRole role) {
-      WriteBody body;
+      WriteBody? body;
       try {
         body = await ctx.Request.ReadFromJsonAsync<WriteBody>();
       } catch (JsonException) {
@@ -605,9 +615,9 @@ namespace Spectrum.Web {
 
       // Advisory-lock gate: if this parameter is part of a modal resource that
       // another user currently holds, refuse the write.
-      string resource = LockPolicy.ResourceForKey(key);
+      string? resource = LockPolicy.ResourceForKey(key);
       if (resource != null) {
-        string token = ctx.Request.Headers[LockTokenHeader];
+        string token = ctx.Request.Headers[LockTokenHeader].ToString();
         if (!this.locks.CanWrite(resource, token)) {
           return Results.Json(
             new { error = "locked", holder = this.locks.Get(resource) },
@@ -637,7 +647,8 @@ namespace Spectrum.Web {
         case JsonValueKind.False:
           return false;
         case JsonValueKind.String:
-          return value.GetString();
+          return value.GetString() ?? throw new ArgumentException(
+            "string value is unavailable");
         case JsonValueKind.Number:
           return value.GetDouble();
         case JsonValueKind.Null:
@@ -664,7 +675,7 @@ namespace Spectrum.Web {
     }
 
     private sealed class AcquireBody {
-      public string holderName { get; set; }
+      public string? holderName { get; set; }
     }
 
     private sealed class DirectionBody {
@@ -676,28 +687,28 @@ namespace Spectrum.Web {
     }
 
     private sealed class LayersBody {
-      public System.Collections.Generic.List<LayersController.LayerDto> layers {
+      public System.Collections.Generic.List<LayersController.LayerDto?>? layers {
         get; set;
       }
     }
 
     private sealed class SceneBody {
-      public string name { get; set; }
+      public string? name { get; set; }
     }
 
     private sealed class PaletteBody {
-      public string name { get; set; }
-      public string sourceName { get; set; }
+      public string? name { get; set; }
+      public string? sourceName { get; set; }
     }
 
     private sealed class PaletteLiveBody {
-      public System.Collections.Generic.List<PaletteController.SlotDto> colors {
+      public System.Collections.Generic.List<PaletteController.SlotDto>? colors {
         get; set;
       }
     }
 
     private sealed class PaletteRenameBody {
-      public string newName { get; set; }
+      public string? newName { get; set; }
     }
   }
 }

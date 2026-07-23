@@ -53,7 +53,7 @@ namespace Spectrum.Visualizers {
     public DomeFrame LayerBuffer => this.buffer;
     public bool Enabled { get; set; }
 
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() =>
       this.inputs ?? (this.inputs = new Input[] {
         this.audio, this.orientationInput,
@@ -340,7 +340,7 @@ namespace Spectrum.Visualizers {
       double audioLevel,
       IReadOnlyList<Vector3> wandAims,
       int interactionMode = 0,
-      IReadOnlyList<Vector3> wandMotions = null
+      IReadOnlyList<Vector3>? wandMotions = null
     ) {
       double elapsed = Math.Clamp(elapsedSeconds, 0, 0.1);
       if (elapsed <= 0) {

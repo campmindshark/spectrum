@@ -163,10 +163,10 @@ namespace Spectrum.Base {
   // publishing any of them.
   public sealed record DomeShowStateUpdate(
     List<DomeLayerSettings> Layers,
-    List<DomePalette> Palettes,
+    List<DomePalette>? Palettes,
     double GlobalFadeSpeed,
     double GlobalHueSpeed,
-    List<DomeScene> Scenes
+    List<DomeScene>? Scenes
   ) {
     public bool PalettesChanged { get; init; } = true;
     public bool ScenesChanged { get; init; } = true;

@@ -23,15 +23,15 @@ namespace Spectrum {
     private readonly BeatBroadcaster beat;
     // The orientation-device source behind the compact wand-spotlight panel.
     private readonly OrientationInput orientation;
-    private DomeLayersController domeLayersController;
-    private DomeScenesController domeScenesController;
-    private DomePalettesController domePalettesController;
+    private DomeLayersController? domeLayersController;
+    private DomeScenesController? domeScenesController;
+    private DomePalettesController? domePalettesController;
 
     // Backing collection for the wand-spotlight ListView, reconciled in place
     // each poll (keyed by device id, kept sorted) so the list doesn't flicker.
     private readonly ObservableCollection<WandRow> wandRows =
       new ObservableCollection<WandRow>();
-    private DispatcherTimer wandTimer;
+    private DispatcherTimer? wandTimer;
     // Set while UpdateSpotlightSelection pushes state into the radios, so the
     // radios' own checked-handlers don't write config back (which would recurse).
     private bool suppressSpotlightWrites;
@@ -127,7 +127,7 @@ namespace Spectrum {
     }
 
     // Repoint the eight editor rows at the selected named live palette.
-    private void BindPalette(DomePalette palette) {
+    private void BindPalette(DomePalette? palette) {
       var colorConverter = new ColorConverter();
       for (int row = 0; row < DomePalette.SlotCount; row++) {
         for (int whichColor = 0; whichColor < 2; whichColor++) {
@@ -154,8 +154,8 @@ namespace Spectrum {
       FrameworkElement element,
       DependencyProperty property,
       BindingMode mode = BindingMode.TwoWay,
-      IValueConverter converter = null,
-      object source = null
+      IValueConverter? converter = null,
+      object? source = null
     ) {
       var binding = new System.Windows.Data.Binding(configPath);
       binding.Source = source != null ? source : this.config;
@@ -211,7 +211,7 @@ namespace Spectrum {
       this.RefreshWands(null, null);
     }
 
-    private void WandPanelClosed(object sender, EventArgs e) {
+    private void WandPanelClosed(object? sender, EventArgs e) {
       if (this.wandTimer != null) {
         this.wandTimer.Stop();
         this.wandTimer.Tick -= this.RefreshWands;
@@ -220,7 +220,9 @@ namespace Spectrum {
       this.config.PropertyChanged -= this.ConfigPropertyChanged;
     }
 
-    private void ConfigPropertyChanged(object sender, PropertyChangedEventArgs e) {
+    private void ConfigPropertyChanged(
+      object? sender, PropertyChangedEventArgs e
+    ) {
       if (e.PropertyName == nameof(this.config.orientationDeviceSpotlight)) {
         // The write can originate off the UI thread (OrientationInput's timeout
         // path), so marshal before touching the radios.
@@ -229,7 +231,7 @@ namespace Spectrum {
       }
     }
 
-    private void RefreshWands(object sender, EventArgs e) {
+    private void RefreshWands(object? sender, EventArgs? e) {
       var snapshot = this.orientation.DevicesSnapshot();
       var statsSnapshot = this.orientation.ConnectionStatsSnapshot();
 

@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -798,7 +799,7 @@ namespace Spectrum.LEDs {
       return true;
     }
 
-    public bool TryTakeSimulatorFrame(out int[]? frame) {
+    public bool TryTakeSimulatorFrame([NotNullWhen(true)] out int[]? frame) {
       lock (this.simulatorFrameGate) {
         frame = this.latestSimulatorFrame;
         this.latestSimulatorFrame = null;

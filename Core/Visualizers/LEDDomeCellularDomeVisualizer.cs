@@ -77,7 +77,7 @@ namespace Spectrum {
     public DomeFrame LayerBuffer => this.buffer;
     public bool Enabled { get; set; }
 
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() =>
       this.inputs ?? (this.inputs = new Input[] { this.orientationInput });
 
@@ -167,7 +167,9 @@ namespace Spectrum {
         return;
       }
       bool spotlightMoving = spotlight >= 0 &&
-        devices.TryGetValue(spotlight, out OrientationDevice spotlightDevice) &&
+        devices.TryGetValue(
+          spotlight, out OrientationDevice? spotlightDevice) &&
+        spotlightDevice != null &&
         spotlightDevice.isMoving;
 
       foreach (KeyValuePair<int, OrientationDevice> entry in devices) {

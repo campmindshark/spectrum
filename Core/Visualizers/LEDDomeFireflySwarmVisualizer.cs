@@ -49,7 +49,7 @@ namespace Spectrum.Visualizers {
     public DomeFrame LayerBuffer => this.buffer;
     public bool Enabled { get; set; }
 
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() =>
       this.inputs ?? (this.inputs = new Input[] {
         this.audio, this.orientationInput,

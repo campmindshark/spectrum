@@ -23,7 +23,7 @@ namespace Spectrum.Web {
     // ListView, so the heuristic lives in the view layer either way.
     public sealed class WandStatusRow {
       public int deviceId { get; set; }
-      public string typeName { get; set; }
+      public string typeName { get; set; } = "";
       // 0 = no button held, otherwise the button number.
       public int actionFlag { get; set; }
       // Whether the device's motion detection considers it physically in use;

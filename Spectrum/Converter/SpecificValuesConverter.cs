@@ -8,52 +8,52 @@ using System.Windows.Media;
 
 namespace Spectrum {
 
-  class SpecificValuesConverter<F, T> : IValueConverter {
+  class SpecificValuesConverter<F, T> : IValueConverter
+      where F : notnull
+      where T : notnull {
 
     private readonly Dictionary<F, T> converterDictionary;
-    private readonly Dictionary<T, F> invertedDictionary;
+    private readonly Dictionary<T, F>? invertedDictionary;
 
     // Note that to be bidirectional, values must be unique
     public SpecificValuesConverter(Dictionary<F, T> converterDictionary, bool bidirectional = false) {
-      this.converterDictionary = converterDictionary;
+      this.converterDictionary = converterDictionary ??
+        throw new ArgumentNullException(nameof(converterDictionary));
       this.invertedDictionary = bidirectional
         ? converterDictionary.ToDictionary(x => x.Value, x => x.Key)
         : null;
     }
 
-    public object Convert(
-      object value,
+    public object? Convert(
+      object? value,
       Type targetType,
-      object parameter,
+      object? parameter,
       System.Globalization.CultureInfo culture
     ) {
-      if (!(value is F)) {
+      if (value is not F castValue) {
         return value;
       }
-      F castValue = (F)value;
-      if (!converterDictionary.ContainsKey(castValue)) {
-        return value;
-      }
-      return converterDictionary[castValue];
+      return this.converterDictionary.TryGetValue(castValue, out T? converted)
+        ? converted
+        : value;
     }
 
-    public object ConvertBack(
-      object value,
+    public object? ConvertBack(
+      object? value,
       Type targetType,
-      object parameter,
+      object? parameter,
       System.Globalization.CultureInfo culture
     ) {
       if (this.invertedDictionary == null) {
         return value;
       }
-      if (!(value is T)) {
+      if (value is not T castValue) {
         return value;
       }
-      T castValue = (T)value;
-      if (!invertedDictionary.ContainsKey(castValue)) {
-        return value;
-      }
-      return invertedDictionary[castValue];
+      return this.invertedDictionary.TryGetValue(
+        castValue, out F? converted)
+        ? converted
+        : value;
     }
 
   }

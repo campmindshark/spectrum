@@ -3,6 +3,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Spectrum.LayerPipeline.Tests</RootNamespace>
     <AssemblyName>Spectrum.LayerPipeline.TestSupport</AssemblyName>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Base\Base.csproj" />

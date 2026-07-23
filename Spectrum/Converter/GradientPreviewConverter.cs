@@ -40,7 +40,7 @@ namespace Spectrum {
       throw new NotSupportedException();
     }
 
-    private static MediaColor? AsColor(object value) {
+    private static MediaColor? AsColor(object? value) {
       return value is MediaColor color ? color : (MediaColor?)null;
     }
   }

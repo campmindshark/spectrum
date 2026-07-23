@@ -16,14 +16,14 @@ namespace Spectrum.Audio {
     private readonly IRuntimeSettingsConfiguration runtimeSettings;
     private readonly bool connectHardware;
 
-    private MMDevice recordingDevice;
-    private WasapiCapture captureStream;
+    private MMDevice? recordingDevice;
+    private WasapiCapture? captureStream;
 
     private volatile float volume;
     public float Volume => this.volume;
-    private string lastError;
+    private string? lastError;
     public string BackendName => "WASAPI";
-    public string LastError => Volatile.Read(ref this.lastError);
+    public string? LastError => Volatile.Read(ref this.lastError);
 
     private readonly MadmomHandler madmomHandler;
     // `beat` is the tempo service the beat detector reports into (owned by the
@@ -94,7 +94,7 @@ namespace Spectrum.Audio {
       if (settings.DeviceId == null) {
         throw new Exception("audioDeviceID not set!");
       }
-      MMDevice device = null;
+      MMDevice? device = null;
       using (var enumerator = new MMDeviceEnumerator()) {
         var iterator = enumerator.EnumerateAudioEndPoints(
           DataFlow.Capture,
@@ -113,7 +113,7 @@ namespace Spectrum.Audio {
           "Configured audioDeviceID not found among active capture devices!"
         );
       }
-      WasapiCapture capture = null;
+      WasapiCapture? capture = null;
       try {
         var bitrate = device.AudioClient.MixFormat.BitsPerSample;
         capture = new WasapiCapture(device, false, bitrate);
@@ -148,7 +148,7 @@ namespace Spectrum.Audio {
     }
 
     private void TerminateAudio() {
-      WasapiCapture capture = this.captureStream;
+      WasapiCapture? capture = this.captureStream;
       this.captureStream = null;
       if (capture != null) {
         // Detach the handler before stopping: StopRecording can raise a final
@@ -166,7 +166,7 @@ namespace Spectrum.Audio {
           Debug.WriteLine("AudioInput: error disposing capture: " + e);
         }
       }
-      MMDevice device = this.recordingDevice;
+      MMDevice? device = this.recordingDevice;
       this.recordingDevice = null;
       if (device != null) {
         try {
@@ -179,7 +179,7 @@ namespace Spectrum.Audio {
       this.volume = 0.0f;
     }
 
-    private void Update(object sender, NAudio.Wave.WaveInEventArgs args) {
+    private void Update(object? sender, NAudio.Wave.WaveInEventArgs args) {
       // The capture thread can still deliver a buffer as TerminateAudio nulls
       // recordingDevice; read it into a local and bail if it's already gone.
       var device = this.recordingDevice;
@@ -230,7 +230,7 @@ namespace Spectrum.Audio {
 
     public int CurrentAudioDeviceIndex {
       get {
-        string deviceId =
+        string? deviceId =
           this.runtimeSettings.AudioSettingsSnapshot.DeviceId;
         if (deviceId == null) {
           return -1;

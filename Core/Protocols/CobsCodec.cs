@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Spectrum {
 
@@ -24,7 +25,10 @@ namespace Spectrum {
     // Standard COBS decode. Returns false (with decoded = null) for a malformed
     // frame — an overlong code jump that runs past the end of the input — or for
     // a decoded length below MinDecodedLength.
-    public static bool TryDecode(ReadOnlySpan<byte> encoded, out byte[] decoded) {
+    public static bool TryDecode(
+      ReadOnlySpan<byte> encoded,
+      [NotNullWhen(true)] out byte[]? decoded
+    ) {
       decoded = null;
       if (encoded.Length == 0) {
         return false;

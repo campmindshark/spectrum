@@ -4,6 +4,8 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>MIDI</RootNamespace>
     <AssemblyName>MIDI</AssemblyName>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>

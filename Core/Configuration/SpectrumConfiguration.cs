@@ -12,12 +12,12 @@ namespace Spectrum {
       ILayerStackSnapshotSource, IDomeShowStateConfiguration,
       IRuntimeSettingsConfiguration, ConfigurationEditor {
 
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     // Set once by the application composition root after deserialization.
     // Tests and serializer-only callers may leave it unset and use the
     // configuration synchronously on their own thread.
-    private ApplicationStateDispatcher mutationDispatcher;
+    private ApplicationStateDispatcher? mutationDispatcher;
 
     public void AttachMutationDispatcher(
       ApplicationStateDispatcher dispatcher
@@ -29,7 +29,7 @@ namespace Spectrum {
         throw new System.InvalidOperationException(
           "The configuration dispatcher must be attached on its owner thread.");
       }
-      ApplicationStateDispatcher existing = Interlocked.CompareExchange(
+      ApplicationStateDispatcher? existing = Interlocked.CompareExchange(
         ref this.mutationDispatcher, dispatcher, null);
       if (existing != null && !ReferenceEquals(existing, dispatcher)) {
         throw new System.InvalidOperationException(
@@ -40,7 +40,7 @@ namespace Spectrum {
     private bool DispatchMutationIfRequired<T>(
       string propertyName, T value
     ) {
-      ApplicationStateDispatcher dispatcher =
+      ApplicationStateDispatcher? dispatcher =
         Volatile.Read(ref this.mutationDispatcher);
       if (dispatcher == null || dispatcher.CheckAccess()) {
         return false;
@@ -49,7 +49,7 @@ namespace Spectrum {
       // Property setters converge here even when a future producer forgets to
       // use the dispatcher explicitly. Resolve the setter before queueing so a
       // programming error is reported on the calling thread.
-      System.Reflection.PropertyInfo property =
+      System.Reflection.PropertyInfo? property =
         this.GetType().GetProperty(propertyName);
       if (property == null || !property.CanWrite) {
         throw new System.InvalidOperationException(
@@ -60,7 +60,7 @@ namespace Spectrum {
     }
 
     private bool DispatchMutationIfRequired(Action mutation) {
-      ApplicationStateDispatcher dispatcher =
+      ApplicationStateDispatcher? dispatcher =
         Volatile.Read(ref this.mutationDispatcher);
       if (dispatcher == null || dispatcher.CheckAccess()) {
         return false;
@@ -70,8 +70,8 @@ namespace Spectrum {
     }
 
     private void SetField<T>(ref T field, T value,
-        Action publish = null,
-        [CallerMemberName] string name = null) {
+        Action? publish = null,
+        [CallerMemberName] string name = "") {
       if (this.DispatchMutationIfRequired(name, value)) {
         return;
       }
@@ -83,8 +83,8 @@ namespace Spectrum {
       this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    private string _audioDeviceID = null;
-    public string audioDeviceID {
+    private string? _audioDeviceID;
+    public string? audioDeviceID {
       get => _audioDeviceID;
       set => SetField(ref _audioDeviceID, value, this.PublishAudioSettings);
     }
@@ -154,7 +154,7 @@ namespace Spectrum {
     }
     // Empty or omitted document collections are projected as cached empty
     // immutable views.
-    private List<DomeLayerSettings> _domeLayerStack = null;
+    private List<DomeLayerSettings> _domeLayerStack = new();
     private ImmutableArray<DomeLayerView> _domeLayerStackView =
       ImmutableArray<DomeLayerView>.Empty;
     private static readonly LayerStackService layerStackService =
@@ -165,7 +165,7 @@ namespace Spectrum {
       this._domeLayerStackView;
 
     public void ReplaceDomeLayerStack(
-      IReadOnlyList<DomeLayerSettings> value
+      IReadOnlyList<DomeLayerSettings>? value
     ) {
       List<DomeLayerSettings> detached =
         ConfigurationGraphCopy.Layers(value);
@@ -190,15 +190,15 @@ namespace Spectrum {
       PrepareLayerStack(List<DomeLayerSettings> value) {
       List<DomeLayerSettings> published = value;
       if (NeedsLayerInstanceIds(value)) {
-        (List<DomeLayerSettings> normalized, string error) =
+        (List<DomeLayerSettings>? normalized, string? error) =
             layerStackService.Normalize(value);
-        if (error == null) {
+        if (error == null && normalized != null) {
           published = normalized;
         }
       }
-      (LayerStackSnapshot snapshot, string snapshotError) =
+      (LayerStackSnapshot? snapshot, string? snapshotError) =
         layerStackService.CreateSnapshot(published);
-      if (snapshotError != null) {
+      if (snapshotError != null || snapshot == null) {
         snapshot = LayerStackSnapshot.Empty;
       }
       return (published, snapshot);
@@ -220,13 +220,13 @@ namespace Spectrum {
     }
     // An empty mapping remains empty in the live view; LEDDomeOutput treats it
     // as identity wiring.
-    private int[] _domeCableMapping = null;
+    private int[] _domeCableMapping = System.Array.Empty<int>();
     private ImmutableArray<int> _domeCableMappingView =
       ImmutableArray<int>.Empty;
     public ImmutableArray<int> domeCableMapping =>
       this._domeCableMappingView;
 
-    public void ReplaceDomeCableMapping(IReadOnlyList<int> value) {
+    public void ReplaceDomeCableMapping(IReadOnlyList<int>? value) {
       int[] detached = ConfigurationGraphCopy.Array(value);
       if (this.DispatchMutationIfRequired(
           () => this.ReplaceDomeCableMapping(detached))) {
@@ -241,16 +241,17 @@ namespace Spectrum {
     }
     // Five independently owned mappings, one for each dome-side box. Detached
     // document DTOs are deep-cloned into private storage and immutable views.
-    private DomePortMapping[] _domePortMappings = null;
+    private DomePortMapping?[] _domePortMappings =
+      System.Array.Empty<DomePortMapping?>();
     private ImmutableArray<ImmutableArray<int>> _domePortMappingsView =
       ImmutableArray<ImmutableArray<int>>.Empty;
     public ImmutableArray<ImmutableArray<int>> domePortMappings =>
       this._domePortMappingsView;
 
     public void ReplaceDomePortMappings(
-      IReadOnlyList<DomePortMapping> value
+      IReadOnlyList<DomePortMapping?>? value
     ) {
-      DomePortMapping[] detached =
+      DomePortMapping?[] detached =
         ConfigurationGraphCopy.PortMappings(value);
       if (this.DispatchMutationIfRequired(
           () => this.ReplaceDomePortMappings(detached))) {
@@ -263,14 +264,14 @@ namespace Spectrum {
     }
 
     private static ImmutableArray<ImmutableArray<int>> CompilePortMappings(
-      IReadOnlyList<DomePortMapping> mappings
+      IReadOnlyList<DomePortMapping?>? mappings
     ) {
       if (mappings == null || mappings.Count == 0) {
         return ImmutableArray<ImmutableArray<int>>.Empty;
       }
       var result = ImmutableArray.CreateBuilder<ImmutableArray<int>>(
         mappings.Count);
-      foreach (DomePortMapping mapping in mappings) {
+      foreach (DomePortMapping? mapping in mappings) {
         result.Add(mapping?.ports == null
           ? ImmutableArray<int>.Empty
           : ImmutableArray.CreateRange(mapping.ports));
@@ -317,12 +318,12 @@ namespace Spectrum {
       }
     }
     // Null private storage is projected as an empty immutable view.
-    private List<DomeScene> _domeScenes = null;
+    private List<DomeScene> _domeScenes = new();
     private ImmutableArray<DomeSceneView> _domeScenesView =
       ImmutableArray<DomeSceneView>.Empty;
     public ImmutableArray<DomeSceneView> domeScenes => this._domeScenesView;
 
-    public void ReplaceDomeScenes(IReadOnlyList<DomeScene> value) {
+    public void ReplaceDomeScenes(IReadOnlyList<DomeScene>? value) {
       List<DomeScene> detached = ConfigurationGraphCopy.Scenes(value);
       if (this.DispatchMutationIfRequired(
           () => this.ReplaceDomeScenes(detached))) {
@@ -334,11 +335,11 @@ namespace Spectrum {
       this.RaisePropertyChanged(nameof(this.domeScenes));
     }
     // Null private storage is projected as an empty immutable view.
-    private List<DomePalette> _domePalettes = null;
+    private List<DomePalette> _domePalettes = new();
     public ImmutableArray<DomePaletteSnapshot> domePalettes =>
       this.compiledDomePalettes;
 
-    public void ReplaceDomePalettes(IReadOnlyList<DomePalette> value) {
+    public void ReplaceDomePalettes(IReadOnlyList<DomePalette>? value) {
       List<DomePalette> detached = ConfigurationGraphCopy.Palettes(value);
       if (this.DispatchMutationIfRequired(
           () => this.ReplaceDomePalettes(detached))) {
@@ -383,7 +384,7 @@ namespace Spectrum {
             PalettesChanged = update.PalettesChanged,
             ScenesChanged = update.ScenesChanged,
           };
-      ApplicationStateDispatcher dispatcher =
+      ApplicationStateDispatcher? dispatcher =
         Volatile.Read(ref this.mutationDispatcher);
       if (dispatcher != null && !dispatcher.CheckAccess()) {
         dispatcher.Post(() => this.ApplyDomeShowState(detached));
@@ -401,14 +402,14 @@ namespace Spectrum {
       this._domeLayerStack = layers;
       this._domeLayerStackView = DomeLayerView.Compile(layers);
       if (detached.PalettesChanged) {
-        this._domePalettes = detached.Palettes;
+        this._domePalettes = detached.Palettes ?? new List<DomePalette>();
         this.CompileDomePalettes();
       }
       this._domeGlobalFadeSpeed = detached.GlobalFadeSpeed;
       this._domeGlobalHueSpeed = detached.GlobalHueSpeed;
       if (detached.ScenesChanged) {
-        this._domeScenes = detached.Scenes;
-        this._domeScenesView = DomeSceneView.Compile(detached.Scenes);
+        this._domeScenes = detached.Scenes ?? new List<DomeScene>();
+        this._domeScenesView = DomeSceneView.Compile(this._domeScenes);
       }
       Volatile.Write(ref this._domeLayerStackSnapshot, layerSnapshot);
       this.PublishDomeShowStateSnapshot();
@@ -436,8 +437,7 @@ namespace Spectrum {
         ref this.domeShowStateGeneration);
       var snapshot = new DomeShowStateSnapshot(
         generation,
-        Volatile.Read(ref this._domeLayerStackSnapshot) ??
-          LayerStackSnapshot.Empty,
+        Volatile.Read(ref this._domeLayerStackSnapshot),
         this.compiledDomePalettes,
         this._domeGlobalFadeSpeed,
         this._domeGlobalHueSpeed);
@@ -463,7 +463,7 @@ namespace Spectrum {
       this._domeLayerFireCountersView;
 
     public void ReplaceDomeLayerFireCounters(
-      IReadOnlyDictionary<string, int> value
+      IReadOnlyDictionary<string, int>? value
     ) {
       Dictionary<string, int> detached =
         ConfigurationGraphCopy.Dictionary(value);
@@ -472,9 +472,7 @@ namespace Spectrum {
         return;
       }
       this._domeLayerFireCounters = detached;
-      this._domeLayerFireCountersView = detached == null
-        ? ImmutableDictionary<string, int>.Empty
-        : detached.ToImmutableDictionary();
+      this._domeLayerFireCountersView = detached.ToImmutableDictionary();
       this.PublishDomeRuntimeFrameSettings();
       this.RaisePropertyChanged(nameof(this.domeLayerFireCounters));
     }
@@ -490,7 +488,7 @@ namespace Spectrum {
       this._domeLayerClearCountersView;
 
     public void ReplaceDomeLayerClearCounters(
-      IReadOnlyDictionary<string, int> value
+      IReadOnlyDictionary<string, int>? value
     ) {
       Dictionary<string, int> detached =
         ConfigurationGraphCopy.Dictionary(value);
@@ -499,9 +497,7 @@ namespace Spectrum {
         return;
       }
       this._domeLayerClearCounters = detached;
-      this._domeLayerClearCountersView = detached == null
-        ? ImmutableDictionary<string, int>.Empty
-        : detached.ToImmutableDictionary();
+      this._domeLayerClearCountersView = detached.ToImmutableDictionary();
       this.PublishDomeRuntimeFrameSettings();
       this.RaisePropertyChanged(nameof(this.domeLayerClearCounters));
     }
@@ -517,16 +513,14 @@ namespace Spectrum {
       ImmutableDictionary<int, int>.Empty;
     public ImmutableDictionary<int, int> midiDevices => this._midiDevicesView;
 
-    public void ReplaceMidiDevices(IReadOnlyDictionary<int, int> value) {
+    public void ReplaceMidiDevices(IReadOnlyDictionary<int, int>? value) {
       Dictionary<int, int> detached = ConfigurationGraphCopy.Dictionary(value);
       if (this.DispatchMutationIfRequired(
           () => this.ReplaceMidiDevices(detached))) {
         return;
       }
       this._midiDevices = detached;
-      this._midiDevicesView = detached == null
-        ? ImmutableDictionary<int, int>.Empty
-        : detached.ToImmutableDictionary();
+      this._midiDevicesView = detached.ToImmutableDictionary();
       this.PublishMidiDeviceSettings();
       this.RaisePropertyChanged(nameof(this.midiDevices));
     }
@@ -537,7 +531,7 @@ namespace Spectrum {
       this._midiPresetsView;
 
     public void ReplaceMidiPresets(
-      IReadOnlyDictionary<int, MidiPreset> value
+      IReadOnlyDictionary<int, MidiPreset>? value
     ) {
       Dictionary<int, MidiPreset> detached =
         ConfigurationGraphCopy.MidiPresets(value);
@@ -552,14 +546,15 @@ namespace Spectrum {
     }
 
     public void UpsertMidiPreset(int id, MidiPreset value) {
+      if (value == null) {
+        throw new System.ArgumentNullException(nameof(value));
+      }
       MidiPreset detached = ConfigurationGraphCopy.MidiPreset(value);
       if (this.DispatchMutationIfRequired(
           () => this.UpsertMidiPreset(id, detached))) {
         return;
       }
-      var updated = this._midiPresets == null
-        ? new Dictionary<int, MidiPreset>()
-        : new Dictionary<int, MidiPreset>(this._midiPresets);
+      var updated = new Dictionary<int, MidiPreset>(this._midiPresets);
       updated[id] = detached;
       this._midiPresets = updated;
       this._midiPresetsView = this._midiPresetsView.SetItem(
@@ -572,8 +567,7 @@ namespace Spectrum {
       if (this.DispatchMutationIfRequired(() => this.RemoveMidiPreset(id))) {
         return;
       }
-      if (this._midiPresets == null ||
-          !this._midiPresets.ContainsKey(id)) {
+      if (!this._midiPresets.ContainsKey(id)) {
         return;
       }
       var updated = new Dictionary<int, MidiPreset>(this._midiPresets);
@@ -712,11 +706,9 @@ namespace Spectrum {
       bool bindingsChanged
     ) {
       var presets = ImmutableDictionary.CreateBuilder<int, MidiPreset>();
-      if (this._midiPresets != null) {
-        foreach (KeyValuePair<int, MidiPreset> pair in this._midiPresets) {
-          presets[pair.Key] = pair.Value == null
-            ? null
-            : (MidiPreset)pair.Value.Clone();
+      foreach (KeyValuePair<int, MidiPreset> pair in this._midiPresets) {
+        if (pair.Value != null) {
+          presets[pair.Key] = (MidiPreset)pair.Value.Clone();
         }
       }
       Volatile.Write(
@@ -764,17 +756,14 @@ namespace Spectrum {
       bool mappingChanged,
       bool transportChanged
     ) {
-      ImmutableArray<int> cables = this._domeCableMapping == null
-        ? ImmutableArray<int>.Empty
-        : ImmutableArray.Create(this._domeCableMapping);
+      ImmutableArray<int> cables = ImmutableArray.Create(
+        this._domeCableMapping);
       var ports = ImmutableArray.CreateBuilder<ImmutableArray<int>>(
-        this._domePortMappings?.Length ?? 0);
-      if (this._domePortMappings != null) {
-        foreach (DomePortMapping mapping in this._domePortMappings) {
-          ports.Add(mapping?.ports == null
-            ? ImmutableArray<int>.Empty
-            : ImmutableArray.CreateRange(mapping.ports));
-        }
+        this._domePortMappings.Length);
+      foreach (DomePortMapping? mapping in this._domePortMappings) {
+        ports.Add(mapping?.ports == null
+          ? ImmutableArray<int>.Empty
+          : ImmutableArray.CreateRange(mapping.ports));
       }
       Volatile.Write(
         ref this._domeOutputSettingsSnapshot,
@@ -821,16 +810,14 @@ namespace Spectrum {
 
     private void PublishSceneRetentionSettings() {
       var retained = ImmutableHashSet.CreateBuilder<string>();
-      if (this._domeScenes != null) {
-        foreach (DomeScene scene in this._domeScenes) {
-          if (scene?.Layers == null) {
-            continue;
-          }
-          foreach (DomeLayerSettings layer in scene.Layers) {
-            if (layer != null &&
-                !string.IsNullOrWhiteSpace(layer.InstanceId)) {
-              retained.Add(layer.InstanceId);
-            }
+      foreach (DomeScene scene in this._domeScenes) {
+        if (scene.Layers == null) {
+          continue;
+        }
+        foreach (DomeLayerSettings? layer in scene.Layers) {
+          if (layer != null &&
+              !string.IsNullOrWhiteSpace(layer.InstanceId)) {
+            retained.Add(layer.InstanceId);
           }
         }
       }
@@ -842,7 +829,7 @@ namespace Spectrum {
     }
 
     internal void ReplaceMidiLevelDriverChannels(
-      IReadOnlyDictionary<int, MidiLevelDriverPreset> channels
+      IReadOnlyDictionary<int, MidiLevelDriverPreset>? channels
     ) {
       this._midiLevelDriverChannels =
         ConfigurationGraphCopy.MidiLevelDriverChannels(channels);

@@ -28,13 +28,13 @@ namespace Spectrum.Web {
     // The PropertyChanged property name on the source object that fires when
     // this telemetry value changes.
     public string SourceProperty { get; }
-    private readonly Func<RuntimeTelemetry, BeatBroadcaster, object> getter;
+    private readonly Func<RuntimeTelemetry?, BeatBroadcaster?, object?> getter;
 
     public TelemetryItem(
       string key,
       TelemetrySource source,
       string sourceProperty,
-      Func<RuntimeTelemetry, BeatBroadcaster, object> getter
+      Func<RuntimeTelemetry?, BeatBroadcaster?, object?> getter
     ) {
       this.Key = key;
       this.Source = source;
@@ -42,7 +42,7 @@ namespace Spectrum.Web {
       this.getter = getter;
     }
 
-    public object Read(RuntimeTelemetry telemetry, BeatBroadcaster beat) =>
+    public object? Read(RuntimeTelemetry? telemetry, BeatBroadcaster? beat) =>
       this.getter(telemetry, beat);
   }
 
@@ -51,15 +51,15 @@ namespace Spectrum.Web {
     public static IReadOnlyList<TelemetryItem> Items { get; } =
       new List<TelemetryItem> {
         new TelemetryItem("operatorFPS", TelemetrySource.Runtime,
-          nameof(RuntimeTelemetry.OperatorFPS), (t, b) => t.OperatorFPS),
+          nameof(RuntimeTelemetry.OperatorFPS), (t, b) => t?.OperatorFPS),
         new TelemetryItem("domeOPCFPS", TelemetrySource.Runtime,
           nameof(RuntimeTelemetry.DomeBeagleboneOPCFPS),
-          (t, b) => t.DomeBeagleboneOPCFPS),
+          (t, b) => t?.DomeBeagleboneOPCFPS),
         new TelemetryItem("layerPlanError", TelemetrySource.Runtime,
           nameof(RuntimeTelemetry.LayerPlanError),
-          (t, b) => t.LayerPlanError),
+          (t, b) => t?.LayerPlanError),
         new TelemetryItem("bpm", TelemetrySource.Beat,
-          "BPMString", (t, b) => b.BPMString),
+          "BPMString", (t, b) => b?.BPMString),
       };
   }
 }

@@ -78,7 +78,7 @@ namespace Spectrum {
     private long measuredFrames;
     private long measuredAllocatedBytes;
     private long allocationMeasurementTargetFrames;
-    private TaskCompletionSource allocationMeasurementCompleted;
+    private TaskCompletionSource? allocationMeasurementCompleted;
 
     // Global rate cap: the operator loop runs no faster than 400Hz, i.e. at
     // least this many Stopwatch ticks per frame (2.5ms). Stopwatch.Frequency
@@ -264,7 +264,7 @@ namespace Spectrum {
     public IAudioLevelInput AudioInput { get; }
 
     private void OnLayerConfigurationChanged(
-      object sender, PropertyChangedEventArgs e
+      object? sender, PropertyChangedEventArgs e
     ) {
       if (e.PropertyName == DomeShowStateSnapshot.NotificationPropertyName) {
         // SpectrumConfiguration compiled this complete immutable generation
@@ -404,7 +404,7 @@ namespace Spectrum {
     }
 
     private bool enabled;
-    private Thread operatorThread;
+    private Thread? operatorThread;
     // Cooperative stop flag for OperatorThread, replacing Thread.Abort().
     private volatile bool operatorThreadStop;
     // Raised (outside the visualizers lock) whenever Enabled actually flips, so
@@ -412,7 +412,7 @@ namespace Spectrum {
     // engine's on/off state. Every native path that stops/starts the engine (the
     // power button, an audio-device refresh) routes through the Enabled setter,
     // so every transition is observed here regardless of who initiated it.
-    public event Action<bool> EnabledChanged;
+    public event Action<bool>? EnabledChanged;
     public bool Enabled {
       get {
         lock (this.visualizers) {
@@ -435,7 +435,7 @@ namespace Spectrum {
             // OperatorThread does not take lock(this.visualizers), so joining
             // while holding it is safe and won't deadlock.
             this.operatorThreadStop = true;
-            this.operatorThread.Join();
+            this.operatorThread?.Join();
             this.operatorThread = null;
 
             foreach (var input in this.inputs) {

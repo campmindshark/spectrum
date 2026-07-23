@@ -21,14 +21,14 @@ namespace Spectrum.Web {
   public sealed class AdvisoryLockManager {
 
     public sealed class LockInfo {
-      public string resource { get; set; }
-      public string holderName { get; set; }
+      public string resource { get; set; } = "";
+      public string holderName { get; set; } = "";
       public long expiresInMs { get; set; }
     }
 
     private sealed class Lease {
-      public string HolderToken;
-      public string HolderName;
+      public required string HolderToken;
+      public required string HolderName;
       public DateTime ExpiresUtc;
     }
 
@@ -41,16 +41,18 @@ namespace Spectrum.Web {
       this.ttl = ttl ?? TimeSpan.FromSeconds(15);
     }
 
-    private static bool IsActive(Lease lease, DateTime now) =>
+    private static bool IsActive(Lease? lease, DateTime now) =>
       lease != null && lease.ExpiresUtc > now;
 
     // Acquire (or renew, if the caller already holds it) a lease. Returns the
     // holder token on success; null if another active holder has it.
-    public string TryAcquire(string resource, string holderName, out LockInfo current) {
+    public string? TryAcquire(
+      string resource, string holderName, out LockInfo current
+    ) {
       lock (this.gate) {
         DateTime now = DateTime.UtcNow;
-        this.byResource.TryGetValue(resource, out Lease existing);
-        if (IsActive(existing, now)) {
+        this.byResource.TryGetValue(resource, out Lease? existing);
+        if (existing != null && IsActive(existing, now)) {
           current = ToInfo(resource, existing, now);
           return null;
         }
@@ -68,7 +70,7 @@ namespace Spectrum.Web {
     // Extend a lease the caller holds. False if they no longer hold it.
     public bool TryRenew(string resource, string holderToken) {
       lock (this.gate) {
-        if (this.byResource.TryGetValue(resource, out Lease lease) &&
+        if (this.byResource.TryGetValue(resource, out Lease? lease) &&
             IsActive(lease, DateTime.UtcNow) &&
             lease.HolderToken == holderToken) {
           lease.ExpiresUtc = DateTime.UtcNow + this.ttl;
@@ -80,7 +82,7 @@ namespace Spectrum.Web {
 
     public bool TryRelease(string resource, string holderToken) {
       lock (this.gate) {
-        if (this.byResource.TryGetValue(resource, out Lease lease) &&
+        if (this.byResource.TryGetValue(resource, out Lease? lease) &&
             lease.HolderToken == holderToken) {
           this.byResource.TryRemove(resource, out _);
           return true;
@@ -92,9 +94,9 @@ namespace Spectrum.Web {
     // Whether a write to a modal resource is permitted for the given holder
     // token (may be null for a caller that holds no lease). Permitted when the
     // resource is unlocked or the caller is the active holder.
-    public bool CanWrite(string resource, string holderToken) {
+    public bool CanWrite(string resource, string? holderToken) {
       lock (this.gate) {
-        if (!this.byResource.TryGetValue(resource, out Lease lease) ||
+        if (!this.byResource.TryGetValue(resource, out Lease? lease) ||
             !IsActive(lease, DateTime.UtcNow)) {
           return true;
         }
@@ -106,19 +108,19 @@ namespace Spectrum.Web {
     // Unlike CanWrite this is false when the resource is unlocked: the modal
     // calibration flow requires an explicitly acquired lease, not merely the
     // absence of a competing one.
-    public bool HoldsLock(string resource, string holderToken) {
+    public bool HoldsLock(string resource, string? holderToken) {
       lock (this.gate) {
         return holderToken != null &&
-          this.byResource.TryGetValue(resource, out Lease lease) &&
+          this.byResource.TryGetValue(resource, out Lease? lease) &&
           IsActive(lease, DateTime.UtcNow) &&
           lease.HolderToken == holderToken;
       }
     }
 
-    public LockInfo Get(string resource) {
+    public LockInfo? Get(string resource) {
       lock (this.gate) {
         DateTime now = DateTime.UtcNow;
-        if (this.byResource.TryGetValue(resource, out Lease lease) &&
+        if (this.byResource.TryGetValue(resource, out Lease? lease) &&
             IsActive(lease, now)) {
           return ToInfo(resource, lease, now);
         }
@@ -157,7 +159,7 @@ namespace Spectrum.Web {
 
     public const string DomeCalibration = "domeCalibration";
 
-    public static string ResourceForKey(string key) {
+    public static string? ResourceForKey(string key) {
       switch (key) {
         case "domeTestPattern": return "domeTest";
         default: return null;

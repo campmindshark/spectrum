@@ -6,6 +6,8 @@
     <RootNamespace>Spectrum</RootNamespace>
     <AssemblyName>Spectrum</AssemblyName>
     <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- ColorPicker uses System.Windows.Forms.ColorDialog / DialogResult. -->
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>

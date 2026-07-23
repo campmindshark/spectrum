@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,7 +19,7 @@ namespace Spectrum.Web {
     private const string ReviewStage = "review";
 
     public sealed class CalibrationState {
-      public string stage { get; set; }
+      public string stage { get; set; } = "";
       public bool active { get; set; }
       public int currentStep { get; set; }
       public int numCables { get; set; }
@@ -27,27 +28,27 @@ namespace Spectrum.Web {
       public bool saveable { get; set; }
       public bool hasSavedMapping { get; set; }
       public int currentCandidate { get; set; }
-      public int[] picks { get; set; }
-      public bool[] cableConfirmed { get; set; }
-      public string[] cableLabels { get; set; }
-      public string[] endpointLabels { get; set; }
+      public int[] picks { get; set; } = Array.Empty<int>();
+      public bool[] cableConfirmed { get; set; } = Array.Empty<bool>();
+      public string[] cableLabels { get; set; } = Array.Empty<string>();
+      public string[] endpointLabels { get; set; } = Array.Empty<string>();
       public int selectedBox { get; set; }
-      public int[] stripSteps { get; set; }
-      public int[][] stripMappings { get; set; }
-      public bool[][] stripConfirmed { get; set; }
-      public bool[] copiedFromBoxOne { get; set; }
-      public string[] boxStatuses { get; set; }
+      public int[] stripSteps { get; set; } = Array.Empty<int>();
+      public int[][] stripMappings { get; set; } = Array.Empty<int[]>();
+      public bool[][] stripConfirmed { get; set; } = Array.Empty<bool[]>();
+      public bool[] copiedFromBoxOne { get; set; } = Array.Empty<bool>();
+      public string[] boxStatuses { get; set; } = Array.Empty<string>();
       public bool canApplyBoxOne { get; set; }
-      public int[] savedCableMapping { get; set; }
-      public int[][] savedPortMappings { get; set; }
+      public int[] savedCableMapping { get; set; } = Array.Empty<int>();
+      public int[][] savedPortMappings { get; set; } = Array.Empty<int[]>();
       public int rawControllerCable { get; set; }
       public int rawControllerBox { get; set; }
       public int rawControllerPort { get; set; }
       public int simulatorEndpoint { get; set; }
       public int simulatorBox { get; set; }
       public int simulatorPath { get; set; }
-      public string cableReadout { get; set; }
-      public string stripReadout { get; set; }
+      public string cableReadout { get; set; } = "";
+      public string stripReadout { get; set; } = "";
     }
 
     private readonly ApplicationStateDispatcher gateway;
@@ -64,13 +65,13 @@ namespace Spectrum.Web {
     private readonly bool[] cableConfirmed;
     private int cableStep;
     private int currentCandidate = -1;
-    private int[] savedCableMapping;
+    private int[] savedCableMapping = Array.Empty<int>();
 
     private readonly int[][] stripDraft;
     private readonly bool[][] stripConfirmed;
     private readonly int[] stripSteps;
     private readonly bool[] copiedFromBoxOne;
-    private int[][] savedPortMappings;
+    private int[][] savedPortMappings = Array.Empty<int[]>();
     private int selectedBox;
 
     public DomeCalibrationController(
@@ -255,10 +256,10 @@ namespace Spectrum.Web {
         this.InitializeStripCandidateLocked();
       });
 
-    public Task<(bool ok, string error, CalibrationState state)> SaveAsync() =>
+    public Task<(bool ok, string? error, CalibrationState state)> SaveAsync() =>
       this.gateway.InvokeAsync(() => {
         lock (this.gate) {
-          if (!this.IsSaveableLocked(out string error)) {
+          if (!this.IsSaveableLocked(out string? error)) {
             return (false, error, this.SnapshotLocked());
           }
           int[] cables = (int[])this.cableDraft.Clone();
@@ -272,7 +273,7 @@ namespace Spectrum.Web {
           this.ResetDraftLocked();
           this.stage = IdleStage;
           this.calibration.Deactivate();
-          return (true, (string)null, this.SnapshotLocked());
+          return (true, (string?)null, this.SnapshotLocked());
         }
       });
 
@@ -525,7 +526,9 @@ namespace Spectrum.Web {
       return true;
     }
 
-    private bool IsSaveableLocked(out string error) {
+    private bool IsSaveableLocked(
+      [NotNullWhen(false)] out string? error
+    ) {
       if (!this.CablesCompleteLocked()) {
         error = "all ten controller cables must be confirmed before saving";
         return false;

@@ -32,9 +32,9 @@ namespace Spectrum.Visualizers {
   class LayerTrigger {
 
     private readonly DomeLayerEnvironment environment;
-    private readonly OrientationInput orientationInput;
-    private readonly BeatBroadcaster beat;
-    private readonly IAudioLevelInput audio;
+    private readonly OrientationInput? orientationInput;
+    private readonly BeatBroadcaster? beat;
+    private readonly IAudioLevelInput? audio;
     private readonly LayerInstanceId instanceId;
 
     // Previous frame's actionFlag per device id, so a held button (flag stays
@@ -57,9 +57,9 @@ namespace Spectrum.Visualizers {
     // beat/audio are optional: the OneShot layers (Wave/Metaball) that only use
     // Manual + Button pass null and never select the Beat/Audio sources.
     public LayerTrigger(
-      DomeLayerEnvironment environment, OrientationInput orientationInput,
+      DomeLayerEnvironment environment, OrientationInput? orientationInput,
       LayerInstanceId instanceId,
-      BeatBroadcaster beat = null, IAudioLevelInput audio = null
+      BeatBroadcaster? beat = null, IAudioLevelInput? audio = null
     ) {
       this.environment = environment;
       this.orientationInput = orientationInput;
@@ -112,6 +112,9 @@ namespace Spectrum.Visualizers {
     // -2 (all ignored for drawing, but a button press is still a button
     // press) let every connected wand fire it.
     private bool ButtonFired(int button) {
+      if (this.orientationInput == null) {
+        return false;
+      }
       int spotlight = this.environment.SpotlightDeviceId;
       IReadOnlyDictionary<int, OrientationDevice> devices =
         this.orientationInput.OperatorFrameDevices;

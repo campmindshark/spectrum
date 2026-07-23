@@ -92,7 +92,7 @@ namespace Spectrum.Visualizers {
     public DomeFrame LayerBuffer => this.buffer;
     public bool Enabled { get; set; }
 
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() {
       // Keep the optional dependency declared even while binding is off. Layer
       // parameters update the retained renderer in place, so this lets the

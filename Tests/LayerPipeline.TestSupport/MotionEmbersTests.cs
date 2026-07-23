@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Spectrum.Base;
 
 namespace Spectrum.LayerPipeline.Tests {
@@ -132,7 +133,7 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     private static MotionEmbersOptions Compile(
-      Dictionary<string, double> parameters
+      Dictionary<string, double>? parameters
     ) {
       var layer = new DomeLayerSettings {
         InstanceId = "motion-embers-options",
@@ -142,14 +143,16 @@ namespace Spectrum.LayerPipeline.Tests {
         Enabled = true,
         OperationParams = parameters,
       };
-      (LayerStackSnapshot snapshot, string error) =
+      (LayerStackSnapshot? snapshot, string? error) =
         new LayerStackService(DomeLayerCatalog.Metadata).CreateSnapshot(new[] { layer });
-      Assert(error == null, error);
+      Assert(snapshot != null && error == null, error);
       return (MotionEmbersOptions)DomeBlend.MotionEmbers.CompileOptions(
         snapshot.Layers[0].OperationParameters);
     }
 
-    private static void Assert(bool condition, string message) {
+    private static void Assert(
+      [DoesNotReturnIf(false)] bool condition, string? message
+    ) {
       if (!condition) {
         throw new InvalidOperationException(message);
       }

@@ -17,7 +17,7 @@ namespace Spectrum {
   class LEDDomeArcLightningVisualizer : DomeLayerVisualizer {
 
     private sealed class ActiveStrike {
-      public ArcLightningPath Path;
+      public required ArcLightningPath Path;
       public double Age;
       public int PaletteIndex;
     }
@@ -66,7 +66,7 @@ namespace Spectrum {
     public DomeFrame LayerBuffer => this.buffer;
     public bool Enabled { get; set; }
 
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() =>
       this.inputs ?? (this.inputs = new Input[] {
         this.audio, this.orientationInput,
@@ -146,7 +146,9 @@ namespace Spectrum {
         this.orientationInput.OperatorFrameDevices;
       int spotlight = this.environment.SpotlightDeviceId;
       bool spotlightMoving = spotlight >= 0
-        && devices.TryGetValue(spotlight, out OrientationDevice spotlightDevice)
+        && devices.TryGetValue(
+          spotlight, out OrientationDevice? spotlightDevice)
+        && spotlightDevice != null
         && spotlightDevice.isMoving;
 
       if (spotlight != -2) {

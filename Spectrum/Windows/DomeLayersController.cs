@@ -88,7 +88,7 @@ namespace Spectrum {
       }
     }
 
-    private void OnConfigChanged(object sender, PropertyChangedEventArgs e) {
+    private void OnConfigChanged(object? sender, PropertyChangedEventArgs e) {
       if (e.PropertyName == "domeLayerFireCounters") {
         this.dispatcher.BeginInvoke(
           new Action(this.StartNewAstronomyPlaybackDisplays));
@@ -253,20 +253,21 @@ namespace Spectrum {
     private void StartAstronomyPlaybackDisplay(
       DomeLayerRowViewModel row
     ) {
-      LayerParamViewModel time = row.FindParam("timeOffsetHours");
-      LayerParamViewModel speed = row.FindParam("playbackSpeed");
-      if (time == null || speed == null) {
+      string? instanceId = row.InstanceId;
+      LayerParamViewModel? time = row.FindParam("timeOffsetHours");
+      LayerParamViewModel? speed = row.FindParam("playbackSpeed");
+      if (instanceId == null || time == null || speed == null) {
         return;
       }
       double startOffset = time.StoredValue;
       if (this.astronomyStoppedByInstanceId.TryGetValue(
-            row.InstanceId, out AstronomyStoppedDisplay stopped) &&
+            instanceId, out AstronomyStoppedDisplay? stopped) &&
           Math.Abs(
             stopped.ConfiguredTimeOffset - time.StoredValue) <= 1e-6) {
         startOffset = stopped.Offset;
       }
-      this.astronomyStoppedByInstanceId.Remove(row.InstanceId);
-      this.astronomyPlaybackByInstanceId[row.InstanceId] =
+      this.astronomyStoppedByInstanceId.Remove(instanceId);
+      this.astronomyPlaybackByInstanceId[instanceId] =
         new AstronomyPlaybackDisplay {
           StartOffset = startOffset,
           ConfiguredTimeOffset = time.StoredValue,
@@ -279,17 +280,17 @@ namespace Spectrum {
       }
     }
 
-    private void AdvanceAstronomyPlayback(object sender, EventArgs e) {
+    private void AdvanceAstronomyPlayback(object? sender, EventArgs e) {
       long now = Stopwatch.GetTimestamp();
       var completedIds = new List<string>();
       foreach (
         KeyValuePair<string, AstronomyPlaybackDisplay> item
         in this.astronomyPlaybackByInstanceId
       ) {
-        DomeLayerRowViewModel row = this.FindRow(item.Key);
-        LayerParamViewModel time = row?.FindParam("timeOffsetHours");
-        LayerParamViewModel speed = row?.FindParam("playbackSpeed");
-        LayerParamViewModel loop = row?.FindParam("loop");
+        DomeLayerRowViewModel? row = this.FindRow(item.Key);
+        LayerParamViewModel? time = row?.FindParam("timeOffsetHours");
+        LayerParamViewModel? speed = row?.FindParam("playbackSpeed");
+        LayerParamViewModel? loop = row?.FindParam("loop");
         if (row?.VisualizerKey != "astronomy" || time == null ||
             speed == null || loop == null) {
           completedIds.Add(item.Key);
@@ -343,8 +344,8 @@ namespace Spectrum {
         return;
       }
       this.AdvanceAstronomyPlayback(null, EventArgs.Empty);
-      DomeLayerRowViewModel row = this.FindRow(instanceId);
-      LayerParamViewModel time = row?.FindParam("timeOffsetHours");
+      DomeLayerRowViewModel? row = this.FindRow(instanceId);
+      LayerParamViewModel? time = row?.FindParam("timeOffsetHours");
       if (this.astronomyPlaybackByInstanceId.ContainsKey(instanceId) &&
           time != null) {
         this.astronomyStoppedByInstanceId[instanceId] =
@@ -365,8 +366,8 @@ namespace Spectrum {
         KeyValuePair<string, AstronomyStoppedDisplay> item
         in this.astronomyStoppedByInstanceId
       ) {
-        DomeLayerRowViewModel row = this.FindRow(item.Key);
-        LayerParamViewModel time = row?.FindParam("timeOffsetHours");
+        DomeLayerRowViewModel? row = this.FindRow(item.Key);
+        LayerParamViewModel? time = row?.FindParam("timeOffsetHours");
         if (row?.VisualizerKey != "astronomy" || time == null ||
             Math.Abs(
               time.StoredValue - item.Value.ConfiguredTimeOffset) > 1e-6) {
@@ -380,7 +381,7 @@ namespace Spectrum {
       }
     }
 
-    private DomeLayerRowViewModel FindRow(string instanceId) {
+    private DomeLayerRowViewModel? FindRow(string instanceId) {
       foreach (DomeLayerRowViewModel row in this.Rows) {
         if (row.InstanceId == instanceId) {
           return row;
@@ -396,7 +397,7 @@ namespace Spectrum {
     // holds accumulated live state (Shooting Star) edge-detects the bump and
     // drops it; layers with no such state ignore it (harmless no-op).
     private void ClearRow(DomeLayerRowViewModel row) {
-      string instanceId = row.InstanceId;
+      string? instanceId = row.InstanceId;
       if (instanceId == null) {
         return;
       }
@@ -418,8 +419,8 @@ namespace Spectrum {
         DomeLayerRowViewModel vm = this.Rows[i];
         // Snapshot the row's param VMs into a fresh bag; null when the layer has
         // no params (an absent bag reads as all-defaults everywhere).
-        Dictionary<string, double> rendererParams = null;
-        Dictionary<string, double> operationParams = null;
+        Dictionary<string, double>? rendererParams = null;
+        Dictionary<string, double>? operationParams = null;
         if (vm.Params.Count > 0) {
           foreach (LayerParamViewModel p in vm.Params) {
             Dictionary<string, double> target;

@@ -18,8 +18,10 @@ namespace Spectrum.Web {
 
     public sealed class GeometryView {
       public int pixelCount { get; set; }
-      public IReadOnlyList<double[]> points { get; set; }
-      public IReadOnlyList<double[]> topDownPoints { get; set; }
+      public IReadOnlyList<double[]> points { get; set; } =
+        Array.Empty<double[]>();
+      public IReadOnlyList<double[]> topDownPoints { get; set; } =
+        Array.Empty<double[]>();
     }
 
     private readonly LEDDomeOutput dome;
@@ -27,7 +29,7 @@ namespace Spectrum.Web {
     private readonly int[] colors;
     private readonly int[] strutOffsets;
     private readonly GeometryView geometry;
-    private byte[] packedFrame;
+    private byte[]? packedFrame;
     private long sequence;
     private int clients;
     private static readonly TimeSpan FrameInterval = TimeSpan.FromSeconds(
@@ -77,7 +79,7 @@ namespace Spectrum.Web {
       try {
         using var sendTimer = new PeriodicTimer(FrameInterval);
         while (socket.State == WebSocketState.Open && !receiver.IsCompleted) {
-          byte[] frame = this.GetFrame(ref seen);
+          byte[]? frame = this.GetFrame(ref seen);
           if (frame != null) {
             await socket.SendAsync(
               new ArraySegment<byte>(frame),
@@ -138,10 +140,11 @@ namespace Spectrum.Web {
 
     // Pulls the producer's latest snapshot and ordered diagnostic commands into
     // one persistent color buffer, then packs RGB once for all browser clients.
-    private byte[] GetFrame(ref long seen) {
+    private byte[]? GetFrame(ref long seen) {
       lock (this.gate) {
         bool redraw = false;
-        if (this.dome.TryTakeWebSimulatorFrame(out int[] latest)) {
+        if (this.dome.TryTakeWebSimulatorFrame(out int[]? latest) &&
+            latest != null) {
           try {
             Array.Copy(latest, this.colors, this.colors.Length);
             redraw = true;

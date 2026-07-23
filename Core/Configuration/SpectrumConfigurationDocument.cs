@@ -9,7 +9,7 @@ namespace Spectrum {
   // those shapes stay here instead of defining the live application API.
   [XmlRoot("SpectrumConfiguration")]
   public sealed class SpectrumConfigurationDocument {
-    public string audioDeviceID { get; set; }
+    public string? audioDeviceID { get; set; }
     public bool domeEnabled { get; set; }
     public bool midiInputEnabled { get; set; }
     public bool domeOutputInSeparateThread { get; set; }
@@ -19,17 +19,17 @@ namespace Spectrum {
     public double domeMaxBrightness { get; set; } = 0.5;
     public double domeBrightness { get; set; } = 0.1;
     public int domeTestPattern { get; set; }
-    public List<DomeLayerSettings> domeLayerStack { get; set; }
-    public int[] domeCableMapping { get; set; }
-    public DomePortMapping[] domePortMappings { get; set; }
+    public List<DomeLayerSettings>? domeLayerStack { get; set; }
+    public int[]? domeCableMapping { get; set; }
+    public DomePortMapping?[]? domePortMappings { get; set; }
     public double domeGlobalFadeSpeed { get; set; }
     public double domeGlobalHueSpeed { get; set; } = 1;
     public Dictionary<string, int> domeLayerFireCounters { get; set; } =
       new Dictionary<string, int>();
     public Dictionary<string, int> domeLayerClearCounters { get; set; } =
       new Dictionary<string, int>();
-    public List<DomeScene> domeScenes { get; set; }
-    public List<DomePalette> domePalettes { get; set; }
+    public List<DomeScene>? domeScenes { get; set; }
+    public List<DomePalette>? domePalettes { get; set; }
     public bool vjHUDEnabled { get; set; }
     public Dictionary<int, int> midiDevices { get; set; } =
       new Dictionary<int, int>();
@@ -50,7 +50,7 @@ namespace Spectrum {
         domeEnabled = this.domeEnabled,
         midiInputEnabled = this.midiInputEnabled,
         domeOutputInSeparateThread = this.domeOutputInSeparateThread,
-        domeBeagleboneOPCAddress = this.domeBeagleboneOPCAddress,
+        domeBeagleboneOPCAddress = this.domeBeagleboneOPCAddress ?? "",
         domeSimulationEnabled = this.domeSimulationEnabled,
         webDomeSimulatorEnabled = this.webDomeSimulatorEnabled,
         domeMaxBrightness = this.domeMaxBrightness,
@@ -63,7 +63,7 @@ namespace Spectrum {
         beatInput = this.beatInput,
         orientationDeviceSpotlight = this.orientationDeviceSpotlight,
         orientationCalibrate = this.orientationCalibrate,
-        wandSerialPort = this.wandSerialPort,
+        wandSerialPort = this.wandSerialPort ?? "",
       };
       config.ReplaceDomeLayerStack(this.domeLayerStack);
       config.ReplaceDomeCableMapping(this.domeCableMapping);
@@ -84,9 +84,9 @@ namespace Spectrum {
   }
 
   internal static class ConfigurationGraphCopy {
-    internal static T[] Array<T>(IReadOnlyList<T> source) {
+    internal static T[] Array<T>(IReadOnlyList<T>? source) {
       if (source == null) {
-        return null;
+        return System.Array.Empty<T>();
       }
       var copy = new T[source.Count];
       for (int i = 0; i < source.Count; i++) {
@@ -96,41 +96,47 @@ namespace Spectrum {
     }
 
     internal static Dictionary<TKey, TValue> Dictionary<TKey, TValue>(
-      IReadOnlyDictionary<TKey, TValue> source
-    ) => source == null
-      ? null
+      IReadOnlyDictionary<TKey, TValue>? source
+    ) where TKey : notnull => source == null
+      ? new Dictionary<TKey, TValue>()
       : new Dictionary<TKey, TValue>(source);
 
-    internal static DomePortMapping[] PortMappings(
-      IReadOnlyList<DomePortMapping> source
+    internal static DomePortMapping?[] PortMappings(
+      IReadOnlyList<DomePortMapping?>? source
+    ) => source == null
+      ? System.Array.Empty<DomePortMapping?>()
+      : CopyPortMappings(source);
+
+    private static DomePortMapping?[] CopyPortMappings(
+      IReadOnlyList<DomePortMapping?> source
     ) {
-      if (source == null) {
-        return null;
-      }
-      var copy = new DomePortMapping[source.Count];
+      var copy = new DomePortMapping?[source.Count];
       for (int i = 0; i < source.Count; i++) {
-        copy[i] = source[i] == null
+        DomePortMapping? mapping = source[i];
+        copy[i] = mapping == null
           ? null
-          : new DomePortMapping(source[i].ports);
+          : new DomePortMapping(mapping.ports);
       }
       return copy;
     }
 
     internal static List<DomeLayerSettings> Layers(
-      IReadOnlyList<DomeLayerSettings> source
+      IReadOnlyList<DomeLayerSettings>? source
     ) {
       if (source == null) {
-        return null;
+        return new List<DomeLayerSettings>();
       }
       var copy = new List<DomeLayerSettings>(source.Count);
-      foreach (DomeLayerSettings layer in source) {
-        copy.Add(Layer(layer));
+      foreach (DomeLayerSettings? layer in source) {
+        if (layer != null) {
+          copy.Add(Layer(layer));
+        }
       }
       return copy;
     }
 
     internal static DomeLayerSettings Layer(DomeLayerSettings source) =>
-      source == null ? null : new DomeLayerSettings {
+      new DomeLayerSettings {
         InstanceId = source.InstanceId,
         VisualizerKey = source.VisualizerKey,
         BlendMode = source.BlendMode,
@@ -146,14 +152,17 @@ namespace Spectrum {
       };
 
     internal static List<DomeScene> Scenes(
-      IReadOnlyList<DomeScene> source
+      IReadOnlyList<DomeScene>? source
     ) {
       if (source == null) {
-        return null;
+        return new List<DomeScene>();
       }
       var copy = new List<DomeScene>(source.Count);
-      foreach (DomeScene scene in source) {
-        copy.Add(scene == null ? null : new DomeScene {
+      foreach (DomeScene? scene in source) {
+        if (scene == null) {
+          continue;
+        }
+        copy.Add(new DomeScene {
           Name = scene.Name,
           Layers = Layers(scene.Layers),
           GlobalFadeSpeed = scene.GlobalFadeSpeed,
@@ -164,14 +173,17 @@ namespace Spectrum {
     }
 
     internal static List<DomePalette> Palettes(
-      IReadOnlyList<DomePalette> source
+      IReadOnlyList<DomePalette>? source
     ) {
       if (source == null) {
-        return null;
+        return new List<DomePalette>();
       }
       var copy = new List<DomePalette>(source.Count);
-      foreach (DomePalette palette in source) {
-        copy.Add(palette == null ? null : new DomePalette {
+      foreach (DomePalette? palette in source) {
+        if (palette == null) {
+          continue;
+        }
+        copy.Add(new DomePalette {
           Name = palette.Name,
           Colors = DomePalette.CopyColors(palette.Colors),
         });
@@ -180,28 +192,27 @@ namespace Spectrum {
     }
 
     internal static Dictionary<int, MidiPreset> MidiPresets(
-      IReadOnlyDictionary<int, MidiPreset> source
+      IReadOnlyDictionary<int, MidiPreset>? source
     ) {
       if (source == null) {
-        return null;
+        return new Dictionary<int, MidiPreset>();
       }
       var copy = new Dictionary<int, MidiPreset>();
       foreach (KeyValuePair<int, MidiPreset> pair in source) {
-        copy[pair.Key] = MidiPreset(pair.Value);
+        if (pair.Value != null) {
+          copy[pair.Key] = MidiPreset(pair.Value);
+        }
       }
       return copy;
     }
 
     internal static MidiPreset MidiPreset(MidiPreset source) {
-      if (source == null) {
-        return null;
-      }
       var bindings = new List<IMidiBindingConfig>();
       if (source.Bindings != null) {
-        foreach (IMidiBindingConfig binding in source.Bindings) {
-          bindings.Add(binding == null
-            ? null
-            : (IMidiBindingConfig)binding.Clone());
+        foreach (IMidiBindingConfig? binding in source.Bindings) {
+          if (binding != null) {
+            bindings.Add((IMidiBindingConfig)binding.Clone());
+          }
         }
       }
       return new MidiPreset {
@@ -213,16 +224,16 @@ namespace Spectrum {
 
     internal static Dictionary<int, MidiLevelDriverPreset>
       MidiLevelDriverChannels(
-        IReadOnlyDictionary<int, MidiLevelDriverPreset> source
+        IReadOnlyDictionary<int, MidiLevelDriverPreset>? source
       ) {
       if (source == null) {
-        return null;
+        return new Dictionary<int, MidiLevelDriverPreset>();
       }
       var copy = new Dictionary<int, MidiLevelDriverPreset>();
       foreach (KeyValuePair<int, MidiLevelDriverPreset> pair in source) {
-        copy[pair.Key] = pair.Value == null
-          ? null
-          : (MidiLevelDriverPreset)pair.Value.Clone();
+        if (pair.Value != null) {
+          copy[pair.Key] = (MidiLevelDriverPreset)pair.Value.Clone();
+        }
       }
       return copy;
     }

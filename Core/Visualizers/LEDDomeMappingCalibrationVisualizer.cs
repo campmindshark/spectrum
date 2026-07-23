@@ -13,7 +13,7 @@ namespace Spectrum {
   class LEDDomeMappingCalibrationVisualizer : Visualizer {
     private readonly DomeCalibrationState calibration;
     private readonly LEDDomeOutput dome;
-    private DomeCalibrationSelection lastSelection;
+    private DomeCalibrationSelection? lastSelection;
     private bool lastNativeSimulatorConsumer;
     private bool lastWebSimulatorConsumer;
 

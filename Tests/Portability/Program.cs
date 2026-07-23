@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
@@ -233,7 +234,7 @@ namespace Spectrum.Portability.Tests {
         File.WriteAllText(windowsPython, "");
         File.WriteAllText(windowsTracker, "");
 
-        MadmomRuntimePaths windows = MadmomRuntimeLocator.Find(
+        MadmomRuntimePaths? windows = MadmomRuntimeLocator.Find(
           nested, useWindowsLayout: true);
         Assert(windows != null &&
             windows.PythonPath == windowsPython &&
@@ -268,14 +269,14 @@ namespace Spectrum.Portability.Tests {
         File.WriteAllText(unixPython, "");
         File.WriteAllText(unixTracker, "");
 
-        MadmomRuntimePaths unix = MadmomRuntimeLocator.Find(
+        MadmomRuntimePaths? unix = MadmomRuntimeLocator.Find(
           nested, useWindowsLayout: false);
         Assert(unix != null &&
             unix.PythonPath == unixPython &&
             unix.TrackerPath == unixTracker,
           "the packaged Unix runtime layout was not found");
 
-        MadmomRuntimePaths missing = MadmomRuntimeLocator.Find(
+        MadmomRuntimePaths? missing = MadmomRuntimeLocator.Find(
           Path.Combine(
             Path.GetTempPath(),
             "spectrum-madmom-missing-" + Guid.NewGuid()),
@@ -304,8 +305,10 @@ namespace Spectrum.Portability.Tests {
       Assert(snapshot.Layers.Length == 1 &&
           snapshot.Layers[0].Id.Value == "portable-radial",
         "the portable configuration did not publish its layer snapshot");
-      LayerDefinition definition =
+      LayerDefinition? definition =
         global::Spectrum.BuiltInDomeLayerCatalog.Metadata.Get("radial");
+      Assert(definition != null,
+        "the portable built-in catalog omitted the radial definition");
       Assert(definition.CompileOptions(
             snapshot.Layers[0].RendererParameters)
           is RadialLayerOptions options && options.Size == 0.25,
@@ -386,10 +389,10 @@ namespace Spectrum.Portability.Tests {
         short.MaxValue, -short.MaxValue,
         short.MinValue, short.MinValue,
       };
-      byte[] encoded = null;
+      byte[]? encoded = null;
       int byteCount = MadmomPcmBeatTracker.EncodeMonoPcm(
         stereo, stereo.Length, channels: 2, ref encoded);
-      Assert(byteCount == 4 &&
+      Assert(byteCount == 4 && encoded != null &&
           encoded[0] == 0 && encoded[1] == 0 &&
           encoded[2] == 0 && encoded[3] == 0x80,
         "stereo ALSA PCM was not downmixed to signed-16-bit little endian");
@@ -447,9 +450,11 @@ namespace Spectrum.Portability.Tests {
       Assert(trackerFailed.Wait(TimeSpan.FromSeconds(5)) &&
           !string.IsNullOrWhiteSpace(input.LastError),
         "an unexpected Madmom child exit was not reported");
-      Assert(input.LastError.Contains("Madmom", StringComparison.Ordinal),
+      string? lastError = input.LastError;
+      Assert(lastError != null &&
+          lastError.Contains("Madmom", StringComparison.Ordinal),
         "the Madmom child failure was reported as the wrong health error: " +
-        input.LastError);
+        lastError);
       input.Active = false;
     }
 
@@ -498,7 +503,10 @@ namespace Spectrum.Portability.Tests {
       using var blocker = new UdpClient();
       blocker.ExclusiveAddressUse = true;
       blocker.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
-      int port = ((IPEndPoint)blocker.Client.LocalEndPoint).Port;
+      IPEndPoint localEndpoint = blocker.Client.LocalEndPoint as IPEndPoint ??
+        throw new InvalidOperationException(
+          "the UDP blocker did not receive a local endpoint");
+      int port = localEndpoint.Port;
 
       var config = new global::Spectrum.SpectrumConfiguration {
         beatInput = 2,
@@ -577,7 +585,7 @@ namespace Spectrum.Portability.Tests {
         "WindowsBase",
       };
       foreach (var reference in assembly.GetReferencedAssemblies()) {
-        Assert(!forbidden.Contains(reference.Name),
+        Assert(reference.Name == null || !forbidden.Contains(reference.Name),
           "portable runtime referenced " + reference.Name);
       }
 
@@ -593,7 +601,7 @@ namespace Spectrum.Portability.Tests {
     }
 
     private static void PortableEarthTextureDecoder() {
-      using Stream texture = typeof(LEDDomeEarthVisualizer).Assembly
+      using Stream? texture = typeof(LEDDomeEarthVisualizer).Assembly
         .GetManifestResourceStream(
           LEDDomeEarthVisualizer.TextureResourceName);
       Assert(texture != null, "the Earth texture was not embedded in core");
@@ -743,7 +751,7 @@ namespace Spectrum.Portability.Tests {
 
           bool sawFlashEvent = false;
           for (int line = 0; line < 64 && !sawFlashEvent; line++) {
-            string eventLine = eventsReader.ReadLineAsync()
+            string? eventLine = eventsReader.ReadLineAsync()
               .WaitAsync(TimeSpan.FromSeconds(2))
               .GetAwaiter().GetResult();
             Assert(eventLine != null,
@@ -935,8 +943,8 @@ namespace Spectrum.Portability.Tests {
         }
       }
 
-      public string LastError => this.LastErrorValue;
-      public string LastErrorValue { get; set; }
+      public string? LastError => this.LastErrorValue;
+      public string? LastErrorValue { get; set; }
       public int WriteCount => Volatile.Read(ref this.writeCount);
       public int LastChannels => Volatile.Read(ref this.lastChannels);
       public int LastSampleCount => Volatile.Read(ref this.lastSampleCount);
@@ -1004,7 +1012,7 @@ namespace Spectrum.Portability.Tests {
 
         using var dispatcher =
           new DedicatedThreadApplicationStateDispatcher();
-        FakeHostRuntime runtime = null;
+        FakeHostRuntime? runtime = null;
         var host = new global::Spectrum.SpectrumHost<
           FakeHostRuntime, FakeHostService>(
             store,
@@ -1016,6 +1024,9 @@ namespace Spectrum.Portability.Tests {
               nameof(global::Spectrum.SpectrumConfiguration
                 .domeOutputInSeparateThread),
             });
+
+        Assert(runtime != null,
+          "the host did not construct its runtime");
 
         Assert(host.Configuration.domeBeagleboneOPCAddress == "packaged",
           "the host did not expose the loaded configuration");
@@ -1047,7 +1058,9 @@ namespace Spectrum.Portability.Tests {
     }
 
     private static void HeadlessConfigurationPaths() {
-      string root = Path.GetPathRoot(Path.GetFullPath(Path.GetTempPath()));
+      string root = Path.GetPathRoot(Path.GetFullPath(Path.GetTempPath())) ??
+        throw new InvalidOperationException(
+          "the temporary directory has no filesystem root");
       string explicitDirectory = Path.Combine(root, "explicit-spectrum");
       string environmentDirectory = Path.Combine(root, "environment-spectrum");
       string xdgDirectory = Path.Combine(root, "xdg-config");
@@ -1119,10 +1132,10 @@ namespace Spectrum.Portability.Tests {
           "/dev/ttyUSB0",
           "",
         },
-        new[] {
-          new KeyValuePair<string, string>(byIdWand, "/dev/ttyACM0"),
-          new KeyValuePair<string, string>(byPathWand, "/dev/ttyACM0"),
-          new KeyValuePair<string, string>(byPathBridge, "/dev/ttyUSB1"),
+        new KeyValuePair<string, string?>[] {
+          new KeyValuePair<string, string?>(byIdWand, "/dev/ttyACM0"),
+          new KeyValuePair<string, string?>(byPathWand, "/dev/ttyACM0"),
+          new KeyValuePair<string, string?>(byPathBridge, "/dev/ttyUSB1"),
         });
 
       string[] expected = {
@@ -1166,7 +1179,7 @@ namespace Spectrum.Portability.Tests {
         using var listener = new TcpListener(IPAddress.Loopback, port);
         listener.Start();
         Task<Socket> accept = listener.AcceptSocketAsync();
-        WaitHandle pendingConnect = opc.PendingConnectWaitHandle;
+        WaitHandle? pendingConnect = opc.PendingConnectWaitHandle;
         Assert(pendingConnect != null &&
             pendingConnect.WaitOne(TimeSpan.FromSeconds(2)),
           "the OPC connection did not complete after the controller started");
@@ -1237,7 +1250,9 @@ namespace Spectrum.Portability.Tests {
       return bytes;
     }
 
-    private static void Assert(bool condition, string message) {
+    private static void Assert(
+      [DoesNotReturnIf(false)] bool condition, string? message
+    ) {
       if (!condition) {
         throw new InvalidOperationException(message);
       }

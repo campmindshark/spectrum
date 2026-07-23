@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
 namespace Spectrum.LayerPipeline.Tests {
@@ -32,7 +33,7 @@ namespace Spectrum.LayerPipeline.Tests {
         0x40, 0x00, 0x20, 0x00, 0x00, 0x00, 0xF0, 0x02, 0xF4,
       };
 
-      Assert(CobsCodec.TryDecode(encoded, out byte[] decoded),
+      Assert(CobsCodec.TryDecode(encoded, out byte[]? decoded),
         "valid receiver frame was rejected");
       AssertBytes(expectedDecoded, decoded, "decoded receiver frame");
 
@@ -148,7 +149,9 @@ namespace Spectrum.LayerPipeline.Tests {
         name + ": expected " + expected + ", got " + actual);
     }
 
-    private static void Assert(bool condition, string message) {
+    private static void Assert(
+      [DoesNotReturnIf(false)] bool condition, string? message
+    ) {
       if (!condition) {
         throw new InvalidOperationException(message);
       }

@@ -11,13 +11,13 @@ namespace Spectrum.Web {
   // object to edit and never copies colors through an Apply operation.
   public sealed class PaletteController {
     public sealed class SlotDto {
-      public string start { get; set; }
-      public string end { get; set; }
+      public string? start { get; set; }
+      public string? end { get; set; }
     }
 
     public sealed class PaletteDto {
-      public string name { get; set; }
-      public List<SlotDto> colors { get; set; }
+      public string name { get; set; } = "";
+      public List<SlotDto> colors { get; set; } = new();
     }
 
     private readonly ApplicationStateDispatcher gateway;
@@ -37,47 +37,47 @@ namespace Spectrum.Web {
     public Task<object> StateAsync() =>
       this.gateway.InvokeAsync(this.State);
 
-    public async Task<(bool ok, string error)> SetColorsAsync(
-      string name, List<SlotDto> colors
+    public async Task<(bool ok, string? error)> SetColorsAsync(
+      string? name, List<SlotDto>? colors
     ) {
       if (colors == null) {
         return (false, "body must be {\"colors\": [ ... ]}");
       }
-      LEDColor[] converted;
+      LEDColor?[] converted;
       try {
         converted = ToColors(colors);
       } catch (ArgumentException e) {
         return (false, e.Message);
       }
-      (bool ok, string error) result = (false, "not run");
+      (bool ok, string? error) result = (false, "not run");
       await this.gateway.InvokeAsync(
         () => result = this.service.ReplaceColors(name, converted));
       return result;
     }
 
-    public async Task<(bool ok, string error)> AddAsync(
-      string name, string sourceName
+    public async Task<(bool ok, string? error)> AddAsync(
+      string? name, string? sourceName
     ) {
-      (bool ok, string error) result = (false, "not run");
+      (bool ok, string? error) result = (false, "not run");
       await this.gateway.InvokeAsync(() => {
-        LEDColor[] colors = Find(
+        LEDColor?[]? colors = Find(
           this.config.domePalettes, sourceName)?.ToPalette().Colors;
         result = this.service.Add(name, colors);
       });
       return result;
     }
 
-    public async Task<(bool ok, string error)> RenameAsync(
-      string name, string newName
+    public async Task<(bool ok, string? error)> RenameAsync(
+      string? name, string? newName
     ) {
-      (bool ok, string error) result = (false, "not run");
+      (bool ok, string? error) result = (false, "not run");
       await this.gateway.InvokeAsync(
         () => result = this.service.Rename(name, newName));
       return result;
     }
 
-    public async Task<(bool ok, string error)> DeleteAsync(string name) {
-      (bool ok, string error) result = (false, "not run");
+    public async Task<(bool ok, string? error)> DeleteAsync(string? name) {
+      (bool ok, string? error) result = (false, "not run");
       await this.gateway.InvokeAsync(() => result = this.service.Delete(name));
       return result;
     }
@@ -117,8 +117,8 @@ namespace Spectrum.Web {
       return result;
     }
 
-    private static DomePaletteSnapshot Find(
-      ImmutableArray<DomePaletteSnapshot> palettes, string name
+    private static DomePaletteSnapshot? Find(
+      ImmutableArray<DomePaletteSnapshot> palettes, string? name
     ) {
       if (name == null) {
         return null;
@@ -132,10 +132,12 @@ namespace Spectrum.Web {
       return null;
     }
 
-    private static List<SlotDto> ToSlots(LEDColor[] colors) {
+    private static List<SlotDto> ToSlots(LEDColor?[]? colors) {
       var slots = new List<SlotDto>(DomePalette.SlotCount);
       for (int i = 0; i < DomePalette.SlotCount; i++) {
-        LEDColor color = colors != null && i < colors.Length ? colors[i] : null;
+        LEDColor? color = colors != null && i < colors.Length
+          ? colors[i]
+          : null;
         slots.Add(color == null
           ? new SlotDto { start = null, end = null }
           : new SlotDto {
@@ -146,10 +148,10 @@ namespace Spectrum.Web {
       return slots;
     }
 
-    private static LEDColor[] ToColors(List<SlotDto> slots) {
-      var colors = new LEDColor[DomePalette.SlotCount];
+    private static LEDColor?[] ToColors(List<SlotDto> slots) {
+      var colors = new LEDColor?[DomePalette.SlotCount];
       for (int i = 0; i < DomePalette.SlotCount && i < slots.Count; i++) {
-        SlotDto slot = slots[i];
+        SlotDto? slot = slots[i];
         if (slot == null || string.IsNullOrEmpty(slot.start)) {
           continue;
         }

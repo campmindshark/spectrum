@@ -22,7 +22,7 @@ namespace Spectrum.Web {
       Operator runtime,
       int port,
       bool nativeWindowControlsAvailable,
-      Action<Exception> reportBackgroundError = null
+      Action<Exception>? reportBackgroundError = null
     ) {
       if (config == null) {
         throw new ArgumentNullException(nameof(config));

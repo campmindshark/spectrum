@@ -17,7 +17,7 @@ namespace Spectrum {
     private readonly Dispatcher dispatcher;
     private readonly ListBox paletteList;
     private readonly TextBox nameBox;
-    private readonly Action<DomePalette> selectionChanged;
+    private readonly Action<DomePalette?> selectionChanged;
 
     public ObservableCollection<DomePalette> Palettes { get; } =
       new ObservableCollection<DomePalette>();
@@ -27,7 +27,7 @@ namespace Spectrum {
     public DomePalettesController(
       Configuration config, ListBox paletteList, TextBox nameBox,
       ButtonBase addButton, ButtonBase renameButton, ButtonBase deleteButton,
-      Action<DomePalette> selectionChanged
+      Action<DomePalette?> selectionChanged
     ) {
       this.config = config;
       this.service = new PaletteService(config);
@@ -44,16 +44,16 @@ namespace Spectrum {
       this.Refresh();
     }
 
-    private DomePalette Selected =>
+    private DomePalette? Selected =>
       this.paletteList.SelectedItem as DomePalette;
 
-    private void OnConfigChanged(object sender, PropertyChangedEventArgs e) {
+    private void OnConfigChanged(object? sender, PropertyChangedEventArgs e) {
       if (e.PropertyName == nameof(this.config.domePalettes)) {
         this.dispatcher.BeginInvoke(new Action(this.Refresh));
       }
     }
 
-    private void OnPaletteEdited(object sender, PropertyChangedEventArgs e) {
+    private void OnPaletteEdited(object? sender, PropertyChangedEventArgs e) {
       if (this.refreshing || e.PropertyName != "Item[]" ||
           sender is not DomePalette palette) {
         return;
@@ -65,7 +65,7 @@ namespace Spectrum {
       if (this.refreshing) {
         return;
       }
-      DomePalette selected = this.Selected;
+      DomePalette? selected = this.Selected;
       if (selected != null) {
         this.nameBox.Text = selected.Name;
       }
@@ -73,19 +73,19 @@ namespace Spectrum {
     }
 
     private void Refresh() {
-      string selectedName = this.Selected?.Name;
+      string? selectedName = this.Selected?.Name;
       this.refreshing = true;
       this.Palettes.Clear();
       if (!this.config.domePalettes.IsDefaultOrEmpty) {
         foreach (DomePaletteSnapshot snapshot in this.config.domePalettes) {
-          DomePalette palette = snapshot?.ToPalette();
+          DomePalette palette = snapshot.ToPalette();
           if (palette != null && !string.IsNullOrWhiteSpace(palette.Name)) {
             palette.PropertyChanged += this.OnPaletteEdited;
             this.Palettes.Add(palette);
           }
         }
       }
-      DomePalette selected = Find(this.Palettes, selectedName) ??
+      DomePalette? selected = Find(this.Palettes, selectedName) ??
         (this.Palettes.Count > 0 ? this.Palettes[0] : null);
       this.paletteList.SelectedItem = selected;
       if (selected != null) {
@@ -98,39 +98,39 @@ namespace Spectrum {
     // Add duplicates the currently selected colors under the typed name. This
     // makes variations quick while the first palette can still be created empty.
     private void Add() {
-      string name = this.nameBox.Text?.Trim();
-      LEDColor[] colors = this.Selected?.Colors;
-      (bool ok, string error) = this.service.Add(name, colors);
+      string? name = this.nameBox.Text?.Trim();
+      LEDColor?[]? colors = this.Selected?.Colors;
+      (bool ok, string? error) = this.service.Add(name, colors);
       if (!this.Report((ok, error))) {
         return;
       }
       this.Refresh();
-      DomePalette added = Find(this.Palettes, name);
+      DomePalette? added = Find(this.Palettes, name);
       if (added != null) {
         this.paletteList.SelectedItem = added;
       }
     }
 
     private void Rename() {
-      DomePalette selected = this.Selected;
+      DomePalette? selected = this.Selected;
       if (selected == null) {
         this.PickFirst();
         return;
       }
-      string newName = this.nameBox.Text?.Trim();
-      (bool ok, string error) = this.service.Rename(selected.Name, newName);
+      string? newName = this.nameBox.Text?.Trim();
+      (bool ok, string? error) = this.service.Rename(selected.Name, newName);
       if (!this.Report((ok, error))) {
         return;
       }
       this.Refresh();
-      DomePalette renamed = Find(this.Palettes, newName);
+      DomePalette? renamed = Find(this.Palettes, newName);
       if (renamed != null) {
         this.paletteList.SelectedItem = renamed;
       }
     }
 
     private void Delete() {
-      DomePalette selected = this.Selected;
+      DomePalette? selected = this.Selected;
       if (selected == null) {
         this.PickFirst();
         return;
@@ -152,7 +152,7 @@ namespace Spectrum {
         MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
-    private bool Report((bool ok, string error) result) {
+    private bool Report((bool ok, string? error) result) {
       if (result.ok) {
         return true;
       }
@@ -161,8 +161,8 @@ namespace Spectrum {
       return false;
     }
 
-    private static DomePalette Find(
-      ObservableCollection<DomePalette> palettes, string name
+    private static DomePalette? Find(
+      ObservableCollection<DomePalette> palettes, string? name
     ) {
       if (name == null) {
         return null;

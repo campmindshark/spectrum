@@ -60,7 +60,7 @@ namespace Spectrum.Visualizers {
     public DomeFrame LayerBuffer => this.buffer;
     public bool Enabled { get; set; }
 
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() {
       return this.inputs ??
         (this.inputs = new Input[] { this.orientationInput });

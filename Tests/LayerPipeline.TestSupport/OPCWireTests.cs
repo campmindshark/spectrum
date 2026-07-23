@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -457,7 +458,7 @@ namespace Spectrum.LayerPipeline.Tests {
       config.ReplaceDomePortMappings(assignedMappings);
 
       cableMapping[0] = 0;
-      assignedMappings[1].ports[0] = 7;
+      assignedMappings[1].ports![0] = 7;
       Assert(config.domeCableMapping[0] == LEDDomeOutput.NumCables - 1 &&
           config.domePortMappings[1][0] == 1,
         "configuration retained an alias to assigned mapping values");
@@ -808,7 +809,7 @@ namespace Spectrum.LayerPipeline.Tests {
       pattern.Enabled = true;
       using IncrementalHash sequence = IncrementalHash.CreateHash(
         HashAlgorithmName.SHA256);
-      using FileStream capture = OpenCapture(
+      using FileStream? capture = OpenCapture(
         "current-iterate-through-struts.opc");
       try {
         for (int frame = 0; frame < StrutPatternFrames; frame++) {
@@ -845,7 +846,7 @@ namespace Spectrum.LayerPipeline.Tests {
       var opc = new OPCAPI(
         address, separateThread, _ => { }, TimeSpan.Zero);
       opc.Active = true;
-      WaitHandle pendingConnect = separateThread
+      WaitHandle? pendingConnect = separateThread
         ? null
         : opc.PendingConnectWaitHandle;
       sink.Accept();
@@ -858,7 +859,7 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     private static LEDDomeOutput ConnectDome(
-      LoopbackSink sink, int[] cableMapping,
+      LoopbackSink sink, int[]? cableMapping,
       out global::Spectrum.SpectrumConfiguration config
     ) {
       config = new global::Spectrum.SpectrumConfiguration {
@@ -871,7 +872,7 @@ namespace Spectrum.LayerPipeline.Tests {
         config, new RuntimeTelemetry(), new BeatBroadcaster(config),
         TimeSpan.Zero);
       output.Active = true;
-      WaitHandle pendingConnect = output.PendingOpcConnectWaitHandle;
+      WaitHandle? pendingConnect = output.PendingOpcConnectWaitHandle;
       sink.Accept();
       Assert(pendingConnect != null &&
           pendingConnect.WaitOne(TimeSpan.FromSeconds(2)),
@@ -948,12 +949,12 @@ namespace Spectrum.LayerPipeline.Tests {
       (message[2] << 8) | message[3];
 
     private static void SaveCapture(string name, byte[] message) {
-      using FileStream capture = OpenCapture(name);
+      using FileStream? capture = OpenCapture(name);
       capture?.Write(message, 0, message.Length);
     }
 
-    private static FileStream OpenCapture(string name) {
-      string directory = Environment.GetEnvironmentVariable(
+    private static FileStream? OpenCapture(string name) {
+      string? directory = Environment.GetEnvironmentVariable(
         "SPECTRUM_OPC_CAPTURE_DIR");
       if (string.IsNullOrWhiteSpace(directory)) {
         return null;
@@ -989,7 +990,9 @@ namespace Spectrum.LayerPipeline.Tests {
         name + " did not throw " + typeof(T).Name);
     }
 
-    private static void Assert(bool condition, string message) {
+    private static void Assert(
+      [DoesNotReturnIf(false)] bool condition, string? message
+    ) {
       if (!condition) {
         throw new InvalidOperationException(message);
       }
@@ -998,7 +1001,7 @@ namespace Spectrum.LayerPipeline.Tests {
     private sealed class LoopbackSink : IDisposable {
       private readonly TcpListener listener;
       private readonly Task<Socket> accepting;
-      private Socket socket;
+      private Socket? socket;
 
       public int Port { get; }
 
@@ -1026,10 +1029,12 @@ namespace Spectrum.LayerPipeline.Tests {
       }
 
       private byte[] ReceiveExactly(int count) {
+        Socket socket = this.socket ?? throw new InvalidOperationException(
+          "loopback OPC client was not accepted");
         var bytes = new byte[count];
         int received = 0;
         while (received < count) {
-          int read = this.socket.Receive(
+          int read = socket.Receive(
             bytes, received, count - received, SocketFlags.None);
           if (read == 0) {
             throw new InvalidOperationException(

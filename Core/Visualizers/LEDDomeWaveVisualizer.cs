@@ -62,7 +62,7 @@ namespace Spectrum.Visualizers {
     // source can read wand state.
     // It's AlwaysActive and always Enabled, so this never gates eligibility
     // even when trigger != Button.
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() {
       return this.inputs ?? (this.inputs = new Input[] { this.orientationInput });
     }

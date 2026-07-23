@@ -159,8 +159,8 @@ namespace Spectrum {
         System.Collections.Immutable.ImmutableDictionary<
           string, ParameterValue>,
         ILayerRendererOptions> compileOptions,
-      LayerActionDefinition fireAction = null,
-      LayerActionDefinition clearAction = null
+      LayerActionDefinition? fireAction = null,
+      LayerActionDefinition? clearAction = null
     ) => new LayerDefinition(
       id, displayName, null, parameters, compileOptions,
       fireAction, clearAction);

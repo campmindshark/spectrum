@@ -58,11 +58,11 @@ namespace Spectrum {
     private int followedDevice = -1;
     private long lastFollowedBeatMs;
 
-    private UdpClient client;
-    private Thread receiveThread;
+    private UdpClient? client;
+    private Thread? receiveThread;
     private volatile bool running;
     private bool active;
-    private string lastError;
+    private string? lastError;
 
     public ProDjLinkInput(
       Configuration config,
@@ -114,11 +114,11 @@ namespace Spectrum {
     public bool Enabled =>
       this.runtimeSettings.AudioSettingsSnapshot.BeatInput == 2;
 
-    internal string LastError => Volatile.Read(ref this.lastError);
+    internal string? LastError => Volatile.Read(ref this.lastError);
 
     internal bool Listening => Volatile.Read(ref this.client) != null;
 
-    internal event Action StatusChanged;
+    internal event Action? StatusChanged;
 
     public void OperatorUpdate() { }
 
@@ -141,21 +141,22 @@ namespace Spectrum {
       this.running = false;
       this.stopRequested.Set();
       this.ClosePublishedClient();
-      if (this.receiveThread != null) {
-        this.receiveThread.Join();
+      Thread? thread = this.receiveThread;
+      if (thread != null) {
+        thread.Join();
         this.receiveThread = null;
       }
     }
 
     private void ReceiveWorker() {
       while (this.running) {
-        UdpClient current = null;
+        UdpClient? current = null;
         try {
           current = this.CreateBoundClient();
           if (!this.running) {
             break;
           }
-          UdpClient previous = Interlocked.Exchange(
+          UdpClient? previous = Interlocked.Exchange(
             ref this.client, current);
           previous?.Dispose();
           Volatile.Write(ref this.lastError, null);
@@ -218,7 +219,7 @@ namespace Spectrum {
     }
 
     private void ClosePublishedClient() {
-      UdpClient current = Interlocked.Exchange(ref this.client, null);
+      UdpClient? current = Interlocked.Exchange(ref this.client, null);
       if (current != null) {
         this.PublishStatusChanged();
         try {

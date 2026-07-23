@@ -2,6 +2,7 @@
 using Spectrum.LEDs;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Spectrum {
 
@@ -161,7 +162,13 @@ namespace Spectrum {
     // frame (~4,500 times), and the old Tuple<Racer,double,double,Racer>
     // allocated a heap object every call (with the racer redundantly stored
     // twice) just to smuggle three values out.
-    private bool TryGetRacer(double Y, double ang, out Racer racer, out double locY, out double locAng) {
+    private bool TryGetRacer(
+      double Y,
+      double ang,
+      [NotNullWhen(true)] out Racer? racer,
+      out double locY,
+      out double locAng
+    ) {
       // e.g., say 2 racers, racer0 centered on .25; racer1 centered on .75.
       // Y = .4. We should return the first racer if in spacing.
       if (Y > .9999) {
@@ -281,7 +288,7 @@ namespace Spectrum {
       }
     }
 
-    private Input[] inputs;
+    private Input[]? inputs;
     public Input[] GetInputs() {
       // In order for the Operator to know which Inputs need to be enabled, you
       // should return the ones you are currently using here. If your Visualizer
@@ -318,7 +325,9 @@ namespace Spectrum {
       //-----------------------------------------------------------------------
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
-        if (!this.TryGetRacer(this.pixelHeight[i], this.pixelAngle[i], out Racer racer, out double locY, out double locAng)) {
+        if (!this.TryGetRacer(
+            this.pixelHeight[i], this.pixelAngle[i], out Racer? racer,
+            out double locY, out double locAng)) {
           // color = 0 is off. Intentionally opaque black (not Clear): a
           // foreground Race layer under Over occludes with black between racers.
           this.buffer.pixels[i].color = 0;

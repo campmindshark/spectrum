@@ -50,7 +50,7 @@ namespace Spectrum {
     // Guards the listener lifecycle (mUdpClient/active) independently of mLock,
     // which protects the device state read on the receive thread.
     private readonly object lifecycleLock = new object();
-    private UdpClient mUdpClient;
+    private UdpClient? mUdpClient;
     private readonly static int DEVICE_LISTEN_PORT = 5005;
     private readonly static long DEVICE_TIMEOUT_MS = 1000;
     private readonly static long DEVICE_EVENT_TIMEOUT = 5;
@@ -136,7 +136,7 @@ namespace Spectrum {
     // pending ReceiveCallback then completes with ObjectDisposedException, which
     // it swallows, so the receive loop stops cleanly.
     private void StopListening() {
-      UdpClient client = mUdpClient;
+      UdpClient? client = mUdpClient;
       mUdpClient = null;
       client?.Close();
     }
@@ -154,7 +154,9 @@ namespace Spectrum {
     }
 
     private void ReceiveCallback(IAsyncResult ar) {
-      UdpClient client = (UdpClient)ar.AsyncState;
+      if (ar.AsyncState is not UdpClient client) {
+        return;
+      }
       byte[] buffer;
       var remote = new IPEndPoint(IPAddress.Any, 0);
       try {
@@ -331,7 +333,7 @@ namespace Spectrum {
     // visualizer runs. The snapshot itself is created lazily so a scene with no
     // orientation consumers pays nothing; all consumers in a generation share
     // the same cloned devices.
-    public void BeginOperatorFrame(DomeRuntimeFrameSnapshot runtime = null) {
+    public void BeginOperatorFrame(DomeRuntimeFrameSnapshot? runtime = null) {
       this.operatorFrameRuntime = runtime ??
         this.runtimeSettings.DomeRuntimeFrameSnapshot;
       this.operatorFrameGeneration++;

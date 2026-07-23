@@ -10,10 +10,10 @@ namespace Spectrum {
 
   class ColorConverter : IValueConverter {
 
-    public object Convert(
-      object value,
+    public object? Convert(
+      object? value,
       Type targetType,
-      object parameter,
+      object? parameter,
       System.Globalization.CultureInfo culture
     ) {
       try {
@@ -33,10 +33,10 @@ namespace Spectrum {
       }
     }
 
-    public object ConvertBack(
-      object value,
+    public object? ConvertBack(
+      object? value,
       Type targetType,
-      object parameter,
+      object? parameter,
       System.Globalization.CultureInfo culture
     ) {
       try {

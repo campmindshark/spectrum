@@ -72,7 +72,7 @@ namespace Spectrum {
     private readonly ProjectionGeometry topDownGeometry;
     private ProjectionGeometry geometry;
 
-    private DispatcherTimer timer;
+    private DispatcherTimer? timer;
 
     public DomeSimulatorWindow(Configuration config, LEDDomeOutput dome) {
       this.InitializeComponent();
@@ -198,8 +198,8 @@ namespace Spectrum {
       }
     }
 
-    private void Update(object sender, EventArgs e) {
-      bool hasFrame = this.dome.TryTakeSimulatorFrame(out int[] latestFrame);
+    private void Update(object? sender, EventArgs e) {
+      bool hasFrame = this.dome.TryTakeSimulatorFrame(out int[]? latestFrame);
       int queueLength = this.dome.SimulatorCommandQueue.Count;
       if (queueLength == 0 && !hasFrame) {
         return;
@@ -208,7 +208,7 @@ namespace Spectrum {
       //Stopwatch stopwatch = Stopwatch.StartNew();
 
       bool shouldRedraw = false;
-      if (hasFrame) {
+      if (hasFrame && latestFrame != null) {
         try {
           // Normal buffer output is a latest-value mailbox: render only the
           // newest frame available on this UI tick. Ordered diagnostic commands

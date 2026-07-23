@@ -7,7 +7,7 @@ namespace Spectrum.Web {
   /** Thread-safe read model for audio setup and capture health. */
   public sealed class AudioDeviceController {
     private readonly IAudioLevelInput input;
-    private readonly IAudioDeviceProvider devices;
+    private readonly IAudioDeviceProvider? devices;
     private readonly IRuntimeSettingsConfiguration runtimeSettings;
 
     public AudioDeviceController(
@@ -23,7 +23,7 @@ namespace Spectrum.Web {
 
     public object State() {
       IReadOnlyList<AudioCaptureDevice> available;
-      string discoveryError = null;
+      string? discoveryError = null;
       if (this.devices == null) {
         available = Array.Empty<AudioCaptureDevice>();
         discoveryError = "The active audio backend does not support discovery.";

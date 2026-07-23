@@ -68,7 +68,7 @@ namespace Spectrum {
     }
 
     private static void OnUnobservedTaskException(
-      object sender, UnobservedTaskExceptionEventArgs e
+      object? sender, UnobservedTaskExceptionEventArgs e
     ) {
       LogException("Unobserved task exception", e.Exception);
     }

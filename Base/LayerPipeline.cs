@@ -145,7 +145,7 @@ namespace Spectrum.Base {
   public sealed record LayerDefinition(
     string Id,
     string DisplayName,
-    Func<LayerRendererRuntime, ILayerRenderer> CreateRenderer,
+    Func<LayerRendererRuntime, ILayerRenderer>? CreateRenderer,
     IReadOnlyList<DomeLayerParam> Parameters,
     Func<ImmutableDictionary<string, ParameterValue>,
       ILayerRendererOptions> CompileOptions,

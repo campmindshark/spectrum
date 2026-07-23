@@ -36,11 +36,11 @@ namespace Spectrum.MIDI {
     private readonly BeatBroadcaster beat;
     private readonly ApplicationStateDispatcher stateDispatcher;
     private readonly bool connectHardware;
-    private Dictionary<int, InputDevice> devices;
+    private Dictionary<int, InputDevice>? devices;
     private long appliedDeviceGeneration = -1;
     public long AppliedDeviceGeneration =>
       Volatile.Read(ref this.appliedDeviceGeneration);
-    internal event Action SettingsApplied;
+    internal event Action? SettingsApplied;
     private readonly ConcurrentQueue<MidiCommand> buffer;
     // Latest-value state has one deliberately chosen owner lock: driver
     // callbacks write under it and the operator/visualizers read under it.
@@ -90,7 +90,7 @@ namespace Spectrum.MIDI {
       this.config.PropertyChanged += ConfigUpdated;
     }
 
-    private void ConfigUpdated(object sender, PropertyChangedEventArgs e) {
+    private void ConfigUpdated(object? sender, PropertyChangedEventArgs e) {
       if (e.PropertyName == nameof(this.config.midiDevices) ||
           e.PropertyName == nameof(this.config.midiPresets)) {
         this.SetBindings();
@@ -145,7 +145,7 @@ namespace Spectrum.MIDI {
 
       ImmutableDictionary<int, MidiPreset> presets = settings.Presets;
       foreach (KeyValuePair<int, int> pair in configuredDevices) {
-        if (!presets.TryGetValue(pair.Value, out MidiPreset preset) ||
+        if (!presets.TryGetValue(pair.Value, out MidiPreset? preset) ||
             preset?.Bindings == null) {
           this.MidiLog.Append(
             "MIDI device " + pair.Key + " references missing preset " +
@@ -186,13 +186,18 @@ namespace Spectrum.MIDI {
       Binding binding,
       int deviceIndex
     ) {
+      BindingKey? bindingKey = binding.key;
+      if (bindingKey == null || binding.callback == null) {
+        throw new InvalidOperationException(
+          "MIDI binding is missing its key or callback.");
+      }
       var innerBindingKey = new InnerBindingKey(
         deviceIndex,
-        binding.key.Item1,
-        binding.key.Item2
+        bindingKey.Item1,
+        bindingKey.Item2
       );
       if (!target.TryGetValue(
-          innerBindingKey, out List<Binding> keyBindings)) {
+          innerBindingKey, out List<Binding>? keyBindings)) {
         keyBindings = new List<Binding>();
         target.Add(innerBindingKey, keyBindings);
       }
@@ -253,7 +258,7 @@ namespace Spectrum.MIDI {
 
     private void ChannelMessageReceived(
       int deviceIndex,
-      object sender,
+      object? sender,
       ChannelMessageEventArgs e
     ) {
       MidiCommand command;
@@ -340,8 +345,12 @@ namespace Spectrum.MIDI {
       Binding binding, MidiCommand command
     ) {
       try {
-        BindingInvocation invocation =
-          binding.callback(command.index, command.value);
+        Binding.bindingCallback? callback = binding.callback;
+        if (callback == null) {
+          throw new InvalidOperationException(
+            "MIDI binding callback is unavailable.");
+        }
+        BindingInvocation invocation = callback(command.index, command.value);
         if (invocation.Completion != null) {
           await invocation.Completion.ConfigureAwait(false);
         }
@@ -429,7 +438,7 @@ namespace Spectrum.MIDI {
     public double GetKnobValue(int deviceIndex, int knob) {
       lock (this.midiStateLock) {
         if (!this.knobValues.TryGetValue(
-            deviceIndex, out Dictionary<int, double> values) ||
+            deviceIndex, out Dictionary<int, double>? values) ||
             !values.TryGetValue(knob, out double value)) {
           return -1.0;
         }
@@ -440,7 +449,7 @@ namespace Spectrum.MIDI {
     public double GetNoteVelocity(int deviceIndex, int note) {
       lock (this.midiStateLock) {
         if (!this.noteVelocities.TryGetValue(
-            deviceIndex, out Dictionary<int, double> values) ||
+            deviceIndex, out Dictionary<int, double>? values) ||
             !values.TryGetValue(note, out double value)) {
           return 0.0;
         }
