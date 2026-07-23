@@ -842,9 +842,18 @@ namespace Spectrum.LayerPipeline.Tests {
       if (defaultChannel.HasValue) {
         address += ":" + defaultChannel.Value;
       }
-      var opc = new OPCAPI(address, separateThread, _ => { });
+      var opc = new OPCAPI(
+        address, separateThread, _ => { }, TimeSpan.Zero);
       opc.Active = true;
+      WaitHandle pendingConnect = separateThread
+        ? null
+        : opc.PendingConnectWaitHandle;
       sink.Accept();
+      if (!separateThread) {
+        Assert(pendingConnect != null &&
+            pendingConnect.WaitOne(TimeSpan.FromSeconds(2)),
+          "loopback OPC connection did not complete");
+      }
       return opc;
     }
 
@@ -859,9 +868,14 @@ namespace Spectrum.LayerPipeline.Tests {
       };
       config.ReplaceDomeCableMapping(cableMapping);
       var output = new LEDDomeOutput(
-        config, new RuntimeTelemetry(), new BeatBroadcaster(config));
+        config, new RuntimeTelemetry(), new BeatBroadcaster(config),
+        TimeSpan.Zero);
       output.Active = true;
+      WaitHandle pendingConnect = output.PendingOpcConnectWaitHandle;
       sink.Accept();
+      Assert(pendingConnect != null &&
+          pendingConnect.WaitOne(TimeSpan.FromSeconds(2)),
+        "loopback dome OPC connection did not complete");
       return output;
     }
 
@@ -892,9 +906,6 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     private static void Send(Action update) {
-      // OPC output is intentionally capped at 200 Hz. Wait past its 5 ms
-      // interval so these tests exercise the real send path deterministically.
-      Thread.Sleep(8);
       update();
     }
 

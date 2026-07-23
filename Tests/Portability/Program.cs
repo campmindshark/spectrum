@@ -5,10 +5,15 @@ using System.Net.Sockets;
 using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Testing.Platform.Builder;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using Spectrum.Platform.Linux;
@@ -17,61 +22,52 @@ using Spectrum.Web;
 
 namespace Spectrum.Portability.Tests {
 
-  internal static class Program {
-    private static int failures;
+  [TestClass]
+  public sealed class PortabilityTests {
+    private static readonly IReadOnlyDictionary<string, Action> TestCases =
+      BuildTestCases();
 
-    private static int Main(string[] args) {
+    private static async Task<int> Main(string[] args) {
       if (args.Length == 1 && args[0] == "--fake-pcm-tracker") {
         return RunFakePcmTracker();
       }
-      Run("headless state dispatcher owns one dedicated thread",
-        DedicatedThreadOwnership);
-      Run("headless state dispatcher serializes concurrent commands",
-        DedicatedThreadSerialization);
-      Run("headless state dispatcher contains command failures",
-        DedicatedThreadFailureContainment);
-      Run("headless state dispatcher drains accepted commands on shutdown",
-        DedicatedThreadShutdown);
-      Run("portable configuration store saves and recovers atomically",
-        ConfigurationStoreRecovery);
-      Run("portable configuration session debounces and flushes saves",
-        ConfigurationSessionPersistence);
-      Run("portable host owns runtime, service, reboot, and shutdown lifecycle",
-        PortableHostLifecycle);
-      Run("headless configuration paths follow explicit and XDG policy",
-        HeadlessConfigurationPaths);
-      Run("Madmom runtime discovery supports Windows and Unix layouts",
-        MadmomRuntimeDiscovery);
-      Run("Linux ALSA input discovers devices and publishes PCM peak level",
-        LinuxAlsaAudioInput);
-      Run("Linux Madmom input consumes the owned ALSA PCM stream",
-        LinuxMadmomPcmInput);
-      Run("Linux Madmom process consumes PCM and publishes beats",
-        LinuxMadmomProcessLifecycle);
-      Run("Linux serial discovery prefers stable device aliases",
-        LinuxSerialPortDiscovery);
-      Run("portable Pro DJ Link input receives UDP beats",
-        PortableProDjLinkInput);
-      Run("portable core compiles built-in layer configuration",
-        PortableCoreLayerConfiguration);
-      Run("portable runtime assembly has no Windows desktop dependencies",
-        PortableRuntimeAssemblyBoundary);
-      Run("portable Earth texture decoder reads the embedded asset",
-        PortableEarthTextureDecoder);
-      Run("portable web host serves the operator API",
-        PortableWebHostServesOperatorApi);
-      Run("portable OPC client handles partial sends and late controllers",
-        OpcWireFrame);
-      return failures == 0 ? 0 : 1;
+
+      ITestApplicationBuilder builder =
+        await TestApplication.CreateBuilderAsync(args);
+      SelfRegisteredExtensions.AddSelfRegisteredExtensions(builder, args);
+      using ITestApplication application = await builder.BuildAsync();
+      return await application.RunAsync();
     }
 
-    private static void Run(string name, Action test) {
+    public static IEnumerable<object[]> DiscoverTestCases() =>
+      TestCases.Keys.OrderBy(name => name)
+        .Select(name => new object[] { name });
+
+    [TestMethod]
+    [DoNotParallelize]
+    [DynamicData(nameof(DiscoverTestCases))]
+    public void Run(string name) {
+      TestCases[name]();
+    }
+
+    private static IReadOnlyDictionary<string, Action> BuildTestCases() {
+      var tests = new Dictionary<string, Action>();
+      foreach (MethodInfo method in typeof(PortabilityTests).GetMethods(
+          BindingFlags.NonPublic | BindingFlags.Static)) {
+        if (method.ReturnType == typeof(void) &&
+            method.GetParameters().Length == 0) {
+          tests.Add(method.Name, () => Invoke(method));
+        }
+      }
+      return tests;
+    }
+
+    private static void Invoke(MethodInfo method) {
       try {
-        test();
-        Console.WriteLine("PASS " + name);
-      } catch (Exception error) {
-        failures++;
-        Console.Error.WriteLine("FAIL " + name + ": " + error);
+        method.Invoke(null, null);
+      } catch (TargetInvocationException error)
+          when (error.InnerException != null) {
+        ExceptionDispatchInfo.Capture(error.InnerException).Throw();
       }
     }
 
@@ -333,9 +329,8 @@ namespace Spectrum.Portability.Tests {
         "the ALSA device identity was not exposed unchanged");
 
       input.Active = true;
-      Assert(SpinWait.SpinUntil(
-          () => input.Volume > 0.99f,
-          TimeSpan.FromSeconds(2)),
+      Assert(api.FrameProcessed.Wait(TimeSpan.FromSeconds(2)) &&
+          input.Volume > 0.99f,
         "signed 16-bit PCM did not publish a normalized peak level");
       Assert(api.OpenCount > 0 && input.LastError == null,
         "the ALSA worker did not open the configured device cleanly");
@@ -348,9 +343,8 @@ namespace Spectrum.Portability.Tests {
       using var failing = new AlsaAudioLevelInput(
         config, api, failingTracker, TimeSpan.FromMilliseconds(5));
       failing.Active = true;
-      Assert(SpinWait.SpinUntil(
-          () => failing.LastError?.Contains("test device unavailable") == true,
-          TimeSpan.FromSeconds(2)),
+      Assert(api.RepeatedOpenFailure.Wait(TimeSpan.FromSeconds(2)) &&
+          failing.LastError?.Contains("test device unavailable") == true,
         "an ALSA open failure was not reported");
       failing.GetAvailableDevices();
       Assert(failing.LastError?.Contains("test device unavailable") == true,
@@ -370,9 +364,8 @@ namespace Spectrum.Portability.Tests {
       using var input = new AlsaAudioLevelInput(
         config, api, tracker, TimeSpan.FromMilliseconds(5));
       input.Active = true;
-      Assert(SpinWait.SpinUntil(
-          () => tracker.WriteCount > 0,
-          TimeSpan.FromSeconds(2)),
+      Assert(tracker.Written.Wait(TimeSpan.FromSeconds(2)) &&
+          tracker.WriteCount > 0,
         "the selected Madmom source did not receive ALSA PCM");
       Assert(tracker.Enabled && tracker.LastChannels == 2 &&
           tracker.LastSampleCount > 0,
@@ -380,10 +373,10 @@ namespace Spectrum.Portability.Tests {
       Assert(input.LastError == "test tracker unavailable",
         "the audio health surface hid the Madmom process error");
 
+      tracker.Disabled.Reset();
       config.beatInput = 0;
-      Assert(SpinWait.SpinUntil(
-          () => !tracker.Enabled,
-          TimeSpan.FromSeconds(2)),
+      Assert(tracker.Disabled.Wait(TimeSpan.FromSeconds(2)) &&
+          !tracker.Enabled,
         "changing tempo source did not stop the Madmom process");
       Assert(input.LastError == null,
         "a disabled Madmom source left a stale audio health error");
@@ -433,15 +426,26 @@ namespace Spectrum.Portability.Tests {
       var api = new FakeAlsaApi();
       using var input = new AlsaAudioLevelInput(
         config, api, tracker, TimeSpan.FromMilliseconds(5));
+      using var beatReceived = new ManualResetEventSlim();
+      using var trackerFailed = new ManualResetEventSlim();
+      beat.PropertyChanged += (_, change) => {
+        if (change.PropertyName == "BPMString" &&
+            beat.MeasureLength == 500) {
+          beatReceived.Set();
+        }
+      };
+      tracker.StatusChanged += () => {
+        if (!string.IsNullOrWhiteSpace(tracker.LastError)) {
+          trackerFailed.Set();
+        }
+      };
 
       input.Active = true;
-      Assert(SpinWait.SpinUntil(
-          () => beat.MeasureLength == 500,
-          TimeSpan.FromSeconds(5)),
+      Assert(beatReceived.Wait(TimeSpan.FromSeconds(5)) &&
+          beat.MeasureLength == 500,
         "Madmom child stdout did not publish its two 120 BPM beat events");
-      Assert(SpinWait.SpinUntil(
-          () => !string.IsNullOrWhiteSpace(input.LastError),
-          TimeSpan.FromSeconds(5)),
+      Assert(trackerFailed.Wait(TimeSpan.FromSeconds(5)) &&
+          !string.IsNullOrWhiteSpace(input.LastError),
         "an unexpected Madmom child exit was not reported");
       Assert(input.LastError.Contains("Madmom", StringComparison.Ordinal),
         "the Madmom child failure was reported as the wrong health error: " +
@@ -467,7 +471,7 @@ namespace Spectrum.Portability.Tests {
           "dotnet",
           StringComparison.OrdinalIgnoreCase)) {
         start.ArgumentList.Add(
-          typeof(Program).Assembly.Location);
+          typeof(PortabilityTests).Assembly.Location);
       }
       start.ArgumentList.Add("--fake-pcm-tracker");
       return start;
@@ -487,7 +491,6 @@ namespace Spectrum.Portability.Tests {
       Console.WriteLine("BEAT:0.500");
       Console.WriteLine("BEAT:1.000");
       Console.Out.Flush();
-      Thread.Sleep(100);
       return 0;
     }
 
@@ -507,17 +510,29 @@ namespace Spectrum.Portability.Tests {
         connectNetwork: true,
         port,
         TimeSpan.FromMilliseconds(5));
+      using var failureReported = new ManualResetEventSlim();
+      using var listening = new ManualResetEventSlim();
+      using var beatReceived = new ManualResetEventSlim();
+      input.StatusChanged += () => {
+        if (input.LastError != null) {
+          failureReported.Set();
+        }
+        if (input.Listening) {
+          listening.Set();
+        }
+      };
+      beat.PropertyChanged += (_, change) => {
+        if (change.PropertyName == "BPMString") {
+          beatReceived.Set();
+        }
+      };
       Assert(input.Enabled,
         "the Pro DJ Link input did not follow the selected tempo source");
       input.Active = true;
-      Assert(SpinWait.SpinUntil(
-          () => input.LastError != null,
-          TimeSpan.FromSeconds(2)),
+      Assert(failureReported.Wait(TimeSpan.FromSeconds(2)),
         "a busy Pro DJ Link port did not report a contained bind error");
       blocker.Dispose();
-      Assert(SpinWait.SpinUntil(
-          () => input.Listening,
-          TimeSpan.FromSeconds(2)),
+      Assert(listening.Wait(TimeSpan.FromSeconds(2)),
         "the portable Pro DJ Link listener did not recover after the port " +
         "became available");
 
@@ -536,13 +551,9 @@ namespace Spectrum.Portability.Tests {
 
       using var sender = new UdpClient();
       var endpoint = new IPEndPoint(IPAddress.Loopback, port);
-      for (int attempt = 0;
-           attempt < 20 && beat.MeasureLength != 500;
-           attempt++) {
-        sender.Send(packet, packet.Length, endpoint);
-        Thread.Sleep(10);
-      }
-      Assert(beat.MeasureLength == 500 &&
+      sender.Send(packet, packet.Length, endpoint);
+      Assert(beatReceived.Wait(TimeSpan.FromSeconds(2)) &&
+          beat.MeasureLength == 500 &&
           beat.LatestBeatWithinBar == 3,
         "the portable UDP input did not publish the 120 BPM beat packet");
       Assert(input.LastError == null,
@@ -858,6 +869,8 @@ namespace Spectrum.Portability.Tests {
     private sealed class FakeAlsaApi : IAlsaApi {
       public int OpenCount { get; private set; }
       public bool FailOpen { get; set; }
+      public ManualResetEventSlim FrameProcessed { get; } = new();
+      public ManualResetEventSlim RepeatedOpenFailure { get; } = new();
 
       public IReadOnlyList<AudioCaptureDevice> GetCaptureDevices() =>
         new[] { new AudioCaptureDevice("hw:test,0", "Test capture") };
@@ -871,16 +884,29 @@ namespace Spectrum.Portability.Tests {
           "the ALSA worker opened the wrong device or sample rate");
         this.OpenCount++;
         if (this.FailOpen) {
+          if (this.OpenCount >= 3) {
+            this.RepeatedOpenFailure.Set();
+          }
           throw new InvalidOperationException("test device unavailable");
         }
-        return new FakeAlsaCapture();
+        return new FakeAlsaCapture(this.FrameProcessed);
       }
     }
 
     private sealed class FakeAlsaCapture : IAlsaCapture {
+      private readonly ManualResetEventSlim frameProcessed;
+      private int readCount;
+
+      public FakeAlsaCapture(ManualResetEventSlim frameProcessed) {
+        this.frameProcessed = frameProcessed;
+      }
+
       public int Channels => 2;
 
       public int Read(short[] samples) {
+        if (Interlocked.Increment(ref this.readCount) == 2) {
+          this.frameProcessed.Set();
+        }
         Array.Clear(samples, 0, samples.Length);
         samples[0] = short.MinValue;
         Thread.Yield();
@@ -895,10 +921,18 @@ namespace Spectrum.Portability.Tests {
       private int writeCount;
       private int lastChannels;
       private int lastSampleCount;
+      public ManualResetEventSlim Written { get; } = new();
+      public ManualResetEventSlim Disabled { get; } = new();
 
       public bool Enabled {
         get => Volatile.Read(ref this.enabled) != 0;
-        set => Volatile.Write(ref this.enabled, value ? 1 : 0);
+        set {
+          int previous = Interlocked.Exchange(
+            ref this.enabled, value ? 1 : 0);
+          if (!value && previous != 0) {
+            this.Disabled.Set();
+          }
+        }
       }
 
       public string LastError => this.LastErrorValue;
@@ -918,6 +952,7 @@ namespace Spectrum.Portability.Tests {
         Volatile.Write(ref this.lastChannels, channels);
         Volatile.Write(ref this.lastSampleCount, sampleCount);
         Interlocked.Increment(ref this.writeCount);
+        this.Written.Set();
       }
 
       public void Dispose() => this.Enabled = false;
@@ -1116,45 +1151,32 @@ namespace Spectrum.Portability.Tests {
         port = ((IPEndPoint)reservation.LocalEndpoint).Port;
       }
 
-      var opc = new OPCAPI("127.0.0.1:" + port + ":7", false, _ => { });
+      var opc = new OPCAPI(
+        "127.0.0.1:" + port + ":7", false, _ => { },
+        TimeSpan.Zero);
       try {
-        var activation = Stopwatch.StartNew();
-        opc.Active = true;
-        activation.Stop();
-        Assert(activation.Elapsed < TimeSpan.FromMilliseconds(500),
+        CompleteWithoutBlocking(
+          () => opc.Active = true,
           "an offline OPC controller blocked output activation");
 
         opc.SetPixel(0, 0x123456);
         opc.SetPixel(2, 0xABCDEF);
         opc.Flush();
 
-        // Let the initial connection fail while the port is closed. Every
-        // inline update must remain bounded instead of stalling the operator.
-        for (int attempt = 0; attempt < 10; attempt++) {
-          var update = Stopwatch.StartNew();
-          opc.OperatorUpdate();
-          update.Stop();
-          Assert(update.Elapsed < TimeSpan.FromMilliseconds(500),
-            "an OPC reconnect attempt blocked the operator");
-          Thread.Sleep(5);
-        }
-
         using var listener = new TcpListener(IPAddress.Loopback, port);
         listener.Start();
         Task<Socket> accept = listener.AcceptSocketAsync();
-        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(3);
-        while (!accept.IsCompleted && DateTime.UtcNow < deadline) {
-          opc.OperatorUpdate();
-          Thread.Sleep(5);
-        }
+        WaitHandle pendingConnect = opc.PendingConnectWaitHandle;
+        Assert(pendingConnect != null &&
+            pendingConnect.WaitOne(TimeSpan.FromSeconds(2)),
+          "the OPC connection did not complete after the controller started");
         using Socket connection = accept
-          .WaitAsync(TimeSpan.FromMilliseconds(500))
+          .WaitAsync(TimeSpan.FromSeconds(2))
           .GetAwaiter().GetResult();
         connection.ReceiveTimeout = 2000;
-        while (connection.Available == 0 && DateTime.UtcNow < deadline) {
-          opc.OperatorUpdate();
-          Thread.Sleep(5);
-        }
+        CompleteWithoutBlocking(
+          opc.OperatorUpdate,
+          "publishing the pending OPC frame blocked the operator");
         byte[] actual = Receive(connection, 13);
         byte[] expected = {
           7, 0, 0, 9,
@@ -1187,6 +1209,16 @@ namespace Spectrum.Portability.Tests {
         }
         this.Calls++;
         return written;
+      }
+    }
+
+    private static void CompleteWithoutBlocking(Action action, string message) {
+      try {
+        Task.Run(action)
+          .WaitAsync(TimeSpan.FromSeconds(2))
+          .GetAwaiter().GetResult();
+      } catch (TimeoutException) {
+        throw new InvalidOperationException(message);
       }
     }
 

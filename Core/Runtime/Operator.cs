@@ -77,6 +77,8 @@ namespace Spectrum {
     private int allocationMeasurementWriters;
     private long measuredFrames;
     private long measuredAllocatedBytes;
+    private long allocationMeasurementTargetFrames;
+    private TaskCompletionSource allocationMeasurementCompleted;
 
     // Global rate cap: the operator loop runs no faster than 400Hz, i.e. at
     // least this many Stopwatch ticks per frame (2.5ms). Stopwatch.Frequency
@@ -652,8 +654,14 @@ namespace Spectrum {
           Interlocked.Add(
             ref this.measuredAllocatedBytes,
             GC.GetAllocatedBytesForCurrentThread() - allocatedBefore);
-          Interlocked.Increment(ref this.measuredFrames);
+          long measuredFrames =
+            Interlocked.Increment(ref this.measuredFrames);
           Interlocked.Decrement(ref this.allocationMeasurementWriters);
+          if (measuredFrames >= Volatile.Read(
+              ref this.allocationMeasurementTargetFrames)) {
+            Volatile.Read(ref this.allocationMeasurementCompleted)
+              ?.TrySetResult();
+          }
         }
         if (this.frameRateStopwatch.ElapsedMilliseconds >= 1000) {
           double elapsedSeconds =
@@ -668,10 +676,18 @@ namespace Spectrum {
       }
     }
 
-    internal void BeginAllocationMeasurement() {
+    internal Task BeginAllocationMeasurement(long targetFrames) {
+      if (targetFrames < 1) {
+        throw new ArgumentOutOfRangeException(nameof(targetFrames));
+      }
+      var completed = new TaskCompletionSource(
+        TaskCreationOptions.RunContinuationsAsynchronously);
       Interlocked.Exchange(ref this.measuredFrames, 0);
       Interlocked.Exchange(ref this.measuredAllocatedBytes, 0);
+      Volatile.Write(ref this.allocationMeasurementTargetFrames, targetFrames);
+      Volatile.Write(ref this.allocationMeasurementCompleted, completed);
       Volatile.Write(ref this.allocationMeasurementEnabled, 1);
+      return completed.Task;
     }
 
     internal (long Frames, long Bytes) EndAllocationMeasurement() {
@@ -679,6 +695,7 @@ namespace Spectrum {
       SpinWait.SpinUntil(
         () => Volatile.Read(ref this.allocationMeasurementWriters) == 0,
         TimeSpan.FromSeconds(2));
+      Volatile.Write(ref this.allocationMeasurementCompleted, null);
       return (
         Volatile.Read(ref this.measuredFrames),
         Volatile.Read(ref this.measuredAllocatedBytes));

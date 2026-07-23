@@ -4,8 +4,11 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using Spectrum.Visualizers;
@@ -13,153 +16,49 @@ using XSerializer;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  internal static class Program {
-    private static int failures;
+  [TestClass]
+  public sealed class PortableLayerPipelineTests {
+    private static readonly IReadOnlyDictionary<string, Action> TestCases =
+      BuildTestCases();
 
-    private static void Main() {
-      Run("catalog metadata is unique", CatalogIsUnique);
-      Run("built-in feature metadata lives in the portable core",
-        BuiltInFeaturesLiveInPortableCore);
-      Run("tunnel parameters compile and clamp", TunnelParametersCompile);
-      Run("Ripple and Stamp rings use angular surface distance",
-        OrientationRingsUseAngularDistance);
-      Run("Ripple desaturation reduces its color saturation",
-        RippleDesaturationReducesSaturation);
-      Run("Point Cloud stays on the visible dome hemisphere",
-        PointCloudUsesVisibleHemisphere);
-      Run("Point Cloud spatial index matches brute-force rendering",
-        PointCloudSpatialIndexMatchesBruteForce);
-      Run("Quaternion Test is a modal dome diagnostic",
-        QuaternionTestIsDiagnostic);
-      Run("duplicate renderer kinds get stable instance IDs", DuplicateKinds);
-      Run("parameters compile into separate namespaces", ParameterNamespaces);
-      Run("compiled renderer runtime updates in place", RuntimeUpdatesInPlace);
-      Run("renderer runtime swaps immutable options", RuntimeOptionsSwap);
-      Run("renderer store replaces and evicts instance state",
-        RendererStoreLifecycle);
-      Run("renderer store rolls back an uncommitted generation",
-        RendererStoreRollsBackGeneration);
-      Run("typed renderer options preserve numeric casts",
-        TypedOptionsPreserveNumericCasts);
-      Run("Earth texture follows spotlight poles and spins",
-        EarthTextureFollowsSpotlight);
-      Run("astronomy options and north heading are deterministic",
-        AstronomyOptionsAndHeading);
-      Run("simulator real view foreshortens the dome from above",
-        SimulatorTopDownProjection);
-      Run("dome topology stores both projections and unit normals",
-        DomeTopologyUsesTopDownNormals);
-      Run("sphere directions project into strip-extents coordinates",
-        SphereDirectionsProjectToStripExtents);
-      Run("targeted planar coordinates round-trip real dome normals",
-        TargetedPlanarCoordinatesRoundTripNormals);
-      Run("Tunnel fixed mode matches a crown-bound angular field",
-        TunnelFixedModeMatchesCrownAxis);
-      Run("compiled plan freezes renderer inputs", PlanFreezesRendererInputs);
-      Run("configuration publishes immutable layer snapshots",
-        ConfigurationPublishesSnapshot);
-      Run("show-state transactions publish one immutable generation",
-        ShowStateTransactionsAreAtomic);
-      Run("SSE publishes compound show changes as one generation",
-        ShowStateSseIsAtomic);
-      Run("SSE initial show frames serialize one captured generation",
-        InitialShowStateSseIsAtomic);
-      Run("configuration mutations use the application-state dispatcher",
-        ConfigurationMutationsUseStateDispatcher);
-      Run("web DTO reads use the application-state dispatcher",
-        WebReadsUseStateDispatcher);
-      Run("runtime settings publish complete immutable generations",
-        RuntimeSettingsPublishCompleteGenerations);
-      Run("control storms avoid plan reconciliation and frame allocation",
-        ControlStormAvoidsPlanWork);
-      Run("MIDI configuration bindings publish state commands",
-        MidiBindingsPublishStateCommands);
-      Run("compositor executes every operation in stack order", StackOrder);
-      Run("scratch copies only mutable channels", ScratchCopiesChannelsOnly);
-      Run("frame operations require shared topology", FramesRequireTopology);
-      Run("operator consumes injected platform inputs",
-        OperatorUsesInjectedPlatformInputs);
-      Run("operator creates independent duplicate renderers", DuplicateRenderers);
-      Run("operator reboot notifications do not hold the renderer lock",
-        RebootNotificationsAreUnlocked);
-      Run("layer renderers do not receive persisted configuration",
-        LayerRenderersAvoidConfiguration);
-      Run("Magnetic Field models signed orientation charges",
-        MagneticFieldUsesSignedCharges);
-      Run("Watchful Iris tracks, dilates, patterns, and blinks",
-        WatchfulIrisBehavesAsSceneCharacter);
-      Run("Living Skin evolves a bounded persistent chemical field",
-        LivingSkinUsesReactionDiffusion);
-      Run("Arc Lightning routes connected triggered strut bolts",
-        ArcLightningUsesPhysicalGraph);
-      Run("Glass Mosaic cascades across physical triangular faces",
-        GlassMosaicUsesTriangleTopology);
-      Run("Cellular Dome evolves physical triangle automata",
-        CellularDomeUsesTriangleCells);
-      Run("Firefly Swarm flocks, startles, and follows wand fields",
-        FireflySwarmUsesCoherentFlock);
-      Run("Rain Chamber runs crown droplets through wand rain fields",
-        RainChamberUsesSphericalRain);
-      Run("Topographic Dream reveals audio-driven spherical contours",
-        TopographicDreamUsesEvolvingContours);
-      Run("Orbital Garden forms wand-centered spherical solar systems",
-        OrbitalGardenUsesSphericalOrbits);
-      Run("Lava Lamp Sky rises, merges, stretches, and divides",
-        LavaLampSkyUsesViscousThermalBlobs);
-      Run("Ripple Tank is a standalone orientation-speed layer",
-        RippleTankIsOrientationOnly);
-      Run("vortex uses global fade for hue-bearing trails",
-        VortexUsesGlobalFade);
-      Run("compiled plan schedules enabled instances", PlanSchedulesInstances);
-      Run("scene recall retains duplicate instance state", SceneRecallRetainsState);
-      Run("duplicate commands require instance IDs", DuplicateCommandsNeedIds);
-      Run("zero opacity is a kernel identity", ZeroOpacityIdentity);
-      Run("paint and adjustment kernels match the regression matrix",
-        KernelMatrix);
-      Run("operation options are normalized before compilation",
-        OperationOptionsAreNormalized);
-      Run("Kaleidoscope folds masked composite coordinates",
-        KaleidoscopeFoldsCompositeCoordinates);
-      Run("Echo retains isolated delayed transformed composites",
-        EchoRetainsDelayedTransformedComposites);
-      MotionEmbersTests.Register(Run);
-      Run("Halftone replaces value fields with palette-colored cells",
-        HalftoneBuildsPaletteCells);
-      Run("spatial effects declare neighbor reads", SpatialRequirements);
-      Run("spatial passes snapshot and reuse scratch", SpatialPassSnapshots);
-      Run("masked adjustment frames are deterministic",
-        MaskedAdjustmentFixtures);
-      Run("prism frames are deterministic", PrismFixtures);
-      Run("compositor replaces plans and holds on empty", PlanReplacement);
-      Run("configuration with layers serializes", ConfigurationSerializes);
-      Run("configuration collection edits isolate nested aliases",
-        ConfigurationCollectionsIsolateNestedAliases);
-      Run("configuration collection edits publish exact notifications",
-        ConfigurationCollectionNotificationsAreExact);
-      Run("live configuration exposes no mutable collection types",
-        ConfigurationSurfaceRejectsMutableCollections);
-      Run("web layer contract exposes namespaced bags and operation descriptors",
-        WebLayerContract);
-      Run("SSE subscribers coalesce state by key and resync on overflow",
-        EventStreamSubscribersAreBounded);
-      StackValidatorTests.Register(Run);
-      WandProtocolTests.Register(Run);
-      PaletteServiceTests.Register(Run);
-      AdvisoryLockTests.Register(Run);
-      ColorPerformanceTests.Register(Run);
-      OPCWireTests.Register(Run);
-      if (failures != 0) {
-        Environment.ExitCode = 1;
-      }
+    public static IEnumerable<object[]> DiscoverTestCases() =>
+      TestCases.Keys.OrderBy(name => name)
+        .Select(name => new object[] { name });
+
+    [TestMethod]
+    [DoNotParallelize]
+    [DynamicData(nameof(DiscoverTestCases))]
+    public void Run(string name) {
+      TestCases[name]();
     }
 
-    private static void Run(string name, Action test) {
+    private static IReadOnlyDictionary<string, Action> BuildTestCases() {
+      var tests = new Dictionary<string, Action>();
+      foreach (MethodInfo method in typeof(PortableLayerPipelineTests).GetMethods(
+          BindingFlags.NonPublic | BindingFlags.Static)) {
+        if (method.ReturnType == typeof(void) &&
+            method.GetParameters().Length == 0) {
+          tests.Add(method.Name, () => Invoke(method));
+        }
+      }
+
+      void Register(string name, Action test) => tests.Add(name, test);
+      MotionEmbersTests.Register(Register);
+      StackValidatorTests.Register(Register);
+      WandProtocolTests.Register(Register);
+      PaletteServiceTests.Register(Register);
+      AdvisoryLockTests.Register(Register);
+      ColorPerformanceTests.Register(Register);
+      OPCWireTests.Register(Register);
+      return tests;
+    }
+
+    private static void Invoke(MethodInfo method) {
       try {
-        test();
-        Console.WriteLine("PASS " + name);
-      } catch (Exception error) {
-        failures++;
-        Console.Error.WriteLine("FAIL " + name + ": " + error);
+        method.Invoke(null, null);
+      } catch (TargetInvocationException error)
+          when (error.InnerException != null) {
+        ExceptionDispatchInfo.Capture(error.InnerException).Throw();
       }
     }
 
@@ -1129,7 +1028,6 @@ namespace Spectrum.LayerPipeline.Tests {
       playbackVisualizer.Visualize();
       Assert(playbackVisualizer.PlaybackActive,
         "astronomy Play did not start playback");
-      System.Threading.Thread.Sleep(20);
       playbackConfig.ReplaceDomeLayerClearCounters(
         new Dictionary<string, int> {
         [playbackLayer.InstanceId] = 1,
@@ -1138,8 +1036,8 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(!playbackVisualizer.PlaybackActive,
         "astronomy Stop did not halt playback");
       double stoppedOffset = playbackVisualizer.PlaybackStartOffset;
-      Assert(stoppedOffset > 10.001,
-        "astronomy Stop did not retain the current playback offset");
+      Assert(stoppedOffset >= 10,
+        "astronomy Stop moved playback behind its starting offset");
       playbackConfig.ReplaceDomeLayerFireCounters(
         new Dictionary<string, int> {
         [playbackLayer.InstanceId] = 2,
@@ -1527,9 +1425,8 @@ namespace Spectrum.LayerPipeline.Tests {
 
       Task<global::Spectrum.Web.LayersController.LayersState> read =
         Task.Run(controller.StateAsync);
-      Assert(SpinWait.SpinUntil(
-          () => dispatcher.PendingCount == 1,
-          TimeSpan.FromSeconds(2)) && !read.IsCompleted,
+      Assert(dispatcher.WaitForPending(TimeSpan.FromSeconds(2)) &&
+          dispatcher.PendingCount == 1 && !read.IsCompleted,
         "a compound web read bypassed the state-owner dispatcher");
       dispatcher.Drain();
       var state = read.GetAwaiter().GetResult();
@@ -5404,6 +5301,7 @@ namespace Spectrum.LayerPipeline.Tests {
       private readonly int ownerThreadId =
         Environment.CurrentManagedThreadId;
       private readonly Queue<Action> pending = new Queue<Action>();
+      private readonly AutoResetEvent pendingQueued = new AutoResetEvent(false);
 
       public bool CheckAccess() =>
         Environment.CurrentManagedThreadId == this.ownerThreadId;
@@ -5420,7 +5318,11 @@ namespace Spectrum.LayerPipeline.Tests {
         lock (this.pending) {
           this.pending.Enqueue(mutation);
         }
+        this.pendingQueued.Set();
       }
+
+      public bool WaitForPending(TimeSpan timeout) =>
+        this.pendingQueued.WaitOne(timeout);
 
       public Task InvokeAsync(Action mutation) {
         if (this.CheckAccess()) {

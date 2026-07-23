@@ -33,6 +33,8 @@ namespace Spectrum.Platform.Linux {
     private string lastStandardError;
     private byte[] monoPcm = Array.Empty<byte>();
 
+    internal event Action StatusChanged;
+
     public MadmomPcmBeatTracker(BeatBroadcaster beat) : this(
       beat,
       () => {
@@ -301,6 +303,12 @@ namespace Spectrum.Platform.Linux {
       this.lastError = error;
       this.nextStartAttempt =
         Stopwatch.GetTimestamp() + this.restartDelayTicks;
+      try {
+        this.StatusChanged?.Invoke();
+      } catch (Exception observerError) {
+        Debug.WriteLine(
+          "MadmomPcmBeatTracker status observer failed: " + observerError);
+      }
       Debug.WriteLine("MadmomPcmBeatTracker: " + error);
     }
 

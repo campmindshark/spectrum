@@ -91,18 +91,16 @@ try {
   )
 
   if (-not $SkipTests) {
-    Write-Step "Running the portable .NET verification suite"
+    Write-Step "Running the portable MSTest verification suite"
     Invoke-Checked -FilePath "dotnet" -Arguments @(
-      "run",
-      "--project", "Tests/Portability/Spectrum.Portability.Tests.csproj",
+      "test", "Tests/Portability/Spectrum.Portability.Tests.csproj",
       "-c", $Configuration,
       "--artifacts-path", $DotnetArtifactsDirectory
     )
 
-    Write-Step "Running the portable layer-pipeline suite"
+    Write-Step "Running the portable MSTest layer-pipeline suite"
     Invoke-Checked -FilePath "dotnet" -Arguments @(
-      "run",
-      "--project", "Tests/PortableLayerPipeline/Spectrum.PortableLayerPipeline.Tests.csproj",
+      "test", "Tests/PortableLayerPipeline/Spectrum.PortableLayerPipeline.Tests.csproj",
       "-c", $Configuration,
       "--artifacts-path", $DotnetArtifactsDirectory
     )

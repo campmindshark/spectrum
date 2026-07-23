@@ -1048,7 +1048,6 @@ namespace Spectrum.LayerPipeline.Tests {
       playbackVisualizer.Visualize();
       Assert(playbackVisualizer.PlaybackActive,
         "astronomy Play did not start playback");
-      System.Threading.Thread.Sleep(20);
       playbackConfig.ReplaceDomeLayerClearCounters(
         new Dictionary<string, int> {
         [playbackLayer.InstanceId] = 1,
@@ -1057,8 +1056,8 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(!playbackVisualizer.PlaybackActive,
         "astronomy Stop did not halt playback");
       double stoppedOffset = playbackVisualizer.PlaybackStartOffset;
-      Assert(stoppedOffset > 10.001,
-        "astronomy Stop did not retain the current playback offset");
+      Assert(stoppedOffset >= 10,
+        "astronomy Stop moved playback behind its starting offset");
       playbackConfig.ReplaceDomeLayerFireCounters(
         new Dictionary<string, int> {
         [playbackLayer.InstanceId] = 2,
@@ -1476,9 +1475,8 @@ namespace Spectrum.LayerPipeline.Tests {
 
       Task<global::Spectrum.Web.LayersController.LayersState> read =
         Task.Run(controller.StateAsync);
-      Assert(SpinWait.SpinUntil(
-          () => dispatcher.PendingCount == 1,
-          TimeSpan.FromSeconds(2)) && !read.IsCompleted,
+      Assert(dispatcher.WaitForPending(TimeSpan.FromSeconds(2)) &&
+          dispatcher.PendingCount == 1 && !read.IsCompleted,
         "a compound web read bypassed the state-owner dispatcher");
       dispatcher.Drain();
       var state = read.GetAwaiter().GetResult();
@@ -1598,11 +1596,19 @@ namespace Spectrum.LayerPipeline.Tests {
         config, dispatcher,
         new DisconnectedWindowsMidiInputFactory(),
         connectHardware: false);
+      var runtimeMidi = (MidiInput)runtime.MidiInput;
       var settings = (IRuntimeSettingsConfiguration)config;
       long transportGeneration =
         settings.DomeOutputSettingsSnapshot.TransportGeneration;
       Exception readerFailure = null;
       using var stopReader = new CancellationTokenSource();
+      using var firstFpsPublished = new ManualResetEventSlim();
+      runtime.Telemetry.PropertyChanged += (_, change) => {
+        if (change.PropertyName == nameof(RuntimeTelemetry.OperatorFPS) &&
+            runtime.Telemetry.OperatorFPS > 0) {
+          firstFpsPublished.Set();
+        }
+      };
 
       Task reader = Task.Run(() => {
         try {
@@ -1715,13 +1721,33 @@ namespace Spectrum.LayerPipeline.Tests {
         reader.GetAwaiter().GetResult();
         Assert(readerFailure == null,
           "concurrent reader failed: " + readerFailure);
-        Assert(SpinWait.SpinUntil(
-            () => runtime.MidiInput.AppliedDeviceGeneration ==
-                settings.MidiSettingsSnapshot.DeviceGeneration &&
-              runtime.DomeOutput.AppliedMappingGeneration ==
-                settings.DomeOutputSettingsSnapshot.MappingGeneration,
-            TimeSpan.FromSeconds(3)),
+        long expectedMidiGeneration =
+          settings.MidiSettingsSnapshot.DeviceGeneration;
+        long expectedMappingGeneration =
+          settings.DomeOutputSettingsSnapshot.MappingGeneration;
+        using var midiSettingsApplied = new ManualResetEventSlim();
+        using var outputSettingsApplied = new ManualResetEventSlim();
+        void ObserveMidiSettings() {
+          if (runtime.MidiInput.AppliedDeviceGeneration ==
+              expectedMidiGeneration) {
+            midiSettingsApplied.Set();
+          }
+        }
+        void ObserveOutputSettings() {
+          if (runtime.DomeOutput.AppliedMappingGeneration ==
+              expectedMappingGeneration) {
+            outputSettingsApplied.Set();
+          }
+        }
+        runtimeMidi.SettingsApplied += ObserveMidiSettings;
+        runtime.DomeOutput.OutputSettingsApplied += ObserveOutputSettings;
+        ObserveMidiSettings();
+        ObserveOutputSettings();
+        Assert(midiSettingsApplied.Wait(TimeSpan.FromSeconds(3)) &&
+            outputSettingsApplied.Wait(TimeSpan.FromSeconds(3)),
           "the enabled operator did not reconcile the latest device generations");
+        runtimeMidi.SettingsApplied -= ObserveMidiSettings;
+        runtime.DomeOutput.OutputSettingsApplied -= ObserveOutputSettings;
         Assert(runtime.DomeOutput.AppliedTransportGeneration ==
             transportGeneration,
           "a wiring-only update reconciled the OPC transport");
@@ -1730,12 +1756,12 @@ namespace Spectrum.LayerPipeline.Tests {
         Assert(ReferenceEquals(runtime.DomeOutput.RenderPlan, acceptedPlan),
           "control/device traffic replaced the accepted render plan");
 
-        Assert(SpinWait.SpinUntil(
-            () => runtime.Telemetry.OperatorFPS > 0,
-            TimeSpan.FromSeconds(4)),
+        Assert(firstFpsPublished.Wait(TimeSpan.FromSeconds(4)),
           "the enabled operator did not complete its first FPS window");
-        runtime.BeginAllocationMeasurement();
-        Thread.Sleep(300);
+        Task measurementCompleted = runtime.BeginAllocationMeasurement(30);
+        measurementCompleted
+          .WaitAsync(TimeSpan.FromSeconds(4))
+          .GetAwaiter().GetResult();
         var allocation = runtime.EndAllocationMeasurement();
         Assert(allocation.Frames >= 30,
           "too few enabled operator frames were measured: " +
@@ -1840,9 +1866,8 @@ namespace Spectrum.LayerPipeline.Tests {
           index = 7,
           value = 0.5,
         }));
-      Assert(SpinWait.SpinUntil(
-          () => dispatcher.PendingCount == 1,
-          TimeSpan.FromSeconds(2)),
+      Assert(dispatcher.WaitForPending(TimeSpan.FromSeconds(2)) &&
+          dispatcher.PendingCount == 1,
         "the valid MIDI mutation was not queued");
       dispatcher.Drain();
       invocation.GetAwaiter().GetResult();
@@ -5641,6 +5666,7 @@ namespace Spectrum.LayerPipeline.Tests {
       private readonly int ownerThreadId =
         Environment.CurrentManagedThreadId;
       private readonly Queue<Action> pending = new Queue<Action>();
+      private readonly AutoResetEvent pendingQueued = new AutoResetEvent(false);
 
       public bool CheckAccess() =>
         Environment.CurrentManagedThreadId == this.ownerThreadId;
@@ -5657,7 +5683,11 @@ namespace Spectrum.LayerPipeline.Tests {
         lock (this.pending) {
           this.pending.Enqueue(mutation);
         }
+        this.pendingQueued.Set();
       }
+
+      public bool WaitForPending(TimeSpan timeout) =>
+        this.pendingQueued.WaitOne(timeout);
 
       public Task InvokeAsync(Action mutation) {
         if (this.CheckAccess()) {

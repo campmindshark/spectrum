@@ -172,10 +172,14 @@ namespace Spectrum.LEDs {
     };
 
     private OPCAPI opcAPI;
+    private TimeSpan? opcMinSendInterval;
     private readonly Configuration config;
     private readonly IRuntimeSettingsConfiguration runtimeSettings;
     // Live counters, not config: the OPC send rate is reported here.
     private readonly RuntimeTelemetry telemetry;
+
+    internal WaitHandle PendingOpcConnectWaitHandle =>
+      this.opcAPI?.PendingConnectWaitHandle;
     // The tempo service (owned by the Operator, not part of Configuration),
     // read for the beat-synced flash-off in the per-frame color cache.
     private readonly BeatBroadcaster beat;
@@ -196,6 +200,7 @@ namespace Spectrum.LEDs {
       Volatile.Read(ref this.appliedMappingGeneration);
     internal long AppliedTransportGeneration =>
       Volatile.Read(ref this.appliedTransportGeneration);
+    internal event Action OutputSettingsApplied;
     private int outputSettingsPending;
     private static readonly int maxStripLength;
 
@@ -296,6 +301,16 @@ namespace Spectrum.LEDs {
       this.appliedTransportGeneration =
         this.frameOutputSettings.TransportGeneration;
       this.config.PropertyChanged += ConfigUpdated;
+    }
+
+    internal LEDDomeOutput(
+      Configuration config, RuntimeTelemetry telemetry, BeatBroadcaster beat,
+      TimeSpan opcMinSendInterval
+    ) : this(config, telemetry, beat) {
+      if (opcMinSendInterval < TimeSpan.Zero) {
+        throw new ArgumentOutOfRangeException(nameof(opcMinSendInterval));
+      }
+      this.opcMinSendInterval = opcMinSendInterval;
     }
 
     private static bool IsValidPermutation(
@@ -400,20 +415,35 @@ namespace Spectrum.LEDs {
       if (Interlocked.Exchange(ref this.outputSettingsPending, 0) == 0) {
         return;
       }
+      bool changed = false;
       DomeOutputSettingsSnapshot settings =
         this.runtimeSettings.DomeOutputSettingsSnapshot;
       if (settings.MappingGeneration != this.appliedMappingGeneration) {
         this.RebuildOutputMapping(settings);
         this.appliedMappingGeneration = settings.MappingGeneration;
+        changed = true;
       }
       if (settings.TransportGeneration != this.appliedTransportGeneration) {
         this.appliedTransportGeneration = settings.TransportGeneration;
+        changed = true;
         if (this.opcAPI != null) {
           this.opcAPI.Active = false;
         }
         if (this.active && settings.Enabled) {
           this.initializeOPCAPI(settings);
         }
+      }
+      if (changed) {
+        this.PublishOutputSettingsApplied();
+      }
+    }
+
+    private void PublishOutputSettingsApplied() {
+      try {
+        this.OutputSettingsApplied?.Invoke();
+      } catch (Exception error) {
+        Debug.WriteLine(
+          "LEDDomeOutput settings observer failed: " + error);
       }
     }
 
@@ -423,11 +453,18 @@ namespace Spectrum.LEDs {
       if (parts.Length < 3) {
         opcAddress += ":0"; // default to channel 0
       }
-      this.opcAPI = new OPCAPI(
-        opcAddress,
-        settings.OutputInSeparateThread,
-        newFPS => this.telemetry.DomeBeagleboneOPCFPS = newFPS
-      );
+      Action<int> publishFPS =
+        newFPS => this.telemetry.DomeBeagleboneOPCFPS = newFPS;
+      this.opcAPI = this.opcMinSendInterval.HasValue
+        ? new OPCAPI(
+            opcAddress,
+            settings.OutputInSeparateThread,
+            publishFPS,
+            this.opcMinSendInterval.Value)
+        : new OPCAPI(
+            opcAddress,
+            settings.OutputInSeparateThread,
+            publishFPS);
       this.opcAPI.Active = this.active;
     }
 

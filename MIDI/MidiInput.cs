@@ -7,6 +7,7 @@ using Spectrum.Base;
 using System.Threading;
 using System.Collections.Concurrent;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace Spectrum.MIDI {
@@ -39,6 +40,7 @@ namespace Spectrum.MIDI {
     private long appliedDeviceGeneration = -1;
     public long AppliedDeviceGeneration =>
       Volatile.Read(ref this.appliedDeviceGeneration);
+    internal event Action SettingsApplied;
     private readonly ConcurrentQueue<MidiCommand> buffer;
     // Latest-value state has one deliberately chosen owner lock: driver
     // callbacks write under it and the operator/visualizers read under it.
@@ -386,6 +388,7 @@ namespace Spectrum.MIDI {
         this.TerminateMidi();
         try {
           this.InitializeMidi(settings);
+          this.PublishSettingsApplied();
         } catch {
           this.TerminateMidi();
           throw;
@@ -403,6 +406,14 @@ namespace Spectrum.MIDI {
       }
 
       this.commandsSinceLastTick = commands;
+    }
+
+    private void PublishSettingsApplied() {
+      try {
+        this.SettingsApplied?.Invoke();
+      } catch (Exception error) {
+        Debug.WriteLine("MidiInput settings observer failed: " + error);
+      }
     }
 
     public static int DeviceCount {

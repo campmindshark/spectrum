@@ -54,7 +54,8 @@ namespace Spectrum.LEDs {
     // than this, it just burns CPU and network. 200 Hz is far above anything
     // visible while leaving generous headroom.
     private const int MaxRefreshRateHz = 200;
-    private static readonly double MinSendIntervalMs = 1000.0 / MaxRefreshRateHz;
+    private static readonly TimeSpan DefaultMinSendInterval =
+      TimeSpan.FromSeconds(1.0 / MaxRefreshRateHz);
 
     // A missing controller must not stall the operator. Connection attempts are
     // started asynchronously and polled by the normal update loop; after a
@@ -69,6 +70,7 @@ namespace Spectrum.LEDs {
 
     private readonly string host;
     private readonly int port;
+    private readonly double minSendIntervalMs;
     private Socket socket;
     private IAsyncResult connectAttempt;
     private long connectAttemptStartedTimestamp;
@@ -111,10 +113,25 @@ namespace Spectrum.LEDs {
       string hostAndPort,
       bool separateThread,
       Action<int> setFPS
+    ) : this(
+      hostAndPort, separateThread, setFPS,
+      DefaultMinSendInterval
     ) {
+    }
+
+    internal OPCAPI(
+      string hostAndPort,
+      bool separateThread,
+      Action<int> setFPS,
+      TimeSpan minSendInterval
+    ) {
+      if (minSendInterval < TimeSpan.Zero) {
+        throw new ArgumentOutOfRangeException(nameof(minSendInterval));
+      }
       string[] parts = hostAndPort.Split(':');
       this.host = parts[0];
       this.port = Convert.ToInt32(parts[1]);
+      this.minSendIntervalMs = minSendInterval.TotalMilliseconds;
       if (parts.Length >= 3) {
         this.defaultChannel = Convert.ToByte(parts[2]);
         this.defaultChannelSet = true;
@@ -143,6 +160,15 @@ namespace Spectrum.LEDs {
     // Cooperative stop flag for OutputThread, replacing Thread.Abort().
     private volatile bool outputThreadStop;
     private readonly object lockObject = new object();
+
+    internal WaitHandle PendingConnectWaitHandle {
+      get {
+        lock (this.connectionLock) {
+          return this.connectAttempt?.AsyncWaitHandle;
+        }
+      }
+    }
+
     public bool Active {
       get {
         lock (this.lockObject) {
@@ -300,7 +326,8 @@ namespace Spectrum.LEDs {
       // Refresh-rate cap: if we pushed a frame too recently, leave its
       // generation pending and try again on a later pass. This throttles both
       // the threaded output loop and the inline OperatorUpdate() path.
-      if (this.sendThrottleStopwatch.Elapsed.TotalMilliseconds < MinSendIntervalMs) {
+      if (this.sendThrottleStopwatch.Elapsed.TotalMilliseconds <
+          this.minSendIntervalMs) {
         return false;
       }
       int totalLength;
@@ -427,7 +454,7 @@ namespace Spectrum.LEDs {
           // whole-millisecond remainder until the next send is due (the same
           // Sleep-vs-spin tradeoff the operator loop makes in ThrottleFrame),
           // with a 1ms floor so a no-new-frame/disconnected pass still yields.
-          double remainingMs = MinSendIntervalMs -
+          double remainingMs = this.minSendIntervalMs -
             this.sendThrottleStopwatch.Elapsed.TotalMilliseconds;
           int sleepMs = remainingMs > 1 ? (int)remainingMs : 1;
           Thread.Sleep(sleepMs);

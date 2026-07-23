@@ -118,6 +118,8 @@ namespace Spectrum {
 
     internal bool Listening => Volatile.Read(ref this.client) != null;
 
+    internal event Action StatusChanged;
+
     public void OperatorUpdate() { }
 
     private void Start() {
@@ -157,17 +159,22 @@ namespace Spectrum {
             ref this.client, current);
           previous?.Dispose();
           Volatile.Write(ref this.lastError, null);
+          this.PublishStatusChanged();
           this.ReceivePackets(current);
         } catch (Exception error) {
           if (this.running) {
             Volatile.Write(ref this.lastError, error.Message);
+            this.PublishStatusChanged();
             Debug.WriteLine(
               "ProDjLinkInput: UDP listener failed; retrying. " + error);
           }
         } finally {
           if (current != null) {
-            Interlocked.CompareExchange(
-              ref this.client, null, current);
+            if (ReferenceEquals(
+                Interlocked.CompareExchange(
+                  ref this.client, null, current), current)) {
+              this.PublishStatusChanged();
+            }
             current.Dispose();
           }
         }
@@ -213,12 +220,22 @@ namespace Spectrum {
     private void ClosePublishedClient() {
       UdpClient current = Interlocked.Exchange(ref this.client, null);
       if (current != null) {
+        this.PublishStatusChanged();
         try {
           current.Close();
         } catch (Exception error) {
           Debug.WriteLine(
             "ProDjLinkInput: error closing UDP listener: " + error);
         }
+      }
+    }
+
+    private void PublishStatusChanged() {
+      try {
+        this.StatusChanged?.Invoke();
+      } catch (Exception error) {
+        Debug.WriteLine(
+          "ProDjLinkInput: status observer failed: " + error);
       }
     }
 
