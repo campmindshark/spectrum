@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Threading;
 using Spectrum.Base;
 
@@ -12,37 +9,24 @@ namespace Spectrum.LEDs {
 
   public class LEDDomeOutput : Output, DomeRenderContext {
 
-    private readonly Configuration config;
     private readonly IRuntimeSettingsConfiguration runtimeSettings;
     private readonly DomeOpcTransport transport;
     private readonly DomeSimulatorPublisher simulatorPublisher =
       new DomeSimulatorPublisher();
-    private readonly DomePaletteSampler paletteSampler;
+    private readonly DomeRenderState renderState;
+    private readonly DomeRenderPipeline renderPipeline;
+    private readonly DomeOutputSettingsCoordinator outputSettingsCoordinator;
 
     internal WaitHandle? PendingOpcConnectWaitHandle =>
       this.transport.PendingConnectWaitHandle;
-    // The tempo service (owned by the Operator, not part of Configuration),
-    // shared by palette sampling and global hue postprocessing.
-    private readonly BeatBroadcaster beat;
-    private readonly List<Visualizer> visualizers;
-    private readonly DomeCompositor compositor;
-    private DomeRenderGeneration renderGeneration;
-    // Operator-thread-only frame capture. Visualizers, compositor palette
-    // effects, and global hue all read through this same accepted generation.
-    private DomeRenderGeneration? frameRenderGeneration;
-    private DomeRuntimeFrameSnapshot frameRuntimeSettings =
-      DomeRuntimeFrameSnapshot.Empty;
-    private DomeOutputSettingsSnapshot frameOutputSettings =
-      DomeOutputSettingsSnapshot.Empty;
-    private bool operatorFrameActive;
-    private long appliedMappingGeneration;
-    private long appliedTransportGeneration;
     internal long AppliedMappingGeneration =>
-      Volatile.Read(ref this.appliedMappingGeneration);
+      this.outputSettingsCoordinator.AppliedMappingGeneration;
     internal long AppliedTransportGeneration =>
-      Volatile.Read(ref this.appliedTransportGeneration);
-    internal event Action? OutputSettingsApplied;
-    private int outputSettingsPending;
+      this.outputSettingsCoordinator.AppliedTransportGeneration;
+    internal event Action? OutputSettingsApplied {
+      add { this.outputSettingsCoordinator.SettingsApplied += value; }
+      remove { this.outputSettingsCoordinator.SettingsApplied -= value; }
+    }
     private readonly DomeOutputMapper outputMapper;
 
     public const int NumCables = DomeOutputMapper.NumCables;
@@ -65,7 +49,6 @@ namespace Spectrum.LEDs {
       OrientationAngleProvider? orientationAngle,
       TimeSpan? opcMinSendInterval
     ) {
-      this.config = config;
       this.runtimeSettings = config as IRuntimeSettingsConfiguration ??
         throw new ArgumentException(
           "LEDDomeOutput requires immutable runtime settings.",
@@ -76,34 +59,27 @@ namespace Spectrum.LEDs {
         DomeWiringLayout.GetLedCount,
         DomeWiringLayout.GetRawAddress);
       this.transport = new DomeOpcTransport(telemetry, opcMinSendInterval);
-      this.beat = beat;
-      this.visualizers = new List<Visualizer>();
       DomeShowStateSnapshot initialShowState =
         (config as IDomeShowStateConfiguration)?.DomeShowStateSnapshot ??
           DomeShowStateSnapshot.Empty;
-      this.renderGeneration = new DomeRenderGeneration(
-        RenderPlan.Empty, initialShowState);
-      this.paletteSampler = new DomePaletteSampler(
+      this.renderState = new DomeRenderState(
         beat,
-        () => Volatile.Read(ref this.renderGeneration) ??
-          DomeRenderGeneration.Empty,
-        () => this.runtimeSettings.DomeRuntimeFrameSnapshot);
-      this.compositor = new DomeCompositor(
-        this.MakeDomeFrame, orientationAngle,
-        paletteColor: (palette, position) =>
-          this.paletteSampler.GetGradientBetweenColors(
-          0, 7, position, 0, false, palette));
-      this.frameRenderGeneration = this.renderGeneration;
-      this.frameRuntimeSettings =
-        this.runtimeSettings.DomeRuntimeFrameSnapshot;
-      this.frameOutputSettings =
-        this.runtimeSettings.DomeOutputSettingsSnapshot;
-      this.outputMapper.Apply(this.frameOutputSettings);
-      this.appliedMappingGeneration =
-        this.frameOutputSettings.MappingGeneration;
-      this.appliedTransportGeneration =
-        this.frameOutputSettings.TransportGeneration;
-      this.config.PropertyChanged += ConfigUpdated;
+        new DomeRenderGeneration(RenderPlan.Empty, initialShowState),
+        () => this.runtimeSettings.DomeRuntimeFrameSnapshot,
+        () => this.runtimeSettings.DomeOutputSettingsSnapshot);
+      this.renderPipeline = new DomeRenderPipeline(
+        this.MakeDomeFrame,
+        this.PublishCompletedFrame,
+        orientationAngle,
+        (palette, position) =>
+          this.renderState.PaletteSampler.GetGradientBetweenColors(
+            0, 7, position, 0, false, palette),
+        () => beat.ProgressThroughMeasure);
+      this.outputSettingsCoordinator = new DomeOutputSettingsCoordinator(
+        config,
+        this.runtimeSettings,
+        this.outputMapper,
+        this.transport);
     }
 
     internal LEDDomeOutput(
@@ -119,84 +95,20 @@ namespace Spectrum.LEDs {
       DomeOutputMapper.IsValidPortMapping(mapping);
 
     public void RegisterVisualizer(Visualizer visualizer) {
-      this.visualizers.Add(visualizer);
-      this.visualizersArray = null;
+      this.renderPipeline.RegisterVisualizer(visualizer);
     }
 
     public void UnregisterVisualizer(Visualizer visualizer) {
-      if (this.visualizers.Remove(visualizer)) {
-        this.visualizersArray = null;
-      }
+      this.renderPipeline.UnregisterVisualizer(visualizer);
     }
 
-    // Cached snapshot of `visualizers`, rebuilt only when a visualizer is
-    // registered (startup) rather than allocated fresh every Operator frame.
-    private Visualizer[]? visualizersArray;
     public Visualizer[] GetVisualizers() {
-      return this.visualizersArray
-        ?? (this.visualizersArray = this.visualizers.ToArray());
-    }
-
-    private void ConfigUpdated(object? sender, PropertyChangedEventArgs e) {
-      if (e.PropertyName == nameof(this.config.domeCableMapping) ||
-          e.PropertyName == nameof(this.config.domePortMappings) ||
-          e.PropertyName == nameof(this.config.domeBeagleboneOPCAddress) ||
-          e.PropertyName == nameof(this.config.domeOutputInSeparateThread) ||
-          e.PropertyName == nameof(this.config.domeEnabled)) {
-        Interlocked.Exchange(ref this.outputSettingsPending, 1);
-      }
-    }
-
-    // Configuration notifications only mark work. The output/operator caller
-    // that is about to address pixels or flush the transport owns the actual
-    // reconciliation, so OPC and mapping state are never rewritten from the
-    // WPF/Kestrel state-owner thread while a frame is using them.
-    private void EnsureOutputSettingsReconciled() {
-      if (Interlocked.Exchange(ref this.outputSettingsPending, 0) == 0) {
-        return;
-      }
-      bool changed = false;
-      DomeOutputSettingsSnapshot settings =
-        this.runtimeSettings.DomeOutputSettingsSnapshot;
-      if (settings.MappingGeneration != this.appliedMappingGeneration) {
-        this.outputMapper.Apply(settings);
-        this.appliedMappingGeneration = settings.MappingGeneration;
-        changed = true;
-      }
-      if (settings.TransportGeneration != this.appliedTransportGeneration) {
-        this.appliedTransportGeneration = settings.TransportGeneration;
-        changed = true;
-        this.transport.ApplySettings(settings);
-      }
-      if (changed) {
-        this.PublishOutputSettingsApplied();
-      }
-    }
-
-    private void PublishOutputSettingsApplied() {
-      try {
-        this.OutputSettingsApplied?.Invoke();
-      } catch (Exception error) {
-        Debug.WriteLine(
-          "LEDDomeOutput settings observer failed: " + error);
-      }
+      return this.renderPipeline.GetVisualizers();
     }
 
     public bool Active {
-      get { return this.transport.Active; }
-      set {
-        if (value == this.transport.Active) {
-          return;
-        }
-        if (value) {
-          Interlocked.Exchange(ref this.outputSettingsPending, 1);
-          this.EnsureOutputSettingsReconciled();
-          this.transport.Activate(
-            this.runtimeSettings.DomeOutputSettingsSnapshot);
-        } else {
-          this.transport.Deactivate();
-        }
-      }
+      get { return this.outputSettingsCoordinator.Active; }
+      set { this.outputSettingsCoordinator.Active = value; }
     }
 
     public bool Enabled {
@@ -209,25 +121,20 @@ namespace Spectrum.LEDs {
     }
 
     public void OperatorUpdate() {
-      this.EnsureOutputSettingsReconciled();
-      // Blend this frame's layer stack and push it to the wire/simulator BEFORE
-      // opcAPI.OperatorUpdate() sends and before the palette sampler releases
-      // its captured frame. The visualizers ran (into their own buffers)
-      // earlier this frame with the capture still valid; Composite reads only
-      // their buffers, so the ordering composite -> opc send -> release is
-      // required.
+      this.outputSettingsCoordinator.EnsureApplied();
       DomeRenderGeneration frameGeneration =
-        this.frameRenderGeneration ?? Volatile.Read(ref this.renderGeneration);
-      DomeFrame? completed = this.compositor.Compose(frameGeneration.Plan);
-      if (completed != null) {
-        this.WriteBuffer(completed);
-        this.Flush();
-        this.ApplyGlobalHueRotation(frameGeneration);
-      }
+        this.renderState.FrameGeneration;
+      this.renderPipeline.Render(frameGeneration);
       this.transport.OperatorUpdate();
-      this.paletteSampler.EndFrame();
-      this.frameRenderGeneration = null;
-      this.operatorFrameActive = false;
+      this.renderState.EndFrame();
+    }
+
+    // Called before DomeRenderPipeline advances persistent layer trails. The
+    // completed frame reaches hardware and simulators while the render state's
+    // immutable operator-frame capture is still active.
+    private void PublishCompletedFrame(DomeFrame completed) {
+      this.WriteBuffer(completed);
+      this.Flush();
     }
 
     // The Operator accepts the compiled plan and every persisted value it can
@@ -237,109 +144,42 @@ namespace Spectrum.LEDs {
       if (generation == null) {
         throw new ArgumentNullException(nameof(generation));
       }
-      Volatile.Write(ref this.renderGeneration, generation);
+      this.renderState.Publish(generation);
       // Preserve DomeCompositor's standalone Plan/Compose API for diagnostics
       // and tests; production composition receives the captured frame plan.
-      this.compositor.Publish(generation.Plan);
+      this.renderPipeline.Publish(generation.Plan);
     }
 
     // Updates only the immutable show-state half while retaining the accepted
     // plan. Compare/exchange prevents a concurrent plan reconciliation from
     // being overwritten by a palette/global-only publication.
     public void PublishShowState(DomeShowStateSnapshot showState) {
-      if (showState == null) {
-        throw new ArgumentNullException(nameof(showState));
-      }
-      while (true) {
-        DomeRenderGeneration current =
-          Volatile.Read(ref this.renderGeneration) ??
-            DomeRenderGeneration.Empty;
-        var updated = new DomeRenderGeneration(current.Plan, showState);
-        if (ReferenceEquals(
-            Interlocked.CompareExchange(
-              ref this.renderGeneration, updated, current), current)) {
-          return;
-        }
-      }
+      this.renderState.PublishShowState(showState);
     }
 
     public DomeShowStateSnapshot BeginOperatorFrame(
       DomeRuntimeFrameSnapshot? runtimeSettings = null
     ) {
-      DomeRenderGeneration generation =
-        Volatile.Read(ref this.renderGeneration) ?? DomeRenderGeneration.Empty;
-      this.frameRenderGeneration = generation;
-      this.frameRuntimeSettings = runtimeSettings ??
-        this.runtimeSettings.DomeRuntimeFrameSnapshot;
-      this.frameOutputSettings =
-        this.runtimeSettings.DomeOutputSettingsSnapshot;
-      this.operatorFrameActive = true;
-      this.paletteSampler.BeginFrame(generation, this.frameRuntimeSettings);
-      return generation.ShowState;
+      return this.renderState.BeginFrame(runtimeSettings);
     }
 
     // Compatibility helper for direct compositor/output tests.
     public void PublishRenderPlan(RenderPlan plan) {
-      DomeRenderGeneration current =
-        Volatile.Read(ref this.renderGeneration) ?? DomeRenderGeneration.Empty;
+      DomeRenderGeneration current = this.renderState.CurrentGeneration;
       this.PublishRenderGeneration(new DomeRenderGeneration(
         plan ?? RenderPlan.Empty, current.ShowState));
     }
 
-    public RenderPlan RenderPlan =>
-      (Volatile.Read(ref this.renderGeneration) ??
-        DomeRenderGeneration.Empty).Plan;
+    public RenderPlan RenderPlan => this.renderState.Plan;
 
-    public DomeShowStateSnapshot ShowState =>
-      (Volatile.Read(ref this.renderGeneration) ??
-        DomeRenderGeneration.Empty).ShowState;
+    public DomeShowStateSnapshot ShowState => this.renderState.ShowState;
 
     // Diagnostics execute on the operator thread and share this exact capture
     // with normal layer renderers and output brightness calculation.
     public DomeRuntimeFrameSnapshot RuntimeFrameSettings =>
-      this.operatorFrameActive
-        ? this.frameRuntimeSettings
-        : this.runtimeSettings.DomeRuntimeFrameSnapshot;
+      this.renderState.RuntimeSettings;
     public DomeOutputSettingsSnapshot OutputSettings =>
-      this.operatorFrameActive
-        ? this.frameOutputSettings
-        : this.runtimeSettings.DomeOutputSettingsSnapshot;
-
-    // Wall clock for the global hue rotation's per-frame increment. The
-    // rotation is applied to the layers' own persistent buffers (which are
-    // faded, not cleared, so in-place rotations accumulate across frames) —
-    // never to the composite, whose pixels include this frame's fresh draws.
-    private readonly FrameClock hueClock = new FrameClock();
-    // The output-wide "Hue Rotation" (the knob that used to be applied
-    // per-layer, redundantly and inconsistently, by Paintbrush and Radial).
-    // Driven by domeGlobalHueSpeed: 0 = off; otherwise higher = slower. The
-    // beat pulse (3p^2 - 3p + 1, always positive so the rotation only moves
-    // forward) reproduces the modulation the Paintbrush layer applied on its
-    // own buffer.
-    //
-    // Sequencing: global postprocessing must only ever touch *already
-    // existing* pixels — a pixel a layer painted this frame reaches the wire
-    // at exactly its drawn hue, and starts rotating from the next frame on
-    // (same contract as the per-layer Fade each visualizer applies before it
-    // draws). So rather than rotating the composite (which includes this
-    // frame's fresh draws), rotate each contributing layer's persistent
-    // buffer by one frame's increment *after* the frame has been composited
-    // and written. The layer buffers are faded, not cleared, so the per-frame
-    // increments accumulate naturally — older trail pixels have rotated
-    // further than fresh ones, restoring the along-trail hue gradient.
-    private void ApplyGlobalHueRotation(DomeRenderGeneration generation) {
-      // Tick every frame (even when off) so re-enabling doesn't jump.
-      double frameScale = this.hueClock.Tick();
-      double hueSpeed = generation.ShowState.GlobalHueSpeed;
-      if (hueSpeed <= 0) {
-        return;
-      }
-      double rate = Math.Pow(10, -hueSpeed);
-      double p = this.beat.ProgressThroughMeasure;
-      double mod = 3 * p * p - 3 * p + 1;
-      double delta = rate * mod * frameScale;
-      this.compositor.AdvancePostFrameHue(generation.Plan, delta);
-    }
+      this.renderState.OutputSettings;
 
     // Keep the established output façade while the publisher owns both
     // simulator queues, pooled mailboxes, and browser sampling policy.
@@ -382,7 +222,7 @@ namespace Spectrum.LEDs {
     // independent frames. Candidate navigation uses FlushSimulator without
     // touching OPC; changing the fixed physical selection uses FlushHardware.
     public void FlushHardware() {
-      this.EnsureOutputSettingsReconciled();
+      this.outputSettingsCoordinator.EnsureApplied();
       this.transport.Flush();
     }
 
@@ -398,7 +238,7 @@ namespace Spectrum.LEDs {
     }
 
     public void SetPixel(int strutIndex, int ledIndex, int color) {
-      this.EnsureOutputSettingsReconciled();
+      this.outputSettingsCoordinator.EnsureApplied();
       Tuple<int, int> deviceIndexes =
         this.outputMapper.Map(strutIndex, ledIndex);
       this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
@@ -413,7 +253,7 @@ namespace Spectrum.LEDs {
     public void SetPixelRawHardware(
       int strutIndex, int ledIndex, int color
     ) {
-      this.EnsureOutputSettingsReconciled();
+      this.outputSettingsCoordinator.EnsureApplied();
       Tuple<int, int> deviceIndexes =
         DomeWiringLayout.GetRawAddress(strutIndex, ledIndex);
       this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
@@ -465,7 +305,7 @@ namespace Spectrum.LEDs {
     }
 
     public void WriteBuffer(DomeFrame buffer) {
-      this.EnsureOutputSettingsReconciled();
+      this.outputSettingsCoordinator.EnsureApplied();
       DomeSimulatorFrameCapture simulatorCapture =
         this.simulatorPublisher.BeginFrame(
           buffer.pixels.Length,
@@ -521,7 +361,8 @@ namespace Spectrum.LEDs {
     // Resolve a relative color slot through the named palette selected by the
     // layer. The palette parameter is an index into config.domePalettes.
     public int GetSingleColor(int index, int paletteIndex = 0) {
-      return this.paletteSampler.GetSingleColor(index, paletteIndex);
+      return this.renderState.PaletteSampler.GetSingleColor(
+        index, paletteIndex);
     }
 
     public int GetGradientColor(
@@ -531,7 +372,7 @@ namespace Spectrum.LEDs {
       bool wrap,
       int paletteIndex = 0
     ) {
-      return this.paletteSampler.GetGradientColor(
+      return this.renderState.PaletteSampler.GetGradientColor(
         index, pixelPos, focusPos, wrap, paletteIndex);
     }
 
@@ -543,7 +384,7 @@ namespace Spectrum.LEDs {
       bool wrap,
       int paletteIndex = 0
     ) {
-      return this.paletteSampler.GetGradientBetweenColors(
+      return this.renderState.PaletteSampler.GetGradientBetweenColors(
         minIndex, maxIndex, pixelPos, focusPos, wrap, paletteIndex);
     }
   }

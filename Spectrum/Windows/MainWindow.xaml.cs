@@ -54,10 +54,7 @@ namespace Spectrum {
     private List<int> midiPresetIndices = new();
     private MidiPresetEditor midiPresetEditor = null!;
     private MainWindowChildWindows childWindows = null!;
-    // Guards programmatic repopulate/preselect of wandSerialPortSelector so it
-    // never writes config back; only a genuine user pick does.
-    private bool repopulatingWandPorts = false;
-    private System.Windows.Threading.DispatcherTimer? wandReceiverStatusTimer;
+    private WandSerialUiController wandSerialUi = null!;
     private int? currentlyEditingPreset = null;
     private int? currentlyEditingBinding = null;
     private const int WebServerPort = 8080;
@@ -99,11 +96,11 @@ namespace Spectrum {
       // use the two-way WPF Bind() every other control gets. Instead re-run the
       // guarded repopulate + preselect when the value changes externally (e.g. a
       // web PUT landing on the Dispatcher) — the dynamic-item equivalent of the
-      // two-way binding. The repopulating flag stops the resulting
+      // two-way binding. The controller's guard stops the resulting
       // SelectionChanged from writing back.
       if (e.PropertyName == nameof(this.config.wandSerialPort)) {
         this.Dispatcher.BeginInvoke(
-          new Action(this.RepopulateWandSerialPorts));
+          new Action(this.wandSerialUi.RepopulatePorts));
       }
       if (e.PropertyName == nameof(this.config.domeBeagleboneOPCAddress)) {
         this.Dispatcher.BeginInvoke(new Action(() => {
@@ -120,8 +117,9 @@ namespace Spectrum {
 
     private void HandleClose(object sender, EventArgs e) {
       this.op.Enabled = false;
+      this.config.PropertyChanged -= ConfigUpdated;
       this.readinessRefreshLoop.Dispose();
-      this.wandReceiverStatusTimer?.Stop();
+      this.wandSerialUi.Dispose();
       WindowPlacementStore.Save(this, WindowPlacementPath);
       try {
         this.host?.Dispose();
@@ -202,7 +200,13 @@ namespace Spectrum {
         BindingMode.OneWay, new NormalizedPercentConverter());
       this.Bind(nameof(this.config.vjHUDEnabled), this.vjHUDEnabled, CheckBox.IsCheckedProperty);
 
-      this.InitWandSerialUI();
+      this.wandSerialUi = new WandSerialUiController(
+        this.config,
+        this.wandSerialPortSelector,
+        this.wandReceiverStatus,
+        WandSerialReceiver.AvailablePorts,
+        () => this.op.OrientationInput.WandSerial.StatusSnapshot());
+      this.wandSerialUi.Start();
 
       MainWindow.LoadingConfig = false;
     }
@@ -1090,80 +1094,14 @@ namespace Spectrum {
       this.childWindows.OpenDomeMapping();
     }
 
-    private void InitWandSerialUI() {
-      this.RepopulateWandSerialPorts();
-      // The receiver's status fields are computed from stored timestamps at
-      // snapshot time, so polling on a UI timer is enough to keep the indicator
-      // fresh without any push machinery.
-      this.wandReceiverStatusTimer = new System.Windows.Threading.DispatcherTimer {
-        Interval = TimeSpan.FromMilliseconds(500),
-      };
-      this.wandReceiverStatusTimer.Tick += this.UpdateWandReceiverStatus;
-      this.wandReceiverStatusTimer.Start();
-    }
-
-    // Rebuilds the port combo: (none) + live ports, plus the configured value as
-    // a "(missing)" item if it isn't present (so an unplugged receiver's saved
-    // port is never dropped and stays preselected). Guarded so it never writes
-    // config back. Preselect matches on item Value, not the display label.
-    private void RepopulateWandSerialPorts() {
-      this.repopulatingWandPorts = true;
-      try {
-        var selector = this.wandSerialPortSelector;
-        selector.Items.Clear();
-        string configured = this.config.wandSerialPort ?? "";
-        foreach (WandSerialPortOption option in
-            WandSerialPresentationModel.BuildPortOptions(
-              configured, WandSerialReceiver.AvailablePorts())) {
-          selector.Items.Add(option);
-        }
-
-        foreach (WandSerialPortOption item in selector.Items) {
-          if (item.Value == configured) {
-            selector.SelectedItem = item;
-            break;
-          }
-        }
-      } finally {
-        this.repopulatingWandPorts = false;
-      }
-    }
-
     private void WandSerialPortDropDownOpened(object sender, EventArgs e) {
-      this.RepopulateWandSerialPorts();
+      this.wandSerialUi.RepopulatePorts();
     }
 
     private void WandSerialPortSelectionChanged(
       object sender, SelectionChangedEventArgs e
     ) {
-      // Only a genuine user pick writes config; programmatic repopulate is
-      // guarded. The value ("" only when the user picks (none)) is the real
-      // port, never the display label.
-      if (this.repopulatingWandPorts) {
-        return;
-      }
-      if (this.wandSerialPortSelector.SelectedItem is
-          WandSerialPortOption item) {
-        this.config.wandSerialPort = item.Value;
-      }
-    }
-
-    private void UpdateWandReceiverStatus(object? sender, EventArgs e) {
-      WandSerialPresentation presentation =
-        WandSerialPresentationModel.EvaluateStatus(
-          this.config.wandSerialPort,
-          this.op.OrientationInput.WandSerial.StatusSnapshot());
-      this.wandReceiverStatus.Text = presentation.Text;
-      this.wandReceiverStatus.Foreground = presentation.Kind switch {
-        WandSerialPresentationKind.Inactive => Brushes.Gray,
-        WandSerialPresentationKind.Ready => Brushes.ForestGreen,
-        WandSerialPresentationKind.Warning => Brushes.OrangeRed,
-        WandSerialPresentationKind.Error => Brushes.OrangeRed,
-        _ => throw new ArgumentOutOfRangeException(
-          nameof(presentation),
-          presentation.Kind,
-          "Unknown wand receiver presentation."),
-      };
+      this.wandSerialUi.ApplySelectedPort();
     }
 
     private void OpenWandStatus(object sender, RoutedEventArgs e) {
