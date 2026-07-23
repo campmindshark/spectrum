@@ -217,7 +217,7 @@ namespace Spectrum.Base {
     // True while a tap-tempo sequence is in progress (a tap has landed and the
     // conclusion timeout has not yet elapsed). The HUD maps this to the tap
     // button's colour via TapCounterBrushConverter; the Brush itself is kept out
-    // of Base so the project needs no WPF reference (docs/arch_issues.md item 6).
+    // of Base so the project needs no WPF reference.
     public bool TapTempoActive {
       get {
         return !this.IsTapTempoConcluded();

@@ -37,6 +37,7 @@ namespace Spectrum.Web {
     private readonly PaletteController palettes;
     private readonly AudioDeviceController audio;
     private readonly WebDomeSimulator domeSimulator;
+    private readonly Action<Exception> reportBackgroundError;
     private readonly int port;
     private WebApplication app;
     private Task hostLifetimeTask;
@@ -56,7 +57,8 @@ namespace Spectrum.Web {
     // the native contract: once nobody holds the domeCalibration lease, a
     // still-active flow is auto-cancelled and the dome hands back to the normal
     // visualizers.
-    private Timer calibrationWatchdog;
+    private CancellationTokenSource calibrationWatchdogCancellation;
+    private Task calibrationWatchdogTask;
     private static readonly TimeSpan CalibrationWatchdogInterval =
       TimeSpan.FromSeconds(3);
 
@@ -73,7 +75,8 @@ namespace Spectrum.Web {
       PaletteController palettes,
       AudioDeviceController audio,
       WebDomeSimulator domeSimulator,
-      int port
+      int port,
+      Action<Exception> reportBackgroundError = null
     ) {
       this.controls = controls;
       this.events = events;
@@ -88,6 +91,7 @@ namespace Spectrum.Web {
       this.audio = audio;
       this.domeSimulator = domeSimulator;
       this.port = port;
+      this.reportBackgroundError = reportBackgroundError;
     }
 
     // Builds and starts Kestrel on a background thread. Returns once the host
@@ -126,15 +130,24 @@ namespace Spectrum.Web {
         throw;
       }
 
-      this.calibrationWatchdog = new Timer(
-        this.ReconcileCalibrationLease, null,
-        CalibrationWatchdogInterval, CalibrationWatchdogInterval);
+      this.calibrationWatchdogCancellation = new CancellationTokenSource();
+      this.calibrationWatchdogTask = this.RunCalibrationWatchdogAsync(
+        this.calibrationWatchdogCancellation.Token);
     }
 
     public async Task StopAsync() {
-      if (this.calibrationWatchdog != null) {
-        await this.calibrationWatchdog.DisposeAsync().ConfigureAwait(false);
-        this.calibrationWatchdog = null;
+      if (this.calibrationWatchdogCancellation != null) {
+        this.calibrationWatchdogCancellation.Cancel();
+        try {
+          await this.calibrationWatchdogTask.ConfigureAwait(false);
+        } catch (OperationCanceledException)
+            when (this.calibrationWatchdogCancellation.IsCancellationRequested) {
+          // Cancellation is the normal watchdog shutdown path.
+        } finally {
+          this.calibrationWatchdogCancellation.Dispose();
+          this.calibrationWatchdogCancellation = null;
+          this.calibrationWatchdogTask = null;
+        }
       }
       if (this.app != null) {
         await this.app.StopAsync(TimeSpan.FromSeconds(2))
@@ -148,24 +161,41 @@ namespace Spectrum.Web {
       }
     }
 
-    // Timer callback: if the calibration flow is still active but nobody holds
-    // its lease anymore (released on the client leaving, or lapsed on TTL), the
-    // driving client is gone — cancel the flow so the dome returns to the normal
-    // visualizers. Best-effort; any failure is retried on the next tick.
-    private async void ReconcileCalibrationLease(object _) {
-      try {
-        var state = await this.calibration.StateAsync();
-        if (!state.active) {
-          return;
+    // If the calibration flow is still active but nobody holds its lease
+    // anymore (released on the client leaving, or lapsed on TTL), the driving
+    // client is gone — cancel the flow so the dome returns to the normal
+    // visualizers. One owned task serializes ticks, reports failures, and is
+    // cancelled and awaited before host shutdown continues.
+    private async Task RunCalibrationWatchdogAsync(
+      CancellationToken cancellationToken
+    ) {
+      using var timer = new PeriodicTimer(CalibrationWatchdogInterval);
+      while (await timer.WaitForNextTickAsync(cancellationToken)
+          .ConfigureAwait(false)) {
+        try {
+          await this.ReconcileCalibrationLeaseAsync().ConfigureAwait(false);
+        } catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested) {
+          throw;
+        } catch (Exception error) {
+          try {
+            this.reportBackgroundError?.Invoke(error);
+          } catch {
+            // A diagnostics sink must not terminate this retry loop.
+          }
         }
-        if (this.locks.Get(LockPolicy.DomeCalibration) != null) {
-          return; // a client still holds the lease and is driving the flow
-        }
-        await this.calibration.CancelAsync();
-      } catch {
-        // Swallow: this runs on a pool thread with no caller to observe it, and
-        // the next tick retries.
       }
+    }
+
+    private async Task ReconcileCalibrationLeaseAsync() {
+      var state = await this.calibration.StateAsync().ConfigureAwait(false);
+      if (!state.active) {
+        return;
+      }
+      if (this.locks.Get(LockPolicy.DomeCalibration) != null) {
+        return; // a client still holds the lease and is driving the flow
+      }
+      await this.calibration.CancelAsync().ConfigureAwait(false);
     }
 
     private void MapApi(WebApplication app) {
@@ -227,7 +257,7 @@ namespace Spectrum.Web {
           : Results.BadRequest(new { error });
       });
 
-      // Manual fire for one layer (docs/triggers.md): bumps that instance's
+      // Manual fire for one layer bumps that instance's
       // fire counter so a triggerable layer fires once. Not a stack edit, so it
       // returns no body and doesn't broadcast a "layers" frame.
       app.MapPost("/api/layers/{instanceId}/fire", async (string instanceId) => {
@@ -235,7 +265,7 @@ namespace Spectrum.Web {
         return ok ? Results.Ok() : Results.BadRequest(new { error });
       });
 
-      // Manual clear for one layer (docs/triggers.md): bumps that visualizer's
+      // Manual clear for one layer bumps that visualizer's
       // clear counter so a layer holding live state (Shooting Star) drops it.
       // Parallel to fire — no body, no "layers" frame.
       app.MapPost("/api/layers/{instanceId}/clear", async (string instanceId) => {

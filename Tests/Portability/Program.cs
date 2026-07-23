@@ -6,6 +6,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Spectrum.Base;
@@ -633,32 +634,60 @@ namespace Spectrum.Portability.Tests {
         string response = client.GetStringAsync(
           "http://127.0.0.1:" + port + "/api/operator")
           .GetAwaiter().GetResult();
-        Assert(response.Contains("\"enabled\":false"),
-          "the operator API returned an unexpected response: " + response);
+        using (JsonDocument document = JsonDocument.Parse(response)) {
+          Assert(document.RootElement.TryGetProperty(
+              "enabled", out JsonElement enabled) &&
+              enabled.ValueKind == JsonValueKind.False,
+            "the operator API returned an unexpected response: " + response);
+        }
         string audioResponse = client.GetStringAsync(
           "http://127.0.0.1:" + port + "/api/maintenance/audio")
           .GetAwaiter().GetResult();
-        Assert(audioResponse.Contains("\"backend\":\"Disabled\"") &&
-            audioResponse.Contains("\"availableDevices\":[]"),
-          "the audio setup API returned an unexpected response: " +
-          audioResponse);
+        using (JsonDocument document = JsonDocument.Parse(audioResponse)) {
+          JsonElement root = document.RootElement;
+          Assert(root.TryGetProperty("backend", out JsonElement backend) &&
+              backend.GetString() == "Disabled" &&
+              root.TryGetProperty(
+                "availableDevices", out JsonElement availableDevices) &&
+              availableDevices.ValueKind == JsonValueKind.Array &&
+              availableDevices.GetArrayLength() == 0,
+            "the audio setup API returned an unexpected response: " +
+            audioResponse);
+        }
         string runtimeResponse = client.GetStringAsync(
           "http://127.0.0.1:" + port + "/api/maintenance/runtime")
           .GetAwaiter().GetResult();
-        Assert(runtimeResponse.Contains("\"enabled\":false") &&
-            runtimeResponse.Contains("\"operatorFps\":0") &&
-            runtimeResponse.Contains("\"domeOpcFps\":0") &&
-            runtimeResponse.Contains("\"layerPlanError\":null"),
-          "the runtime health API returned an unexpected response: " +
-          runtimeResponse);
+        using (JsonDocument document = JsonDocument.Parse(runtimeResponse)) {
+          JsonElement root = document.RootElement;
+          Assert(root.TryGetProperty("enabled", out JsonElement enabled) &&
+              enabled.ValueKind == JsonValueKind.False &&
+              root.TryGetProperty(
+                "operatorFps", out JsonElement operatorFps) &&
+              operatorFps.GetInt32() == 0 &&
+              root.TryGetProperty("domeOpcFps", out JsonElement domeOpcFps) &&
+              domeOpcFps.GetInt32() == 0 &&
+              root.TryGetProperty(
+                "layerPlanError", out JsonElement layerPlanError) &&
+              layerPlanError.ValueKind == JsonValueKind.Null,
+            "the runtime health API returned an unexpected response: " +
+            runtimeResponse);
+        }
         string parametersResponse = client.GetStringAsync(
           "http://127.0.0.1:" + port +
             "/api/maintenance/parameters")
           .GetAwaiter().GetResult();
-        Assert(!parametersResponse.Contains("\"vjHUDEnabled\"") &&
-            !parametersResponse.Contains("\"domeSimulationEnabled\""),
-          "the headless API exposed native WPF window controls: " +
-          parametersResponse);
+        using (JsonDocument document = JsonDocument.Parse(parametersResponse)) {
+          Assert(document.RootElement.ValueKind == JsonValueKind.Array,
+            "the maintenance parameter API did not return an array");
+          foreach (JsonElement parameter in
+              document.RootElement.EnumerateArray()) {
+            Assert(parameter.GetProperty("key").GetString() != "vjHUDEnabled" &&
+                parameter.GetProperty("key").GetString() !=
+                  "domeSimulationEnabled",
+              "the headless API exposed native WPF window controls: " +
+              parametersResponse);
+          }
+        }
         using var nativeWindowWrite = new StringContent(
           "{\"value\":false}", Encoding.UTF8, "application/json");
         HttpResponseMessage nativeWindowWriteResponse = client.PutAsync(
@@ -708,10 +737,19 @@ namespace Spectrum.Portability.Tests {
               .GetAwaiter().GetResult();
             Assert(eventLine != null,
               "the SSE response ended before publishing the parameter write");
-            sawFlashEvent = eventLine.StartsWith("data: ") &&
-              eventLine.Contains("\"kind\":\"param\"") &&
-              eventLine.Contains("\"key\":\"flashSpeed\"") &&
-              eventLine.Contains("\"value\":0.375");
+            if (!eventLine.StartsWith("data: ")) {
+              continue;
+            }
+            using JsonDocument document = JsonDocument.Parse(
+              eventLine.Substring("data: ".Length));
+            JsonElement root = document.RootElement;
+            sawFlashEvent =
+              root.TryGetProperty("kind", out JsonElement kind) &&
+              kind.GetString() == "param" &&
+              root.TryGetProperty("key", out JsonElement key) &&
+              key.GetString() == "flashSpeed" &&
+              root.TryGetProperty("value", out JsonElement value) &&
+              value.GetDouble() == 0.375;
           }
           Assert(sawFlashEvent,
             "the real SSE endpoint did not publish the parameter write");

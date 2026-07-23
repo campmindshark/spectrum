@@ -6,8 +6,8 @@ namespace Spectrum.Web {
 
   /**
    * Read-only telemetry the web clients display but never write: engine FPS, the
-   * OPC output rate, and the current BPM (docs/web_architecture.md — the
-   * "richer read-only telemetry push" the users want alongside the controls).
+   * OPC output rate, and the current BPM. This is the richer read-only telemetry
+   * push exposed alongside the controls.
    *
    * Telemetry is deliberately NOT part of the ParameterRegistry: it is never
    * writable, never role-gated (a readout leaks nothing a control would), and

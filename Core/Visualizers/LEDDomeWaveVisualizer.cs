@@ -10,8 +10,7 @@ namespace Spectrum.Visualizers {
   // "reveal below"). On its own the layer is degenerate — an adjustment layer
   // needs a layer beneath it. Its point is to drive an adjustment blend (e.g.
   // Desaturate) so the band shows whatever is below it, processed: the band's
-  // shape is the wave's job, the desaturation is the blend's (see the
-  // two-consumer split in docs/layer_params_implementation.md).
+  // shape is the wave's job, while desaturation is the blend's.
   //
   // Per-layer params (visualizer-consumed, read from this instance's compiled
   // runtime): bandWidth, sweep speed, the sweep center (angle/distance,
@@ -33,7 +32,7 @@ namespace Spectrum.Visualizers {
       new System.Diagnostics.Stopwatch();
     private double phase;
 
-    // OneShot playback state (docs/triggers.md): whether the band is
+    // OneShot playback state: whether the band is
     // currently mid-sweep. Loop mode never touches this.
     private bool playing;
 
@@ -59,8 +58,8 @@ namespace Spectrum.Visualizers {
 
     public bool Enabled { get; set; }
 
-    // OrientationInput is declared unconditionally (docs/triggers.md "Note on
-    // Wave's inputs") so LayerTrigger's Button source can read wand state.
+    // OrientationInput is declared unconditionally so LayerTrigger's Button
+    // source can read wand state.
     // It's AlwaysActive and always Enabled, so this never gates eligibility
     // even when trigger != Button.
     private Input[] inputs;
@@ -91,7 +90,7 @@ namespace Spectrum.Visualizers {
 
       // Fired() must run every frame regardless of playback state, so an
       // edge occurring mid-playthrough (or while OneShot sits idle) is never
-      // missed (docs/triggers.md "button edge-detection subtlety").
+      // missed.
       bool fired = this.trigger.Fired(button);
 
       if (oneShot) {

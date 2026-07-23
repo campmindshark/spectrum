@@ -7,8 +7,7 @@ namespace Spectrum.Visualizers {
 
   // Shared orientation-center tracking for every effect derived from wand
   // orientation. Lifted out of Quaternion Paintbrush so a second orientation-
-  // driven layer (Ripple) doesn't have to reinvent it — see the "two
-  // orientation abstractions" section of docs/layers_inventory.md.
+  // driven layer (Ripple) doesn't have to reinvent it.
   //
   // Owns: per-frame device snapshotting + motion filtering, the idle
   // screen-saver drift (no wand moving -> a dummy pointer wanders the dome),

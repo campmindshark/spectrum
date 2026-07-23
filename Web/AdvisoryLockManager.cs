@@ -5,8 +5,8 @@ using System.Collections.Generic;
 namespace Spectrum.Web {
 
   /**
-   * Server-side advisory locks for modal / multi-step operations
-   * (docs/web_architecture.md, problem 2). Calibration and the per-device test
+   * Server-side advisory locks for modal / multi-step operations. Calibration
+   * and the per-device test
    * patterns are exclusive diagnostic flows; two users entering one at once
    * corrupts the flow. A lease says "someone is calibrating the dome" and
    * blocks conflicting writes from anyone else.

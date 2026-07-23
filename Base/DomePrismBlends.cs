@@ -6,7 +6,7 @@ using static Spectrum.Base.CompositeOptionValues;
 
 namespace Spectrum.Base {
 
-  // The prism family (docs/prism.md): adjustment blends (source alpha is the
+  // The prism family: adjustment blends (source alpha is the
   // mask) whose tunables live in each class's Params — values ride the
   // operation parameter bag of whichever layer selects the blend, and only the compositor
   // reads it, never a visualizer. Offsets are in projected-plane units (the
@@ -170,7 +170,7 @@ namespace Spectrum.Base {
     }
   }
 
-  // Water-surface refraction (docs/caustics.md): make the composite below
+  // Water-surface refraction: make the composite below
   // shimmer as if seen through water. Structurally ChromaticFringe with a
   // per-pixel direction instead of a global one — the source layer publishes
   // a displacement *field* through its side channels (direction in `hue`,

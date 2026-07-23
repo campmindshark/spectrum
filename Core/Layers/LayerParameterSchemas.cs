@@ -164,7 +164,7 @@ namespace Spectrum.Base {
       };
 
     // Trigger params shared by the triggerable one-shot layers (Ripple/Stamp),
-    // read by LayerTrigger (docs/triggers.md). `button` binds an optional wand
+    // read by LayerTrigger. `button` binds an optional wand
     // button; `level`/`interval` tune the Audio source and only bite when
     // trigger = Audio. `trigger` itself is declared per-layer below because its
     // default differs (Ripple = Beat, Stamp = Audio). Manual (the native/web
@@ -201,9 +201,9 @@ namespace Spectrum.Base {
       new string[] { "Manual", "Beat", "Audio" };
 
     // Ripple's own tuning, independent of the copy still fused inside
-    // Paintbrush (docs/layers_inventory.md: twinkle's precedent — the two
+    // Paintbrush. Following Twinkle's precedent, the two
     // copies are separate and unremoved until the rest of the disassembly
-    // lands). Firing is driven by LayerTrigger (docs/triggers.md); rippleStep
+    // lands. Firing is driven by LayerTrigger; rippleStep
     // is the playhead
     // expansion speed, unrelated to the trigger.
     internal static readonly DomeLayerParam[] RippleParams = new DomeLayerParam[] {
@@ -227,7 +227,7 @@ namespace Spectrum.Base {
       TriggerIntervalParam,
     };
 
-    // Stamp's own tuning. Firing is driven by LayerTrigger (docs/triggers.md),
+    // Stamp's own tuning. Firing is driven by LayerTrigger,
     // defaulting to the Audio source;
     // level/interval tune that source.
     internal static readonly DomeLayerParam[] StampParams = new DomeLayerParam[] {
@@ -295,7 +295,7 @@ namespace Spectrum.Base {
         Type = DomeLayerParamType.Bool,
         Default = 0,
       },
-      // Triggerable (docs/triggers.md): a wand button press flashes the
+      // Triggerable: a wand button press flashes the
       // blob briefly bigger via LayerTrigger, replacing the old hard-coded
       // per-device bonus that used to live in OrientationCenter. Unbound
       // (default) means the burst is Manual-fire-only.
@@ -413,7 +413,7 @@ namespace Spectrum.Base {
 
     // Flash is Background's flat color fill made momentary: instead of painting
     // every frame it paints the whole dome only when LayerTrigger fires, then
-    // fades out (docs/triggers.md — same fill-then-Fade playhead as Stamp, using
+    // fades out with the same fill-then-Fade playhead as Stamp, using
     // domeGlobalFadeSpeed). So it shares Background's `color` and the full
     // trigger param set (Ripple/Stamp's), defaulting to the Beat source for a
     // strobe-on-the-beat. `level`/`interval` tune the Audio source; Manual (the
@@ -461,7 +461,7 @@ namespace Spectrum.Base {
         Type = DomeLayerParamType.Color,
         Min = 0, Max = 0xFFFFFF, Default = 0xFFFFFF,
       },
-      // Triggerable layers (docs/triggers.md): Loop is today's forever-cycle
+      // Triggerable layers: Loop is today's forever-cycle
       // behavior (default, so existing saved layers are unaffected); OneShot
       // plays the band 0->1 once per trigger fire, then clears until re-fired.
       new DomeLayerParam {
@@ -554,7 +554,7 @@ namespace Spectrum.Base {
           Type = DomeLayerParamType.Bool,
           Default = 1,
         },
-        // Trigger cluster (docs/triggers.md): each fire launches one extra star
+        // Trigger cluster: each fire launches one extra star
         // on top of the steady spawnRate. Defaults to Beat so stars streak in on
         // the beat; level/interval tune the Audio source, button binds a wand
         // button, and Manual (the Fire button) is always live.

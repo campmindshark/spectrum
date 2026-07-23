@@ -12,7 +12,7 @@ namespace Spectrum.Visualizers {
   // strobe-on-demand: sit it near the top of the stack under Over/Add for a
   // full-dome flash punctuating whatever plays below.
   //
-  // Trigger sources are the full set (docs/triggers.md): Manual (native Fire
+  // Trigger sources are the full set: Manual (native Fire
   // button) and a bound wand "button" are always live, and the "trigger" param
   // selects one autonomous source — Beat (default) or Audio. Center-free like
   // Background; it declares OrientationInput only so the Button source can read
@@ -81,7 +81,7 @@ namespace Spectrum.Visualizers {
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
       // Fired() must run every frame regardless of playhead state, so an edge
-      // occurring mid-fade is never missed (docs/triggers.md).
+      // occurring mid-fade is never missed.
       bool fired =
         this.trigger.Fired(button, triggerSource, levelThreshold, interval);
       if (fired) {

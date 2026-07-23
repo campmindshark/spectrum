@@ -6,8 +6,8 @@ namespace Spectrum.Visualizers {
 
   // Dense bright white dots that flicker on at random high on the dome and fade
   // out — the twinkle effect lifted out of the Quaternion Paintbrush as its own
-  // stack layer. It is the minimal proof of the layer-disassembly approach
-  // (docs/layers_inventory.md): center-free and input-free, it references no
+  // stack layer. It is the minimal proof of the layer-disassembly approach:
+  // center-free and input-free, it references no
   // orientation and no audio, so it composites over any backdrop under Add or
   // Lighten with nothing shared but the buffer.
   //

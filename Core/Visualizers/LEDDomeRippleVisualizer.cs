@@ -9,7 +9,7 @@ using static Spectrum.MathUtil;
 namespace Spectrum.Visualizers {
 
   // A color wave expanding from the orientation center, lifted out of
-  // Quaternion Paintbrush as its own stack layer (docs/layers_inventory.md).
+  // Quaternion Paintbrush as its own stack layer.
   // Alternates each time it fires between a 'static' ripple (the center is
   // sampled once, then frozen — the pinned end of the center-binding axis)
   // and a 'follower' ripple (the center is re-sampled every frame, so it
@@ -40,8 +40,8 @@ namespace Spectrum.Visualizers {
 
     private readonly FrameClock frameClock = new FrameClock();
 
-    // Ripple playhead state. Firing is now driven by LayerTrigger
-    // (docs/triggers.md) rather than the old internal cooldown timer.
+    // Ripple playhead state. Firing is now driven by LayerTrigger rather than
+    // the old internal cooldown timer.
     private int rippleType = 0; // 0 - 'static' ripple; 1 - 'follower' ripple
     private Quaternion rippleCenter = new Quaternion(0, 0, 0, 1);
     private double rippleCounter = 0;
@@ -100,7 +100,7 @@ namespace Spectrum.Visualizers {
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
       // Fired() must run every frame regardless of playhead state, so an edge
-      // occurring mid-ripple is never missed (docs/triggers.md).
+      // occurring mid-ripple is never missed.
       bool fired = this.trigger.Fired(button, triggerSource, levelThreshold, interval);
 
       this.center.Update(level);
@@ -155,7 +155,7 @@ namespace Spectrum.Visualizers {
           // (following) via rippleCenter above; its *color* always samples
           // the live orientation-derived field at this pixel — the same two
           // independent freezes the fused version exercised (see the class
-          // doc and docs/layers_inventory.md "Center binding").
+          // documentation).
           double hue = OrientationCenter.HueFromColorCenter(
             this.center.ColorCenterAt(pixelPoint));
           this.buffer.pixels[i].color =

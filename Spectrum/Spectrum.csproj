@@ -10,6 +10,11 @@
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <!-- Shared because native interop debugging is part of the application. -->
+    <EnableUnmanagedDebugging>true</EnableUnmanagedDebugging>
+  </PropertyGroup>
+
   <ItemGroup>
     <None Include="Resources\spectrum wordmark.PNG">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -66,7 +66,7 @@ namespace Spectrum.Base {
     double domeGlobalFadeSpeed { get; set; }
     double domeGlobalHueSpeed { get; set; }
 
-    // Per-layer manual-fire counters (docs/triggers.md): keyed by stable
+    // Per-layer manual-fire counters, keyed by stable
     // DomeLayerSettings.InstanceId, bumped by native/web Fire buttons. A
     // monotonic counter rather than a bool so two clients firing
     // concurrently never race over who clears a flag — LayerTrigger just

@@ -21,7 +21,8 @@ namespace Spectrum.Web {
       ApplicationStateDispatcher stateDispatcher,
       Operator runtime,
       int port,
-      bool nativeWindowControlsAvailable
+      bool nativeWindowControlsAvailable,
+      Action<Exception> reportBackgroundError = null
     ) {
       if (config == null) {
         throw new ArgumentNullException(nameof(config));
@@ -60,7 +61,8 @@ namespace Spectrum.Web {
       this.server = new WebServer(
         controls, this.eventStream, this.AdvisoryLocks,
         this.DomeCalibration, wands, operatorControl, tempo, layers,
-        scenes, palettes, audio, domeSimulator, port);
+        scenes, palettes, audio, domeSimulator, port,
+        reportBackgroundError);
     }
 
     public AdvisoryLockManager AdvisoryLocks { get; }

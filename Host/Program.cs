@@ -63,7 +63,9 @@ namespace Spectrum.Host {
             config, owner, inputFactory),
           (config, owner, runtime) => new SpectrumWebHost(
             config, owner, runtime, options.WebPort,
-            nativeWindowControlsAvailable: false),
+            nativeWindowControlsAvailable: false,
+            reportBackgroundError: exception => Console.Error.WriteLine(
+              "Web background task failed: " + exception)),
           new[] {
             nameof(SpectrumConfiguration.audioDeviceID),
             nameof(SpectrumConfiguration.domeOutputInSeparateThread),

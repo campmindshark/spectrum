@@ -9,7 +9,7 @@ using static Spectrum.MathUtil;
 namespace Spectrum.Visualizers {
 
   // The orientation-derived potential field, lifted out of Quaternion
-  // Paintbrush as its own stack layer (docs/layers_inventory.md — the fourth
+  // Paintbrush as its own stack layer. It is the fourth
   // effect pulled out, and the last piece of the disassembly: metaball and
   // contour are extracted together rather than as two layers, per the
   // inventory doc's "Metaball + contour stay one layer" decision — contours
@@ -41,7 +41,7 @@ namespace Spectrum.Visualizers {
     // pulses the level-curve bands over time, scaled by loudness.
     private double contourCounter = 0;
 
-    // Burst envelope (docs/triggers.md): 1 right on a trigger fire, decaying
+    // Burst envelope: 1 right on a trigger fire, decaying
     // to 0 over BURST_DURATION_FRAMES nominal frames. Replaces the old
     // hard-coded per-device "bonus" that used to live in OrientationCenter —
     // that boosted one wand's contribution to the potential field for as
@@ -99,9 +99,8 @@ namespace Spectrum.Visualizers {
         1 - Math.Pow(5, -this.environment.GlobalFadeSpeed);
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
-      // Fired() must run every frame regardless of burst state, so an edge
-      // occurring mid-decay is never missed (docs/triggers.md "button
-      // edge-detection subtlety").
+      // Fired() must run every frame regardless of burst state, so a button
+      // edge occurring mid-decay is never missed.
       bool fired = this.trigger.Fired(button);
       if (fired) {
         this.burstEnvelope = 1;

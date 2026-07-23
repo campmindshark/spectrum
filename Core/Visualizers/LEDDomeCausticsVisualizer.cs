@@ -5,7 +5,7 @@ using System;
 namespace Spectrum.Visualizers {
 
   // Caustics: the dancing filament web of light seen through a layer of water,
-  // as if the dome were the floor of a sunlit pool (docs/caustics.md). The
+  // as if the dome were the floor of a sunlit pool. The
   // pattern lives in plan view, so it samples the baked projected (x, y) that
   // every pixel already carries — no new geometry, and it reads correctly from
   // inside the dome (light dancing "down through water" onto the shell).
@@ -31,7 +31,7 @@ namespace Spectrum.Visualizers {
   // (feature size / wavenumber), speed (churn rate), sharpness (filament
   // thinness — the pow exponent), brightness (output gain), and tint color.
   //
-  // When this layer's blend is Refract (docs/caustics.md), the layer is a
+  // When this layer's blend is Refract, the layer is a
   // displacement field rather than paint: alongside the color (which Refract,
   // like every adjustment blend, ignores) it publishes the raw field's
   // gradient through the pixel side channels — direction into `hue`

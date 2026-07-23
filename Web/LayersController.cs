@@ -264,7 +264,7 @@ namespace Spectrum.Web {
       return (true, null);
     }
 
-    // Manual fire (docs/triggers.md): bump the layer's monotonic fire counter so
+    // Manual fire bumps the layer's monotonic fire counter so
     // a triggerable layer (Wave/Metaball OneShot, Ripple/Stamp) fires once. Keyed
     // by stable instance ID. A whole-dictionary copy-and-swap through the
     // gateway, mirroring the native DomeLayersController.FireRow; firing is not a

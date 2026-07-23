@@ -562,7 +562,7 @@ namespace Spectrum.Base {
 
     // DomeTopology maps a strut and LED-within-strut to the logical frame
     // index. It depends only on logical identity, not physical cable mapping.
-    // Baked spatial neighbor table (docs/prism.md), used by the spatial prism
+    // Baked spatial neighbor table used by the spatial prism
     // blends to resample the composite at an offset. For each pixel we store the
     // nearest pixel to (x + r·cosθ, y + r·sinθ) over NeighborDirections evenly
     // spaced angles and NeighborRadii radius steps, flattened as
@@ -626,7 +626,7 @@ namespace Spectrum.Base {
     }
 
     // ---- Spatial-sampling infrastructure for the prism blends -------------
-    // (docs/prism.md) The blends themselves are DomeBlend classes; the baked
+    // The blends themselves are DomeBlend classes; the baked
     // neighbor table and normals stay here because they belong to this buffer's
     // geometry, not to any one blend.
 

@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 namespace Spectrum.Base {
 
   // Live engine counters — the "runtime telemetry" partition split out of
-  // Configuration (docs/arch_issues.md item 5). Never persisted; written by
+  // Configuration. Never persisted; written by
   // background threads (the operator loop and the OPC send-rate callback) and
   // read by the native FPS labels and the web SSE feed. INotifyPropertyChanged
   // is the contract both consumers already speak: WPF marshals cross-thread

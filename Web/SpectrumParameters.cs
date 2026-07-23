@@ -17,7 +17,7 @@ namespace Spectrum.Web {
    * Deliberately NOT exposed here: the *InSeparateThread reboot flags are
    * maintenance-only and included; but raw command queues, cable mappings,
    * midi/level-driver dictionaries, and other compound/collection state stay
-   * out entirely (see docs/web_architecture.md — compound writes stay
+   * out entirely. Compound writes stay
    * maintenance-only and go through the gateway, not field-level LWW).
    */
   public static class SpectrumParameters {

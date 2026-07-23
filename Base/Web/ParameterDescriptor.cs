@@ -5,7 +5,7 @@ using System.Globalization;
 namespace Spectrum.Base {
 
   /**
-   * Which surface a parameter belongs to (see docs/web_architecture.md). The
+   * Which surface a parameter belongs to. The
    * split is a server-side authorization boundary, not just two HTML pages: a
    * "user" caller may only touch User parameters; a "maintenance" caller may
    * touch everything.

@@ -157,7 +157,7 @@ namespace Spectrum {
 
       // A trigger fire (wand button / beat / audio / manual Fire button) launches
       // one extra star on top of the steady spawn rate. Fired() runs every frame
-      // so a button edge is never missed (docs/triggers.md).
+      // so a button edge is never missed.
       if (this.trigger.Fired(button, triggerSource, levelThreshold, interval)) {
         this.SpawnOneStar(aim);
       }

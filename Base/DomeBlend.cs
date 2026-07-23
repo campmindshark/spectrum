@@ -78,7 +78,7 @@ namespace Spectrum.Base {
     // time-varying prism params (spin). Frame-rate independent.
     public double Seconds { get; }
     // Live wand angle source for the prism blends' "Follow Orientation"
-    // option (docs/prism.md). Nullable — a dome wired up without an
+    // option. Nullable — a dome wired up without an
     // orientation source simply never follows.
     public OrientationAngleProvider Orientation { get; }
     // Per-layer retained composite frames for stateful adjustment operations.
@@ -144,7 +144,7 @@ namespace Spectrum.Base {
   // Desaturate and Hue are adjustment blends: they ignore the source layer's
   // own color and instead reprocess the composite below it (masked by the
   // source's alpha). ChromaticFringe, EdgeSpectrum, Iridescence and Refract
-  // are the prism family (docs/prism.md, docs/caustics.md): also adjustment
+  // are the prism family: also adjustment
   // blends, but ChromaticFringe, EdgeSpectrum and Refract are *spatial* —
   // they resample the composite through the baked neighbor table, so they
   // declare destination-neighbor requirements and read the pre-pass copy.

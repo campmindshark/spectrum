@@ -261,8 +261,8 @@ namespace Spectrum.LEDs {
       domeStrutsPerBox = total;
     }
 
-    // Live wand angle for the prism blends' "Follow Orientation" option
-    // (docs/prism.md). Nullable — a dome wired up without an orientation source
+    // Live wand angle for the prism blends' "Follow Orientation" option.
+    // Nullable — a dome wired up without an orientation source
     // simply never follows and the blends use their static angle.
     public LEDDomeOutput(
       Configuration config, RuntimeTelemetry telemetry, BeatBroadcaster beat,

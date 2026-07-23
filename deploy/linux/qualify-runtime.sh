@@ -46,7 +46,7 @@ if ((minimum_operator_fps > maximum_operator_fps)); then
   printf 'SPECTRUM_MIN_OPERATOR_FPS cannot exceed SPECTRUM_MAX_OPERATOR_FPS.\n' >&2
   exit 2
 fi
-for command_name in realpath curl ss awk sed grep mktemp; do
+for command_name in realpath curl ss awk grep jq mktemp; do
   if ! command -v "$command_name" >/dev/null; then
     printf 'Runtime qualification requires %s.\n' "$command_name" >&2
     exit 2
@@ -168,21 +168,23 @@ while ((SECONDS < sample_deadline)); do
   fi
   runtime_state=$(curl --fail --silent --max-time 5 \
     "$base_url/api/maintenance/runtime")
-  if ! grep --quiet --fixed-strings '"enabled":true' <<<"$runtime_state"; then
+  if ! jq --exit-status '.enabled == true' \
+      <<<"$runtime_state" >/dev/null; then
     printf 'Runtime health reported a stopped engine: %s\n' \
       "$runtime_state" >&2
     exit 1
   fi
-  if ! grep --quiet --fixed-strings \
-      '"layerPlanError":null' <<<"$runtime_state"; then
+  if ! jq --exit-status '.layerPlanError == null' \
+      <<<"$runtime_state" >/dev/null; then
     printf 'Runtime health reported a layer-plan failure: %s\n' \
       "$runtime_state" >&2
     exit 1
   fi
-  operator_fps=$(sed -n \
-    's/.*"operatorFps":\([0-9][0-9]*\).*/\1/p' <<<"$runtime_state")
-  if [[ -z "$operator_fps" ]]; then
-    printf 'Runtime health response omitted operatorFps: %s\n' \
+  if ! operator_fps=$(jq --exit-status --raw-output \
+      '.operatorFps |
+        select(type == "number" and . >= 0 and floor == .)' \
+      <<<"$runtime_state"); then
+    printf 'Runtime health response has no non-negative integer operatorFps: %s\n' \
       "$runtime_state" >&2
     exit 1
   fi

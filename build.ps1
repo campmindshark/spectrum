@@ -107,10 +107,9 @@ try {
       "--artifacts-path", $DotnetArtifactsDirectory
     )
 
-    Write-Step "Running the Windows .NET verification suite"
+    Write-Step "Running the Windows MSTest layer-pipeline suite"
     Invoke-Checked -FilePath "dotnet" -Arguments @(
-      "run",
-      "--project", "Tests/Spectrum.LayerPipeline.Tests.csproj",
+      "test", "Tests/Spectrum.LayerPipeline.Tests.csproj",
       "-c", $Configuration,
       "--artifacts-path", $DotnetArtifactsDirectory
     )

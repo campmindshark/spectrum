@@ -11,7 +11,7 @@ using Spectrum.Base;
 namespace Spectrum.Web {
 
   /**
-   * The state broadcast (docs/web_architecture.md, problem 3). Bridges
+   * The state broadcast. Bridges
    * Configuration.PropertyChanged to connected web clients so that, with
    * last-write-wins sliders, every client still SEES the winning value —
    * nobody holds stale local authoritative state. It also pushes read-only

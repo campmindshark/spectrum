@@ -100,7 +100,7 @@ namespace Spectrum.Base {
     // wavelength->RGB piecewise). Unlike an HSV hue wheel it never passes
     // through magenta, which is what makes it read as "optics" rather than
     // "rainbow". Output channels are 0..255 doubles so it drops straight into
-    // the compositor's blend math; see docs/prism.md. t=0 is deep red (645nm),
+    // the compositor's blend math. t=0 is deep red (645nm),
     // t=1 is violet (380nm).
     public static void SpectralColor(
       double t, out double r, out double g, out double b

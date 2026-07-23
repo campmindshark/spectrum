@@ -227,7 +227,9 @@ namespace Spectrum {
           config, dispatcher, new WindowsSpectrumInputFactory()),
         (config, dispatcher, runtime) => new Web.SpectrumWebHost(
           config, dispatcher, runtime, WebServerPort,
-          nativeWindowControlsAvailable: true),
+          nativeWindowControlsAvailable: true,
+          reportBackgroundError: error => App.LogException(
+            "Web background task failed", error)),
         ConfigPropertiesToRebootOn,
         saveEnabled: () => !MainWindow.LoadingConfig,
         reportLoadFailure: failure => Debug.WriteLine(

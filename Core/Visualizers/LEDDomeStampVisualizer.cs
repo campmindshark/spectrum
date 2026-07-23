@@ -9,12 +9,12 @@ using static Spectrum.MathUtil;
 namespace Spectrum.Visualizers {
 
   // A shape that flashes at the wand's facing when something loud enough
-  // happens, lifted out of Quaternion Paintbrush as its own stack layer
-  // (docs/layers_inventory.md — the third orientation-driven effect pulled
+  // happens, lifted out of Quaternion Paintbrush as its own stack layer. It is
+  // the third orientation-driven effect pulled
   // out, after Ripple). Alternates each time it fires between a grid of
   // rings and a rhythm band that contracts to the beat.
   //
-  // Center binding (docs/layers_inventory.md "Center binding") is pinned: the
+  // Center binding is pinned: the
   // orientation center is sampled once at fire time (stampCenter) and frozen
   // for the life of the stamp, unlike Ripple's per-fire pinned/following
   // alternation. Color is likewise frozen at fire time (stampHue, from the
@@ -43,8 +43,8 @@ namespace Spectrum.Visualizers {
 
     private readonly FrameClock frameClock = new FrameClock();
 
-    // Stamp playhead state. Firing is now driven by LayerTrigger
-    // (docs/triggers.md); the per-measure cooldown below is the playhead.
+    // Stamp playhead state. Firing is now driven by LayerTrigger; the
+    // per-measure cooldown below is the playhead.
     private Quaternion stampCenter = new Quaternion(0, 0, 0, 1);
     private int cooldown = 7;
     private double lastProgress = 0;
@@ -104,7 +104,7 @@ namespace Spectrum.Visualizers {
       this.buffer.Fade(Math.Pow(frameRetention, frameScale), 0);
 
       // Fired() must run every frame regardless of playhead state, so an edge
-      // occurring mid-stamp is never missed (docs/triggers.md).
+      // occurring mid-stamp is never missed.
       bool fired = this.trigger.Fired(button, triggerSource, levelThreshold, interval);
 
       this.center.Update(level);

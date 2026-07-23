@@ -31,7 +31,7 @@ On Ubuntu 24.04, install the ALSA runtime with:
 
 ```shell
 apt-get update
-apt-get install libasound2t64 libportaudio2
+apt-get install jq libasound2t64 libportaudio2
 ```
 
 `ffmpeg` is optional for live capture but required to run Madmom against audio
