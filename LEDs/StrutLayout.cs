@@ -37,11 +37,11 @@ namespace Spectrum.LEDs {
     ) {
       this.index = index;
       this.reversed = reversed;
-      // Strut is immutable and interned, and GetNumLEDs is a pure function of
-      // the strut index (its inputs are all static readonly), so the LED count
+      // Strut is immutable and interned, and GetLedCount is a pure function of
+      // the installed wiring layout, so the LED count
       // never changes — bake it once instead of walking controlBoxStrutOrder on
       // every Length access.
-      this.length = LEDDomeOutput.GetNumLEDs(index);
+      this.length = DomeWiringLayout.GetLedCount(index);
     }
 
     public int Index {

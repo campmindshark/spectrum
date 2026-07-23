@@ -175,7 +175,7 @@ namespace Spectrum.LEDs {
     ) {
       var p1 = GetProjectedPoint(strutIndex, 0, projection);
       var p2 = GetProjectedPoint(strutIndex, 1, projection);
-      var leds = LEDDomeOutput.GetNumLEDs(strutIndex);
+      var leds = DomeWiringLayout.GetLedCount(strutIndex);
 
       // we treat the endpoints of the strut as "invisible" LEDS,
       // so that corner LEDS do not overlap

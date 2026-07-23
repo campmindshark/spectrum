@@ -10,163 +10,7 @@ using Spectrum.Base;
 
 namespace Spectrum.LEDs {
 
-  enum LEDDomeStrutTypes { Yellow, Red, Blue, Green, Purple, Orange };
-
   public class LEDDomeOutput : Output, DomeRenderContext {
-
-    // There are 8 strands coming out of each control box. For each of these
-    // strands, this variable represents the sequence of strut types
-    private static readonly LEDDomeStrutTypes[][] controlBoxStrutOrder =
-      new LEDDomeStrutTypes[][] {
-        new LEDDomeStrutTypes[] {
-          LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Blue,
-          LEDDomeStrutTypes.Orange, LEDDomeStrutTypes.Orange,
-          LEDDomeStrutTypes.Yellow,
-        },
-        new LEDDomeStrutTypes[] {
-          LEDDomeStrutTypes.Orange, LEDDomeStrutTypes.Blue,
-          LEDDomeStrutTypes.Purple, LEDDomeStrutTypes.Blue,
-          LEDDomeStrutTypes.Red,
-        },
-        new LEDDomeStrutTypes[] {
-          LEDDomeStrutTypes.Red, LEDDomeStrutTypes.Blue,
-          LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Green,
-          LEDDomeStrutTypes.Blue,
-        },
-        new LEDDomeStrutTypes[] {
-          LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Blue,
-          LEDDomeStrutTypes.Red, LEDDomeStrutTypes.Yellow,
-          LEDDomeStrutTypes.Yellow,
-        },
-        new LEDDomeStrutTypes[] {
-          LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Purple,
-          LEDDomeStrutTypes.Blue, LEDDomeStrutTypes.Red,
-        },
-        new LEDDomeStrutTypes[] {
-          LEDDomeStrutTypes.Green, LEDDomeStrutTypes.Purple,
-          LEDDomeStrutTypes.Purple, LEDDomeStrutTypes.Green,
-          LEDDomeStrutTypes.Green,
-        },
-        new LEDDomeStrutTypes[] {
-          LEDDomeStrutTypes.Orange, LEDDomeStrutTypes.Yellow,
-          LEDDomeStrutTypes.Yellow, LEDDomeStrutTypes.Red,
-          LEDDomeStrutTypes.Red,
-        },
-        new LEDDomeStrutTypes[] {
-          LEDDomeStrutTypes.Blue, LEDDomeStrutTypes.Blue,
-          LEDDomeStrutTypes.Blue, LEDDomeStrutTypes.Yellow,
-        },
-      };
-    private static readonly Dictionary<LEDDomeStrutTypes, int> strutLengths =
-      new Dictionary<LEDDomeStrutTypes, int> {
-        [LEDDomeStrutTypes.Yellow] = 34,
-        [LEDDomeStrutTypes.Red] = 40,
-        [LEDDomeStrutTypes.Blue] = 40,
-        [LEDDomeStrutTypes.Orange] = 40,
-        [LEDDomeStrutTypes.Green] = 42,
-        [LEDDomeStrutTypes.Purple] = 44,
-      };
-    // We assign each strut an index. This variable maps that strut index to
-    // a control box, and an index within that control box. The control box
-    // index is based on the sequence of the 8 strands and the struts that
-    // comprise them. See comment at the top of FindStrutIndex for more details.
-    private static readonly Tuple<int, int>[] strutPositions = new Tuple<int, int>[] {
-      new Tuple<int, int>(0, 22), new Tuple<int, int>(0, 23),
-      new Tuple<int, int>(1, 36), new Tuple<int, int>(1, 21),
-      new Tuple<int, int>(1, 22), new Tuple<int, int>(1, 23),
-      new Tuple<int, int>(2, 36), new Tuple<int, int>(2, 21),
-      new Tuple<int, int>(2, 22), new Tuple<int, int>(2, 23),
-      new Tuple<int, int>(3, 36), new Tuple<int, int>(3, 21),
-      new Tuple<int, int>(3, 22), new Tuple<int, int>(3, 23),
-      new Tuple<int, int>(4, 36), new Tuple<int, int>(4, 21),
-      new Tuple<int, int>(4, 22), new Tuple<int, int>(4, 23),
-      new Tuple<int, int>(0, 36), new Tuple<int, int>(0, 21),
-      new Tuple<int, int>(0, 5), new Tuple<int, int>(0, 19),
-      new Tuple<int, int>(1, 30), new Tuple<int, int>(1, 29),
-      new Tuple<int, int>(1, 5), new Tuple<int, int>(1, 19),
-      new Tuple<int, int>(2, 30), new Tuple<int, int>(2, 29),
-      new Tuple<int, int>(2, 5), new Tuple<int, int>(2, 19),
-      new Tuple<int, int>(3, 30), new Tuple<int, int>(3, 29),
-      new Tuple<int, int>(3, 5), new Tuple<int, int>(3, 19),
-      new Tuple<int, int>(4, 30), new Tuple<int, int>(4, 29),
-      new Tuple<int, int>(4, 5), new Tuple<int, int>(4, 19),
-      new Tuple<int, int>(0, 30), new Tuple<int, int>(0, 29),
-      new Tuple<int, int>(0, 11), new Tuple<int, int>(1, 1),
-      new Tuple<int, int>(1, 25), new Tuple<int, int>(1, 11),
-      new Tuple<int, int>(2, 1), new Tuple<int, int>(2, 25),
-      new Tuple<int, int>(2, 11), new Tuple<int, int>(3, 1),
-      new Tuple<int, int>(3, 25), new Tuple<int, int>(3, 11),
-      new Tuple<int, int>(4, 1), new Tuple<int, int>(4, 25),
-      new Tuple<int, int>(4, 11), new Tuple<int, int>(0, 1),
-      new Tuple<int, int>(0, 25), new Tuple<int, int>(0, 13),
-      new Tuple<int, int>(1, 27), new Tuple<int, int>(1, 13),
-      new Tuple<int, int>(2, 27), new Tuple<int, int>(2, 13),
-      new Tuple<int, int>(3, 27), new Tuple<int, int>(3, 13),
-      new Tuple<int, int>(4, 27), new Tuple<int, int>(4, 13),
-      new Tuple<int, int>(0, 27), new Tuple<int, int>(1, 9),
-      new Tuple<int, int>(2, 9), new Tuple<int, int>(3, 9),
-      new Tuple<int, int>(4, 9), new Tuple<int, int>(0, 9),
-      new Tuple<int, int>(0, 15), new Tuple<int, int>(0, 16),
-      new Tuple<int, int>(0, 17), new Tuple<int, int>(0, 18),
-      new Tuple<int, int>(1, 37), new Tuple<int, int>(1, 33),
-      new Tuple<int, int>(1, 35), new Tuple<int, int>(1, 20),
-      new Tuple<int, int>(1, 15), new Tuple<int, int>(1, 16),
-      new Tuple<int, int>(1, 17), new Tuple<int, int>(1, 18),
-      new Tuple<int, int>(2, 37), new Tuple<int, int>(2, 33),
-      new Tuple<int, int>(2, 35), new Tuple<int, int>(2, 20),
-      new Tuple<int, int>(2, 15), new Tuple<int, int>(2, 16),
-      new Tuple<int, int>(2, 17), new Tuple<int, int>(2, 18),
-      new Tuple<int, int>(3, 37), new Tuple<int, int>(3, 33),
-      new Tuple<int, int>(3, 35), new Tuple<int, int>(3, 20),
-      new Tuple<int, int>(3, 15), new Tuple<int, int>(3, 16),
-      new Tuple<int, int>(3, 17), new Tuple<int, int>(3, 18),
-      new Tuple<int, int>(4, 37), new Tuple<int, int>(4, 33),
-      new Tuple<int, int>(4, 35), new Tuple<int, int>(4, 20),
-      new Tuple<int, int>(4, 15), new Tuple<int, int>(4, 16),
-      new Tuple<int, int>(4, 17), new Tuple<int, int>(4, 18),
-      new Tuple<int, int>(0, 37), new Tuple<int, int>(0, 33),
-      new Tuple<int, int>(0, 35), new Tuple<int, int>(0, 20),
-      new Tuple<int, int>(0, 24), new Tuple<int, int>(0, 6),
-      new Tuple<int, int>(0, 10), new Tuple<int, int>(1, 31),
-      new Tuple<int, int>(1, 32), new Tuple<int, int>(1, 34),
-      new Tuple<int, int>(1, 0), new Tuple<int, int>(1, 24),
-      new Tuple<int, int>(1, 6), new Tuple<int, int>(1, 10),
-      new Tuple<int, int>(2, 31), new Tuple<int, int>(2, 32),
-      new Tuple<int, int>(2, 34), new Tuple<int, int>(2, 0),
-      new Tuple<int, int>(2, 24), new Tuple<int, int>(2, 6),
-      new Tuple<int, int>(2, 10), new Tuple<int, int>(3, 31),
-      new Tuple<int, int>(3, 32), new Tuple<int, int>(3, 34),
-      new Tuple<int, int>(3, 0), new Tuple<int, int>(3, 24),
-      new Tuple<int, int>(3, 6), new Tuple<int, int>(3, 10),
-      new Tuple<int, int>(4, 31), new Tuple<int, int>(4, 32),
-      new Tuple<int, int>(4, 34), new Tuple<int, int>(4, 0),
-      new Tuple<int, int>(4, 24), new Tuple<int, int>(4, 6),
-      new Tuple<int, int>(4, 10), new Tuple<int, int>(0, 31),
-      new Tuple<int, int>(0, 32), new Tuple<int, int>(0, 34),
-      new Tuple<int, int>(0, 0), new Tuple<int, int>(0, 7),
-      new Tuple<int, int>(0, 12), new Tuple<int, int>(1, 2),
-      new Tuple<int, int>(1, 28), new Tuple<int, int>(1, 26),
-      new Tuple<int, int>(1, 7), new Tuple<int, int>(1, 12),
-      new Tuple<int, int>(2, 2), new Tuple<int, int>(2, 28),
-      new Tuple<int, int>(2, 26), new Tuple<int, int>(2, 7),
-      new Tuple<int, int>(2, 12), new Tuple<int, int>(3, 2),
-      new Tuple<int, int>(3, 28), new Tuple<int, int>(3, 26),
-      new Tuple<int, int>(3, 7), new Tuple<int, int>(3, 12),
-      new Tuple<int, int>(4, 2), new Tuple<int, int>(4, 28),
-      new Tuple<int, int>(4, 26), new Tuple<int, int>(4, 7),
-      new Tuple<int, int>(4, 12), new Tuple<int, int>(0, 2),
-      new Tuple<int, int>(0, 28), new Tuple<int, int>(0, 26),
-      new Tuple<int, int>(0, 14), new Tuple<int, int>(1, 3),
-      new Tuple<int, int>(1, 8), new Tuple<int, int>(1, 14),
-      new Tuple<int, int>(2, 3), new Tuple<int, int>(2, 8),
-      new Tuple<int, int>(2, 14), new Tuple<int, int>(3, 3),
-      new Tuple<int, int>(3, 8), new Tuple<int, int>(3, 14),
-      new Tuple<int, int>(4, 3), new Tuple<int, int>(4, 8),
-      new Tuple<int, int>(4, 14), new Tuple<int, int>(0, 3),
-      new Tuple<int, int>(0, 8), new Tuple<int, int>(1, 4),
-      new Tuple<int, int>(2, 4), new Tuple<int, int>(3, 4),
-      new Tuple<int, int>(4, 4), new Tuple<int, int>(0, 4),
-    };
 
     private readonly Configuration config;
     private readonly IRuntimeSettingsConfiguration runtimeSettings;
@@ -199,53 +43,11 @@ namespace Spectrum.LEDs {
       Volatile.Read(ref this.appliedTransportGeneration);
     internal event Action? OutputSettingsApplied;
     private int outputSettingsPending;
-    private static readonly int maxStripLength;
     private readonly DomeOutputMapper outputMapper;
 
-    // The dome is wired as 10 "cables": each of the 5 control boxes drives 8
-    // strands split across two parallel ethernet cables, A (strands 0-3) and B
-    // (strands 4-7). We identify a cable by box*2 + half (half 0 = A, 1 = B), so
-    // cable ids run 0..9. Calibration permutes which controller cable feeds which
-    // physical dome endpoint; see DomeOutputMapper and domeCableMapping.
-    private const int StrandsPerCable = DomeOutputMapper.StrandsPerCable;
     public const int NumCables = DomeOutputMapper.NumCables;
     public const int NumDomeBoxes = DomeOutputMapper.NumDomeBoxes;
     public const int NumPortsPerBox = DomeOutputMapper.NumPortsPerBox;
-    // Struts carried by cable A (strands 0-3) of every box, and the total per
-    // box (38). Computed from controlBoxStrutOrder so the A/B boundary stays in
-    // sync if the strand layout ever changes.
-    private static readonly int cableAStrutCount;
-    private static readonly int domeStrutsPerBox;
-
-    private DomeTopology? topology;
-
-    private static int calculateMaxStripLength() {
-      int maxLength = 0;
-      foreach (LEDDomeStrutTypes[] struts in controlBoxStrutOrder) {
-        int length = 0;
-        foreach (LEDDomeStrutTypes type in struts) {
-          length += strutLengths[type];
-        }
-        if (length > maxLength) {
-          maxLength = length;
-        }
-      }
-      return maxLength;
-    }
-
-    static LEDDomeOutput() {
-      maxStripLength = calculateMaxStripLength();
-      int aCount = 0;
-      for (int s = 0; s < StrandsPerCable; s++) {
-        aCount += controlBoxStrutOrder[s].Length;
-      }
-      cableAStrutCount = aCount;
-      int total = 0;
-      foreach (LEDDomeStrutTypes[] strand in controlBoxStrutOrder) {
-        total += strand.Length;
-      }
-      domeStrutsPerBox = total;
-    }
 
     // Live wand angle for the prism blends' "Follow Orientation" option.
     // Nullable — a dome wired up without an orientation source
@@ -269,10 +71,10 @@ namespace Spectrum.LEDs {
           "LEDDomeOutput requires immutable runtime settings.",
           nameof(config));
       this.outputMapper = new DomeOutputMapper(
-        maxStripLength,
-        GetNumStruts,
-        GetNumLEDs,
-        this.GetDeviceIndexesRaw);
+        DomeWiringLayout.MaxStripLength,
+        () => DomeWiringLayout.StrutCount,
+        DomeWiringLayout.GetLedCount,
+        DomeWiringLayout.GetRawAddress);
       this.transport = new DomeOpcTransport(telemetry, opcMinSendInterval);
       this.beat = beat;
       this.visualizers = new List<Visualizer>();
@@ -591,28 +393,8 @@ namespace Spectrum.LEDs {
 
     private void SetDevicePixel(int controlBoxIndex, int pixelIndex, int color) {
       int totalPixelIndex =
-        controlBoxIndex * (maxStripLength * NumPortsPerBox) + pixelIndex;
+        controlBoxIndex * DomeWiringLayout.ControlBoxPixelCount + pixelIndex;
       this.transport.SetPixel(totalPixelIndex, color);
-    }
-
-    // Raw (identity) device address: which control box and pixel-within-box a
-    // strut's LED occupies under the hard-coded strutPositions wiring, ignoring
-    // both configured permutations. This is the canonical "what the program
-    // believes it is lighting" used by the dome-mapping calibration.
-    private Tuple<int, int> GetDeviceIndexesRaw(int strutIndex, int ledIndex) {
-      int pixelIndex = ledIndex;
-      Tuple<int, int> strutPosition = strutPositions[strutIndex];
-      int strutsLeft = strutPosition.Item2;
-      int i = 0;
-      while (controlBoxStrutOrder[i].Length <= strutsLeft) {
-        strutsLeft -= controlBoxStrutOrder[i].Length;
-        i++;
-        pixelIndex += maxStripLength;
-      }
-      for (int j = 0; j < strutsLeft; j++) {
-        pixelIndex += strutLengths[controlBoxStrutOrder[i][j]];
-      }
-      return Tuple.Create(strutPosition.Item1, pixelIndex);
     }
 
     public void SetPixel(int strutIndex, int ledIndex, int color) {
@@ -633,7 +415,7 @@ namespace Spectrum.LEDs {
     ) {
       this.EnsureOutputSettingsReconciled();
       Tuple<int, int> deviceIndexes =
-        this.GetDeviceIndexesRaw(strutIndex, ledIndex);
+        DomeWiringLayout.GetRawAddress(strutIndex, ledIndex);
       this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
     }
 
@@ -653,27 +435,7 @@ namespace Spectrum.LEDs {
     }
 
     public DomeFrame MakeDomeFrame() {
-      if (this.topology != null) {
-        return new DomeFrame(this.topology);
-      }
-      List<DomeTopologyPixel> pixels = new List<DomeTopologyPixel>();
-
-      for (int i = 0; i < LEDDomeOutput.GetNumStruts(); i++) {
-        var leds = LEDDomeOutput.GetNumLEDs(i);
-        for (int j = 0; j < leds; j++) {
-          var stripPoint = StrutLayoutFactory.GetProjectedLEDPoint(
-            i, j, DomeProjection.StripExtents);
-          var topDownPoint = StrutLayoutFactory.GetProjectedLEDPoint(
-            i, j, DomeProjection.TopDown);
-          pixels.Add(new DomeTopologyPixel(
-            i, j,
-            stripPoint.Item1, stripPoint.Item2,
-            topDownPoint.Item1, topDownPoint.Item2));
-        }
-      }
-
-      this.topology = new DomeTopology(pixels.ToArray());
-      return new DomeFrame(this.topology);
+      return DomeWiringLayout.MakeFrame();
     }
 
     // The strut indices physically carried by one controller cable
@@ -681,39 +443,14 @@ namespace Spectrum.LEDs {
     // under the raw hard-coded wiring. Used by the dome-mapping calibration to
     // write exactly one unpermuted controller block.
     public static List<int> GetControllerCableStruts(int boxIndex, int half) {
-      int start = half == 0 ? 0 : cableAStrutCount;
-      int end = half == 0 ? cableAStrutCount : domeStrutsPerBox;
-      var struts = new List<int>();
-      for (int localIndex = start; localIndex < end; localIndex++) {
-        int strutIndex = FindStrutIndex(boxIndex, localIndex);
-        if (strutIndex != -1) {
-          struts.Add(strutIndex);
-        }
-      }
-      return struts;
+      return DomeWiringLayout.GetControllerCableStruts(boxIndex, half);
     }
 
     // Logical struts belonging to one legacy strip path in a dome-side box.
     // The same geometry is also the raw controller-port shape when boxIndex is
     // a controller box and path is the raw controller port.
     public static List<int> GetStripPathStruts(int boxIndex, int path) {
-      var struts = new List<int>();
-      if (boxIndex < 0 || boxIndex >= NumDomeBoxes ||
-          path < 0 || path >= NumPortsPerBox) {
-        return struts;
-      }
-      int start = 0;
-      for (int priorPath = 0; priorPath < path; priorPath++) {
-        start += controlBoxStrutOrder[priorPath].Length;
-      }
-      int end = start + controlBoxStrutOrder[path].Length;
-      for (int localIndex = start; localIndex < end; localIndex++) {
-        int strutIndex = FindStrutIndex(boxIndex, localIndex);
-        if (strutIndex != -1) {
-          struts.Add(strutIndex);
-        }
-      }
-      return struts;
+      return DomeWiringLayout.GetStripPathStruts(boxIndex, path);
     }
 
     // The struts physically present at one dome cable endpoint after applying
@@ -723,15 +460,8 @@ namespace Spectrum.LEDs {
     public static List<int> GetPhysicalCableStruts(
       int boxIndex, int half, int[]? portMapping
     ) {
-      bool valid = IsValidPortMapping(portMapping);
-      var struts = new List<int>();
-      int firstPort = half * StrandsPerCable;
-      int endPort = firstPort + StrandsPerCable;
-      for (int port = firstPort; port < endPort; port++) {
-        int path = valid && portMapping != null ? portMapping[port] : port;
-        struts.AddRange(GetStripPathStruts(boxIndex, path));
-      }
-      return struts;
+      return DomeWiringLayout.GetPhysicalCableStruts(
+        boxIndex, half, portMapping);
     }
 
     public void WriteBuffer(DomeFrame buffer) {
@@ -745,7 +475,7 @@ namespace Spectrum.LEDs {
       }
       // The immutable mapping is snapshotted once for this write; calibration
       // can replace it concurrently without touching the logical frame.
-      int stride = maxStripLength * 8;
+      int stride = DomeWiringLayout.ControlBoxPixelCount;
       DomeOutputMapping mapping = this.outputMapper.Current;
       this.transport.PrepareMapping(mapping);
       for (int i = 0; i < buffer.pixels.Length; i++) {
@@ -774,33 +504,18 @@ namespace Spectrum.LEDs {
       int controlBoxIndex,
       int controlBoxStrutIndex
     ) {
-      for (int i = 0; i < strutPositions.Length; i++) {
-        var strutPosition = strutPositions[i];
-        if (
-          controlBoxIndex == strutPosition.Item1 &&
-          controlBoxStrutIndex == strutPosition.Item2
-        ) {
-          return i;
-        }
-      }
-      return -1;
+      return DomeWiringLayout.FindStrutIndex(
+        controlBoxIndex, controlBoxStrutIndex);
     }
 
     public static int GetNumStruts() {
-      return strutPositions.Length;
+      return DomeWiringLayout.StrutCount;
     }
 
-    public int StrutCount => strutPositions.Length;
+    public int StrutCount => DomeWiringLayout.StrutCount;
 
     public static int GetNumLEDs(int strutIndex) {
-      var strutPosition = strutPositions[strutIndex];
-      int strutsLeft = strutPosition.Item2;
-      int i = 0;
-      while (controlBoxStrutOrder[i].Length <= strutsLeft) {
-        strutsLeft -= controlBoxStrutOrder[i].Length;
-        i++;
-      }
-      return strutLengths[controlBoxStrutOrder[i][strutsLeft]];
+      return DomeWiringLayout.GetLedCount(strutIndex);
     }
 
     // Resolve a relative color slot through the named palette selected by the

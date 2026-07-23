@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Numerics;
@@ -14,6 +15,8 @@ namespace Spectrum.LayerPipeline.Tests {
       run(nameof(SimulatorTopDownProjection), SimulatorTopDownProjection);
       run(nameof(DomeTopologyUsesTopDownNormals),
         DomeTopologyUsesTopDownNormals);
+      run(nameof(InstalledWiringLayoutIsTotalAndCollisionFree),
+        InstalledWiringLayoutIsTotalAndCollisionFree);
       run(nameof(SphereDirectionsProjectToStripExtents),
         SphereDirectionsProjectToStripExtents);
       run(nameof(TargetedPlanarCoordinatesRoundTripNormals),
@@ -129,6 +132,70 @@ namespace Spectrum.LayerPipeline.Tests {
         Math.Abs(clampedRim.Z) < .000001 &&
         Math.Abs(clampedRim.Length() - 1) < .000001,
         "top-down overshoot was not clamped to a unit rim normal");
+    }
+
+    private static void InstalledWiringLayoutIsTotalAndCollisionFree() {
+      Assert(DomeWiringLayout.StrutCount == 190,
+        "the installed wiring layout changed its strut count");
+      Assert(LEDDomeOutput.GetNumStruts() == DomeWiringLayout.StrutCount,
+        "the output facade differs from the installed wiring layout");
+
+      var indexedStruts = new HashSet<int>();
+      for (int box = 0; box < LEDDomeOutput.NumDomeBoxes; box++) {
+        var sequentialStruts = new HashSet<int>();
+        for (int localIndex = 0; localIndex < 38; localIndex++) {
+          int strut = DomeWiringLayout.FindStrutIndex(box, localIndex);
+          Assert(strut >= 0,
+            "the installed box has a missing sequential strut");
+          sequentialStruts.Add(strut);
+          indexedStruts.Add(strut);
+        }
+
+        var cableStruts = new HashSet<int>(
+          DomeWiringLayout.GetControllerCableStruts(box, 0));
+        cableStruts.UnionWith(
+          DomeWiringLayout.GetControllerCableStruts(box, 1));
+        Assert(cableStruts.SetEquals(sequentialStruts),
+          "controller cable regions do not cover the installed box");
+
+        var pathStruts = new HashSet<int>();
+        for (int path = 0; path < LEDDomeOutput.NumPortsPerBox; path++) {
+          pathStruts.UnionWith(
+            DomeWiringLayout.GetStripPathStruts(box, path));
+        }
+        Assert(pathStruts.SetEquals(sequentialStruts),
+          "controller paths do not cover the installed box");
+      }
+      Assert(indexedStruts.Count == DomeWiringLayout.StrutCount,
+        "installed box indexing does not cover every logical strut");
+
+      var rawPixels = new HashSet<(int Box, int Pixel)>();
+      int pixelCount = 0;
+      for (int strut = 0; strut < DomeWiringLayout.StrutCount; strut++) {
+        int ledCount = DomeWiringLayout.GetLedCount(strut);
+        Assert(ledCount == LEDDomeOutput.GetNumLEDs(strut),
+          "the output LED-count facade differs from installed wiring");
+        for (int led = 0; led < ledCount; led++) {
+          Tuple<int, int> address =
+            DomeWiringLayout.GetRawAddress(strut, led);
+          Assert(address.Item1 >= 0 &&
+            address.Item1 < LEDDomeOutput.NumDomeBoxes,
+            "a raw pixel address uses an invalid control box");
+          Assert(address.Item2 >= 0 &&
+            address.Item2 < DomeWiringLayout.ControlBoxPixelCount,
+            "a raw pixel address escapes its control-box frame");
+          Assert(rawPixels.Add((address.Item1, address.Item2)),
+            "two logical pixels share one raw device address");
+          pixelCount++;
+        }
+      }
+
+      DomeFrame first = DomeWiringLayout.MakeFrame();
+      DomeFrame second = DomeWiringLayout.MakeFrame();
+      Assert(first.Topology.PixelCount == pixelCount,
+        "the projected topology differs from raw wiring pixel count");
+      Assert(ReferenceEquals(first.Topology, second.Topology),
+        "the immutable installed topology was rebuilt per frame");
     }
 
     private static void SphereDirectionsProjectToStripExtents() {
