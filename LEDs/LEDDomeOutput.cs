@@ -1,15 +1,12 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using Spectrum.Base;
-using System.ComponentModel;
 
 namespace Spectrum.LEDs {
 
@@ -203,36 +200,23 @@ namespace Spectrum.LEDs {
     internal event Action? OutputSettingsApplied;
     private int outputSettingsPending;
     private static readonly int maxStripLength;
+    private readonly DomeOutputMapper outputMapper;
 
     // The dome is wired as 10 "cables": each of the 5 control boxes drives 8
     // strands split across two parallel ethernet cables, A (strands 0-3) and B
     // (strands 4-7). We identify a cable by box*2 + half (half 0 = A, 1 = B), so
     // cable ids run 0..9. Calibration permutes which controller cable feeds which
-    // physical dome endpoint; see GetDeviceIndexes and config.domeCableMapping.
-    private const int StrandsPerCable = 4;
-    public const int NumCables = 10;
-    public const int NumDomeBoxes = NumCables / 2;
-    public const int NumPortsPerBox = 8;
+    // physical dome endpoint; see DomeOutputMapper and domeCableMapping.
+    private const int StrandsPerCable = DomeOutputMapper.StrandsPerCable;
+    public const int NumCables = DomeOutputMapper.NumCables;
+    public const int NumDomeBoxes = DomeOutputMapper.NumDomeBoxes;
+    public const int NumPortsPerBox = DomeOutputMapper.NumPortsPerBox;
     // Struts carried by cable A (strands 0-3) of every box, and the total per
     // box (38). Computed from controlBoxStrutOrder so the A/B boundary stays in
     // sync if the strand layout ever changes.
     private static readonly int cableAStrutCount;
     private static readonly int domeStrutsPerBox;
 
-    // controllerForEndpoint[e] = the controller cable (box*2 + half) whose data
-    // physically reaches dome endpoint e (same box*2 + half labeling under the
-    // hard-coded layout). This is the inverse of config.domeCableMapping (which
-    // records, per controller cable, the endpoint that lit during calibration).
-    // Identity by default, so an uncalibrated dome behaves exactly as before.
-    private readonly int[] controllerForEndpoint = new int[NumCables];
-    // portForPath[b, p] is the physical output port in dome box b that the
-    // legacy hard-coded strip path p is plugged into. Each row is the inverse
-    // of the corresponding operator-friendly physical port -> legacy path
-    // configuration value.
-    private readonly int[,] portForPath =
-      new int[NumDomeBoxes, NumPortsPerBox];
-    private DomeOutputMapping outputMapping = new DomeOutputMapping(
-      Array.Empty<int>(), Array.Empty<int>());
     private DomeTopology? topology;
 
     private static int calculateMaxStripLength() {
@@ -284,6 +268,11 @@ namespace Spectrum.LEDs {
         throw new ArgumentException(
           "LEDDomeOutput requires immutable runtime settings.",
           nameof(config));
+      this.outputMapper = new DomeOutputMapper(
+        maxStripLength,
+        GetNumStruts,
+        GetNumLEDs,
+        this.GetDeviceIndexesRaw);
       this.transport = new DomeOpcTransport(telemetry, opcMinSendInterval);
       this.beat = beat;
       this.visualizers = new List<Visualizer>();
@@ -307,7 +296,7 @@ namespace Spectrum.LEDs {
         this.runtimeSettings.DomeRuntimeFrameSnapshot;
       this.frameOutputSettings =
         this.runtimeSettings.DomeOutputSettingsSnapshot;
-      this.RebuildOutputMapping(this.frameOutputSettings);
+      this.outputMapper.Apply(this.frameOutputSettings);
       this.appliedMappingGeneration =
         this.frameOutputSettings.MappingGeneration;
       this.appliedTransportGeneration =
@@ -324,72 +313,8 @@ namespace Spectrum.LEDs {
       }
     }
 
-    private static bool IsValidPermutation(
-      IReadOnlyList<int>? mapping, int count
-    ) {
-      if (mapping == null || mapping.Count != count) {
-        return false;
-      }
-      var seen = new bool[count];
-      foreach (int value in mapping) {
-        if (value < 0 || value >= count || seen[value]) {
-          return false;
-        }
-        seen[value] = true;
-      }
-      return true;
-    }
-
     public static bool IsValidPortMapping(int[]? mapping) =>
-      IsValidPermutation(mapping, NumPortsPerBox);
-
-    // Rebuilds both wiring permutations and atomically replaces the immutable
-    // logical-to-device mapping, so no renderer/compositor frame is mutated.
-    // Missing, short, duplicated, or out-of-range permutations fall back to
-    // identity independently, so a bad port setting cannot scramble cables (or
-    // vice versa).
-    private void RebuildOutputMapping(DomeOutputSettingsSnapshot settings) {
-      IReadOnlyList<int> cableMapping = settings.CableMapping;
-      bool cableMappingValid =
-        IsValidPermutation(cableMapping, NumCables);
-      for (int controller = 0; controller < NumCables; controller++) {
-        int endpoint = cableMappingValid
-          ? cableMapping[controller]
-          : controller;
-        this.controllerForEndpoint[endpoint] = controller;
-      }
-
-      ImmutableArray<ImmutableArray<int>> configuredMappings =
-        settings.PortMappings;
-      bool hasPerBoxMappings =
-        configuredMappings.Length == NumDomeBoxes;
-      for (int box = 0; box < NumDomeBoxes; box++) {
-        IReadOnlyList<int>? portMapping = hasPerBoxMappings
-          ? configuredMappings[box]
-          : null;
-        bool portMappingValid =
-          IsValidPermutation(portMapping, NumPortsPerBox);
-        for (int port = 0; port < NumPortsPerBox; port++) {
-          int path = portMappingValid && portMapping != null
-            ? portMapping[port]
-            : port;
-          this.portForPath[box, path] = port;
-        }
-      }
-
-      var boxes = new List<int>();
-      var pixels = new List<int>();
-      for (int strut = 0; strut < GetNumStruts(); strut++) {
-        for (int led = 0; led < GetNumLEDs(strut); led++) {
-          Tuple<int, int> address = this.GetDeviceIndexes(strut, led);
-          boxes.Add(address.Item1);
-          pixels.Add(address.Item2);
-        }
-      }
-      System.Threading.Volatile.Write(
-        ref this.outputMapping,
-        new DomeOutputMapping(boxes.ToArray(), pixels.ToArray()));
-    }
+      DomeOutputMapper.IsValidPortMapping(mapping);
 
     public void RegisterVisualizer(Visualizer visualizer) {
       this.visualizers.Add(visualizer);
@@ -432,7 +357,7 @@ namespace Spectrum.LEDs {
       DomeOutputSettingsSnapshot settings =
         this.runtimeSettings.DomeOutputSettingsSnapshot;
       if (settings.MappingGeneration != this.appliedMappingGeneration) {
-        this.RebuildOutputMapping(settings);
+        this.outputMapper.Apply(settings);
         this.appliedMappingGeneration = settings.MappingGeneration;
         changed = true;
       }
@@ -690,34 +615,10 @@ namespace Spectrum.LEDs {
       return Tuple.Create(strutPosition.Item1, pixelIndex);
     }
 
-    // Mapped device address. First relocate the legacy strip path onto the
-    // configured physical port within its dome box. Then use the calibrated
-    // cable permutation to find the controller cable feeding that port's four-
-    // strand endpoint. This order lets an arbitrary eight-port permutation
-    // compose with cable swaps, including ports moved between halves A and B.
-    // Identity mappings reproduce GetDeviceIndexesRaw exactly.
-    private Tuple<int, int> GetDeviceIndexes(int strutIndex, int ledIndex) {
-      Tuple<int, int> raw = this.GetDeviceIndexesRaw(strutIndex, ledIndex);
-      int box = raw.Item1;
-      int legacyPath = raw.Item2 / maxStripLength;
-      int offsetWithinStrand = raw.Item2 - legacyPath * maxStripLength;
-      int physicalPort = this.portForPath[box, legacyPath];
-      int half = physicalPort / StrandsPerCable;
-      int strandWithinCable = physicalPort % StrandsPerCable;
-      int endpoint = box * 2 + half;
-      int controller = this.controllerForEndpoint[endpoint];
-      int newBox = controller / 2;
-      int newHalf = controller % 2;
-      int newStrandSlot = newHalf * StrandsPerCable + strandWithinCable;
-      return Tuple.Create(
-        newBox,
-        newStrandSlot * maxStripLength + offsetWithinStrand
-      );
-    }
-
     public void SetPixel(int strutIndex, int ledIndex, int color) {
       this.EnsureOutputSettingsReconciled();
-      Tuple<int, int> deviceIndexes = this.GetDeviceIndexes(strutIndex, ledIndex);
+      Tuple<int, int> deviceIndexes =
+        this.outputMapper.Map(strutIndex, ledIndex);
       this.SetDevicePixel(deviceIndexes.Item1, deviceIndexes.Item2, color);
       this.simulatorPublisher.PublishPixel(
         strutIndex, ledIndex, color,
@@ -845,8 +746,7 @@ namespace Spectrum.LEDs {
       // The immutable mapping is snapshotted once for this write; calibration
       // can replace it concurrently without touching the logical frame.
       int stride = maxStripLength * 8;
-      DomeOutputMapping mapping = System.Threading.Volatile.Read(
-        ref this.outputMapping);
+      DomeOutputMapping mapping = this.outputMapper.Current;
       this.transport.PrepareMapping(mapping);
       for (int i = 0; i < buffer.pixels.Length; i++) {
         LEDDomeOutputPixel pixel = buffer.pixels[i];
