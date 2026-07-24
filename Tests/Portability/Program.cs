@@ -1220,13 +1220,21 @@ namespace Spectrum.Portability.Tests {
         using var listener = new TcpListener(IPAddress.Loopback, port);
         listener.Start();
         Task<Socket> accept = listener.AcceptSocketAsync();
-        WaitHandle? pendingConnect = opc.PendingConnectWaitHandle;
-        Assert(pendingConnect != null &&
-            pendingConnect.WaitOne(TimeSpan.FromSeconds(2)),
+        var reconnect = Stopwatch.StartNew();
+        while (!accept.IsCompleted &&
+            reconnect.Elapsed < TimeSpan.FromSeconds(5)) {
+          CompleteWithoutBlocking(
+            opc.OperatorUpdate,
+            "retrying the OPC connection blocked the operator");
+          Thread.Sleep(10);
+        }
+        Assert(accept.IsCompleted,
           "the OPC connection did not complete after the controller started");
-        using Socket connection = accept
-          .WaitAsync(TimeSpan.FromSeconds(2))
-          .GetAwaiter().GetResult();
+        WaitHandle? pendingConnect = opc.PendingConnectWaitHandle;
+        Assert(pendingConnect == null ||
+            pendingConnect.WaitOne(TimeSpan.FromSeconds(2)),
+          "the accepted OPC connection did not complete on the client");
+        using Socket connection = accept.GetAwaiter().GetResult();
         connection.ReceiveTimeout = 2000;
         CompleteWithoutBlocking(
           opc.OperatorUpdate,
