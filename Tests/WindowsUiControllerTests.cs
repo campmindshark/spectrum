@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Windows;
@@ -17,6 +18,8 @@ namespace Spectrum.LayerPipeline.Tests {
         ReadinessDashboardOwnsRuntimePresentation);
       run(nameof(DomeOpcAddressUiOwnsValidationAndSynchronization),
         DomeOpcAddressUiOwnsValidationAndSynchronization);
+      run(nameof(MidiSetupUiOwnsDevicePresetAndBindingPresentation),
+        MidiSetupUiOwnsDevicePresetAndBindingPresentation);
     }
 
     private static void WandSerialUiOwnsSelectionAndTimer() {
@@ -221,6 +224,153 @@ namespace Spectrum.LayerPipeline.Tests {
         Assert(address.Text == "committed-host:7892:7",
           "the disposed OPC editor accepted a queued update");
       });
+    }
+
+    private static void
+      MidiSetupUiOwnsDevicePresetAndBindingPresentation() {
+      RunOnStaThread("MidiSetupUiTest", () => {
+        var config = new global::Spectrum.SpectrumConfiguration();
+        config.ReplaceMidiPresets(new Dictionary<int,
+          global::Spectrum.Base.MidiPreset> {
+          [4] = new global::Spectrum.Base.MidiPreset {
+            id = 4,
+            Name = "Warm",
+          },
+          [9] = new global::Spectrum.Base.MidiPreset {
+            id = 9,
+            Name = "Cool",
+          },
+        });
+        config.ReplaceMidiDevices(new Dictionary<int, int> {
+          [0] = 4,
+        });
+        global::Spectrum.MidiSetupView view = MidiSetupView();
+        var controller = new global::Spectrum.MidiSetupUiController(
+          config,
+          view,
+          deviceCount: () => 2,
+          getDeviceName: deviceId => "Device " + deviceId,
+          confirmDestructiveAction: (_, _) => true);
+
+        controller.Start();
+
+        Assert(view.Device.ConfiguredDevices.Items.Count == 1 &&
+            view.Device.ConfiguredDevices.Items[0] is
+              global::Spectrum.MidiDeviceEntry configured &&
+            configured.DeviceID == 0 &&
+            configured.DeviceName == "Device 0" &&
+            configured.PresetName == "Warm" &&
+            view.Device.AvailableDevices.Items.Count == 1 &&
+            Equals(view.Device.AvailableDevices.Items[0], "Device 1") &&
+            view.Preset.Presets.Items.Count == 2 &&
+            view.Device.NewDevicePreset.Items.Count == 3,
+          "the MIDI controller did not initialize device and preset " +
+          "projections");
+
+        view.Device.NewDevicePreset.SelectedIndex = 1;
+        view.Device.AvailableDevices.SelectedIndex = 0;
+        controller.AddDevice();
+        Assert(config.midiDevices.TryGetValue(1, out int presetId) &&
+            presetId == 9 &&
+            view.Device.ConfiguredDevices.Items.Count == 2 &&
+            view.Device.AvailableDevices.Items.Count == 0,
+          "the MIDI controller lost a sparse preset identity while " +
+          "assigning a device");
+
+        view.Preset.Presets.SelectedIndex = 1;
+        controller.PresetSelectionChanged();
+        Assert(!view.Preset.DeletePreset.IsEnabled &&
+            view.Binding.Save.IsEnabled,
+          "the MIDI controller did not apply assigned-preset action state");
+
+        view.Binding.Type.SelectedIndex = 4;
+        controller.BindingTypeSelectionChanged();
+        view.Binding.AdsrLevelDriverIndexRangeStart.Text = "60";
+        controller.SaveBinding();
+        Assert(view.Binding.ValidationMessage.Visibility ==
+            Visibility.Visible &&
+            view.Binding.ValidationMessage.Text.Contains(
+              "name", StringComparison.OrdinalIgnoreCase) &&
+            config.midiPresets[9].Bindings.Length == 0,
+          "the MIDI controller persisted an invalid binding draft");
+
+        view.Binding.Name.Text = "Envelope";
+        controller.SaveBinding();
+        Assert(config.midiPresets[9].Bindings.Length == 1 &&
+            config.midiPresets[9].Bindings[0] is
+              global::Spectrum.Base.AdsrLevelDriverMidiBindingView binding &&
+            binding.BindingName == "Envelope" &&
+            binding.IndexRangeStart == 60 &&
+            view.Binding.Bindings.Items.Count == 1 &&
+            view.Binding.Bindings.Items[0] is
+              global::Spectrum.MidiBindingEntry entry &&
+            entry.BindingTypeName == "ADSR level driver" &&
+            view.Binding.ValidationMessage.Visibility ==
+              Visibility.Collapsed,
+          "the MIDI controller did not persist and present a valid " +
+          "binding");
+      });
+    }
+
+    private static global::Spectrum.MidiSetupView MidiSetupView() {
+      var bindingType = new ComboBox();
+      foreach (string name in new[] {
+          "Tap tempo",
+          "Continuous knob",
+          "Discrete knob",
+          "Logarithmic knob",
+          "ADSR level driver",
+        }) {
+        bindingType.Items.Add(new ComboBoxItem { Content = name });
+      }
+
+      return new global::Spectrum.MidiSetupView(
+        new global::Spectrum.MidiDeviceSetupView(
+          new ListView(),
+          new Button(),
+          new Button(),
+          new ComboBox(),
+          new Grid(),
+          new TextBox(),
+          new ComboBox()),
+        new global::Spectrum.MidiPresetSetupView(
+          new ListBox(),
+          new Button(),
+          new Button(),
+          new Button(),
+          new Label(),
+          new TextBox(),
+          new Button(),
+          new Button()),
+        new global::Spectrum.MidiBindingSetupView(
+          new ListView(),
+          new Button(),
+          new Button(),
+          new Label(),
+          new TextBox(),
+          bindingType,
+          new StackPanel(),
+          new ComboBox(),
+          new TextBox(),
+          new StackPanel(),
+          new TextBox(),
+          new TextBox(),
+          new TextBox(),
+          new TextBox(),
+          new StackPanel(),
+          new TextBox(),
+          new TextBox(),
+          new TextBox(),
+          new StackPanel(),
+          new TextBox(),
+          new TextBox(),
+          new TextBox(),
+          new TextBox(),
+          new StackPanel(),
+          new TextBox(),
+          new TextBlock(),
+          new Button(),
+          new Button()));
     }
 
     private static global::Spectrum.ReadinessBadgeView ReadinessBadge(
