@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -15,6 +16,7 @@ namespace Spectrum {
     private readonly Func<string[]> availablePorts;
     private readonly Func<WandSerialStatus> statusSource;
     private readonly DispatcherTimer refreshTimer;
+    private bool started;
     private bool repopulatingPorts;
     private bool disposed;
 
@@ -43,6 +45,11 @@ namespace Spectrum {
 
     internal void Start() {
       this.ThrowIfDisposed();
+      if (this.started) {
+        return;
+      }
+      this.started = true;
+      this.configuration.PropertyChanged += this.ConfigurationUpdated;
       this.RepopulatePorts();
       this.RefreshStatus(null, EventArgs.Empty);
       this.refreshTimer.Start();
@@ -112,8 +119,22 @@ namespace Spectrum {
         return;
       }
       this.disposed = true;
+      this.configuration.PropertyChanged -= this.ConfigurationUpdated;
       this.refreshTimer.Stop();
       this.refreshTimer.Tick -= this.RefreshStatus;
+    }
+
+    private void ConfigurationUpdated(
+      object? sender,
+      PropertyChangedEventArgs change
+    ) {
+      if (this.disposed ||
+          change.PropertyName !=
+            nameof(this.configuration.wandSerialPort)) {
+        return;
+      }
+      this.portSelector.Dispatcher.BeginInvoke(
+        new Action(this.RepopulatePorts));
     }
 
     private void ThrowIfDisposed() {

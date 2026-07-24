@@ -18,6 +18,8 @@ namespace Spectrum.LayerPipeline.Tests {
         ReadinessDashboardOwnsRuntimePresentation);
       run(nameof(DomeOpcAddressUiOwnsValidationAndSynchronization),
         DomeOpcAddressUiOwnsValidationAndSynchronization);
+      run(nameof(OperatorSettingsOwnBindingsAndAudioSelection),
+        OperatorSettingsOwnBindingsAndAudioSelection);
       run(nameof(MidiSetupUiOwnsDevicePresetAndBindingPresentation),
         MidiSetupUiOwnsDevicePresetAndBindingPresentation);
     }
@@ -55,13 +57,21 @@ namespace Spectrum.LayerPipeline.Tests {
         Assert(config.wandSerialPort == "COM3",
           "a genuine wand-port selection was not persisted");
 
+        config.wandSerialPort = "COM9";
+        DrainDispatcher(Dispatcher.CurrentDispatcher);
+        Assert(selector.SelectedItem is
+            global::Spectrum.WandSerialPortOption externalSelection &&
+            externalSelection.Value == "COM9",
+          "an external wand-port update did not reach the selector");
+
         controller.Dispose();
-        selector.SelectedItem = selector.Items
-          .OfType<global::Spectrum.WandSerialPortOption>()
-          .Single(option => option.Value == "");
+        config.wandSerialPort = "";
+        DrainDispatcher(Dispatcher.CurrentDispatcher);
         controller.ApplySelectedPort();
         controller.RepopulatePorts();
-        Assert(config.wandSerialPort == "COM3",
+        Assert(selector.SelectedItem is
+            global::Spectrum.WandSerialPortOption disposedSelection &&
+            disposedSelection.Value == "COM9",
           "disposed wand UI controller accepted a queued UI update");
       });
     }
@@ -148,12 +158,20 @@ namespace Spectrum.LayerPipeline.Tests {
 
         config.domeEnabled = true;
         config.domeBeagleboneOPCAddress = "missing-port";
-        controller.Refresh();
+        DrainDispatcher(Dispatcher.CurrentDispatcher);
         Assert(dome.Text.Text == "! Invalid address" &&
             ReferenceEquals(dome.Badge.Style, errorBadge) &&
             overall.Text.Text == "! Action required" &&
             ReferenceEquals(overall.Badge.Style, errorBadge),
           "the readiness controller did not apply blocking OPC state");
+
+        string? copiedAddress = null;
+        controller.CopyControllerAddress(
+          address => copiedAddress = address);
+        Assert(copiedAddress == "http://show-host:8080" &&
+            webStatus.Text == "Address copied to the clipboard." &&
+            ReferenceEquals(webStatus.Foreground, successBrush),
+          "the readiness controller did not own address-copy presentation");
 
         controller.Dispose();
         string disposedStatus = webStatus.Text;
@@ -162,6 +180,108 @@ namespace Spectrum.LayerPipeline.Tests {
         Assert(webStatus.Text == "disposed" &&
             disposedStatus != webStatus.Text,
           "the disposed readiness controller accepted a queued refresh");
+      });
+    }
+
+    private static void OperatorSettingsOwnBindingsAndAudioSelection() {
+      RunOnStaThread("OperatorSettingsUiTest", () => {
+        var config = new global::Spectrum.SpectrumConfiguration {
+          audioDeviceID = "audio-a",
+          midiInputEnabled = true,
+          domeBrightness = 0.4,
+        };
+        var runtime = new global::Spectrum.Operator(config);
+        var audioDevices = new ComboBox();
+        var midiEnabled = new CheckBox();
+        var domeThread = new CheckBox();
+        var operatorFps = new Label();
+        var domeFps = new TextBlock();
+        var homeDomeFps = new TextBlock();
+        var domeEnabled = new CheckBox();
+        var domeSimulation = new CheckBox();
+        var testPattern = new ComboBox();
+        var maxBrightness = new Slider();
+        var maxBrightnessLabel = new Label();
+        var brightness = new Slider();
+        var brightnessLabel = new Label();
+        var vjHudEnabled = new CheckBox();
+        IReadOnlyList<global::Spectrum.Audio.AudioDevice> discovered =
+          new[] {
+            new global::Spectrum.Audio.AudioDevice {
+              id = "audio-a",
+              name = "Audio A",
+              index = 2,
+            },
+            new global::Spectrum.Audio.AudioDevice {
+              id = "audio-b",
+              name = "Audio B",
+              index = 5,
+            },
+          };
+        int readinessRefreshes = 0;
+        var controller =
+          new global::Spectrum.OperatorSettingsUiController(
+            config,
+            runtime,
+            new global::Spectrum.OperatorSettingsView(
+              audioDevices,
+              midiEnabled,
+              domeThread,
+              operatorFps,
+              domeFps,
+              homeDomeFps,
+              domeEnabled,
+              domeSimulation,
+              testPattern,
+              maxBrightness,
+              maxBrightnessLabel,
+              brightness,
+              brightnessLabel,
+              vjHudEnabled),
+            () => discovered,
+            () => readinessRefreshes++);
+        audioDevices.SelectionChanged +=
+          (_, _) => controller.ApplySelectedAudioDevice();
+
+        controller.Start();
+
+        Assert(audioDevices.Items.Count == 2 &&
+            audioDevices.SelectedItem is
+              global::Spectrum.Audio.AudioDevice selected &&
+            selected.id == "audio-a" &&
+            config.audioDeviceID == "audio-a" &&
+            readinessRefreshes == 1,
+          "settings startup did not preserve and present the configured " +
+          "audio device");
+        Assert(midiEnabled.IsChecked == true &&
+            Math.Abs(brightness.Value - 0.4) < 0.0001 &&
+            testPattern.Items.Count ==
+              global::Spectrum.DomeTestPatterns.Names.Count,
+          "settings startup did not establish configuration bindings");
+
+        audioDevices.SelectedIndex = 1;
+        Assert(config.audioDeviceID == "audio-b" &&
+            readinessRefreshes == 2,
+          "a genuine audio-device selection was not persisted");
+
+        discovered = new[] {
+          new global::Spectrum.Audio.AudioDevice {
+            id = "audio-c",
+            name = "Audio C",
+            index = 8,
+          },
+        };
+        controller.RefreshAudioDevices();
+        Assert(audioDevices.SelectedIndex == -1 &&
+            config.audioDeviceID == "audio-b" &&
+            readinessRefreshes == 3,
+          "programmatic audio-device population rewrote configuration");
+
+        config.midiInputEnabled = false;
+        brightness.Value = 0.7;
+        Assert(midiEnabled.IsChecked == false &&
+            Math.Abs(config.domeBrightness - 0.7) < 0.0001,
+          "settings bindings did not synchronize both directions");
       });
     }
 

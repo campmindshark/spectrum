@@ -2,14 +2,10 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using Spectrum.Audio;
 using XSerializer;
 using System.IO;
 using Spectrum.MIDI;
-using System.Windows.Data;
-using System.Windows.Media;
 using Spectrum.Base;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -28,6 +24,7 @@ namespace Spectrum {
     private WandSerialUiController wandSerialUi = null!;
     private ReadinessDashboardUiController readinessDashboard = null!;
     private DomeOpcAddressUiController domeOpcAddressUi = null!;
+    private OperatorSettingsUiController operatorSettingsUi = null!;
     private const int WebServerPort = 8080;
     // Spectrum is distributed as a portable application, so keep its mutable
     // state beside the executable. AppContext.BaseDirectory is stable when the
@@ -87,21 +84,11 @@ namespace Spectrum {
         key => this.FindResource(key),
         this.host.ServiceStartError?.Message,
         WebServerPort);
-      this.config.PropertyChanged += ConfigUpdated;
-    }
-
-    private void ConfigUpdated(object? sender, PropertyChangedEventArgs e) {
-      if (e.PropertyName == nameof(this.config.wandSerialPort)) {
-        this.Dispatcher.BeginInvoke(
-          new Action(this.wandSerialUi.RepopulatePorts));
-      }
-      this.Dispatcher.BeginInvoke(
-        new Action(this.readinessDashboard.Refresh));
+      this.operatorSettingsUi.Start();
     }
 
     private void HandleClose(object sender, EventArgs e) {
       this.op.Enabled = false;
-      this.config.PropertyChanged -= ConfigUpdated;
       this.readinessDashboard.Dispose();
       this.domeOpcAddressUi.Dispose();
       this.wandSerialUi.Dispose();
@@ -117,7 +104,8 @@ namespace Spectrum {
       nameof(config),
       nameof(host),
       nameof(midiSetupUi),
-      nameof(childWindows))]
+      nameof(childWindows),
+      nameof(operatorSettingsUi))]
     private void LoadConfig() {
       MainWindow.LoadingConfig = true;
 
@@ -156,7 +144,6 @@ namespace Spectrum {
         domeCalibrationController,
         advisoryLocks);
 
-      this.RefreshAudioDevices(null, null);
       this.midiSetupUi = new MidiSetupUiController(
         this.config,
         this.CreateMidiSetupView(),
@@ -170,12 +157,26 @@ namespace Spectrum {
           MessageBoxImage.Warning) == MessageBoxResult.Yes);
       this.midiSetupUi.Start();
 
-      this.Bind(nameof(this.config.midiInputEnabled), this.midiEnabled, CheckBox.IsCheckedProperty);
-      this.Bind(nameof(this.config.domeOutputInSeparateThread), this.domeThreadCheckbox, CheckBox.IsCheckedProperty);
-      // FPS counters are runtime telemetry, not config — bind to the Operator's
-      // RuntimeTelemetry (WPF marshals its background-thread notifications).
-      this.Bind(nameof(this.op.Telemetry.OperatorFPS), this.operatorFPSLabel, Label.ContentProperty, BindingMode.OneWay, null, this.op.Telemetry);
-      this.Bind(nameof(this.op.Telemetry.OperatorFPS), this.operatorFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter(), this.op.Telemetry);
+      this.operatorSettingsUi = new OperatorSettingsUiController(
+        this.config,
+        this.op,
+        new OperatorSettingsView(
+          this.audioDevices,
+          this.midiEnabled,
+          this.domeThreadCheckbox,
+          this.operatorFPSLabel,
+          this.domeBeagleboneOPCFPSLabel,
+          this.homeDomeFPSLabel,
+          this.domeEnabled,
+          this.domeSimulationEnabled,
+          this.domeTestPatternSelector,
+          this.domeMaxBrightnessSlider,
+          this.domeMaxBrightnessLabel,
+          this.domeBrightnessSlider,
+          this.domeBrightnessLabel,
+          this.vjHUDEnabled),
+        () => Audio.AudioInput.AudioDevices,
+        () => this.readinessDashboard.Refresh());
       this.domeOpcAddressUi = new DomeOpcAddressUiController(
         this.config,
         this.Dispatcher,
@@ -183,21 +184,6 @@ namespace Spectrum {
         this.domeOPCValidationStatus,
         key => this.FindResource(key));
       this.domeOpcAddressUi.Start();
-      this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.domeBeagleboneOPCFPSLabel, TextBlock.TextProperty, BindingMode.OneWay, null, this.op.Telemetry);
-      this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.domeBeagleboneOPCFPSLabel, TextBlock.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter(), this.op.Telemetry);
-      this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.homeDomeFPSLabel, TextBlock.TextProperty, BindingMode.OneWay, null, this.op.Telemetry);
-      this.Bind(nameof(this.config.domeEnabled), this.domeEnabled, CheckBox.IsCheckedProperty);
-      this.Bind(nameof(this.config.domeSimulationEnabled), this.domeSimulationEnabled, CheckBox.IsCheckedProperty);
-      this.domeTestPatternSelector.ItemsSource = DomeTestPatterns.Names;
-      this.Bind(nameof(this.config.domeTestPattern), this.domeTestPatternSelector,
-        Selector.SelectedIndexProperty);
-      this.Bind(nameof(this.config.domeMaxBrightness), this.domeMaxBrightnessSlider, Slider.ValueProperty);
-      this.Bind(nameof(this.config.domeMaxBrightness), this.domeMaxBrightnessLabel, Label.ContentProperty,
-        BindingMode.OneWay, new NormalizedPercentConverter());
-      this.Bind(nameof(this.config.domeBrightness), this.domeBrightnessSlider, Slider.ValueProperty);
-      this.Bind(nameof(this.config.domeBrightness), this.domeBrightnessLabel, Label.ContentProperty,
-        BindingMode.OneWay, new NormalizedPercentConverter());
-      this.Bind(nameof(this.config.vjHUDEnabled), this.vjHUDEnabled, CheckBox.IsCheckedProperty);
 
       this.wandSerialUi = new WandSerialUiController(
         this.config,
@@ -208,23 +194,6 @@ namespace Spectrum {
       this.wandSerialUi.Start();
 
       MainWindow.LoadingConfig = false;
-    }
-
-    private void Bind(
-      string configPath,
-      FrameworkElement element,
-      DependencyProperty property,
-      BindingMode mode = BindingMode.TwoWay,
-      IValueConverter? converter = null,
-      object? source = null
-    ) {
-      var binding = new System.Windows.Data.Binding(configPath);
-      binding.Source = source != null ? source : this.config;
-      binding.Mode = mode;
-      if (converter != null) {
-        binding.Converter = converter;
-      }
-      element.SetBinding(property, binding);
     }
 
     private MidiSetupView CreateMidiSetupView() =>
@@ -285,17 +254,7 @@ namespace Spectrum {
     }
 
     private void CopyWebControllerAddress(object sender, RoutedEventArgs e) {
-      try {
-        Clipboard.SetText(this.webControllerAddress.Text);
-        this.webControllerStatus.Text = "Address copied to the clipboard.";
-        this.webControllerStatus.Foreground =
-          (Brush)this.FindResource("SuccessBrush");
-      } catch (Exception copyError) {
-        this.webControllerStatus.Text = "Could not copy address: " +
-          copyError.Message;
-        this.webControllerStatus.Foreground =
-          (Brush)this.FindResource("ErrorBrush");
-      }
+      this.readinessDashboard.CopyControllerAddress();
     }
 
     private void DomeOpcAddressChanged(
@@ -324,34 +283,18 @@ namespace Spectrum {
     }
 
     private void PowerButtonClicked(object sender, RoutedEventArgs e) {
-      this.op.Enabled = !this.op.Enabled;
-      this.readinessDashboard.Refresh();
+      this.readinessDashboard.TogglePower();
     }
 
     private void RefreshAudioDevices(object? sender, RoutedEventArgs? e) {
-      this.op.Enabled = false;
-
-      var audioDevices = AudioInput.AudioDevices;
-
-      this.audioDevices.Items.Clear();
-      foreach (var audioDevice in audioDevices) {
-        this.audioDevices.Items.Add(audioDevice);
-      }
-
-      this.audioDevices.SelectedIndex = audioDevices.FindIndex(
-        device => device.id == this.config.audioDeviceID
-      );
-      this.readinessDashboard.Refresh();
+      this.operatorSettingsUi.RefreshAudioDevices();
     }
 
     private void AudioInputDeviceChanged(
       object sender,
       SelectionChangedEventArgs e
     ) {
-      if (this.audioDevices.SelectedIndex == -1) {
-        return;
-      }
-      this.config.audioDeviceID = ((AudioDevice)this.audioDevices.SelectedItem).id;
+      this.operatorSettingsUi.ApplySelectedAudioDevice();
     }
 
     private void RefreshMidiDevices(object? sender, RoutedEventArgs? e) {

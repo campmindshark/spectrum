@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
@@ -41,6 +42,7 @@ namespace Spectrum {
   internal sealed class ReadinessDashboardUiController : IDisposable {
     private readonly SpectrumConfiguration config;
     private readonly Operator runtime;
+    private readonly Dispatcher dispatcher;
     private readonly ReadinessDashboardView view;
     private readonly Func<string, object> findResource;
     private readonly string? webServerError;
@@ -60,6 +62,7 @@ namespace Spectrum {
     ) {
       this.config = config;
       this.runtime = runtime;
+      this.dispatcher = dispatcher;
       this.view = view;
       this.findResource = findResource;
       this.webServerError = webServerError;
@@ -71,6 +74,7 @@ namespace Spectrum {
         $"http://{controllerHost}:{this.webServerPort}";
       this.refreshLoop = new ReadinessRefreshLoop(
         this.runtime, dispatcher, this.Refresh);
+      this.config.PropertyChanged += this.ConfigurationUpdated;
     }
 
     public void Dispose() {
@@ -78,7 +82,37 @@ namespace Spectrum {
         return;
       }
       this.disposed = true;
+      this.config.PropertyChanged -= this.ConfigurationUpdated;
       this.refreshLoop.Dispose();
+    }
+
+    internal void TogglePower() {
+      if (this.disposed) {
+        return;
+      }
+      this.runtime.Enabled = !this.runtime.Enabled;
+      this.Refresh();
+    }
+
+    internal void CopyControllerAddress(
+      Action<string>? setClipboardText = null
+    ) {
+      if (this.disposed) {
+        return;
+      }
+      try {
+        (setClipboardText ?? Clipboard.SetText)(
+          this.view.WebControllerAddress.Text);
+        this.view.WebControllerStatus.Text =
+          "Address copied to the clipboard.";
+        this.view.WebControllerStatus.Foreground =
+          (Brush)this.findResource("SuccessBrush");
+      } catch (Exception copyError) {
+        this.view.WebControllerStatus.Text =
+          "Could not copy address: " + copyError.Message;
+        this.view.WebControllerStatus.Foreground =
+          (Brush)this.findResource("ErrorBrush");
+      }
     }
 
     internal void Refresh() {
@@ -177,6 +211,16 @@ namespace Spectrum {
       if (view.Detail != null) {
         view.Detail.Text = status.Detail;
       }
+    }
+
+    private void ConfigurationUpdated(
+      object? sender,
+      PropertyChangedEventArgs change
+    ) {
+      if (this.disposed) {
+        return;
+      }
+      this.dispatcher.BeginInvoke(new Action(this.Refresh));
     }
   }
 }
