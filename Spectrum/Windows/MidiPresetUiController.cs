@@ -83,6 +83,14 @@ namespace Spectrum {
     internal void DevicePresetNameGotFocus() =>
       BeginPresetNameEntry(this.deviceNewName);
 
+    internal bool EnsureDevicePresetSelected() {
+      if (this.devicePresetPicker.SelectedIndex >= 0) {
+        return true;
+      }
+      this.devicePresetPicker.Focus();
+      return false;
+    }
+
     internal bool TryResolveDevicePreset(out int presetId) {
       int selectedIndex = this.devicePresetPicker.SelectedIndex;
       if (selectedIndex < 0) {

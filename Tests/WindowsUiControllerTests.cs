@@ -20,6 +20,8 @@ namespace Spectrum.LayerPipeline.Tests {
         DomeOpcAddressUiOwnsValidationAndSynchronization);
       run(nameof(OperatorSettingsOwnBindingsAndAudioSelection),
         OperatorSettingsOwnBindingsAndAudioSelection);
+      run(nameof(MidiDeviceUiOwnsDiscoveryAndAssignment),
+        MidiDeviceUiOwnsDiscoveryAndAssignment);
       run(nameof(MidiPresetUiOwnsSparseIdentityAndEditModes),
         MidiPresetUiOwnsSparseIdentityAndEditModes);
       run(nameof(MidiSetupUiOwnsDevicePresetAndBindingPresentation),
@@ -345,6 +347,94 @@ namespace Spectrum.LayerPipeline.Tests {
         controller.SynchronizeFromConfiguration();
         Assert(address.Text == "committed-host:7892:7",
           "the disposed OPC editor accepted a queued update");
+      });
+    }
+
+    private static void MidiDeviceUiOwnsDiscoveryAndAssignment() {
+      RunOnStaThread("MidiDeviceUiTest", () => {
+        var config = new global::Spectrum.SpectrumConfiguration();
+        config.ReplaceMidiPresets(new Dictionary<int,
+          global::Spectrum.Base.MidiPreset> {
+          [4] = new global::Spectrum.Base.MidiPreset {
+            id = 4,
+            Name = "Warm",
+          },
+          [9] = new global::Spectrum.Base.MidiPreset {
+            id = 9,
+            Name = "Cool",
+          },
+        });
+        config.ReplaceMidiDevices(new Dictionary<int, int> {
+          [0] = 4,
+          [5] = 99,
+        });
+        global::Spectrum.MidiDeviceSetupView view =
+          MidiSetupView().Device;
+        bool allowDeletion = false;
+        var controller =
+          new global::Spectrum.MidiDeviceUiController(
+            config,
+            view,
+            deviceCount: () => 2,
+            getDeviceName: deviceId => "Device " + deviceId,
+            confirmDestructiveAction: (_, _) => allowDeletion);
+
+        controller.Start();
+
+        global::Spectrum.MidiDeviceEntry connected =
+          view.ConfiguredDevices.Items
+            .OfType<global::Spectrum.MidiDeviceEntry>()
+            .Single(entry => entry.DeviceID == 0);
+        global::Spectrum.MidiDeviceEntry disconnected =
+          view.ConfiguredDevices.Items
+            .OfType<global::Spectrum.MidiDeviceEntry>()
+            .Single(entry => entry.DeviceID == 5);
+        Assert(connected.PresetID == 4 &&
+            connected.DeviceName == "Device 0" &&
+            connected.PresetName == "Warm" &&
+            disconnected.DeviceName == "< DISCONNECTED >" &&
+            disconnected.PresetName == "(missing preset)" &&
+            view.AvailableDevices.Items.Count == 1 &&
+            Equals(view.AvailableDevices.Items[0], "Device 1"),
+          "the device controller did not project connected, " +
+          "disconnected, and available devices");
+
+        view.ConfiguredDevices.SelectedItem = connected;
+        controller.SelectionChanged();
+        Assert(view.DeleteDevice.IsEnabled &&
+            view.LoadPreset.IsEnabled &&
+            controller.TryGetSelectedPreset(out int selectedPresetId) &&
+            selectedPresetId == 4,
+          "configured-device selection did not expose actions and " +
+          "stable preset identity");
+
+        view.AvailableDevices.SelectedIndex = 0;
+        Assert(controller.EnsureAvailableDeviceSelected() &&
+            controller.TryAssignSelectedDevice(9) &&
+            config.midiDevices.TryGetValue(1, out int assignedPresetId) &&
+            assignedPresetId == 9 &&
+            view.AvailableDevices.Items.Count == 0,
+          "device assignment did not persist and refresh projections");
+
+        view.ConfiguredDevices.SelectedItem =
+          view.ConfiguredDevices.Items
+            .OfType<global::Spectrum.MidiDeviceEntry>()
+            .Single(entry => entry.DeviceID == 1);
+        Assert(!controller.TryDeleteSelectedDevice(
+              out int cancelledPresetId) &&
+            cancelledPresetId == 0 &&
+            config.midiDevices.ContainsKey(1),
+          "cancelled device removal mutated configuration");
+
+        allowDeletion = true;
+        Assert(controller.TryDeleteSelectedDevice(
+              out int removedPresetId) &&
+            removedPresetId == 9 &&
+            !config.midiDevices.ContainsKey(1) &&
+            view.AvailableDevices.Items.Count == 1 &&
+            Equals(view.AvailableDevices.Items[0], "Device 1"),
+          "confirmed device removal did not persist and refresh " +
+          "projections");
       });
     }
 
