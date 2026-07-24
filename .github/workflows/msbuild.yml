@@ -26,7 +26,7 @@ jobs:
       run: ./.github/scripts/verify-source-ownership.ps1
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: '10.0.302'
 
@@ -112,7 +112,7 @@ jobs:
           "$publish_madmom_dir/runtime"
 
     - name: Upload the Linux Madmom wheel
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: madmom-linux-x64-${{ github.sha }}
         path: artifacts/wheels/linux-x64/*.whl
@@ -267,7 +267,7 @@ jobs:
         .
 
     - name: Upload the Linux headless host
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: Spectrum-linux-x64
         path: ${{ runner.temp }}/Spectrum-linux-x64.tar.gz
@@ -282,7 +282,7 @@ jobs:
         submodules: recursive
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: '10.0.302'
 
@@ -311,14 +311,14 @@ jobs:
         }
 
     - name: Upload Python wheel
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: madmom-${{ github.sha }}
         path: artifacts/wheels/*.whl
 
     - name: Upload portable Windows application
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: Spectrum-win-x64
         path: artifacts/Spectrum-win-x64.zip
