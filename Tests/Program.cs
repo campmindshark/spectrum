@@ -48,6 +48,7 @@ namespace Spectrum.LayerPipeline.Tests {
       LayerPipelineCoreTests.Register(Register);
       RenderPlanTests.Register(Register);
       WindowsOrchestrationTests.Register(Register);
+      WindowsUiControllerTests.Register(Register);
       CompositeOperationTests.Register(Register);
       return tests;
     }

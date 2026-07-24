@@ -6,7 +6,6 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Controls;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using Spectrum.MIDI;
@@ -25,8 +24,6 @@ namespace Spectrum.LayerPipeline.Tests {
       run(nameof(EnabledOperatorConcurrentSettingsAreIsolated), EnabledOperatorConcurrentSettingsAreIsolated);
       run(nameof(MidiBindingsPublishStateCommands), MidiBindingsPublishStateCommands);
       run(nameof(MidiBindingFailuresAreContained), MidiBindingFailuresAreContained);
-      run(nameof(WandSerialUiOwnsSelectionAndTimer),
-        WandSerialUiOwnsSelectionAndTimer);
     }
     private static void BuiltInFeaturesLiveInPortableCore() {
       Type catalogType = typeof(LayerCatalog);
@@ -50,67 +47,6 @@ namespace Spectrum.LayerPipeline.Tests {
           DomeLayerCatalog.Metadata.Definitions.All(
             definition => definition.CreateRenderer == null),
         "the metadata catalog unexpectedly owns runtime factories");
-    }
-
-    private static void WandSerialUiOwnsSelectionAndTimer() {
-      Exception? failure = null;
-      var thread = new Thread(() => {
-        try {
-          var config = new global::Spectrum.SpectrumConfiguration {
-            wandSerialPort = "COM9",
-          };
-          var selector = new ComboBox();
-          var status = new TextBlock();
-          using var controller = new global::Spectrum.WandSerialUiController(
-            config,
-            selector,
-            status,
-            () => new[] { "COM3" },
-            () => new global::Spectrum.WandSerialStatus(
-              "COM9", false, 1e9, 1e9, null));
-
-          controller.Start();
-
-          Assert(selector.Items.Count == 3 &&
-              selector.SelectedItem is
-                global::Spectrum.WandSerialPortOption selected &&
-              selected.Value == "COM9" &&
-              config.wandSerialPort == "COM9",
-            "programmatic wand-port population rewrote configuration");
-          Assert(status.Text == "Opening…",
-            "wand status was not presented when the controller started");
-
-          selector.SelectedItem = selector.Items
-            .OfType<global::Spectrum.WandSerialPortOption>()
-            .Single(option => option.Value == "COM3");
-          controller.ApplySelectedPort();
-          Assert(config.wandSerialPort == "COM3",
-            "a genuine wand-port selection was not persisted");
-
-          controller.Dispose();
-          selector.SelectedItem = selector.Items
-            .OfType<global::Spectrum.WandSerialPortOption>()
-            .Single(option => option.Value == "");
-          controller.ApplySelectedPort();
-          controller.RepopulatePorts();
-          Assert(config.wandSerialPort == "COM3",
-            "disposed wand UI controller accepted a queued UI update");
-        } catch (Exception error) {
-          failure = error;
-        }
-      }) {
-        IsBackground = true,
-        Name = "WandSerialUiTest",
-      };
-      thread.SetApartmentState(ApartmentState.STA);
-      thread.Start();
-      Assert(thread.Join(TimeSpan.FromSeconds(5)),
-        "wand UI controller test did not complete");
-      if (failure != null) {
-        throw new InvalidOperationException(
-          "wand UI controller contract failed",
-          failure);
-      }
     }
 
     private static void AstronomyOptionsAndHeading() {

@@ -15,8 +15,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
 
 namespace Spectrum {
 
@@ -55,6 +53,8 @@ namespace Spectrum {
     private MidiPresetEditor midiPresetEditor = null!;
     private MainWindowChildWindows childWindows = null!;
     private WandSerialUiController wandSerialUi = null!;
+    private ReadinessDashboardUiController readinessDashboard = null!;
+    private DomeOpcAddressUiController domeOpcAddressUi = null!;
     private int? currentlyEditingPreset = null;
     private int? currentlyEditingBinding = null;
     private const int WebServerPort = 8080;
@@ -77,48 +77,62 @@ namespace Spectrum {
           .Deserialize(stream).ToConfiguration());
     private static readonly string WindowPlacementPath = Path.Combine(
       AppContext.BaseDirectory, "spectrum_window_state.json");
-    private string? webServerError;
-    private ReadinessRefreshLoop readinessRefreshLoop = null!;
-
     public MainWindow() {
       this.InitializeComponent();
       WindowPlacementStore.Restore(this, WindowPlacementPath);
 
       this.LoadConfig();
-      this.config.PropertyChanged += ConfigUpdated;
       this.host.Start();
-      this.webServerError = this.host.ServiceStartError?.Message;
-      this.InitializeReadinessDashboard();
+      this.readinessDashboard = new ReadinessDashboardUiController(
+        this.config,
+        this.op,
+        this.Dispatcher,
+        new ReadinessDashboardView(
+          this.powerButton,
+          this.audioDevices,
+          new ReadinessBadgeView(
+            this.engineStatusBadge,
+            this.engineStatusText,
+            this.engineReadinessDetail),
+          new ReadinessBadgeView(
+            this.audioStatusBadge,
+            this.audioStatusText,
+            this.audioReadinessDetail),
+          this.audioSignalText,
+          new ReadinessBadgeView(
+            this.domeStatusBadge,
+            this.domeStatusText,
+            this.domeReadinessDetail),
+          new ReadinessBadgeView(
+            this.homeWandStatusBadge,
+            this.homeWandStatusText,
+            this.homeWandReadinessDetail),
+          this.connectedWandCountText,
+          this.webControllerAddress,
+          this.webControllerStatus,
+          new ReadinessBadgeView(
+            this.overallReadinessBadge,
+            this.overallReadinessText)),
+        key => this.FindResource(key),
+        this.host.ServiceStartError?.Message,
+        WebServerPort);
+      this.config.PropertyChanged += ConfigUpdated;
     }
 
     private void ConfigUpdated(object? sender, PropertyChangedEventArgs e) {
-      // The wand receiver-port combo has a host-dependent item set, so it can't
-      // use the two-way WPF Bind() every other control gets. Instead re-run the
-      // guarded repopulate + preselect when the value changes externally (e.g. a
-      // web PUT landing on the Dispatcher) — the dynamic-item equivalent of the
-      // two-way binding. The controller's guard stops the resulting
-      // SelectionChanged from writing back.
       if (e.PropertyName == nameof(this.config.wandSerialPort)) {
         this.Dispatcher.BeginInvoke(
           new Action(this.wandSerialUi.RepopulatePorts));
       }
-      if (e.PropertyName == nameof(this.config.domeBeagleboneOPCAddress)) {
-        this.Dispatcher.BeginInvoke(new Action(() => {
-          if (!this.domeBeagleboneOPCHostAndPort.IsKeyboardFocusWithin &&
-              this.domeBeagleboneOPCHostAndPort.Text !=
-                this.config.domeBeagleboneOPCAddress) {
-            this.domeBeagleboneOPCHostAndPort.Text =
-              this.config.domeBeagleboneOPCAddress ?? "";
-          }
-        }));
-      }
-      this.Dispatcher.BeginInvoke(new Action(this.UpdateReadinessDashboard));
+      this.Dispatcher.BeginInvoke(
+        new Action(this.readinessDashboard.Refresh));
     }
 
     private void HandleClose(object sender, EventArgs e) {
       this.op.Enabled = false;
       this.config.PropertyChanged -= ConfigUpdated;
-      this.readinessRefreshLoop.Dispose();
+      this.readinessDashboard.Dispose();
+      this.domeOpcAddressUi.Dispose();
       this.wandSerialUi.Dispose();
       WindowPlacementStore.Save(this, WindowPlacementPath);
       try {
@@ -182,8 +196,13 @@ namespace Spectrum {
       // RuntimeTelemetry (WPF marshals its background-thread notifications).
       this.Bind(nameof(this.op.Telemetry.OperatorFPS), this.operatorFPSLabel, Label.ContentProperty, BindingMode.OneWay, null, this.op.Telemetry);
       this.Bind(nameof(this.op.Telemetry.OperatorFPS), this.operatorFPSLabel, Label.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter(), this.op.Telemetry);
-      this.domeBeagleboneOPCHostAndPort.Text =
-        this.config.domeBeagleboneOPCAddress ?? "";
+      this.domeOpcAddressUi = new DomeOpcAddressUiController(
+        this.config,
+        this.Dispatcher,
+        this.domeBeagleboneOPCHostAndPort,
+        this.domeOPCValidationStatus,
+        key => this.FindResource(key));
+      this.domeOpcAddressUi.Start();
       this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.domeBeagleboneOPCFPSLabel, TextBlock.TextProperty, BindingMode.OneWay, null, this.op.Telemetry);
       this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.domeBeagleboneOPCFPSLabel, TextBlock.ForegroundProperty, BindingMode.OneWay, new FPSToBrushConverter(), this.op.Telemetry);
       this.Bind(nameof(this.op.Telemetry.DomeBeagleboneOPCFPS), this.homeDomeFPSLabel, TextBlock.TextProperty, BindingMode.OneWay, null, this.op.Telemetry);
@@ -228,120 +247,6 @@ namespace Spectrum {
       element.SetBinding(property, binding);
     }
 
-    private void InitializeReadinessDashboard() {
-      string? host = null;
-      try {
-        host = Dns.GetHostEntry(Dns.GetHostName()).AddressList
-          .FirstOrDefault(address =>
-            address.AddressFamily == AddressFamily.InterNetwork &&
-            !IPAddress.IsLoopback(address))?.ToString();
-      } catch (SocketException e) {
-        Debug.WriteLine("Could not resolve the LAN address: " + e.Message);
-      }
-      if (string.IsNullOrWhiteSpace(host)) {
-        host = Dns.GetHostName();
-      }
-      this.webControllerAddress.Text = $"http://{host}:{WebServerPort}";
-
-      this.readinessRefreshLoop = new ReadinessRefreshLoop(
-        this.op, this.Dispatcher, this.UpdateReadinessDashboard);
-    }
-
-    private void SetBadge(
-      Border badge,
-      TextBlock text,
-      ReadinessStatus status
-    ) {
-      string styleKey = status.Level switch {
-        ReadinessLevel.Disabled => "DisabledBadge",
-        ReadinessLevel.Warning => "WarningBadge",
-        ReadinessLevel.Error => "ErrorBadge",
-        ReadinessLevel.Ready => "ReadyBadge",
-        _ => throw new ArgumentOutOfRangeException(
-          nameof(status), status.Level, "Unknown readiness level."),
-      };
-      badge.Style = (Style)this.FindResource(styleKey);
-      text.Text = status.Badge;
-    }
-
-    private bool TryNormalizeOpcAddress(
-      string value,
-      [NotNullWhen(true)] out string? normalized,
-      [NotNullWhen(false)] out string? error
-    ) {
-      try {
-        normalized = Web.SpectrumParameters.NormalizeOpcAddress(value);
-        error = null;
-        return true;
-      } catch (ArgumentException e) {
-        normalized = null;
-        error = e.Message;
-        return false;
-      }
-    }
-
-    private void UpdateReadinessDashboard() {
-      if (this.op == null || this.config == null) {
-        return;
-      }
-
-      bool running = this.op.Enabled;
-      string? selectedAudioName =
-        this.audioDevices.SelectedItem is AudioDevice selectedAudio
-          ? selectedAudio.name
-          : null;
-      bool opcValid = this.TryNormalizeOpcAddress(
-        this.config.domeBeagleboneOPCAddress, out _, out string? opcError);
-      int wandCount = this.op.OrientationInput.DevicesSnapshot().Count;
-      var receiver = this.op.OrientationInput.WandSerial.StatusSnapshot();
-      ShowReadinessSnapshot readiness = ShowReadinessEvaluator.Evaluate(
-        new ShowReadinessInput(
-          running,
-          selectedAudioName,
-          this.op.AudioInput.Volume,
-          this.config.domeEnabled,
-          opcValid,
-          opcError,
-          this.op.Telemetry.DomeBeagleboneOPCFPS,
-          wandCount,
-          this.config.wandSerialPort,
-          receiver.LastError,
-          this.webServerError,
-          WebServerPort));
-
-      this.powerButton.Content = readiness.PowerButtonText;
-      this.powerButton.Style = (Style)this.FindResource(
-        running ? "DestructiveButton" : "PrimaryButton");
-      this.SetBadge(
-        this.engineStatusBadge,
-        this.engineStatusText,
-        readiness.Engine);
-      this.engineReadinessDetail.Text = readiness.Engine.Detail;
-      this.SetBadge(
-        this.audioStatusBadge, this.audioStatusText, readiness.Audio);
-      this.audioReadinessDetail.Text = readiness.Audio.Detail;
-      this.audioSignalText.Text = readiness.AudioSignalText;
-      this.SetBadge(
-        this.domeStatusBadge, this.domeStatusText, readiness.Dome);
-      this.domeReadinessDetail.Text = readiness.Dome.Detail;
-      this.SetBadge(
-        this.homeWandStatusBadge,
-        this.homeWandStatusText,
-        readiness.Wand);
-      this.homeWandReadinessDetail.Text = readiness.Wand.Detail;
-      this.connectedWandCountText.Text =
-        readiness.ConnectedWandCountText;
-      this.webControllerStatus.Text = readiness.WebStatus;
-      this.webControllerStatus.Foreground = (Brush)this.FindResource(
-        readiness.WebLevel == ReadinessLevel.Ready
-          ? "SuccessBrush"
-          : "ErrorBrush");
-      this.SetBadge(
-        this.overallReadinessBadge,
-        this.overallReadinessText,
-        readiness.Overall);
-    }
-
     private void ShowMidiSetup(object sender, RoutedEventArgs e) {
       this.mainTabs.SelectedItem = this.midiTab;
     }
@@ -368,34 +273,17 @@ namespace Spectrum {
       object sender,
       TextChangedEventArgs e
     ) {
-      if (this.domeOPCValidationStatus == null) {
+      if (this.domeOpcAddressUi == null) {
         return;
       }
-      if (this.TryNormalizeOpcAddress(
-          this.domeBeagleboneOPCHostAndPort.Text, out _, out string? error)) {
-        this.domeOPCValidationStatus.Text =
-          "Valid host and port format.";
-        this.domeOPCValidationStatus.Foreground =
-          (Brush)this.FindResource("SuccessBrush");
-      } else {
-        this.domeOPCValidationStatus.Text = "Error: " + error + ".";
-        this.domeOPCValidationStatus.Foreground =
-          (Brush)this.FindResource("ErrorBrush");
-      }
+      this.domeOpcAddressUi.ShowValidation();
     }
 
     private void DomeOpcAddressLostFocus(
       object sender,
       RoutedEventArgs e
     ) {
-      if (!this.TryNormalizeOpcAddress(
-          this.domeBeagleboneOPCHostAndPort.Text,
-          out string? normalized,
-          out _)) {
-        return;
-      }
-      this.domeBeagleboneOPCHostAndPort.Text = normalized;
-      this.config.domeBeagleboneOPCAddress = normalized;
+      this.domeOpcAddressUi.CommitAddress();
     }
 
     private void SliderStarted(object sender, DragStartedEventArgs e) {
@@ -408,7 +296,7 @@ namespace Spectrum {
 
     private void PowerButtonClicked(object sender, RoutedEventArgs e) {
       this.op.Enabled = !this.op.Enabled;
-      this.UpdateReadinessDashboard();
+      this.readinessDashboard.Refresh();
     }
 
     private void RefreshAudioDevices(object? sender, RoutedEventArgs? e) {
@@ -424,7 +312,7 @@ namespace Spectrum {
       this.audioDevices.SelectedIndex = audioDevices.FindIndex(
         device => device.id == this.config.audioDeviceID
       );
-      this.UpdateReadinessDashboard();
+      this.readinessDashboard.Refresh();
     }
 
     private void AudioInputDeviceChanged(
