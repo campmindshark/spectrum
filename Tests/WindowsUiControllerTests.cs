@@ -429,6 +429,36 @@ namespace Spectrum.LayerPipeline.Tests {
               Visibility.Collapsed,
           "the MIDI controller did not persist and present a valid " +
           "binding");
+
+        view.Binding.Bindings.SelectedIndex = 0;
+        controller.BindingSelectionChanged();
+        controller.BeginBindingEdit();
+        Assert(view.Binding.EditLabel.Content?.ToString() ==
+              "Edit binding" &&
+            view.Binding.Name.Text == "Envelope" &&
+            view.Binding.Type.SelectedIndex == 4 &&
+            view.Binding.AdsrLevelDriverIndexRangeStart.Text == "60",
+          "the MIDI binding controller did not restore the selected " +
+          "binding draft");
+
+        view.Binding.Name.Text = "Renamed envelope";
+        controller.SaveBinding();
+        Assert(config.midiPresets[9].Bindings.Length == 1 &&
+            config.midiPresets[9].Bindings[0].BindingName ==
+              "Renamed envelope" &&
+            config.midiPresets[4].Bindings.Length == 0 &&
+            view.Binding.Bindings.Items[0] is
+              global::Spectrum.MidiBindingEntry edited &&
+            edited.BindingName == "Renamed envelope",
+          "binding editing lost the explicit sparse preset identity");
+
+        view.Binding.Bindings.SelectedIndex = 0;
+        controller.DeleteSelectedBinding();
+        Assert(config.midiPresets[9].Bindings.Length == 0 &&
+            config.midiPresets[4].Bindings.Length == 0 &&
+            view.Binding.Bindings.Items.Count == 0,
+          "binding deletion did not persist through the isolated " +
+          "binding controller");
       });
     }
 

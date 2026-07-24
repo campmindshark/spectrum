@@ -13,11 +13,6 @@ namespace Spectrum {
     public string PresetName { get; init; } = string.Empty;
   }
 
-  internal sealed class MidiBindingEntry {
-    public string BindingName { get; init; } = string.Empty;
-    public string BindingTypeName { get; init; } = string.Empty;
-  }
-
   internal sealed record MidiDeviceSetupView(
     ListView ConfiguredDevices,
     Button LoadPreset,
@@ -35,37 +30,6 @@ namespace Spectrum {
     Button DeletePreset,
     Label EditLabel,
     TextBox Name,
-    Button Save,
-    Button Cancel
-  );
-
-  internal sealed record MidiBindingSetupView(
-    ListView Bindings,
-    Button EditBinding,
-    Button DeleteBinding,
-    Label EditLabel,
-    TextBox Name,
-    ComboBox Type,
-    StackPanel TapTempoPanel,
-    ComboBox TapTempoButtonType,
-    TextBox TapTempoButtonIndex,
-    StackPanel ContinuousKnobPanel,
-    TextBox ContinuousKnobIndex,
-    TextBox ContinuousKnobPropertyName,
-    TextBox ContinuousKnobStartValue,
-    TextBox ContinuousKnobEndValue,
-    StackPanel DiscreteKnobPanel,
-    TextBox DiscreteKnobIndex,
-    TextBox DiscreteKnobPropertyName,
-    TextBox DiscreteKnobNumPossibleValues,
-    StackPanel LogarithmicKnobPanel,
-    TextBox LogarithmicKnobIndex,
-    TextBox LogarithmicKnobPropertyName,
-    TextBox LogarithmicKnobNumPossibleValues,
-    TextBox LogarithmicKnobStartValue,
-    StackPanel AdsrLevelDriverPanel,
-    TextBox AdsrLevelDriverIndexRangeStart,
-    TextBlock ValidationMessage,
     Button Save,
     Button Cancel
   );
@@ -89,10 +53,10 @@ namespace Spectrum {
     private readonly Func<int> deviceCount;
     private readonly Func<int, string> getDeviceName;
     private readonly Func<string, string, bool> confirmDestructiveAction;
+    private readonly MidiBindingUiController bindingController;
     private readonly List<int> deviceIndices = new();
     private readonly List<int> presetIndices = new();
     private int? currentlyEditingPreset;
-    private int? currentlyEditingBinding;
 
     internal MidiSetupUiController(
       SpectrumConfiguration config,
@@ -112,6 +76,10 @@ namespace Spectrum {
       this.confirmDestructiveAction = confirmDestructiveAction ??
         throw new ArgumentNullException(nameof(confirmDestructiveAction));
       this.presetEditor = new MidiPresetEditor(config);
+      this.bindingController = new MidiBindingUiController(
+        config,
+        view.Binding,
+        confirmDestructiveAction);
     }
 
     internal void Start() {
@@ -289,16 +257,14 @@ namespace Spectrum {
     }
 
     internal void PresetSelectionChanged() {
-      this.view.Binding.Bindings.Items.Clear();
       this.CancelPresetEdit();
-      this.CancelBindingEdit();
 
       int selectedIndex = this.view.Preset.Presets.SelectedIndex;
       if (selectedIndex < 0) {
         this.view.Preset.DeletePreset.IsEnabled = false;
         this.view.Preset.ClonePreset.IsEnabled = false;
         this.view.Preset.RenamePreset.IsEnabled = false;
-        this.view.Binding.Save.IsEnabled = false;
+        this.bindingController.ShowPreset(null);
         return;
       }
 
@@ -307,16 +273,7 @@ namespace Spectrum {
         this.presetEditor.CanDeletePreset(presetId);
       this.view.Preset.ClonePreset.IsEnabled = true;
       this.view.Preset.RenamePreset.IsEnabled = true;
-      this.view.Binding.Save.IsEnabled = true;
-      foreach (IMidiBindingView binding in
-          this.config.midiPresets[presetId].Bindings) {
-        this.view.Binding.Bindings.Items.Add(new MidiBindingEntry {
-          BindingName =
-            binding.BindingName ?? "(unnamed binding)",
-          BindingTypeName = this.BindingTypeName(
-            binding.BindingType),
-        });
-      }
+      this.bindingController.ShowPreset(presetId);
     }
 
     internal void CloneSelectedPreset() {
@@ -373,20 +330,8 @@ namespace Spectrum {
     internal void PresetNameGotFocus() =>
       BeginPresetNameEntry(this.view.Preset.Name);
 
-    internal void BindingTypeSelectionChanged() {
-      this.ClearBindingValidation();
-      int selectedType = this.view.Binding.Type.SelectedIndex;
-      this.view.Binding.TapTempoPanel.Visibility =
-        selectedType == 0 ? Visibility.Visible : Visibility.Collapsed;
-      this.view.Binding.ContinuousKnobPanel.Visibility =
-        selectedType == 1 ? Visibility.Visible : Visibility.Collapsed;
-      this.view.Binding.DiscreteKnobPanel.Visibility =
-        selectedType == 2 ? Visibility.Visible : Visibility.Collapsed;
-      this.view.Binding.LogarithmicKnobPanel.Visibility =
-        selectedType == 3 ? Visibility.Visible : Visibility.Collapsed;
-      this.view.Binding.AdsrLevelDriverPanel.Visibility =
-        selectedType == 4 ? Visibility.Visible : Visibility.Collapsed;
-    }
+    internal void BindingTypeSelectionChanged() =>
+      this.bindingController.BindingTypeSelectionChanged();
 
     internal void SaveBinding() {
       int selectedPresetIndex =
@@ -395,167 +340,20 @@ namespace Spectrum {
         this.view.Preset.Presets.Focus();
         return;
       }
-
-      MidiBindingDraft draft = this.CaptureBindingDraft();
-      if (!MidiBindingEditor.TryCreate(
-          draft,
-          out IMidiBindingConfig? newBinding,
-          out MidiBindingValidationError? error)) {
-        this.ShowBindingValidation(error);
-        return;
-      }
-
-      bool editing = this.currentlyEditingBinding.HasValue;
-      int bindingIndex =
-        this.currentlyEditingBinding.GetValueOrDefault();
-      int presetId = this.presetIndices[selectedPresetIndex];
-      MidiPreset preset = this.config.midiPresets[presetId].ToPreset();
-      if (editing) {
-        if (bindingIndex < 0 ||
-            bindingIndex >= preset.Bindings.Count) {
-          this.CancelBindingEdit();
-          this.PresetSelectionChanged();
-          return;
-        }
-        preset.Bindings[bindingIndex] = newBinding;
-      } else {
-        preset.Bindings.Add(newBinding);
-      }
-      this.config.UpsertMidiPreset(presetId, preset);
-
-      string bindingName = newBinding.BindingName ?? string.Empty;
-      var entry = new MidiBindingEntry {
-        BindingName = bindingName,
-        BindingTypeName = this.BindingTypeName(draft.BindingType),
-      };
-      if (editing) {
-        this.view.Binding.Bindings.Items[bindingIndex] = entry;
-      } else {
-        this.view.Binding.Bindings.Items.Add(entry);
-      }
-
-      this.ClearBindingFields(draft.BindingType);
-      this.currentlyEditingBinding = null;
-      this.view.Binding.EditLabel.Content = "Add binding";
-      this.view.Binding.Save.Content = "Add binding";
-      this.view.Binding.Cancel.Visibility = Visibility.Collapsed;
-      this.view.Binding.Type.SelectedIndex = -1;
-      this.view.Binding.Name.Text = string.Empty;
-      this.ClearBindingValidation();
+      this.bindingController.Save();
     }
 
-    internal void BindingSelectionChanged() {
-      bool selected =
-        this.view.Preset.Presets.SelectedIndex >= 0 &&
-        this.view.Binding.Bindings.SelectedIndex >= 0;
-      this.view.Binding.DeleteBinding.IsEnabled = selected;
-      this.view.Binding.EditBinding.IsEnabled = selected;
-      this.CancelBindingEdit();
-    }
+    internal void BindingSelectionChanged() =>
+      this.bindingController.SelectionChanged();
 
-    internal void DeleteSelectedBinding() {
-      int presetIndex = this.view.Preset.Presets.SelectedIndex;
-      int bindingIndex = this.view.Binding.Bindings.SelectedIndex;
-      if (presetIndex < 0 || bindingIndex < 0) {
-        return;
-      }
-      string name =
-        (this.view.Binding.Bindings.SelectedItem as MidiBindingEntry)
-          ?.BindingName ?? "this binding";
-      if (!this.confirmDestructiveAction(
-          $"Delete binding “{name}”?",
-          "Delete MIDI binding")) {
-        return;
-      }
+    internal void DeleteSelectedBinding() =>
+      this.bindingController.DeleteSelected();
 
-      int presetId = this.presetIndices[presetIndex];
-      MidiPreset preset = this.config.midiPresets[presetId].ToPreset();
-      if (bindingIndex >= preset.Bindings.Count) {
-        this.PresetSelectionChanged();
-        return;
-      }
-      preset.Bindings.RemoveAt(bindingIndex);
-      this.config.UpsertMidiPreset(presetId, preset);
-      this.view.Binding.Bindings.Items.RemoveAt(bindingIndex);
-    }
+    internal void BeginBindingEdit() =>
+      this.bindingController.BeginEdit();
 
-    internal void BeginBindingEdit() {
-      int presetIndex = this.view.Preset.Presets.SelectedIndex;
-      int bindingIndex = this.view.Binding.Bindings.SelectedIndex;
-      if (presetIndex < 0 || bindingIndex < 0) {
-        return;
-      }
-      int presetId = this.presetIndices[presetIndex];
-      IMidiBindingView binding =
-        this.config.midiPresets[presetId].Bindings[bindingIndex];
-      this.currentlyEditingBinding = bindingIndex;
-
-      this.view.Binding.EditLabel.Content = "Edit binding";
-      this.view.Binding.Save.Content = "Save";
-      this.view.Binding.Cancel.Visibility = Visibility.Visible;
-      this.view.Binding.Name.Text =
-        binding.BindingName ?? string.Empty;
-      this.view.Binding.Name.Focus();
-      this.view.Binding.Name.SelectionStart =
-        this.view.Binding.Name.Text.Length;
-      this.view.Binding.Name.SelectionLength = 0;
-
-      this.view.Binding.Type.SelectedIndex = binding.BindingType;
-      switch (binding) {
-        case TapTempoMidiBindingView tapTempo:
-          this.view.Binding.TapTempoButtonType.SelectedIndex =
-            MidiBindingEditor.CommandTypeIndex(tapTempo.ButtonType);
-          this.view.Binding.TapTempoButtonIndex.Text =
-            tapTempo.ButtonIndex.ToString();
-          break;
-        case ContinuousKnobMidiBindingView continuous:
-          this.view.Binding.ContinuousKnobIndex.Text =
-            continuous.KnobIndex.ToString();
-          this.view.Binding.ContinuousKnobPropertyName.Text =
-            continuous.ConfigPropertyName;
-          this.view.Binding.ContinuousKnobStartValue.Text =
-            continuous.StartValue.ToString();
-          this.view.Binding.ContinuousKnobEndValue.Text =
-            continuous.EndValue.ToString();
-          break;
-        case DiscreteKnobMidiBindingView discrete:
-          this.view.Binding.DiscreteKnobIndex.Text =
-            discrete.KnobIndex.ToString();
-          this.view.Binding.DiscreteKnobPropertyName.Text =
-            discrete.ConfigPropertyName;
-          this.view.Binding.DiscreteKnobNumPossibleValues.Text =
-            discrete.NumPossibleValues.ToString();
-          break;
-        case DiscreteLogarithmicKnobMidiBindingView logarithmic:
-          this.view.Binding.LogarithmicKnobIndex.Text =
-            logarithmic.KnobIndex.ToString();
-          this.view.Binding.LogarithmicKnobPropertyName.Text =
-            logarithmic.ConfigPropertyName;
-          this.view.Binding.LogarithmicKnobNumPossibleValues.Text =
-            logarithmic.NumPossibleValues.ToString();
-          this.view.Binding.LogarithmicKnobStartValue.Text =
-            logarithmic.StartValue.ToString();
-          break;
-        case AdsrLevelDriverMidiBindingView adsr:
-          this.view.Binding.AdsrLevelDriverIndexRangeStart.Text =
-            adsr.IndexRangeStart.ToString();
-          break;
-      }
-    }
-
-    internal void CancelBindingEdit() {
-      if (!this.currentlyEditingBinding.HasValue) {
-        return;
-      }
-      this.currentlyEditingBinding = null;
-      this.view.Binding.EditLabel.Content = "Add binding";
-      this.view.Binding.Save.Content = "Add binding";
-      this.view.Binding.Cancel.Visibility = Visibility.Collapsed;
-      this.view.Binding.Name.Text = string.Empty;
-      this.view.Binding.Type.SelectedIndex = -1;
-      this.ClearAllBindingFields();
-      this.ClearBindingValidation();
-    }
+    internal void CancelBindingEdit() =>
+      this.bindingController.CancelEdit();
 
     private void LoadConfiguredDevices() {
       this.view.Device.ConfiguredDevices.Items.Clear();
@@ -637,142 +435,5 @@ namespace Spectrum {
       textBox.FontStyle = FontStyles.Italic;
     }
 
-    private string BindingTypeName(int bindingType) {
-      if (bindingType >= 0 &&
-          bindingType < this.view.Binding.Type.Items.Count &&
-          this.view.Binding.Type.Items[bindingType] is
-            ComboBoxItem { Content: string name }) {
-        return name;
-      }
-      return "Unknown binding";
-    }
-
-    private MidiBindingDraft CaptureBindingDraft() =>
-      new MidiBindingDraft {
-        BindingName = this.view.Binding.Name.Text,
-        BindingType = this.view.Binding.Type.SelectedIndex,
-        TapTempoButtonType =
-          this.view.Binding.TapTempoButtonType.SelectedIndex,
-        TapTempoButtonIndex =
-          this.view.Binding.TapTempoButtonIndex.Text,
-        ContinuousKnobIndex =
-          this.view.Binding.ContinuousKnobIndex.Text,
-        ContinuousKnobPropertyName =
-          this.view.Binding.ContinuousKnobPropertyName.Text,
-        ContinuousKnobStartValue =
-          this.view.Binding.ContinuousKnobStartValue.Text,
-        ContinuousKnobEndValue =
-          this.view.Binding.ContinuousKnobEndValue.Text,
-        DiscreteKnobIndex =
-          this.view.Binding.DiscreteKnobIndex.Text,
-        DiscreteKnobPropertyName =
-          this.view.Binding.DiscreteKnobPropertyName.Text,
-        DiscreteKnobNumPossibleValues =
-          this.view.Binding.DiscreteKnobNumPossibleValues.Text,
-        LogarithmicKnobIndex =
-          this.view.Binding.LogarithmicKnobIndex.Text,
-        LogarithmicKnobPropertyName =
-          this.view.Binding.LogarithmicKnobPropertyName.Text,
-        LogarithmicKnobNumPossibleValues =
-          this.view.Binding.LogarithmicKnobNumPossibleValues.Text,
-        LogarithmicKnobStartValue =
-          this.view.Binding.LogarithmicKnobStartValue.Text,
-        AdsrLevelDriverIndexRangeStart =
-          this.view.Binding.AdsrLevelDriverIndexRangeStart.Text,
-      };
-
-    private void ShowBindingValidation(
-      MidiBindingValidationError error
-    ) {
-      this.view.Binding.ValidationMessage.Text = error.Message;
-      this.view.Binding.ValidationMessage.Visibility =
-        Visibility.Visible;
-      Control control = error.Field switch {
-        MidiBindingEditorField.BindingName =>
-          this.view.Binding.Name,
-        MidiBindingEditorField.BindingType =>
-          this.view.Binding.Type,
-        MidiBindingEditorField.TapTempoButtonType =>
-          this.view.Binding.TapTempoButtonType,
-        MidiBindingEditorField.TapTempoButtonIndex =>
-          this.view.Binding.TapTempoButtonIndex,
-        MidiBindingEditorField.ContinuousKnobIndex =>
-          this.view.Binding.ContinuousKnobIndex,
-        MidiBindingEditorField.ContinuousKnobPropertyName =>
-          this.view.Binding.ContinuousKnobPropertyName,
-        MidiBindingEditorField.ContinuousKnobStartValue =>
-          this.view.Binding.ContinuousKnobStartValue,
-        MidiBindingEditorField.ContinuousKnobEndValue =>
-          this.view.Binding.ContinuousKnobEndValue,
-        MidiBindingEditorField.DiscreteKnobIndex =>
-          this.view.Binding.DiscreteKnobIndex,
-        MidiBindingEditorField.DiscreteKnobPropertyName =>
-          this.view.Binding.DiscreteKnobPropertyName,
-        MidiBindingEditorField.DiscreteKnobNumPossibleValues =>
-          this.view.Binding.DiscreteKnobNumPossibleValues,
-        MidiBindingEditorField.LogarithmicKnobIndex =>
-          this.view.Binding.LogarithmicKnobIndex,
-        MidiBindingEditorField.LogarithmicKnobPropertyName =>
-          this.view.Binding.LogarithmicKnobPropertyName,
-        MidiBindingEditorField.LogarithmicKnobNumPossibleValues =>
-          this.view.Binding.LogarithmicKnobNumPossibleValues,
-        MidiBindingEditorField.LogarithmicKnobStartValue =>
-          this.view.Binding.LogarithmicKnobStartValue,
-        MidiBindingEditorField.AdsrLevelDriverIndexRangeStart =>
-          this.view.Binding.AdsrLevelDriverIndexRangeStart,
-        _ => this.view.Binding.Type,
-      };
-      control.Focus();
-    }
-
-    private void ClearBindingValidation() {
-      this.view.Binding.ValidationMessage.Text = string.Empty;
-      this.view.Binding.ValidationMessage.Visibility =
-        Visibility.Collapsed;
-    }
-
-    private void ClearBindingFields(int bindingType) {
-      switch (bindingType) {
-        case 0:
-          this.view.Binding.TapTempoButtonType.SelectedIndex = -1;
-          this.view.Binding.TapTempoButtonIndex.Text = string.Empty;
-          break;
-        case 1:
-          this.view.Binding.ContinuousKnobIndex.Text = string.Empty;
-          this.view.Binding.ContinuousKnobPropertyName.Text =
-            string.Empty;
-          this.view.Binding.ContinuousKnobStartValue.Text =
-            string.Empty;
-          this.view.Binding.ContinuousKnobEndValue.Text =
-            string.Empty;
-          break;
-        case 2:
-          this.view.Binding.DiscreteKnobIndex.Text = string.Empty;
-          this.view.Binding.DiscreteKnobPropertyName.Text =
-            string.Empty;
-          this.view.Binding.DiscreteKnobNumPossibleValues.Text =
-            string.Empty;
-          break;
-        case 3:
-          this.view.Binding.LogarithmicKnobIndex.Text = string.Empty;
-          this.view.Binding.LogarithmicKnobPropertyName.Text =
-            string.Empty;
-          this.view.Binding.LogarithmicKnobNumPossibleValues.Text =
-            string.Empty;
-          this.view.Binding.LogarithmicKnobStartValue.Text =
-            string.Empty;
-          break;
-        case 4:
-          this.view.Binding.AdsrLevelDriverIndexRangeStart.Text =
-            string.Empty;
-          break;
-      }
-    }
-
-    private void ClearAllBindingFields() {
-      for (int bindingType = 0; bindingType <= 4; bindingType++) {
-        this.ClearBindingFields(bindingType);
-      }
-    }
   }
 }
