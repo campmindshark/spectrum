@@ -20,6 +20,8 @@ namespace Spectrum.LayerPipeline.Tests {
         DomeOpcAddressUiOwnsValidationAndSynchronization);
       run(nameof(OperatorSettingsOwnBindingsAndAudioSelection),
         OperatorSettingsOwnBindingsAndAudioSelection);
+      run(nameof(MidiPresetUiOwnsSparseIdentityAndEditModes),
+        MidiPresetUiOwnsSparseIdentityAndEditModes);
       run(nameof(MidiSetupUiOwnsDevicePresetAndBindingPresentation),
         MidiSetupUiOwnsDevicePresetAndBindingPresentation);
     }
@@ -347,6 +349,108 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     private static void
+      MidiPresetUiOwnsSparseIdentityAndEditModes() {
+      RunOnStaThread("MidiPresetUiTest", () => {
+        var config = new global::Spectrum.SpectrumConfiguration();
+        config.ReplaceMidiPresets(new Dictionary<int,
+          global::Spectrum.Base.MidiPreset> {
+          [4] = new global::Spectrum.Base.MidiPreset {
+            id = 4,
+            Name = "Warm",
+          },
+          [9] = new global::Spectrum.Base.MidiPreset {
+            id = 9,
+            Name = "Cool",
+          },
+        });
+        config.ReplaceMidiDevices(new Dictionary<int, int> {
+          [0] = 4,
+        });
+        global::Spectrum.MidiSetupView setup = MidiSetupView();
+        int configuredDeviceRefreshes = 0;
+        var controller =
+          new global::Spectrum.MidiPresetUiController(
+            config,
+            setup.Preset,
+            setup.Device.NewDevicePreset,
+            setup.Device.NewPresetNameContainer,
+            setup.Device.NewPresetName,
+            setup.Binding,
+            confirmDestructiveAction: (_, _) => true,
+            presetsChanged: () => configuredDeviceRefreshes++);
+
+        controller.Start();
+        setup.Preset.Presets.SelectedIndex = 1;
+        controller.SelectionChanged();
+        Assert(setup.Preset.DeletePreset.IsEnabled &&
+            setup.Binding.Save.IsEnabled,
+          "the preset controller did not project sparse preset " +
+          "selection into actions and bindings");
+
+        controller.BeginRename();
+        Assert(setup.Preset.EditLabel.Content?.ToString() ==
+              "Rename preset" &&
+            setup.Preset.Name.Text == "Cool" &&
+            setup.Preset.Cancel.Visibility == Visibility.Visible,
+          "the preset controller did not enter rename mode");
+
+        setup.Preset.Name.Text = "Warm";
+        controller.Save();
+        Assert(config.midiPresets[9].Name == "Cool" &&
+            setup.Preset.EditLabel.Content?.ToString() ==
+              "Rename preset" &&
+            setup.Preset.Cancel.Visibility == Visibility.Visible,
+          "an invalid duplicate rename mutated the preset or left " +
+          "rename mode");
+
+        setup.Preset.Name.Text = "Cooler";
+        controller.Save();
+        Assert(config.midiPresets[9].Name == "Cooler" &&
+            Equals(setup.Preset.Presets.Items[1], "Cooler") &&
+            Equals(setup.Device.NewDevicePreset.Items[1], "Cooler") &&
+            setup.Preset.EditLabel.Content?.ToString() ==
+              "Add preset" &&
+            setup.Preset.Cancel.Visibility == Visibility.Collapsed &&
+            configuredDeviceRefreshes == 1,
+          "a valid sparse-ID rename did not synchronize projections " +
+          "and restore add mode");
+
+        controller.CloneSelected();
+        Assert(config.midiPresets.TryGetValue(
+              10, out global::Spectrum.Base.MidiPresetView? clone) &&
+            clone.Name == "Cooler (clone)" &&
+            setup.Preset.Presets.Items.Count == 3 &&
+            setup.Device.NewDevicePreset.Items.Count == 4,
+          "preset cloning lost sparse identity or a list projection");
+
+        config.ReplaceMidiDevices(new Dictionary<int, int> {
+          [0] = 4,
+          [1] = 9,
+        });
+        controller.RefreshDeletionState(9);
+        Assert(!setup.Preset.DeletePreset.IsEnabled,
+          "an assigned preset remained deletable");
+
+        config.ReplaceMidiDevices(new Dictionary<int, int> {
+          [0] = 4,
+        });
+        controller.RefreshDeletionState(9);
+        Assert(setup.Preset.DeletePreset.IsEnabled,
+          "an unassigned preset did not become deletable");
+
+        controller.DeleteSelected();
+        Assert(!config.midiPresets.ContainsKey(9) &&
+            config.midiPresets.ContainsKey(4) &&
+            config.midiPresets.ContainsKey(10) &&
+            setup.Preset.Presets.Items.Count == 2 &&
+            setup.Device.NewDevicePreset.Items.Count == 3 &&
+            !setup.Binding.Save.IsEnabled,
+          "preset deletion did not synchronize persistence, lists, " +
+          "and binding selection");
+      });
+    }
+
+    private static void
       MidiSetupUiOwnsDevicePresetAndBindingPresentation() {
       RunOnStaThread("MidiSetupUiTest", () => {
         var config = new global::Spectrum.SpectrumConfiguration();
@@ -378,6 +482,7 @@ namespace Spectrum.LayerPipeline.Tests {
             view.Device.ConfiguredDevices.Items[0] is
               global::Spectrum.MidiDeviceEntry configured &&
             configured.DeviceID == 0 &&
+            configured.PresetID == 4 &&
             configured.DeviceName == "Device 0" &&
             configured.PresetName == "Warm" &&
             view.Device.AvailableDevices.Items.Count == 1 &&
@@ -397,7 +502,15 @@ namespace Spectrum.LayerPipeline.Tests {
           "the MIDI controller lost a sparse preset identity while " +
           "assigning a device");
 
-        view.Preset.Presets.SelectedIndex = 1;
+        view.Device.ConfiguredDevices.SelectedItem =
+          view.Device.ConfiguredDevices.Items
+            .OfType<global::Spectrum.MidiDeviceEntry>()
+            .Single(entry => entry.DeviceID == 1);
+        controller.LoadSelectedDevicePreset();
+        Assert(view.Preset.Presets.SelectedIndex == 1 &&
+            Equals(view.Preset.Presets.SelectedItem, "Cool"),
+          "configured-device navigation lost the assigned sparse " +
+          "preset identity");
         controller.PresetSelectionChanged();
         Assert(!view.Preset.DeletePreset.IsEnabled &&
             view.Binding.Save.IsEnabled,

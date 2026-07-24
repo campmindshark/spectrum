@@ -1,14 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using Spectrum.Base;
 
 namespace Spectrum {
 
   internal sealed class MidiDeviceEntry {
     public int DeviceID { get; init; }
+    public int PresetID { get; init; }
     public string DeviceName { get; init; } = string.Empty;
     public string PresetName { get; init; } = string.Empty;
   }
@@ -41,10 +40,8 @@ namespace Spectrum {
   );
 
   /**
-   * Owns the WPF MIDI setup surface. Persisted identity and validation rules
-   * remain in the UI-neutral editors; this controller owns list projections,
-   * selection state, edit modes, field presentation, and confirmation
-   * boundaries.
+   * Owns MIDI device discovery and assignment. Preset and binding identity,
+   * presentation, editing, and persistence live behind the preset controller.
    */
   internal sealed class MidiSetupUiController {
     private readonly SpectrumConfiguration config;
@@ -53,10 +50,8 @@ namespace Spectrum {
     private readonly Func<int> deviceCount;
     private readonly Func<int, string> getDeviceName;
     private readonly Func<string, string, bool> confirmDestructiveAction;
-    private readonly MidiBindingUiController bindingController;
-    private readonly List<int> deviceIndices = new();
-    private readonly List<int> presetIndices = new();
-    private int? currentlyEditingPreset;
+    private readonly MidiPresetUiController presetController;
+    private readonly List<int> deviceIds = new();
 
     internal MidiSetupUiController(
       SpectrumConfiguration config,
@@ -74,23 +69,30 @@ namespace Spectrum {
       this.getDeviceName = getDeviceName ??
         throw new ArgumentNullException(nameof(getDeviceName));
       this.confirmDestructiveAction = confirmDestructiveAction ??
-        throw new ArgumentNullException(nameof(confirmDestructiveAction));
+        throw new ArgumentNullException(
+          nameof(confirmDestructiveAction));
       this.presetEditor = new MidiPresetEditor(config);
-      this.bindingController = new MidiBindingUiController(
+      this.presetController = new MidiPresetUiController(
         config,
+        view.Preset,
+        view.Device.NewDevicePreset,
+        view.Device.NewPresetNameContainer,
+        view.Device.NewPresetName,
         view.Binding,
-        confirmDestructiveAction);
+        confirmDestructiveAction,
+        this.LoadConfiguredDevices);
     }
 
     internal void Start() {
       this.RefreshDevices();
-      this.LoadPresets();
+      this.presetController.Start();
     }
 
     internal void RefreshDevices() {
-      object? currentDevice = this.view.Device.AvailableDevices.SelectedItem;
+      object? currentDevice =
+        this.view.Device.AvailableDevices.SelectedItem;
       this.view.Device.AvailableDevices.Items.Clear();
-      this.deviceIndices.Clear();
+      this.deviceIds.Clear();
       int count = this.deviceCount();
       for (int deviceId = 0; deviceId < count; deviceId++) {
         if (this.config.midiDevices.ContainsKey(deviceId)) {
@@ -98,77 +100,48 @@ namespace Spectrum {
         }
         this.view.Device.AvailableDevices.Items.Add(
           this.getDeviceName(deviceId));
-        this.deviceIndices.Add(deviceId);
+        this.deviceIds.Add(deviceId);
       }
       this.view.Device.AvailableDevices.SelectedItem = currentDevice;
       this.LoadConfiguredDevices();
     }
 
-    internal void NewDevicePresetSelectionChanged() {
-      Visibility previous =
-        this.view.Device.NewPresetNameContainer.Visibility;
-      this.view.Device.NewPresetNameContainer.Visibility =
-        this.view.Device.NewDevicePreset.SelectedIndex ==
-          this.presetIndices.Count
-          ? Visibility.Visible
-          : Visibility.Collapsed;
-      if (previous != this.view.Device.NewPresetNameContainer.Visibility &&
-          this.view.Device.NewPresetNameContainer.Visibility ==
-            Visibility.Visible) {
-        this.view.Device.NewPresetName.Focus();
-      }
-    }
+    internal void NewDevicePresetSelectionChanged() =>
+      this.presetController.DevicePresetSelectionChanged();
 
-    internal void NewDevicePresetNameLostFocus() {
-      if (string.IsNullOrEmpty(
-          this.view.Device.NewPresetName.Text.Trim())) {
-        RestorePresetNamePlaceholder(this.view.Device.NewPresetName);
-      }
-    }
+    internal void NewDevicePresetNameLostFocus() =>
+      this.presetController.DevicePresetNameLostFocus();
 
     internal void NewDevicePresetNameGotFocus() =>
-      BeginPresetNameEntry(this.view.Device.NewPresetName);
+      this.presetController.DevicePresetNameGotFocus();
 
     internal void AddDevice() {
       if (this.view.Device.NewDevicePreset.SelectedIndex < 0) {
         this.view.Device.NewDevicePreset.Focus();
         return;
       }
-      if (this.view.Device.AvailableDevices.SelectedIndex < 0) {
+      int selectedDeviceIndex =
+        this.view.Device.AvailableDevices.SelectedIndex;
+      if (selectedDeviceIndex < 0 ||
+          selectedDeviceIndex >= this.deviceIds.Count) {
         this.view.Device.AvailableDevices.Focus();
         return;
       }
-
-      int presetId;
-      if (this.view.Device.NewDevicePreset.SelectedIndex >=
-          this.presetIndices.Count) {
-        MidiPreset? newPreset = this.AddNewPreset(
-          this.view.Device.NewPresetName.Text);
-        if (newPreset == null) {
-          this.view.Device.NewPresetName.Focus();
-          return;
-        }
-        presetId = newPreset.id;
-      } else {
-        presetId = this.presetIndices[
-          this.view.Device.NewDevicePreset.SelectedIndex];
+      if (!this.presetController.TryResolveDevicePreset(
+          out int presetId)) {
+        return;
       }
 
-      int selectedDeviceIndex =
-        this.view.Device.AvailableDevices.SelectedIndex;
-      int deviceId = this.deviceIndices[selectedDeviceIndex];
+      int deviceId = this.deviceIds[selectedDeviceIndex];
       if (!this.presetEditor.TryAssignDevice(deviceId, presetId)) {
         this.RefreshDevices();
         return;
       }
 
       this.view.Device.AvailableDevices.SelectedIndex = -1;
-      this.view.Device.NewDevicePreset.SelectedIndex = -1;
-      RestorePresetNamePlaceholder(this.view.Device.NewPresetName);
-      this.view.Device.NewPresetNameContainer.Visibility =
-        Visibility.Collapsed;
+      this.presetController.ResetDevicePresetEntry();
       this.RefreshDevices();
-      this.RefreshSelectedPresetDeletionState(presetId);
+      this.presetController.RefreshDeletionState(presetId);
     }
 
     internal void DeleteSelectedDevice() {
@@ -188,13 +161,13 @@ namespace Spectrum {
         return;
       }
       this.RefreshDevices();
-      this.RefreshSelectedPresetDeletionState(presetId);
+      this.presetController.RefreshDeletionState(presetId);
     }
 
     internal void LoadSelectedDevicePreset() {
       if (this.view.Device.ConfiguredDevices.SelectedItem is
           MidiDeviceEntry selected) {
-        this.view.Preset.Presets.SelectedItem = selected.PresetName;
+        this.presetController.SelectPreset(selected.PresetID);
       }
     }
 
@@ -205,155 +178,47 @@ namespace Spectrum {
       this.view.Device.LoadPreset.IsEnabled = selected;
     }
 
-    internal void SavePreset() {
-      if (this.currentlyEditingPreset.HasValue) {
-        int presetId = this.currentlyEditingPreset.Value;
-        if (!this.presetEditor.TryRenamePreset(
-            presetId,
-            this.view.Preset.Name.Text,
-            out MidiPreset? renamed)) {
-          this.view.Preset.Name.Focus();
-          return;
-        }
-        int presetIndex = this.presetIndices.IndexOf(presetId);
-        if (presetIndex < 0) {
-          this.LoadPresets();
-          this.LoadConfiguredDevices();
-          RestorePresetNamePlaceholder(this.view.Preset.Name);
-          return;
-        }
-        this.LoadConfiguredDevices();
-        this.view.Preset.Presets.Items[presetIndex] = renamed.Name;
-        this.view.Device.NewDevicePreset.Items[presetIndex] =
-          renamed.Name;
-      } else if (this.AddNewPreset(this.view.Preset.Name.Text) == null) {
-        this.view.Preset.Name.Focus();
-        return;
-      }
-      RestorePresetNamePlaceholder(this.view.Preset.Name);
-    }
+    internal void SavePreset() =>
+      this.presetController.Save();
 
-    internal void DeleteSelectedPreset() {
-      int selectedIndex = this.view.Preset.Presets.SelectedIndex;
-      if (selectedIndex < 0) {
-        return;
-      }
-      string name =
-        this.view.Preset.Presets.SelectedItem?.ToString() ??
-        "this preset";
-      if (!this.confirmDestructiveAction(
-          $"Delete {name}? This cannot be undone.",
-          "Delete MIDI preset")) {
-        return;
-      }
-      int presetId = this.presetIndices[selectedIndex];
-      if (!this.presetEditor.TryDeletePreset(presetId)) {
-        this.view.Preset.DeletePreset.IsEnabled = false;
-        return;
-      }
-      this.presetIndices.RemoveAt(selectedIndex);
-      this.view.Device.NewDevicePreset.Items.RemoveAt(selectedIndex);
-      this.view.Preset.Presets.Items.RemoveAt(selectedIndex);
-    }
+    internal void DeleteSelectedPreset() =>
+      this.presetController.DeleteSelected();
 
-    internal void PresetSelectionChanged() {
-      this.CancelPresetEdit();
+    internal void PresetSelectionChanged() =>
+      this.presetController.SelectionChanged();
 
-      int selectedIndex = this.view.Preset.Presets.SelectedIndex;
-      if (selectedIndex < 0) {
-        this.view.Preset.DeletePreset.IsEnabled = false;
-        this.view.Preset.ClonePreset.IsEnabled = false;
-        this.view.Preset.RenamePreset.IsEnabled = false;
-        this.bindingController.ShowPreset(null);
-        return;
-      }
+    internal void CloneSelectedPreset() =>
+      this.presetController.CloneSelected();
 
-      int presetId = this.presetIndices[selectedIndex];
-      this.view.Preset.DeletePreset.IsEnabled =
-        this.presetEditor.CanDeletePreset(presetId);
-      this.view.Preset.ClonePreset.IsEnabled = true;
-      this.view.Preset.RenamePreset.IsEnabled = true;
-      this.bindingController.ShowPreset(presetId);
-    }
+    internal void BeginPresetRename() =>
+      this.presetController.BeginRename();
 
-    internal void CloneSelectedPreset() {
-      int selectedIndex = this.view.Preset.Presets.SelectedIndex;
-      if (selectedIndex < 0) {
-        return;
-      }
-      int presetId = this.presetIndices[selectedIndex];
-      if (this.presetEditor.TryClonePreset(
-          presetId, out MidiPreset? clone)) {
-        this.AddPresetToControls(clone);
-      }
-    }
+    internal void CancelPresetEdit() =>
+      this.presetController.CancelEdit();
 
-    internal void BeginPresetRename() {
-      int selectedIndex = this.view.Preset.Presets.SelectedIndex;
-      if (selectedIndex < 0) {
-        return;
-      }
-      int presetId = this.presetIndices[selectedIndex];
-      this.currentlyEditingPreset = presetId;
-      this.view.Preset.EditLabel.Content = "Rename preset";
-      this.view.Preset.Name.Width = 120;
-      this.view.Preset.Save.Content = "Save";
-      this.view.Preset.Save.Margin = new Thickness(0, 0, 55, 0);
-      this.view.Preset.Cancel.Visibility = Visibility.Visible;
-      this.view.Preset.Name.Text =
-        this.config.midiPresets[presetId].Name ?? string.Empty;
-      this.view.Preset.Name.Focus();
-      this.view.Preset.Name.SelectionStart =
-        this.view.Preset.Name.Text.Length;
-      this.view.Preset.Name.SelectionLength = 0;
-    }
-
-    internal void CancelPresetEdit() {
-      if (!this.currentlyEditingPreset.HasValue) {
-        return;
-      }
-      this.currentlyEditingPreset = null;
-      this.view.Preset.EditLabel.Content = "Add preset";
-      this.view.Preset.Name.Width = 140;
-      this.view.Preset.Save.Content = "Add preset";
-      this.view.Preset.Save.Margin = new Thickness(0);
-      this.view.Preset.Cancel.Visibility = Visibility.Collapsed;
-      RestorePresetNamePlaceholder(this.view.Preset.Name);
-    }
-
-    internal void PresetNameLostFocus() {
-      if (string.IsNullOrEmpty(this.view.Preset.Name.Text.Trim())) {
-        RestorePresetNamePlaceholder(this.view.Preset.Name);
-      }
-    }
+    internal void PresetNameLostFocus() =>
+      this.presetController.NameLostFocus();
 
     internal void PresetNameGotFocus() =>
-      BeginPresetNameEntry(this.view.Preset.Name);
+      this.presetController.NameGotFocus();
 
     internal void BindingTypeSelectionChanged() =>
-      this.bindingController.BindingTypeSelectionChanged();
+      this.presetController.BindingTypeSelectionChanged();
 
-    internal void SaveBinding() {
-      int selectedPresetIndex =
-        this.view.Preset.Presets.SelectedIndex;
-      if (selectedPresetIndex < 0) {
-        this.view.Preset.Presets.Focus();
-        return;
-      }
-      this.bindingController.Save();
-    }
+    internal void SaveBinding() =>
+      this.presetController.SaveBinding();
 
     internal void BindingSelectionChanged() =>
-      this.bindingController.SelectionChanged();
+      this.presetController.BindingSelectionChanged();
 
     internal void DeleteSelectedBinding() =>
-      this.bindingController.DeleteSelected();
+      this.presetController.DeleteSelectedBinding();
 
     internal void BeginBindingEdit() =>
-      this.bindingController.BeginEdit();
+      this.presetController.BeginBindingEdit();
 
     internal void CancelBindingEdit() =>
-      this.bindingController.CancelEdit();
+      this.presetController.CancelBindingEdit();
 
     private void LoadConfiguredDevices() {
       this.view.Device.ConfiguredDevices.Items.Clear();
@@ -371,69 +236,11 @@ namespace Spectrum {
         this.view.Device.ConfiguredDevices.Items.Add(
           new MidiDeviceEntry {
             DeviceID = pair.Key,
+            PresetID = pair.Value,
             DeviceName = deviceName,
             PresetName = presetName,
           });
       }
     }
-
-    private void LoadPresets() {
-      this.view.Device.NewDevicePreset.Items.Clear();
-      this.view.Preset.Presets.Items.Clear();
-      this.presetIndices.Clear();
-      foreach (KeyValuePair<int, MidiPresetView> pair in
-          this.config.midiPresets) {
-        MidiPresetView preset = pair.Value;
-        this.view.Device.NewDevicePreset.Items.Add(preset.Name);
-        this.presetIndices.Add(preset.Id);
-        this.view.Preset.Presets.Items.Add(preset.Name);
-      }
-      this.view.Device.NewDevicePreset.Items.Add("New preset");
-    }
-
-    private MidiPreset? AddNewPreset(string rawName) {
-      if (!this.presetEditor.TryCreatePreset(
-          rawName, out MidiPreset? preset)) {
-        return null;
-      }
-      this.AddPresetToControls(preset);
-      return preset;
-    }
-
-    private void AddPresetToControls(MidiPreset preset) {
-      this.view.Device.NewDevicePreset.Items.Insert(
-        this.view.Device.NewDevicePreset.Items.Count - 1,
-        preset.Name);
-      this.presetIndices.Add(preset.id);
-      this.view.Preset.Presets.Items.Add(preset.Name);
-    }
-
-    private void RefreshSelectedPresetDeletionState(int presetId) {
-      int selectedPresetIndex =
-        this.view.Preset.Presets.SelectedIndex;
-      if (selectedPresetIndex >= 0 &&
-          this.presetIndices[selectedPresetIndex] == presetId) {
-        this.view.Preset.DeletePreset.IsEnabled =
-          this.presetEditor.CanDeletePreset(presetId);
-      }
-    }
-
-    private static void BeginPresetNameEntry(TextBox textBox) {
-      textBox.Foreground = Brushes.Black;
-      textBox.FontStyle = FontStyles.Normal;
-      if (string.Equals(
-          textBox.Text.Trim(),
-          MidiPresetEditor.NewPresetPlaceholder,
-          StringComparison.Ordinal)) {
-        textBox.Text = string.Empty;
-      }
-    }
-
-    private static void RestorePresetNamePlaceholder(TextBox textBox) {
-      textBox.Text = MidiPresetEditor.NewPresetPlaceholder;
-      textBox.Foreground = Brushes.Gray;
-      textBox.FontStyle = FontStyles.Italic;
-    }
-
   }
 }
