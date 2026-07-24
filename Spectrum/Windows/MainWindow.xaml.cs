@@ -2,22 +2,20 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using XSerializer;
 using System.IO;
 using Spectrum.MIDI;
 using Spectrum.Base;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Spectrum {
 
   public partial class MainWindow : Window {
 
-    // LoadConfig completes this composition root before the constructor starts
-    // the host or exposes the window.
+    // ComposeApplication completes this control composition before the
+    // constructor starts the host or exposes the window.
+    private WindowsSpectrumApplication application = null!;
     private Operator op = null!;
     private SpectrumConfiguration config;
-    private SpectrumHost<Operator, Web.SpectrumWebHost> host;
     public static bool LoadingConfig { get; set; } = false;
     private MidiSetupUiController midiSetupUi = null!;
     private MainWindowChildWindows childWindows = null!;
@@ -25,32 +23,14 @@ namespace Spectrum {
     private ReadinessDashboardUiController readinessDashboard = null!;
     private DomeOpcAddressUiController domeOpcAddressUi = null!;
     private OperatorSettingsUiController operatorSettingsUi = null!;
-    private const int WebServerPort = 8080;
-    // Spectrum is distributed as a portable application, so keep its mutable
-    // state beside the executable. AppContext.BaseDirectory is stable when the
-    // process is launched from a shortcut or an unrelated working directory.
-    private static readonly SpectrumConfigurationPaths ConfigPaths =
-      SpectrumConfigurationPaths.ForPortableDesktop(
-        AppContext.BaseDirectory);
-    private static readonly ConfigurationFileStore<SpectrumConfiguration>
-      ConfigStore = new ConfigurationFileStore<SpectrumConfiguration>(
-        ConfigPaths.PrimaryPath,
-        ConfigPaths.BackupPath,
-        ConfigPaths.DefaultPath,
-        (stream, value) =>
-          new XmlSerializer<SpectrumConfigurationDocument>().Serialize(
-            stream,
-            SpectrumConfigurationDocument.FromConfiguration(value)),
-        stream => new XmlSerializer<SpectrumConfigurationDocument>()
-          .Deserialize(stream).ToConfiguration());
     private static readonly string WindowPlacementPath = Path.Combine(
       AppContext.BaseDirectory, "spectrum_window_state.json");
     public MainWindow() {
       this.InitializeComponent();
       WindowPlacementStore.Restore(this, WindowPlacementPath);
 
-      this.LoadConfig();
-      this.host.Start();
+      this.ComposeApplication();
+      this.application.Start();
       this.readinessDashboard = new ReadinessDashboardUiController(
         this.config,
         this.op,
@@ -82,8 +62,8 @@ namespace Spectrum {
             this.overallReadinessBadge,
             this.overallReadinessText)),
         key => this.FindResource(key),
-        this.host.ServiceStartError?.Message,
-        WebServerPort);
+        this.application.ServiceStartError?.Message,
+        WindowsSpectrumApplication.WebServerPort);
       this.operatorSettingsUi.Start();
     }
 
@@ -94,50 +74,30 @@ namespace Spectrum {
       this.wandSerialUi.Dispose();
       WindowPlacementStore.Save(this, WindowPlacementPath);
       try {
-        this.host?.Dispose();
+        this.application.Dispose();
       } catch (Exception error) {
         App.LogException("Could not shut Spectrum down cleanly", error);
       }
     }
 
     [MemberNotNull(
+      nameof(application),
       nameof(config),
-      nameof(host),
       nameof(midiSetupUi),
       nameof(childWindows),
       nameof(operatorSettingsUi))]
-    private void LoadConfig() {
+    private void ComposeApplication() {
       MainWindow.LoadingConfig = true;
 
-      ApplicationStateDispatcher applicationStateDispatcher =
-        new DispatcherApplicationStateDispatcher(
-          this.Dispatcher);
-      this.host = new SpectrumHost<Operator, Web.SpectrumWebHost>(
-        ConfigStore,
-        applicationStateDispatcher,
-        TimeSpan.FromMilliseconds(100),
-        (config, dispatcher) => new Operator(
-          config, dispatcher, new WindowsSpectrumInputFactory()),
-        (config, dispatcher, runtime) => new Web.SpectrumWebHost(
-          config, dispatcher, runtime, WebServerPort,
-          nativeWindowControlsAvailable: true,
-          reportBackgroundError: error => App.LogException(
-            "Web background task failed", error)),
-        SpectrumConfigurationSchema.RestartPropertyNames,
-        saveEnabled: () => !MainWindow.LoadingConfig,
-        reportLoadFailure: failure => Debug.WriteLine(
-          "Failed to load configuration from " + failure.Path + ": " +
-          failure.Error),
-        reportSaveError: error => App.LogException(
-          "Could not save Spectrum configuration", error),
-        reportServiceStartError: error => Debug.WriteLine(
-          "Web controller failed to start: " + error));
-      this.config = this.host.Configuration;
-      this.op = this.host.Runtime;
+      this.application = new WindowsSpectrumApplication(
+        this.Dispatcher,
+        () => !MainWindow.LoadingConfig);
+      this.config = this.application.Configuration;
+      this.op = this.application.Runtime;
       Web.AdvisoryLockManager advisoryLocks =
-        this.host.Service.AdvisoryLocks;
+        this.application.WebHost.AdvisoryLocks;
       Web.DomeCalibrationController domeCalibrationController =
-        this.host.Service.DomeCalibration;
+        this.application.WebHost.DomeCalibration;
       this.childWindows = new MainWindowChildWindows(
         this.config,
         this.op,
