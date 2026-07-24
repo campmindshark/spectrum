@@ -104,20 +104,25 @@ namespace Spectrum {
       plannedLayerInputs =
         new Dictionary<Visualizer, ImmutableArray<Input>>();
 
-    // Visualizers that have thrown too many times are quarantined: the
-    // scheduling pass skips them so a consistently-broken visualizer can't take
-    // the output down every frame (and can't spam the log). Keyed by visualizer,
-    // valued by cumulative throw count; once the count crosses
-    // VisualizerQuarantineThreshold the visualizer is treated as unavailable.
-    // Only touched on the operator thread, so it needs no synchronization.
+    // Components that fail repeatedly are quarantined until the next engine
+    // start. A successful update clears a transient failure streak, so isolated
+    // glitches do not accumulate into a false quarantine.
     private const int VisualizerQuarantineThreshold = 10;
-    private readonly Dictionary<Visualizer, int> visualizerFailureCounts =
-      new Dictionary<Visualizer, int>();
+    private const int DeviceQuarantineThreshold = 3;
+    private readonly ConsecutiveFailureTracker<Visualizer>
+      visualizerFailures = new(VisualizerQuarantineThreshold);
+    private readonly ConsecutiveFailureTracker<Input> inputUpdateFailures =
+      new(DeviceQuarantineThreshold);
+    private readonly ConsecutiveFailureTracker<Output> outputUpdateFailures =
+      new(DeviceQuarantineThreshold);
     // Hardware initialization happens inside Input/Output.Active setters. A
     // failed transition is quarantined until the operator is restarted so a
     // missing device cannot throw (and retry) hundreds of times per second.
     private readonly HashSet<Input> inputActivationFailures = new HashSet<Input>();
     private readonly HashSet<Output> outputActivationFailures = new HashSet<Output>();
+    private readonly Dictionary<Visualizer, string> visualizerFaults = new();
+    private readonly Dictionary<Input, string> inputFaults = new();
+    private readonly Dictionary<Output, string> outputFaults = new();
 
     public Operator(Configuration config) : this(
       config,
@@ -396,7 +401,10 @@ namespace Spectrum {
       if (renderer is Visualizer visualizer) {
         this.visualizers.Remove(visualizer);
         this.DomeOutput.UnregisterVisualizer(visualizer);
-        this.visualizerFailureCounts.Remove(visualizer);
+        this.visualizerFailures.Forget(visualizer);
+        if (this.visualizerFaults.Remove(visualizer)) {
+          this.PublishVisualizerFaults();
+        }
       }
       if (renderer is IDisposable disposable) {
         disposable.Dispose();
@@ -425,9 +433,8 @@ namespace Spectrum {
             return;
           }
           if (value) {
+            this.ResetComponentFailures();
             this.ReconcileLayerVisualizers();
-            this.inputActivationFailures.Clear();
-            this.outputActivationFailures.Clear();
             this.operatorThreadStop = false;
             this.operatorThread = new Thread(OperatorThread);
             this.operatorThread.Start();
@@ -520,7 +527,7 @@ namespace Spectrum {
         this.activeOutputs.Clear();
         this.activeVisualizers.Clear();
         foreach (var output in this.outputs) {
-          if (!output.Enabled) {
+          if (!this.IsOutputAvailable(output)) {
             continue;
           }
           int topPri = 1;
@@ -535,10 +542,10 @@ namespace Spectrum {
               }
               // Keep ImmutableArray strongly typed. Converting it to
               // IReadOnlyList boxes the struct once per layer, per frame.
-              if (!AllInputsEnabled(plannedInputs)) {
+              if (!this.AllInputsAvailable(plannedInputs)) {
                 continue;
               }
-            } else if (!AllInputsEnabled(visualizer.GetInputs())) {
+            } else if (!this.AllInputsAvailable(visualizer.GetInputs())) {
               // We can only consider a visualizer if all its inputs are
               // enabled.
               continue;
@@ -546,7 +553,7 @@ namespace Spectrum {
             // Skip visualizers that have been quarantined for throwing too
             // often, so the output falls through to a lower-priority tier
             // instead of going dark every frame.
-            if (this.IsQuarantined(visualizer)) {
+            if (this.visualizerFailures.IsQuarantined(visualizer)) {
               continue;
             }
             // Layer membership and enabled state were already resolved by the
@@ -592,7 +599,7 @@ namespace Spectrum {
           }
         }
         foreach (var input in this.inputs) {
-          if (input.Enabled && input.AlwaysActive) {
+          if (this.IsInputAvailable(input) && input.AlwaysActive) {
             this.activeInputs.Add(input);
           }
         }
@@ -608,14 +615,16 @@ namespace Spectrum {
         }
 
         foreach (var input in activeInputs) {
+          // Activation may have failed after this frame's schedule was built.
+          // Do not call into an inactive/quarantined device in that same frame.
+          if (!this.IsInputAvailable(input)) {
+            continue;
+          }
           try {
             input.OperatorUpdate();
+            this.inputUpdateFailures.RecordSuccess(input);
           } catch (Exception e) {
-            // An unhandled throw on this background thread would terminate the
-            // whole process; for a live installation the loop must survive it.
-            Debug.WriteLine(
-              "Operator: input " + input.GetType().Name +
-              " threw in OperatorUpdate: " + e);
+            this.RecordInputFailure(input, e);
           }
         }
 
@@ -625,8 +634,13 @@ namespace Spectrum {
         this.OrientationInput.BeginOperatorFrame(frameRuntime);
 
         foreach (var visualizer in activeVisualizers) {
+          // An input may have entered quarantine during the update pass above.
+          if (!this.VisualizerInputsAvailable(visualizer)) {
+            continue;
+          }
           try {
             visualizer.Visualize();
+            this.visualizerFailures.RecordSuccess(visualizer);
           } catch (Exception e) {
             // Keep the engine running even if one visualizer throws mid-frame.
             // Repeat offenders are quarantined so they stop taking the
@@ -636,12 +650,15 @@ namespace Spectrum {
         }
 
         foreach (var output in activeOutputs) {
+          // Activation may have failed after this frame's schedule was built.
+          if (!this.IsOutputAvailable(output)) {
+            continue;
+          }
           try {
             output.OperatorUpdate();
+            this.outputUpdateFailures.RecordSuccess(output);
           } catch (Exception e) {
-            Debug.WriteLine(
-              "Operator: output " + output.GetType().Name +
-              " threw in OperatorUpdate: " + e);
+            this.RecordOutputFailure(output, e);
           }
         }
 
@@ -701,21 +718,55 @@ namespace Spectrum {
         Volatile.Read(ref this.measuredAllocatedBytes));
     }
 
-    // Tracks a visualizer throw and quarantines the visualizer once it has
-    // failed VisualizerQuarantineThreshold times, so a persistently-broken
-    // visualizer is dropped from scheduling instead of throwing every frame.
+    // Tracks consecutive visualizer throws. Successful frames clear the streak,
+    // while a persistently broken renderer is isolated until engine restart.
     private void RecordVisualizerFailure(Visualizer visualizer, Exception e) {
-      this.visualizerFailureCounts.TryGetValue(visualizer, out int count);
-      count++;
-      this.visualizerFailureCounts[visualizer] = count;
-      if (count == VisualizerQuarantineThreshold) {
+      FailureUpdate update = this.visualizerFailures.RecordFailure(visualizer);
+      if (update.NewlyQuarantined) {
+        this.visualizerFaults[visualizer] = FormatFault(visualizer, e);
+        this.PublishVisualizerFaults();
         Debug.WriteLine(
           "Operator: quarantining visualizer " + visualizer.GetType().Name +
-          " after " + count + " failures; last error: " + e);
-      } else if (count < VisualizerQuarantineThreshold) {
+          " after " + update.ConsecutiveFailures +
+          " consecutive failures; last error: " + e);
+      } else if (!this.visualizerFailures.IsQuarantined(visualizer)) {
         Debug.WriteLine(
           "Operator: visualizer " + visualizer.GetType().Name +
           " threw in Visualize: " + e);
+      }
+    }
+
+    private void RecordInputFailure(Input input, Exception e) {
+      FailureUpdate update = this.inputUpdateFailures.RecordFailure(input);
+      if (update.NewlyQuarantined) {
+        this.inputFaults[input] = FormatFault(input, e);
+        this.PublishInputFaults();
+        Debug.WriteLine(
+          "Operator: quarantining input " + input.GetType().Name +
+          " after " + update.ConsecutiveFailures +
+          " consecutive update failures; last error: " + e);
+        this.SetInputActiveSafely(input, false);
+      } else if (!this.inputUpdateFailures.IsQuarantined(input)) {
+        Debug.WriteLine(
+          "Operator: input " + input.GetType().Name +
+          " threw in OperatorUpdate: " + e);
+      }
+    }
+
+    private void RecordOutputFailure(Output output, Exception e) {
+      FailureUpdate update = this.outputUpdateFailures.RecordFailure(output);
+      if (update.NewlyQuarantined) {
+        this.outputFaults[output] = FormatFault(output, e);
+        this.PublishOutputFaults();
+        Debug.WriteLine(
+          "Operator: quarantining output " + output.GetType().Name +
+          " after " + update.ConsecutiveFailures +
+          " consecutive update failures; last error: " + e);
+        this.SetOutputActiveSafely(output, false);
+      } else if (!this.outputUpdateFailures.IsQuarantined(output)) {
+        Debug.WriteLine(
+          "Operator: output " + output.GetType().Name +
+          " threw in OperatorUpdate: " + e);
       }
     }
 
@@ -725,12 +776,11 @@ namespace Spectrum {
       }
       try {
         input.Active = active;
-        if (!active) {
-          this.inputActivationFailures.Remove(input);
-        }
       } catch (Exception e) {
         if (active) {
           this.inputActivationFailures.Add(input);
+          this.inputFaults[input] = FormatFault(input, e);
+          this.PublishInputFaults();
           // An Active setter may have completed part of its initialization
           // before throwing. Best-effort rollback leaves the device in a known
           // inactive state until the operator is restarted.
@@ -754,12 +804,11 @@ namespace Spectrum {
       }
       try {
         output.Active = active;
-        if (!active) {
-          this.outputActivationFailures.Remove(output);
-        }
       } catch (Exception e) {
         if (active) {
           this.outputActivationFailures.Add(output);
+          this.outputFaults[output] = FormatFault(output, e);
+          this.PublishOutputFaults();
           try {
             output.Active = false;
           } catch (Exception rollbackError) {
@@ -774,10 +823,57 @@ namespace Spectrum {
       }
     }
 
-    private bool IsQuarantined(Visualizer visualizer) {
-      return this.visualizerFailureCounts.TryGetValue(
-        visualizer, out int count
-      ) && count >= VisualizerQuarantineThreshold;
+    private void ResetComponentFailures() {
+      this.visualizerFailures.Reset();
+      this.inputUpdateFailures.Reset();
+      this.outputUpdateFailures.Reset();
+      this.inputActivationFailures.Clear();
+      this.outputActivationFailures.Clear();
+      this.visualizerFaults.Clear();
+      this.inputFaults.Clear();
+      this.outputFaults.Clear();
+      this.Telemetry.VisualizerFault = null;
+      this.Telemetry.InputFault = null;
+      this.Telemetry.OutputFault = null;
+    }
+
+    private static string FormatFault(object component, Exception error) =>
+      component.GetType().Name + ": " + error.Message;
+
+    private void PublishVisualizerFaults() {
+      this.Telemetry.VisualizerFault = this.visualizerFaults.Count == 0
+        ? null
+        : string.Join("; ", this.visualizerFaults.Values);
+    }
+
+    private void PublishInputFaults() {
+      this.Telemetry.InputFault = this.inputFaults.Count == 0
+        ? null
+        : string.Join("; ", this.inputFaults.Values);
+    }
+
+    private void PublishOutputFaults() {
+      this.Telemetry.OutputFault = this.outputFaults.Count == 0
+        ? null
+        : string.Join("; ", this.outputFaults.Values);
+    }
+
+    private bool IsInputAvailable(Input input) =>
+      input.Enabled &&
+      !this.inputActivationFailures.Contains(input) &&
+      !this.inputUpdateFailures.IsQuarantined(input);
+
+    private bool IsOutputAvailable(Output output) =>
+      output.Enabled &&
+      !this.outputActivationFailures.Contains(output) &&
+      !this.outputUpdateFailures.IsQuarantined(output);
+
+    private bool VisualizerInputsAvailable(Visualizer visualizer) {
+      if (this.plannedLayerInputs.TryGetValue(
+          visualizer, out ImmutableArray<Input> plannedInputs)) {
+        return this.AllInputsAvailable(plannedInputs);
+      }
+      return this.AllInputsAvailable(visualizer.GetInputs());
     }
 
     // Blocks until roughly one frame budget (1/MaxFramesPerSecond) has elapsed
@@ -809,18 +905,18 @@ namespace Spectrum {
     // per-visualizer delegate + enumerator that LINQ would create on the hot
     // scheduling path. Layer inputs come from the immutable render plan;
     // diagnostics continue to declare theirs directly on the visualizer.
-    private static bool AllInputsEnabled(IReadOnlyList<Input> inputs) {
+    private bool AllInputsAvailable(IReadOnlyList<Input> inputs) {
       for (int i = 0; i < inputs.Count; i++) {
-        if (!inputs[i].Enabled) {
+        if (!this.IsInputAvailable(inputs[i])) {
           return false;
         }
       }
       return true;
     }
 
-    private static bool AllInputsEnabled(ImmutableArray<Input> inputs) {
+    private bool AllInputsAvailable(ImmutableArray<Input> inputs) {
       for (int i = 0; i < inputs.Length; i++) {
-        if (!inputs[i].Enabled) {
+        if (!this.IsInputAvailable(inputs[i])) {
           return false;
         }
       }

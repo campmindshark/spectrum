@@ -7,6 +7,7 @@ on:
       - v*
   pull_request:
     branches: [ "master" ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,7 +28,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '10.0.x'
+        dotnet-version: '10.0.302'
 
     - name: Setup Python
       uses: actions/setup-python@v6
@@ -283,7 +284,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '10.0.x'
+        dotnet-version: '10.0.302'
 
     - name: Setup Python 3.11
       uses: actions/setup-python@v6

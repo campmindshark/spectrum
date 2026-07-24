@@ -48,5 +48,26 @@ namespace Spectrum.Base {
       get => this.layerPlanError;
       set => this.SetField(ref this.layerPlanError, value);
     }
+
+    // Persistent component failures are published when the operator isolates a
+    // component. They remain visible for diagnosis until the engine restarts
+    // (or, for a retired visualizer, until that renderer is released).
+    private string? visualizerFault;
+    public string? VisualizerFault {
+      get => this.visualizerFault;
+      set => this.SetField(ref this.visualizerFault, value);
+    }
+
+    private string? inputFault;
+    public string? InputFault {
+      get => this.inputFault;
+      set => this.SetField(ref this.inputFault, value);
+    }
+
+    private string? outputFault;
+    public string? OutputFault {
+      get => this.outputFault;
+      set => this.SetField(ref this.outputFault, value);
+    }
   }
 }

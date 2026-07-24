@@ -570,11 +570,25 @@
   const TELEMETRY_LABELS = {
     operatorFPS: { label: "Engine", unit: "FPS" },
     domeOPCFPS: { label: "Dome output", unit: "FPS" },
+    layerPlanError: { label: "Layer plan", unit: "", hideWhenEmpty: true },
+    visualizerFault: {
+      label: "Visualizer fault", unit: "", hideWhenEmpty: true
+    },
+    inputFault: { label: "Input fault", unit: "", hideWhenEmpty: true },
+    outputFault: { label: "Output fault", unit: "", hideWhenEmpty: true },
     bpm: { label: "Tempo", unit: "BPM" },
   };
   function applyTelemetry(key, value) {
     if (!telemetryEl) return;
+    const meta = TELEMETRY_LABELS[key] || { label: humanize(key), unit: "" };
     let row = telemetryRows[key];
+    if (meta.hideWhenEmpty && (value === null || value === "")) {
+      if (row) {
+        row.remove();
+        delete telemetryRows[key];
+      }
+      return;
+    }
     if (!row) {
       row = document.createElement("span");
       row.className = "telemetry-item";
@@ -587,7 +601,6 @@
       telemetryEl.appendChild(row);
       telemetryRows[key] = row;
     }
-    const meta = TELEMETRY_LABELS[key] || { label: humanize(key), unit: "" };
     row.querySelector(".telemetry-label").textContent = meta.label;
     const raw = String(value ?? "—");
     const alreadyHasUnit = meta.unit && raw.toUpperCase().includes(meta.unit);

@@ -38,6 +38,9 @@ namespace Spectrum.Web {
       operatorFps = this.op.Telemetry.OperatorFPS,
       domeOpcFps = this.op.Telemetry.DomeBeagleboneOPCFPS,
       layerPlanError = this.op.Telemetry.LayerPlanError,
+      visualizerFault = this.op.Telemetry.VisualizerFault,
+      inputFault = this.op.Telemetry.InputFault,
+      outputFault = this.op.Telemetry.OutputFault,
     };
 
     // Sets the engine on/off through the gateway and reports the resulting

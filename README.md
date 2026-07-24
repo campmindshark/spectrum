@@ -114,9 +114,6 @@ The Ubuntu CI job launches the published executable, waits for its HTTP API,
 persists a setting, sends `SIGTERM`, and verifies the clean shutdown and saved
 configuration.
 
-The remaining hardware and packaging work is tracked in
-[`docs/linux_port.md`](docs/linux_port.md).
-
 ## Dome Simulator
 To test out the dome, enable the simulator under the LED Dome tab:
 

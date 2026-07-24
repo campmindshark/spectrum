@@ -121,6 +121,7 @@ try {
       "-r", "win-x64",
       "--self-contained", "true",
       "-p:PublishSingleFile=false",
+      "-p:SatelliteResourceLanguages=en-US",
       "--artifacts-path", $DotnetArtifactsDirectory,
       "-o", $PublishDirectory
     )
