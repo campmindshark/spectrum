@@ -6,8 +6,6 @@ using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -24,10 +22,8 @@ using static Spectrum.LayerPipeline.Tests.TestAssertions;
 namespace Spectrum.Portability.Tests {
 
   [TestClass]
+  [DoNotParallelize]
   public sealed class PortabilityTests {
-    private static readonly IReadOnlyDictionary<string, Action> TestCases =
-      BuildTestCases();
-
     private static async Task<int> Main(string[] args) {
       if (args.Length == 1 && args[0] == "--fake-pcm-tracker") {
         return RunFakePcmTracker();
@@ -40,39 +36,8 @@ namespace Spectrum.Portability.Tests {
       return await application.RunAsync();
     }
 
-    public static IEnumerable<object[]> DiscoverTestCases() =>
-      TestCases.Keys.OrderBy(name => name)
-        .Select(name => new object[] { name });
-
     [TestMethod]
-    [DoNotParallelize]
-    [DynamicData(nameof(DiscoverTestCases))]
-    public void Run(string name) {
-      TestCases[name]();
-    }
-
-    private static IReadOnlyDictionary<string, Action> BuildTestCases() {
-      var tests = new Dictionary<string, Action>();
-      foreach (MethodInfo method in typeof(PortabilityTests).GetMethods(
-          BindingFlags.NonPublic | BindingFlags.Static)) {
-        if (method.ReturnType == typeof(void) &&
-            method.GetParameters().Length == 0) {
-          tests.Add(method.Name, () => Invoke(method));
-        }
-      }
-      return tests;
-    }
-
-    private static void Invoke(MethodInfo method) {
-      try {
-        method.Invoke(null, null);
-      } catch (TargetInvocationException error)
-          when (error.InnerException != null) {
-        ExceptionDispatchInfo.Capture(error.InnerException).Throw();
-      }
-    }
-
-    private static void DedicatedThreadOwnership() {
+    public void DedicatedThreadOwnership() {
       int callerThread = Environment.CurrentManagedThreadId;
       using var dispatcher =
         new DedicatedThreadApplicationStateDispatcher();
@@ -92,7 +57,8 @@ namespace Spectrum.Portability.Tests {
         "CheckAccess was true away from the state-owner thread");
     }
 
-    private static void DedicatedThreadSerialization() {
+    [TestMethod]
+    public void DedicatedThreadSerialization() {
       using var dispatcher =
         new DedicatedThreadApplicationStateDispatcher();
       const int producerCount = 8;
@@ -114,7 +80,8 @@ namespace Spectrum.Portability.Tests {
         "the serialized state lost a concurrent command");
     }
 
-    private static void DedicatedThreadFailureContainment() {
+    [TestMethod]
+    public void DedicatedThreadFailureContainment() {
       var reported = new TaskCompletionSource<Exception>(
         TaskCreationOptions.RunContinuationsAsynchronously);
       using var dispatcher = new DedicatedThreadApplicationStateDispatcher(
@@ -142,7 +109,8 @@ namespace Spectrum.Portability.Tests {
         "a failed command terminated the state-owner thread");
     }
 
-    private static void DedicatedThreadShutdown() {
+    [TestMethod]
+    public void DedicatedThreadShutdown() {
       var dispatcher = new DedicatedThreadApplicationStateDispatcher();
       int value = 0;
       for (int i = 0; i < 50; i++) {
@@ -160,7 +128,8 @@ namespace Spectrum.Portability.Tests {
       }
     }
 
-    private static void ConfigurationStoreRecovery() {
+    [TestMethod]
+    public void ConfigurationStoreRecovery() {
       string directory = Path.Combine(
         Path.GetTempPath(), "spectrum-portability-" + Guid.NewGuid());
       Directory.CreateDirectory(directory);
@@ -216,7 +185,8 @@ namespace Spectrum.Portability.Tests {
       }
     }
 
-    private static void MadmomRuntimeDiscovery() {
+    [TestMethod]
+    public void MadmomRuntimeDiscovery() {
       string directory = Path.Combine(
         Path.GetTempPath(), "spectrum-madmom-" + Guid.NewGuid());
       string nested = Path.Combine(directory, "publish", "nested");
@@ -288,7 +258,8 @@ namespace Spectrum.Portability.Tests {
       }
     }
 
-    private static void PortableCoreLayerConfiguration() {
+    [TestMethod]
+    public void PortableCoreLayerConfiguration() {
       var config = new global::Spectrum.SpectrumConfiguration();
       config.ReplaceDomeLayerStack(new[] {
         new DomeLayerSettings {
@@ -315,7 +286,8 @@ namespace Spectrum.Portability.Tests {
         "the portable built-in catalog did not compile typed layer options");
     }
 
-    private static void LinuxAlsaAudioInput() {
+    [TestMethod]
+    public void LinuxAlsaAudioInput() {
       var config = new global::Spectrum.SpectrumConfiguration {
         audioDeviceID = "hw:test,0",
       };
@@ -355,7 +327,8 @@ namespace Spectrum.Portability.Tests {
       failing.Active = false;
     }
 
-    private static void LinuxMadmomPcmInput() {
+    [TestMethod]
+    public void LinuxMadmomPcmInput() {
       var config = new global::Spectrum.SpectrumConfiguration {
         audioDeviceID = "hw:test,0",
         beatInput = 1,
@@ -416,7 +389,8 @@ namespace Spectrum.Portability.Tests {
         "the Linux Madmom child was not configured for owned PCM stdin");
     }
 
-    private static void LinuxMadmomProcessLifecycle() {
+    [TestMethod]
+    public void LinuxMadmomProcessLifecycle() {
       var config = new global::Spectrum.SpectrumConfiguration {
         audioDeviceID = "hw:test,0",
         beatInput = 1,
@@ -499,7 +473,8 @@ namespace Spectrum.Portability.Tests {
       return 0;
     }
 
-    private static void PortableProDjLinkInput() {
+    [TestMethod]
+    public void PortableProDjLinkInput() {
       using var blocker = new UdpClient();
       blocker.ExclusiveAddressUse = true;
       blocker.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
@@ -575,7 +550,8 @@ namespace Spectrum.Portability.Tests {
         "the Pro DJ Link input stayed enabled for another tempo source");
     }
 
-    private static void PortableRuntimeAssemblyBoundary() {
+    [TestMethod]
+    public void PortableRuntimeAssemblyBoundary() {
       var assembly = typeof(global::Spectrum.Operator).Assembly;
       var forbidden = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
         "Audio",
@@ -600,7 +576,8 @@ namespace Spectrum.Portability.Tests {
         "the portable disabled inputs were not composed");
     }
 
-    private static void PortableEarthTextureDecoder() {
+    [TestMethod]
+    public void PortableEarthTextureDecoder() {
       using Stream? texture = typeof(LEDDomeEarthVisualizer).Assembly
         .GetManifestResourceStream(
           LEDDomeEarthVisualizer.TextureResourceName);
@@ -613,7 +590,8 @@ namespace Spectrum.Portability.Tests {
         "the portable decoder returned an invalid RGB buffer");
     }
 
-    private static void PortableWebHostServesOperatorApi() {
+    [TestMethod]
+    public void PortableWebHostServesOperatorApi() {
       ParameterRegistry desktopRegistry =
         global::Spectrum.Web.SpectrumParameters.BuildRegistry(
           nativeWindowControlsAvailable: true);
@@ -778,7 +756,8 @@ namespace Spectrum.Portability.Tests {
       }
     }
 
-    private static void ConfigurationSessionPersistence() {
+    [TestMethod]
+    public void ConfigurationSessionPersistence() {
       string directory = Path.Combine(
         Path.GetTempPath(), "spectrum-session-" + Guid.NewGuid());
       Directory.CreateDirectory(directory);
@@ -841,6 +820,64 @@ namespace Spectrum.Portability.Tests {
           "session shutdown did not flush exactly one pending save");
         Assert(File.ReadAllText(primary).Contains("shutdown"),
           "the shutdown flush did not persist the latest generation");
+      } finally {
+        Directory.Delete(directory, recursive: true);
+      }
+    }
+
+    [TestMethod]
+    public void
+      ConfigurationPersistenceShutdownInvalidatesQueuedDebounce() {
+      string directory = Path.Combine(
+        Path.GetTempPath(), "spectrum-session-queued-" + Guid.NewGuid());
+      Directory.CreateDirectory(directory);
+      try {
+        string primary = Path.Combine(directory, "config.txt");
+        string backup = Path.Combine(directory, "config.old.txt");
+        string defaults = Path.Combine(directory, "config.default.txt");
+        File.WriteAllText(defaults, "packaged");
+        int saveCount = 0;
+        var store = new ConfigurationFileStore<
+          global::Spectrum.SpectrumConfiguration>(
+            primary, backup, defaults,
+            (stream, value) => {
+              Interlocked.Increment(ref saveCount);
+              using var writer = new StreamWriter(
+                stream, Encoding.UTF8, 1024, leaveOpen: true);
+              writer.Write(value.domeBeagleboneOPCAddress);
+              writer.Flush();
+            },
+            stream => {
+              using var reader = new StreamReader(
+                stream, Encoding.UTF8, true, 1024, leaveOpen: true);
+              return new global::Spectrum.SpectrumConfiguration {
+                domeBeagleboneOPCAddress = reader.ReadToEnd(),
+              };
+            });
+
+        var dispatcher =
+          new Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures
+            .QueuedStateDispatcher();
+        using var session = new global::Spectrum.SpectrumConfigurationSession(
+          store, dispatcher, TimeSpan.Zero);
+        session.Configuration.domeBeagleboneOPCAddress = "shutdown";
+        Assert(dispatcher.WaitForPending(TimeSpan.FromSeconds(2)),
+          "the zero-delay configuration debounce was not queued");
+
+        session.Dispose();
+        Assert(Volatile.Read(ref saveCount) == 1 &&
+            File.ReadAllText(primary).Contains("shutdown"),
+          "shutdown did not perform exactly one final configuration save");
+        Assert(dispatcher.PendingCount == 1,
+          "shutdown unexpectedly consumed owner work from a foreign thread");
+
+        dispatcher.Drain();
+        Assert(Volatile.Read(ref saveCount) == 1,
+          "queued debounce work saved again after the final shutdown save");
+
+        session.Configuration.domeBeagleboneOPCAddress = "disposed";
+        Assert(dispatcher.PendingCount == 0,
+          "a disposed persistence listener accepted another save");
       } finally {
         Directory.Delete(directory, recursive: true);
       }
@@ -982,7 +1019,8 @@ namespace Spectrum.Portability.Tests {
       }
     }
 
-    private static void PortableHostLifecycle() {
+    [TestMethod]
+    public void PortableHostLifecycle() {
       string directory = Path.Combine(
         Path.GetTempPath(), "spectrum-host-" + Guid.NewGuid());
       Directory.CreateDirectory(directory);
@@ -1057,7 +1095,8 @@ namespace Spectrum.Portability.Tests {
       }
     }
 
-    private static void HeadlessConfigurationPaths() {
+    [TestMethod]
+    public void HeadlessConfigurationPaths() {
       string root = Path.GetPathRoot(Path.GetFullPath(Path.GetTempPath())) ??
         throw new InvalidOperationException(
           "the temporary directory has no filesystem root");
@@ -1121,7 +1160,8 @@ namespace Spectrum.Portability.Tests {
         "the Linux host did not fall back to ~/.config/spectrum");
     }
 
-    private static void LinuxSerialPortDiscovery() {
+    [TestMethod]
+    public void LinuxSerialPortDiscovery() {
       string byIdWand = "/dev/serial/by-id/usb-spectrum-wand";
       string byPathWand = "/dev/serial/by-path/pci-wand";
       string byPathBridge = "/dev/serial/by-path/pci-bridge";
@@ -1147,7 +1187,8 @@ namespace Spectrum.Portability.Tests {
         "stable aliases did not replace transient or duplicate Linux ports");
     }
 
-    private static void OpcWireFrame() {
+    [TestMethod]
+    public void OpcWireFrame() {
       byte[] partialPayload = {
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
       };

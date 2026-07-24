@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Spectrum.Base {
 
@@ -25,6 +27,7 @@ namespace Spectrum.Base {
     private readonly Action<Exception> reportSaveError;
     private readonly object gate = new();
     private Timer? timer;
+    private readonly List<Task> timerDisposals = new();
     private long generation;
     private bool savePending;
     private bool disposed;
@@ -55,23 +58,27 @@ namespace Spectrum.Base {
     }
 
     public void SaveNow() {
+      Task timerCallbacks;
       lock (this.gate) {
         this.ThrowIfDisposed();
-        this.CancelPendingSaveLocked();
+        timerCallbacks = this.CancelPendingSaveLocked();
       }
+      this.JoinTimerCallbacks(timerCallbacks);
       this.SaveOnOwnerThread();
     }
 
     public void Dispose() {
+      Task timerCallbacks;
       lock (this.gate) {
         if (this.disposed) {
           return;
         }
         this.disposed = true;
         this.value.PropertyChanged -= this.ValueChanged;
-        this.CancelPendingSaveLocked();
+        timerCallbacks = this.CancelPendingSaveLocked();
       }
 
+      this.JoinTimerCallbacks(timerCallbacks);
       // Match the desktop host's existing close behavior: always attempt one
       // final save, even when no debounce timer is pending.
       this.SaveOnOwnerThread();
@@ -98,20 +105,25 @@ namespace Spectrum.Base {
         }
         this.savePending = true;
         long scheduledGeneration = ++this.generation;
-        this.timer?.Dispose();
+        this.RetireTimerLocked();
         this.timer = new Timer(
-          _ => this.DebounceElapsed(scheduledGeneration),
-          null,
+          this.DebounceElapsed,
+          scheduledGeneration,
+          Timeout.InfiniteTimeSpan,
+          Timeout.InfiniteTimeSpan);
+        this.timer.Change(
           this.debounceDelay,
           Timeout.InfiniteTimeSpan);
       }
     }
 
-    private async void DebounceElapsed(long scheduledGeneration) {
+    private void DebounceElapsed(object? state) {
+      long scheduledGeneration = (long)(
+        state ?? throw new InvalidOperationException(
+          "The configuration debounce generation was not supplied."));
       try {
-        await this.stateDispatcher.InvokeAsync(
-          () => this.SaveIfCurrent(scheduledGeneration))
-          .ConfigureAwait(false);
+        this.stateDispatcher.Post(
+          () => this.SaveIfCurrent(scheduledGeneration));
       } catch (Exception error) {
         lock (this.gate) {
           if (this.disposed) {
@@ -129,8 +141,7 @@ namespace Spectrum.Base {
           return;
         }
         this.savePending = false;
-        this.timer?.Dispose();
-        this.timer = null;
+        this.RetireTimerLocked();
       }
       this.SaveCore();
     }
@@ -159,11 +170,28 @@ namespace Spectrum.Base {
       }
     }
 
-    private void CancelPendingSaveLocked() {
+    private Task CancelPendingSaveLocked() {
       this.savePending = false;
       this.generation++;
-      this.timer?.Dispose();
+      this.RetireTimerLocked();
+      return Task.WhenAll(this.timerDisposals);
+    }
+
+    private void RetireTimerLocked() {
+      if (this.timer != null) {
+        this.timerDisposals.Add(this.timer.DisposeAsync().AsTask());
+      }
       this.timer = null;
+      this.timerDisposals.RemoveAll(
+        disposal => disposal.IsCompletedSuccessfully);
+    }
+
+    private void JoinTimerCallbacks(Task timerCallbacks) {
+      try {
+        timerCallbacks.GetAwaiter().GetResult();
+      } catch (Exception error) {
+        this.ReportError(error);
+      }
     }
 
     private void ReportError(Exception error) {
