@@ -114,6 +114,11 @@ The Ubuntu CI job launches the published executable, waits for its HTTP API,
 persists a setting, sends `SIGTERM`, and verifies the clean shutdown and saved
 configuration.
 
+## User manual
+
+See the [Dome User Manual](docs/dome-user-manual.md) for desktop setup, browser
+show controls, maintenance, simulator use, and troubleshooting.
+
 ## Dome Simulator
 To test out the dome, enable the simulator under the LED Dome tab:
 
