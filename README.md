@@ -119,6 +119,18 @@ configuration.
 See the [Dome User Manual](docs/dome-user-manual.md) for desktop setup, browser
 show controls, maintenance, simulator use, and troubleshooting.
 
+## Development and on-site troubleshooting
+
+See the
+[On-playa Development and Troubleshooting Guide](docs/on-playa-development-and-troubleshooting.md)
+for offline build and recovery preparation, architecture, safe development
+workflows, runtime diagnostics, API checks, hardware-boundary troubleshooting,
+and common code-change recipes.
+
+For a compact offline reference, see the
+[Spectrum Development Cheat Sheet](docs/on-playa-development-cheat-sheet.md)
+for magic constants, source locations, runtime invariants, and fast commands.
+
 ## Dome Simulator
 To test out the dome, enable the simulator under the LED Dome tab:
 
