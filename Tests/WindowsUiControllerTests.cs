@@ -6,6 +6,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Spectrum.Base;
+using static Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures;
 using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
@@ -20,6 +22,8 @@ namespace Spectrum.LayerPipeline.Tests {
         DomeOpcAddressUiOwnsValidationAndSynchronization);
       run(nameof(OperatorSettingsOwnBindingsAndAudioSelection),
         OperatorSettingsOwnBindingsAndAudioSelection);
+      run(nameof(LocalLayerEditsRetainSliderControls),
+        LocalLayerEditsRetainSliderControls);
       run(nameof(MidiDeviceUiOwnsDiscoveryAndAssignment),
         MidiDeviceUiOwnsDiscoveryAndAssignment);
       run(nameof(MidiPresetUiOwnsSparseIdentityAndEditModes),
@@ -286,6 +290,37 @@ namespace Spectrum.LayerPipeline.Tests {
         Assert(midiEnabled.IsChecked == false &&
             Math.Abs(config.domeBrightness - 0.7) < 0.0001,
           "settings bindings did not synchronize both directions");
+      });
+    }
+
+    private static void LocalLayerEditsRetainSliderControls() {
+      RunOnStaThread("LocalLayerSliderUiTest", () => {
+        DomeLayerSettings layer = Layer("wave", "native-slider");
+        var config = ConfigurationWithLayers(layer);
+        var controller = new global::Spectrum.DomeLayersController(
+          config,
+          new ItemsControl(),
+          new Button(),
+          new Button(),
+          new Button());
+        global::Spectrum.DomeLayerRowViewModel original =
+          controller.Rows.Single();
+
+        original.Opacity = 0.35;
+        DrainDispatcher(Dispatcher.CurrentDispatcher);
+
+        Assert(ReferenceEquals(controller.Rows.Single(), original) &&
+            Math.Abs(config.domeLayerStack[0].Opacity - 0.35) < 0.0001,
+          "a local layer slider edit rebuilt its own captured control");
+
+        DomeLayerSettings external = Layer("wave", "native-slider");
+        external.Opacity = 0.8;
+        config.ReplaceDomeLayerStack(new[] { external });
+        DrainDispatcher(Dispatcher.CurrentDispatcher);
+
+        Assert(!ReferenceEquals(controller.Rows.Single(), original) &&
+            Math.Abs(controller.Rows.Single().Opacity - 0.8) < 0.0001,
+          "an external layer-stack edit did not refresh the native controls");
       });
     }
 

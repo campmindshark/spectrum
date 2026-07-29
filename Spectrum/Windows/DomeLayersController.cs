@@ -30,6 +30,11 @@ namespace Spectrum {
     // True while RebuildRows is repopulating Rows from config, so the row-change
     // handlers don't publish back mid-rebuild.
     private bool rebuilding;
+    // A local edit has already updated these row view models. Ignore the
+    // synchronous stack notification raised by that edit so a slider's control
+    // is not replaced while its thumb owns mouse capture. Notifications from
+    // web edits, scene loads, or another native panel still rebuild the rows.
+    private bool publishing;
     // UI-only disclosure state, retained when a web edit or scene load rebuilds
     // the row view models. Stable layer IDs make the preference reorder-safe.
     private readonly Dictionary<string, bool> expandedByInstanceId = new();
@@ -104,6 +109,9 @@ namespace Spectrum {
         return;
       }
       if (e.PropertyName != "domeLayerStack") {
+        return;
+      }
+      if (this.publishing) {
         return;
       }
       this.dispatcher.BeginInvoke(new Action(this.RebuildRows));
@@ -443,7 +451,12 @@ namespace Spectrum {
           OperationParams = operationParams,
         });
       }
-      this.editor.ReplaceDomeLayerStack(stack);
+      this.publishing = true;
+      try {
+        this.editor.ReplaceDomeLayerStack(stack);
+      } finally {
+        this.publishing = false;
+      }
     }
   }
 
