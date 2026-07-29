@@ -116,15 +116,15 @@ namespace Spectrum.Base {
       this.PaletteColor = paletteColor;
     }
 
-    // Resolve a prism blend's effective angle. When `follow` is set and a wand
-    // is actually the orientation center, the wand supplies the angle entirely.
-    // Otherwise (follow off, or no wand available) the angle is driven purely
-    // by the time-varying `spin` (turns/sec) — so spin 0 holds a fixed axis
-    // and any nonzero spin sweeps through every angle.
+    // Resolve a prism blend's effective angle. When `follow` is set and the
+    // orientation provider has a current aim (wand or idle), it supplies the
+    // angle entirely. Otherwise (follow off, or no orientation source) the
+    // angle is driven purely by the time-varying `spin` (turns/sec) — so spin
+    // 0 holds a fixed axis and any nonzero spin sweeps through every angle.
     public double PrismAngle(double spin, bool follow) {
       if (follow && this.Orientation != null &&
-          this.Orientation.TryGetAngle(out double wandAngle)) {
-        return wandAngle;
+          this.Orientation.TryGetAngle(out double orientationAngle)) {
+        return orientationAngle;
       }
       return 2 * Math.PI * spin * this.Seconds;
     }

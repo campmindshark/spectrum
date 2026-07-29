@@ -13,11 +13,12 @@ namespace Spectrum.Base {
     // when its selecting renderer does not use orientation itself.
     void Update();
 
-    // The spotlighted wand's aim as an angle (radians) in the dome's projected
-    // plane. Returns false when no wand is currently the orientation center
-    // (idle, or none moving), in which case a following blend keeps its static
-    // angle. The value is refreshed once per compositor frame before the first
-    // operation that declares ReadsOrientation.
+    // The current aim as an angle (radians) in the dome's projected plane.
+    // Implementations may source it from a spotlighted wand or an idle
+    // orientation. Returns false only when no angle is available, in which
+    // case a following blend keeps its static angle. The value is refreshed
+    // once per compositor frame before the first operation that declares
+    // ReadsOrientation.
     bool TryGetAngle(out double angle);
 
   }

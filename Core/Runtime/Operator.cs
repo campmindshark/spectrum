@@ -215,9 +215,9 @@ namespace Spectrum {
       this.layerEnvironment = new ConfigurationDomeLayerEnvironment();
 
       this.outputs = new List<Output>();
-      // orientationCenter doubles as the prism blends' live wand-angle source
-      // (Follow Orientation), so ChromaticFringe/Iridescence can track the
-      // spotlighted wand.
+      // orientationCenter doubles as the blends' live aim source (Follow
+      // Orientation), so ChromaticFringe/Iridescence/Kaleidoscope track the
+      // spotlighted wand or the shared idle orientation.
       var dome = new LEDDomeOutput(
         config, this.Telemetry, this.BeatBroadcaster, orientationCenter);
       this.outputs.Add(dome);

@@ -825,8 +825,9 @@ full-dome fringe, or a moving shape to reveal the split locally.
   channels.
 - **Angle Spin** — Rotates the split axis over time. Positive and negative
   values rotate in opposite directions; zero holds a fixed axis.
-- **Follow Orientation** — Uses the current spotlighted wand angle for the
-  split axis. While a wand angle is available, it replaces Angle Spin.
+- **Follow Orientation** — Uses the current wand or idle orientation angle for
+  the split axis. While an orientation angle is available, it replaces Angle
+  Spin.
 
 Opacity controls how strongly the separated channels replace the original
 composite inside the mask.
@@ -866,8 +867,9 @@ structure.
   curvature.
 - **Light Spin** — Rotates the virtual light around the dome. Positive and
   negative values rotate in opposite directions.
-- **Follow Orientation** — Uses the spotlighted wand angle for the virtual
-  light. While a wand angle is available, it replaces Light Spin.
+- **Follow Orientation** — Uses the current wand or idle orientation angle for
+  the virtual light. While an orientation angle is available, it replaces
+  Light Spin.
 
 The source visualizer supplies the mask. Layer opacity and Sheen Strength both
 scale the recoloring.
@@ -906,8 +908,8 @@ to reveal kaleidoscopic regions inside an otherwise normal look.
 - **Focal Angle** — Sets the direction in which the folding center is offset.
 - **Focal Distance** — Moves the folding center away from the center of the
   dome. At zero, Focal Angle has no visible effect.
-- **Follow Orientation** — Uses the spotlighted wand angle as the Focal Angle.
-  Sector Spin continues to rotate the folded pattern.
+- **Follow Orientation** — Uses the current wand or idle orientation angle as
+  the Focal Angle. Sector Spin continues to rotate the folded pattern.
 
 Opacity mixes the folded sample with the original composite inside the mask.
 

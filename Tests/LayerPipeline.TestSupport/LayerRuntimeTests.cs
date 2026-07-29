@@ -21,6 +21,7 @@ namespace Spectrum.LayerPipeline.Tests {
       run(nameof(RendererStoreLifecycle), RendererStoreLifecycle);
       run(nameof(RendererStoreRollsBackGeneration), RendererStoreRollsBackGeneration);
       run(nameof(TypedOptionsPreserveNumericCasts), TypedOptionsPreserveNumericCasts);
+      run(nameof(IdleOrientationSuppliesBlendAngle), IdleOrientationSuppliesBlendAngle);
       run(nameof(EarthTextureFollowsSpotlight), EarthTextureFollowsSpotlight);
       run(nameof(PlanFreezesRendererInputs), PlanFreezesRendererInputs);
     }
@@ -221,6 +222,32 @@ namespace Spectrum.LayerPipeline.Tests {
         BuiltInOptions<VortexLayerOptions>(vortex);
       Assert(vortexOptions.AudioBrightness && vortexOptions.BeatSpeed,
         "vortex audio/beat hooks did not compile into renderer options");
+    }
+
+    private static void IdleOrientationSuppliesBlendAngle() {
+      var config = new global::Spectrum.SpectrumConfiguration();
+      var input = new OrientationInput(config, new InlineGateway(), false);
+      var center = new OrientationCenter(config, input);
+
+      input.BeginOperatorFrame();
+      center.Update(1);
+
+      Assert(center.Idle,
+        "an orientation center with no connected wands was not idle");
+      Assert(center.TryGetAngle(out double angle),
+        "the idle orientation did not supply an angle to following blends");
+
+      Vector3 idlePoint = Vector3.Transform(
+        OrientationCenter.Spot, Quaternion.Conjugate(center.CurrentCenter));
+      AssertClose(Math.Atan2(idlePoint.Y, idlePoint.X), angle,
+        "the blend angle did not follow the idle orientation point");
+
+      DomeTopology topology = OnePixelTopology();
+      var context = new DomeBlendContext(
+        new DomeFrame(topology), new DomeFrame(topology), null,
+        EmptyCompositeOptions.Instance, 1, 1, center);
+      AssertClose(angle, context.PrismAngle(.25, true),
+        "Follow Orientation did not override spin with the idle angle");
     }
 
     private static void EarthTextureFollowsSpotlight() {

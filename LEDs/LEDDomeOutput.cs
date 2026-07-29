@@ -33,7 +33,7 @@ namespace Spectrum.LEDs {
     public const int NumDomeBoxes = DomeOutputMapper.NumDomeBoxes;
     public const int NumPortsPerBox = DomeOutputMapper.NumPortsPerBox;
 
-    // Live wand angle for the prism blends' "Follow Orientation" option.
+    // Live wand/idle angle for blends' "Follow Orientation" option.
     // Nullable — a dome wired up without an orientation source
     // simply never follows and the blends use their static angle.
     public LEDDomeOutput(

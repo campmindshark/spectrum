@@ -24,7 +24,7 @@ namespace Spectrum.Base {
   // axis, B from the opposite offset, G stays in place. offset = how far apart
   // the R and B images land; spin = rotate the split axis over time
   // (turns/sec, signed; 0 holds a fixed axis); follow = drive the axis from
-  // the spotlighted wand's orientation instead, in which case spin is
+  // the current wand or idle orientation instead, in which case spin is
   // disregarded.
   internal sealed class ChromaticFringeBlend : DomeBlend {
     public override string Id => "ChromaticFringe";
@@ -238,7 +238,7 @@ namespace Spectrum.Base {
   // the pixel's own brightness so unlit pixels stay dark. strength = how far
   // it recolours (0 = off, 1 = full); spin = sweep the light's azimuth over
   // time (turns/sec, signed; 0 holds it fixed); follow = drive the azimuth
-  // from the spotlighted wand's orientation instead, in which case spin is
+  // from the current wand or idle orientation instead, in which case spin is
   // disregarded. No neighbor sampling, so no snapshot needed.
   internal sealed class IridescenceBlend : DomeBlend {
     public override string Id => "Iridescence";

@@ -116,18 +116,13 @@ namespace Spectrum.Visualizers {
     // first moving) wand's rotation, or the idle dummy pointer's orientation.
     public Quaternion CurrentCenter => this.currentCenter;
 
-    // OrientationAngleProvider: the spotlight center's azimuth in the projected
-    // plane, for the prism blends that follow the wand. Only reports a wand
-    // (returns true) when one is actually the center — idle drift and "no wand
-    // moving" report false so a following blend falls back to its static angle
-    // rather than chasing the screen-saver. The dome point the spotlight centers
-    // on is where Transform(pixel, rotation) hits Spot, i.e.
+    // OrientationAngleProvider: the current center's azimuth in the projected
+    // plane, for blends that follow orientation. This includes the shared idle
+    // center when no wand is moving, keeping compositor-only effects aligned
+    // with orientation-driven renderers. The dome point the center lands on is
+    // where Transform(pixel, rotation) hits Spot, i.e.
     // Transform(Spot, conjugate(rotation)); its atan2 is the axis to follow.
     public bool TryGetAngle(out double angle) {
-      if (this.idle || this.spotlightId == -1) {
-        angle = 0;
-        return false;
-      }
       Vector3 center =
         Vector3.Transform(Spot, Quaternion.Conjugate(this.currentCenter));
       double x = center.X;
