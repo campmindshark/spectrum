@@ -294,6 +294,9 @@ namespace Spectrum.Base {
       LEDDomeOutputPixel[] pixels = ctx.Dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
       double o = ctx.Opacity;
+      if (o == 0 || strength == 0) {
+        return;
+      }
       for (int i = 0; i < pixels.Length; i++) {
         double w = o * src[i].a * strength;
         if (w == 0) {
@@ -303,9 +306,7 @@ namespace Spectrum.Base {
         double t = (d + 1) * 0.5 * bands;
         t -= Math.Floor(t); // wrap into 0..1 so bands repeat
         LEDColor.SpectralColor(t, out double sr, out double sg, out double sb);
-        double v = Math.Max(
-          pixels[i].r, Math.Max(pixels[i].g, pixels[i].b)) / 255;
-        pixels[i].LerpRGB(sr * v, sg * v, sb * v, w);
+        pixels[i].LerpRGBScaledToBrightness(sr, sg, sb, w);
       }
     }
   }

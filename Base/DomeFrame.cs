@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace Spectrum.Base {
 
@@ -253,6 +254,21 @@ namespace Spectrum.Base {
       colorDirty = true;
     }
 
+    // Add's render loop used to read three properties from the source array,
+    // call AddRGB, then index the two arrays again to publish hue. Keep that
+    // exact operation in one struct call so the JIT can hold both pixels in
+    // registers and perform one pair of array bounds checks per pixel.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void AddScaledRGBAndHue(
+      in LEDDomeOutputPixel src, double scale
+    ) {
+      _r += src._r * scale;
+      _g += src._g * scale;
+      _b += src._b * scale;
+      hue = src.hue;
+      colorDirty = true;
+    }
+
     // Lerp the color channels toward (tr, tg, tb) by weight w (coverage and hue
     // untouched) — the masked-adjustment shape shared by Desaturate, Hue and the
     // prism blends.
@@ -260,6 +276,22 @@ namespace Spectrum.Base {
       _r = tr * w + _r * (1 - w);
       _g = tg * w + _g * (1 - w);
       _b = tb * w + _b * (1 - w);
+      colorDirty = true;
+    }
+
+    // Lerp a normalized tint after scaling it to this pixel's current peak
+    // brightness. Iridescence applies this to every masked pixel; doing the
+    // max-channel read and lerp together avoids three channel accessor calls
+    // and a second struct operation.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void LerpRGBScaledToBrightness(
+      double tr, double tg, double tb, double w
+    ) {
+      double brightness = Math.Max(_r, Math.Max(_g, _b)) / 255;
+      double inverse = 1 - w;
+      _r = tr * brightness * w + _r * inverse;
+      _g = tg * brightness * w + _g * inverse;
+      _b = tb * brightness * w + _b * inverse;
       colorDirty = true;
     }
 

@@ -51,8 +51,7 @@ namespace Spectrum.Base {
         return;
       }
       for (int i = 0; i < dest.Length; i++) {
-        dest[i].AddRGB(src[i].r * o, src[i].g * o, src[i].b * o);
-        dest[i].hue = src[i].hue;
+        dest[i].AddScaledRGBAndHue(in src[i], o);
       }
     }
   }
