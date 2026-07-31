@@ -46,6 +46,8 @@ namespace Spectrum.Visualizers {
     private readonly LayerRendererRuntime runtime;
     private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
+    private readonly InterferenceSeed[] interferenceSeeds;
+    private double interferenceSeedScale = double.NaN;
 
     // Wall-clock accumulator advanced by speed * elapsed each frame so the
     // animation is frame-rate independent (same pattern as NoiseCloud/Wave).
@@ -62,6 +64,12 @@ namespace Spectrum.Visualizers {
     private const double OffsetX = 23.0;
     private const double OffsetY = 17.0;
 
+    // Interference uses the same five time phases for every pixel in a frame.
+    // Keep their sine/cosine pairs here so the hot pixel loop only evaluates
+    // trigonometry for the warped coordinates.
+    private readonly InterferencePhase[] interferencePhases =
+      new InterferencePhase[Iterations];
+
     public LEDDomeCausticsVisualizer(
       LayerRendererRuntime runtime,
       DomeRenderContext dome
@@ -69,6 +77,8 @@ namespace Spectrum.Visualizers {
       this.runtime = runtime;
       this.dome = dome;
       this.buffer = this.dome.MakeDomeFrame();
+      this.interferenceSeeds =
+        new InterferenceSeed[this.buffer.pixels.Length];
     }
 
     public int Priority => 2;
@@ -111,23 +121,29 @@ namespace Spectrum.Visualizers {
       bool refracting =
         this.runtime.Snapshot.OperationId == DomeBlend.Refract.Id;
 
+      if (method != 0 && method != 2) {
+        PrepareInterferencePhases(t, this.interferencePhases);
+        this.PrepareInterferenceSeeds(scale);
+      }
+
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         ref var pixel = ref this.buffer.pixels[i];
-        DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
 
         double v, gx = 0, gy = 0, gradGain = GradGain;
         if (method == 2) {
           // Lens evaluates its wave sum once per pixel and gets luminance,
           // ∇h, and ∇²h from the same pass — the gradient is closed form, so
           // Refract costs no extra field evaluations here.
+          DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
           double px = point.X * scale + OffsetX;
           double py = point.Y * scale + OffsetY;
           v = LensField(px, py, t, refracting, out gx, out gy);
           gradGain = LensGradGain;
-        } else {
+        } else if (method == 0) {
+          DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
           double px = point.X * scale + OffsetX;
           double py = point.Y * scale + OffsetY;
-          v = Field(method, px, py, t);
+          v = ShimmerField(px, py, t);
           if (refracting) {
             // Forward-difference gradient of the raw field (pre-sharpness —
             // the pow-sharpened luminance is near-flat everywhere except at
@@ -135,8 +151,32 @@ namespace Spectrum.Visualizers {
             // field). Sampled in scaled coordinates, so `scale` sets the
             // shimmer's spatial frequency without changing its published
             // magnitude.
-            gx = (Field(method, px + GradEps, py, t) - v) / GradEps;
-            gy = (Field(method, px, py + GradEps, t) - v) / GradEps;
+            gx = (ShimmerField(px + GradEps, py, t) - v) / GradEps;
+            gy = (ShimmerField(px, py + GradEps, t) - v) / GradEps;
+          }
+        } else {
+          InterferenceSeed seed = this.interferenceSeeds[i];
+          v = InterferenceField(
+            seed.X, seed.Y,
+            seed.SinX, seed.CosX, seed.SinY, seed.CosY,
+            this.interferencePhases);
+          if (refracting) {
+            double offsetSinX =
+              seed.SinX * GradCos + seed.CosX * GradSin;
+            double offsetCosX =
+              seed.CosX * GradCos - seed.SinX * GradSin;
+            double offsetSinY =
+              seed.SinY * GradCos + seed.CosY * GradSin;
+            double offsetCosY =
+              seed.CosY * GradCos - seed.SinY * GradSin;
+            gx = (InterferenceField(
+              seed.X + GradEps, seed.Y,
+              offsetSinX, offsetCosX, seed.SinY, seed.CosY,
+              this.interferencePhases) - v) / GradEps;
+            gy = (InterferenceField(
+              seed.X, seed.Y + GradEps,
+              seed.SinX, seed.CosX, offsetSinY, offsetCosY,
+              this.interferencePhases) - v) / GradEps;
           }
         }
 
@@ -167,18 +207,12 @@ namespace Spectrum.Visualizers {
     // is ~2π there, so this is well sub-feature) — big enough to smooth over
     // Interference's reciprocal-trig spikes rather than chase them.
     private const double GradEps = 0.25;
+    private static readonly double GradSin = Math.Sin(GradEps);
+    private static readonly double GradCos = Math.Cos(GradEps);
     // Normalizes typical field slopes (~0.2 for Shimmer, up to ~1 at
     // Interference's filament walls) so the published magnitude spans the
     // 0..1 alpha range and saturates where the surface is steepest.
     private const double GradGain = 2.5;
-
-    // The raw (pre-sharpness) field for the selected method, in [0, ~1] —
-    // the shared evaluation for both luminance and the gradient taps.
-    private static double Field(int method, double x, double y, double t) {
-      return method == 0
-        ? ShimmerField(x, y, t)
-        : InterferenceField(x, y, t);
-    }
 
     // Tier 0: four summed sines folded to [0,1] (the caller pow-sharpens).
     // Cheap and smooth — soft interfering bands, not true filaments, but it
@@ -208,20 +242,87 @@ namespace Spectrum.Visualizers {
     // instead of bright filaments on dark (~0.3 with this constant).
     private const double TermScale = 1.25;
 
-    private static double InterferenceField(double x, double y, double t) {
+    private readonly struct InterferencePhase {
+      public readonly double Sin;
+      public readonly double Cos;
+
+      public InterferencePhase(double value) {
+        (this.Sin, this.Cos) = Math.SinCos(value);
+      }
+    }
+
+    private readonly struct InterferenceSeed {
+      public readonly double X;
+      public readonly double Y;
+      public readonly double SinX;
+      public readonly double CosX;
+      public readonly double SinY;
+      public readonly double CosY;
+
+      public InterferenceSeed(double x, double y) {
+        this.X = x;
+        this.Y = y;
+        (this.SinX, this.CosX) = Math.SinCos(x);
+        (this.SinY, this.CosY) = Math.SinCos(y);
+      }
+    }
+
+    private static void PrepareInterferencePhases(
+      double t, InterferencePhase[] phases
+    ) {
+      for (int i = 0; i < Iterations; i++) {
+        int n = i + 1;
+        phases[i] = new InterferencePhase(t * (1.0 - 3.5 / n));
+      }
+    }
+
+    private void PrepareInterferenceSeeds(double scale) {
+      if (scale == this.interferenceSeedScale) {
+        return;
+      }
+      for (int i = 0; i < this.interferenceSeeds.Length; i++) {
+        DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
+        this.interferenceSeeds[i] = new InterferenceSeed(
+          point.X * scale + OffsetX,
+          point.Y * scale + OffsetY);
+      }
+      this.interferenceSeedScale = scale;
+    }
+
+    private static double InterferenceField(
+      double x, double y,
+      double sinIx, double cosIx, double sinIy, double cosIy,
+      InterferencePhase[] phases
+    ) {
       double ix = x, iy = y;
       double c = 1.0;
-      for (int n = 1; n <= Iterations; n++) {
-        double tn = t * (1.0 - 3.5 / n);
-        double nx = x + Math.Cos(tn - ix) + Math.Sin(tn + iy);
-        double ny = y + Math.Sin(tn - iy) + Math.Cos(tn + ix);
+      for (int i = 0; i < Iterations; i++) {
+        InterferencePhase phase = phases[i];
+        double nx = x
+          + phase.Cos * cosIx + phase.Sin * sinIx
+          + phase.Sin * cosIy + phase.Cos * sinIy;
+        double ny = y
+          + phase.Sin * cosIy - phase.Cos * sinIy
+          + phase.Cos * cosIx - phase.Sin * sinIx;
         ix = nx;
         iy = ny;
-        // sin/cos near 0 sends the term to +/-Inf, which contributes 0 after
-        // the reciprocal — no guard needed.
-        double dx = TermScale / Math.Sin(ix + tn);
-        double dy = TermScale / Math.Cos(iy + tn);
-        c += 1.0 / Math.Sqrt(dx * dx + dy * dy);
+        (sinIx, cosIx) = Math.SinCos(ix);
+        (sinIy, cosIy) = Math.SinCos(iy);
+
+        double sinDenominator =
+          sinIx * phase.Cos + cosIx * phase.Sin;
+        double cosDenominator =
+          cosIy * phase.Cos - sinIy * phase.Sin;
+        double denominatorSquared =
+          sinDenominator * sinDenominator +
+          cosDenominator * cosDenominator;
+        if (denominatorSquared > 0) {
+          // Algebraically equivalent to the former reciprocal of
+          // sqrt((TermScale / sin)^2 + (TermScale / cos)^2), without two
+          // divisions or overflow near a zero crossing.
+          c += Math.Abs(sinDenominator * cosDenominator) /
+            (TermScale * Math.Sqrt(denominatorSquared));
+        }
       }
       c /= Iterations;
       c = 1.17 - Math.Pow(c, 1.4);
