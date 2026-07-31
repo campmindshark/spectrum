@@ -119,13 +119,19 @@ namespace Spectrum.Visualizers {
       this.globeRotation = SmoothGlobeRotation(
         this.globeRotation, targetFacing,
         elapsed, GlobeFollowTimeSeconds);
+      Quaternion inverseGlobeRotation = Quaternion.Conjugate(
+        NormalizeRotation(this.globeRotation));
 
       int lidTint = this.dome.GetSingleColor(7, options.Palette);
       int eyelidColor = MixColor(0x09050D, lidTint, 0.10);
       for (int index = 0; index < this.buffer.pixels.Length; index++) {
         Vector3 position = this.pixelPositions[index];
-        Vector3 globeLocal = GlobeLocalPosition(
-          position, this.globeRotation);
+        // Baked topology positions are already unit vectors. Normalize only
+        // after the transform to contain floating-point drift; the generic
+        // GlobeLocalPosition helper retains its defensive normalization for
+        // callers that do not have this stronger contract.
+        Vector3 globeLocal = NormalizeDirection(
+          Vector3.Transform(position, inverseGlobeRotation));
 
         // The almond aperture and its blink seam are markings on the turning
         // globe in this scene, rather than a stationary screen-space mask.
@@ -166,9 +172,10 @@ namespace Spectrum.Visualizers {
       int selectedPalette,
       out double hue
     ) {
-      Vector3 p = surfacePosition.LengthSquared() > 1e-10f
-        ? Vector3.Normalize(surfacePosition)
-        : Vector3.UnitZ;
+      // The render loop supplies the topology's baked unit vector and a
+      // normalized globe-local transform. Avoid normalizing both again for
+      // every material sample.
+      Vector3 p = surfacePosition;
       double x = p.X;
       double y = p.Y;
 
@@ -177,7 +184,7 @@ namespace Spectrum.Visualizers {
       // warm/cool hemispheres, sheen, rear blush, limbus, and vessels now roll
       // together with the eyelid meridians. This makes the sclera read as the
       // surface of the turning eyeball instead of a white backdrop.
-      Vector3 globeLocal = NormalizeDirection(globeLocalPosition);
+      Vector3 globeLocal = globeLocalPosition;
       double diffuse = 0.5 + 0.5 * Math.Clamp(
         Vector3.Dot(p, GlobeLightDirection), -1, 1);
       double eyeRadius = Math.Sqrt(x * x + y * y / 0.42);
@@ -207,7 +214,8 @@ namespace Spectrum.Visualizers {
       double fineVein = SmoothStep(
         0.76, 0.98,
         Math.Abs(Math.Sin(fineVeinPhase) * Math.Sin(branchPhase)));
-      double vascularMeridians = ScleraVascularStrength(globeLocal);
+      double vascularMeridians =
+        ScleraVascularStrengthNormalized(globeLocal);
       double blood = Math.Clamp(
         0.31 * rearBlush + 0.18 * fineVein
           + 0.66 * vascularMeridians,
@@ -403,6 +411,12 @@ namespace Spectrum.Visualizers {
     // gives the audience unmistakable landmarks to watch roll across the dome.
     internal static double ScleraVascularStrength(Vector3 globeLocal) {
       globeLocal = NormalizeDirection(globeLocal);
+      return ScleraVascularStrengthNormalized(globeLocal);
+    }
+
+    private static double ScleraVascularStrengthNormalized(
+      Vector3 globeLocal
+    ) {
       double vesselA = VeinBand(Math.Abs(Vector3.Dot(
         globeLocal, ScleraVeinNormalA)));
       double vesselB = 0.86 * VeinBand(Math.Abs(Vector3.Dot(

@@ -19,6 +19,7 @@ namespace Spectrum.Base {
     public double hue;
 
     private int _color;
+    private bool colorDirty;
     private double _r;
     private double _g;
     private double _b;
@@ -31,9 +32,15 @@ namespace Spectrum.Base {
 
     // color
     public int color {
-      get { return _color; }
+      get {
+        if (colorDirty) {
+          updateColor();
+        }
+        return _color;
+      }
       set {
         _color = value;
+        colorDirty = false;
         var r = (byte)(_color >> 16);
         var g = (byte)(_color >> 8);
         var b = (byte)_color;
@@ -63,6 +70,7 @@ namespace Spectrum.Base {
     // rather than "paint this black".
     public void Clear() {
       _color = 0;
+      colorDirty = false;
       _r = 0;
       _g = 0;
       _b = 0;
@@ -73,6 +81,7 @@ namespace Spectrum.Base {
       _color = (ClampByte(_r) << 16) +
         (ClampByte(_g) << 8) +
         ClampByte(_b);
+      colorDirty = false;
     }
 
     // Fade() can drive _r/_g/_b out of [0,255] (negative in particular, via
@@ -92,31 +101,36 @@ namespace Spectrum.Base {
 
     public double r {
       get { return _r; }
-      set { _r = value; updateColor(); }
+      set { _r = value; colorDirty = true; }
     }
     public double g {
       get { return _g; }
-      set { _g = value; updateColor(); }
+      set { _g = value; colorDirty = true; }
     }
     public double b {
       get { return _b; }
-      set { _b = value; updateColor(); }
+      set { _b = value; colorDirty = true; }
     }
 
     // Fade and HueRotate live on the struct (M3/L3) so they mutate _r/_g/_b
-    // directly and repack via a single updateColor() per pixel, instead of the
-    // three repacks the public r/g/b setters incur (one per component). Called
-    // as pixels[i].Fade(...) on an array slot, which mutates in place. They keep
-    // operating on the double-precision _r/_g/_b state (not the truncated packed
-    // _color) so the sub-integer fade accumulation across frames is unchanged —
-    // these are throughput optimizations, not visual changes.
+    // directly and mark the packed color dirty. Packing is deferred until the
+    // color getter publishes the pixel, so several blend passes still clamp and
+    // pack only once. Called as pixels[i].Fade(...) on an array slot, which
+    // mutates in place. They keep operating on the double-precision _r/_g/_b
+    // state (not the truncated packed _color) so the sub-integer fade
+    // accumulation across frames is unchanged.
 
     public void Fade(double mul, double sub) {
       // Nothing to do for a fully transparent black pixel. (The old guard was
       // just "_color == 0"; we also require _a == 0 now so an opaque-but-black
       // pixel's coverage still decays instead of freezing.)
-      if (_color == 0 && _a == 0) {
-        return;
+      if (_a == 0) {
+        if (colorDirty) {
+          updateColor();
+        }
+        if (_color == 0) {
+          return;
+        }
       }
       _r = _r * mul - sub;
       _g = _g * mul - sub;
@@ -125,13 +139,16 @@ namespace Spectrum.Base {
       // stops occluding lower layers under Over as it dims. mul is in (0,1) and
       // _a >= 0, so the product stays >= 0.
       _a *= mul;
-      updateColor();
+      colorDirty = true;
     }
 
     public void HueRotate(double rate) {
       // Black pixels have saturation 0, so the original skipped the write for
       // them anyway (the "if (s != 0)" branch below). Bailing early just avoids
       // the RGB->HSV round-trip for the (common, after a fade) all-black case.
+      if (colorDirty) {
+        updateColor();
+      }
       if (_color == 0) {
         return;
       }
@@ -196,15 +213,17 @@ namespace Spectrum.Base {
     }
 
     // Compositing (M-series perf note carries over): the layer compositor works
-    // on the double-precision _r/_g/_b channels and packs once per pixel via a
-    // single updateColor(), clamping only at pack time. src is another pixel of
-    // the same buffer shape (index-aligned), so accessing its private channels
-    // is fine (same struct type). o is the source layer's opacity, 0..1.
+    // on the double-precision _r/_g/_b channels and marks the packed value dirty.
+    // The color getter packs once when a consumer publishes the final pixel. src
+    // is another pixel of the same buffer shape (index-aligned), so accessing its
+    // private channels is fine (same struct type). o is the source layer's
+    // opacity, 0..1.
 
     // Copy mutable frame channels only. Logical identity and projected
     // position belong to DomeTopology and are never part of a scratch copy.
     public void CopyChannelsFrom(LEDDomeOutputPixel src) {
       _color = src._color;
+      colorDirty = src.colorDirty;
       _r = src._r;
       _g = src._g;
       _b = src._b;
@@ -216,15 +235,14 @@ namespace Spectrum.Base {
     // The per-blend math itself lives in the DomeBlend implementations
     // (DomeBlendModes.cs / DomePrismBlends.cs); these are the only ways a blend
     // mutates a composite pixel. Each op touches the double-precision channels
-    // directly and repacks via a single updateColor(), like Fade — using the
-    // public r/g/b setters instead would repack three times per pixel.
+    // directly and defers packing until the final color is requested.
 
     // Overwrite the color channels (coverage and hue untouched).
     public void SetRGB(double r, double g, double b) {
       _r = r;
       _g = g;
       _b = b;
-      updateColor();
+      colorDirty = true;
     }
 
     // Accumulate onto the color channels (Add / EdgeSpectrum style).
@@ -232,7 +250,7 @@ namespace Spectrum.Base {
       _r += dr;
       _g += dg;
       _b += db;
-      updateColor();
+      colorDirty = true;
     }
 
     // Lerp the color channels toward (tr, tg, tb) by weight w (coverage and hue
@@ -242,7 +260,7 @@ namespace Spectrum.Base {
       _r = tr * w + _r * (1 - w);
       _g = tg * w + _g * (1 - w);
       _b = tb * w + _b * (1 - w);
-      updateColor();
+      colorDirty = true;
     }
 
     // Lerp color and coverage toward (tr, tg, tb, ta) by weight w — the Over
@@ -252,7 +270,7 @@ namespace Spectrum.Base {
       _g = tg * w + _g * (1 - w);
       _b = tb * w + _b * (1 - w);
       _a = ta * w + _a * (1 - w);
-      updateColor();
+      colorDirty = true;
     }
   }
 
@@ -445,39 +463,57 @@ namespace Spectrum.Base {
       private const double CellSize = 0.04;
 
       private readonly DomeTopologyPixel[] pixels;
-      private readonly Dictionary<(int X, int Y), int[]> buckets;
+      // The projected dome occupies a compact, fixed cell rectangle (normally
+      // about 25x25). A dense array avoids hashing and tuple-key construction
+      // on every transformed pixel while retaining the exact nearest-point
+      // search and tie-breaking behavior.
+      private readonly int[]?[] buckets;
       private readonly int minCellX;
       private readonly int maxCellX;
       private readonly int minCellY;
       private readonly int maxCellY;
+      private readonly int cellColumns;
+      private readonly int cellRows;
 
       public TopDownSpatialIndex(DomeTopologyPixel[] pixels) {
         this.pixels = pixels;
-        var pending = new Dictionary<(int X, int Y), List<int>>();
+        if (pixels.Length == 0) {
+          this.buckets = Array.Empty<int[]>();
+          return;
+        }
+
         int minX = int.MaxValue, maxX = int.MinValue;
         int minY = int.MaxValue, maxY = int.MinValue;
         for (int i = 0; i < pixels.Length; i++) {
           int x = Cell(pixels[i].TopDownX);
           int y = Cell(pixels[i].TopDownY);
-          (int X, int Y) key = (x, y);
-          if (!pending.TryGetValue(key, out List<int>? bucket)) {
-            bucket = new List<int>();
-            pending.Add(key, bucket);
-          }
-          bucket.Add(i);
           minX = Math.Min(minX, x);
           maxX = Math.Max(maxX, x);
           minY = Math.Min(minY, y);
           maxY = Math.Max(maxY, y);
         }
-        this.buckets = new Dictionary<(int X, int Y), int[]>(pending.Count);
-        foreach (KeyValuePair<(int X, int Y), List<int>> entry in pending) {
-          this.buckets.Add(entry.Key, entry.Value.ToArray());
-        }
         this.minCellX = minX;
         this.maxCellX = maxX;
         this.minCellY = minY;
         this.maxCellY = maxY;
+        this.cellColumns = maxX - minX + 1;
+        this.cellRows = maxY - minY + 1;
+
+        var pending = new List<int>?[this.cellColumns * this.cellRows];
+        for (int i = 0; i < pixels.Length; i++) {
+          int x = Cell(pixels[i].TopDownX);
+          int y = Cell(pixels[i].TopDownY);
+          int bucketIndex =
+            (y - minY) * this.cellColumns + x - minX;
+          List<int> bucket = pending[bucketIndex] ??= new List<int>();
+          bucket.Add(i);
+        }
+        this.buckets = new int[]?[pending.Length];
+        for (int i = 0; i < pending.Length; i++) {
+          if (pending[i] != null) {
+            this.buckets[i] = pending[i]!.ToArray();
+          }
+        }
       }
 
       public int FindNearest(double x, double y) {
@@ -533,8 +569,15 @@ namespace Spectrum.Base {
         int cellX, int cellY, double x, double y,
         ref int nearest, ref double nearestDistanceSq
       ) {
-        if (!this.buckets.TryGetValue(
-            (cellX, cellY), out int[]? candidates) || candidates == null) {
+        int localX = cellX - this.minCellX;
+        int localY = cellY - this.minCellY;
+        if ((uint)localX >= (uint)this.cellColumns ||
+            (uint)localY >= (uint)this.cellRows) {
+          return;
+        }
+        int[]? candidates =
+          this.buckets[localY * this.cellColumns + localX];
+        if (candidates == null) {
           return;
         }
         for (int candidateIndex = 0;

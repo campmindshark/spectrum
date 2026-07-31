@@ -319,11 +319,12 @@ namespace Spectrum.LEDs {
       DomeOutputMapping mapping = this.outputMapper.Current;
       this.transport.PrepareMapping(mapping);
       for (int i = 0; i < buffer.pixels.Length; i++) {
-        LEDDomeOutputPixel pixel = buffer.pixels[i];
+        ref LEDDomeOutputPixel pixel = ref buffer.pixels[i];
+        int color = pixel.color;
         int totalPixelIndex =
           mapping.ControlBoxAt(i) * stride + mapping.PixelWithinBoxAt(i);
-        this.transport.SetPixel(totalPixelIndex, pixel.color);
-        simulatorCapture.SetColor(i, pixel.color);
+        this.transport.SetPixel(totalPixelIndex, color);
+        simulatorCapture.SetColor(i, color);
       }
       this.simulatorPublisher.CompleteFrame(
         simulatorCapture,

@@ -1,6 +1,7 @@
 using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Numerics;
@@ -22,6 +23,8 @@ namespace Spectrum.Visualizers {
     private readonly ImmutableArray<Vector3> pixelPositions;
     private readonly LavaLampSkyState state;
     private readonly Stopwatch frameTimer = new Stopwatch();
+    private PreparedLavaLampBlob[] preparedBlobs =
+      Array.Empty<PreparedLavaLampBlob>();
 
     public LEDDomeLavaLampSkyVisualizer(
       LayerRendererRuntime runtime,
@@ -81,16 +84,24 @@ namespace Spectrum.Visualizers {
 
     private void Paint(int selectedPalette) {
       this.buffer.ResetComposite();
+      IReadOnlyList<LavaLampBlob> blobs = this.state.Blobs;
+      if (this.preparedBlobs.Length != blobs.Count) {
+        this.preparedBlobs = new PreparedLavaLampBlob[blobs.Count];
+      }
+      for (int blobIndex = 0; blobIndex < blobs.Count; blobIndex++) {
+        this.preparedBlobs[blobIndex] = PrepareBlob(blobs[blobIndex]);
+      }
       for (int pixelIndex = 0;
           pixelIndex < this.pixelPositions.Length; pixelIndex++) {
-        Vector3 point = this.pixelPositions[pixelIndex];
+        Vector3 point = LavaLampSkyState.FoldToUpperHemisphere(
+          this.pixelPositions[pixelIndex]);
         double uncovered = 1;
         double strongest = 0;
-        LavaLampBlob strongestBlob = default;
+        PreparedLavaLampBlob strongestBlob = default;
         for (int blobIndex = 0;
-            blobIndex < this.state.Blobs.Count; blobIndex++) {
-          LavaLampBlob blob = this.state.Blobs[blobIndex];
-          double strength = BlobStrength(point, blob);
+            blobIndex < this.preparedBlobs.Length; blobIndex++) {
+          PreparedLavaLampBlob blob = this.preparedBlobs[blobIndex];
+          double strength = PreparedBlobStrength(point, blob);
           if (strength <= 0) {
             continue;
           }
@@ -132,30 +143,20 @@ namespace Spectrum.Visualizers {
     // Split is geometric rather than a field threshold: one ellipse becomes a
     // pinched pair of smaller lobes with preserved approximate area.
     internal static double BlobStrength(Vector3 point, LavaLampBlob blob) {
+      return PreparedBlobStrength(
+        LavaLampSkyState.FoldToUpperHemisphere(point), PrepareBlob(blob));
+    }
+
+    private static PreparedLavaLampBlob PrepareBlob(LavaLampBlob blob) {
       Vector3 center = LavaLampSkyState.FoldToUpperHemisphere(blob.Position);
-      point = LavaLampSkyState.FoldToUpperHemisphere(point);
-      double alignment = Math.Clamp(Vector3.Dot(center, point), -1, 1);
-      double angle = Math.Acos(alignment);
       double radius = Math.Max(0.02, blob.Radius);
       double major = radius * (1 + 0.62 * Math.Max(0, blob.Stretch));
-      if (angle > major * 1.75) {
-        return 0;
-      }
-
       Vector3 axis = LavaLampSkyState.NormalizeTangent(
         center, blob.ShapeAxis);
       if (axis.LengthSquared() < 1e-8) {
         axis = LavaLampSkyState.DeterministicTangent(center, 0);
       }
       Vector3 side = Vector3.Normalize(Vector3.Cross(center, axis));
-      Vector3 displacement = Vector3.Zero;
-      if (angle > 1e-8) {
-        Vector3 direction = LavaLampSkyState.NormalizeOrZero(
-          point - center * (float)alignment);
-        displacement = direction * (float)angle;
-      }
-      double x = Vector3.Dot(displacement, axis);
-      double y = Vector3.Dot(displacement, side);
       double minor = radius / Math.Sqrt(
         1 + 0.52 * Math.Max(0, blob.Stretch));
 
@@ -164,10 +165,38 @@ namespace Spectrum.Visualizers {
       double offset = radius * 0.78 * split;
       double lobeMajor = Math.Max(0.01, major * lobeScale);
       double lobeMinor = Math.Max(0.01, minor * lobeScale);
+      double cutoffAngle = major * 1.75;
+      double cutoffAlignment = cutoffAngle >= Math.PI
+        ? -1 : Math.Cos(cutoffAngle);
+      return new PreparedLavaLampBlob(
+        center, axis, side, cutoffAlignment,
+        lobeMajor, lobeMinor, offset,
+        blob.Temperature, blob.PaletteIndex);
+    }
+
+    private static double PreparedBlobStrength(
+      Vector3 point, PreparedLavaLampBlob blob
+    ) {
+      double alignment = Math.Clamp(
+        Vector3.Dot(blob.Center, point), -1, 1);
+      if (alignment < blob.CutoffAlignment) {
+        return 0;
+      }
+      double angle = Math.Acos(alignment);
+      Vector3 displacement = Vector3.Zero;
+      if (angle > 1e-8) {
+        Vector3 direction = LavaLampSkyState.NormalizeOrZero(
+          point - blob.Center * (float)alignment);
+        displacement = direction * (float)angle;
+      }
+      double x = Vector3.Dot(displacement, blob.Axis);
+      double y = Vector3.Dot(displacement, blob.Side);
       double first = Math.Sqrt(
-        Square((x - offset) / lobeMajor) + Square(y / lobeMinor));
+        Square((x - blob.Offset) / blob.LobeMajor) +
+        Square(y / blob.LobeMinor));
       double second = Math.Sqrt(
-        Square((x + offset) / lobeMajor) + Square(y / lobeMinor));
+        Square((x + blob.Offset) / blob.LobeMajor) +
+        Square(y / blob.LobeMinor));
       double normalizedDistance = Math.Min(first, second);
       const double SoftInterior = 0.72;
       const double SoftExterior = 1.14;
@@ -178,6 +207,17 @@ namespace Spectrum.Visualizers {
     }
 
     private static double Square(double value) => value * value;
+
+    private readonly record struct PreparedLavaLampBlob(
+      Vector3 Center,
+      Vector3 Axis,
+      Vector3 Side,
+      double CutoffAlignment,
+      double LobeMajor,
+      double LobeMinor,
+      double Offset,
+      double Temperature,
+      int PaletteIndex);
   }
 
   internal readonly record struct LavaLampBlob(

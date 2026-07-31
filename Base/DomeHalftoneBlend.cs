@@ -94,6 +94,9 @@ namespace Spectrum.Base {
       double scale = Math.Max(NominalLedPitch, options.Scale);
       double minimum = Math.Min(options.DotMinimum, options.DotMaximum);
       double maximum = Math.Max(options.DotMinimum, options.DotMaximum);
+      double cosine = Math.Cos(options.Rotation);
+      double sine = Math.Sin(options.Rotation);
+      double antialias = Antialias(scale);
       LEDDomeOutputPixel[] pixels = ctx.Dest.pixels;
       LEDDomeOutputPixel[] mask = ctx.Src.pixels;
       LEDDomeOutputPixel[] snapshot = (ctx.Snapshot ??
@@ -107,9 +110,10 @@ namespace Spectrum.Base {
         }
 
         CellSample cell = options.CellType switch {
-          1 => TriangleCell(ctx.Dest, i, scale, options.Rotation),
+          1 => TriangleCell(
+            ctx.Dest, i, scale, cosine, sine, antialias),
           2 => StrutCell(ctx.Dest, i, scale, options.Rotation),
-          _ => DotCell(ctx.Dest, i, scale, options.Rotation),
+          _ => DotCell(ctx.Dest, i, scale, cosine, sine, antialias),
         };
         LEDDomeOutputPixel sampled = snapshot[cell.SampleIndex];
         // Additive layers retain unclamped floating-point channels internally;
@@ -128,26 +132,28 @@ namespace Spectrum.Base {
     }
 
     private static CellSample DotCell(
-      DomeFrame frame, int pixel, double scale, double rotation
+      DomeFrame frame, int pixel, double scale,
+      double cosine, double sine, double antialias
     ) {
-      Project(frame.Topology.PixelAt(pixel), rotation, out double x,
+      Project(frame.Topology.PixelAt(pixel), cosine, sine, out double x,
         out double y);
       double cellX = Math.Floor(x / scale) + 0.5;
       double cellY = Math.Floor(y / scale) + 0.5;
       double centerX = cellX * scale;
       double centerY = cellY * scale;
-      int sample = ProjectedSample(frame, centerX, centerY, rotation);
+      int sample = ProjectedSample(
+        frame, centerX, centerY, cosine, sine);
       double dx = x / scale - cellX;
       double dy = y / scale - cellY;
       double distance = Math.Sqrt(dx * dx + dy * dy);
-      double antialias = Antialias(scale);
       return new CellSample(sample, 0.5, -distance, antialias);
     }
 
     private static CellSample TriangleCell(
-      DomeFrame frame, int pixel, double scale, double rotation
+      DomeFrame frame, int pixel, double scale,
+      double cosine, double sine, double antialias
     ) {
-      Project(frame.Topology.PixelAt(pixel), rotation, out double x,
+      Project(frame.Topology.PixelAt(pixel), cosine, sine, out double x,
         out double y);
       // Resolve the point in an equilateral-triangle basis. Each parallelogram
       // is split along a+b=1, giving alternating upright/inverted cells.
@@ -175,10 +181,11 @@ namespace Spectrum.Base {
       }
       double centerX = scale * (centerA + centerB * 0.5);
       double centerY = scale * SqrtThreeOverTwo * centerB;
-      int sample = ProjectedSample(frame, centerX, centerY, rotation);
-      double antialias = Antialias(scale) / 3;
+      int sample = ProjectedSample(
+        frame, centerX, centerY, cosine, sine);
       return new CellSample(
-        sample, 1.0 / 3, minimumBarycentric - 1.0 / 3, antialias);
+        sample, 1.0 / 3, minimumBarycentric - 1.0 / 3,
+        antialias / 3);
     }
 
     private static CellSample StrutCell(
@@ -201,21 +208,18 @@ namespace Spectrum.Base {
     }
 
     private static void Project(
-      DomeTopologyPixel point, double rotation, out double x, out double y
+      DomeTopologyPixel point, double cosine, double sine,
+      out double x, out double y
     ) {
       double px = 2 * point.TopDownX - 1;
       double py = 1 - 2 * point.TopDownY;
-      double cosine = Math.Cos(rotation);
-      double sine = Math.Sin(rotation);
       x = px * cosine + py * sine;
       y = -px * sine + py * cosine;
     }
 
     private static int ProjectedSample(
-      DomeFrame frame, double x, double y, double rotation
+      DomeFrame frame, double x, double y, double cosine, double sine
     ) {
-      double cosine = Math.Cos(rotation);
-      double sine = Math.Sin(rotation);
       double px = x * cosine - y * sine;
       double py = x * sine + y * cosine;
       return frame.NearestTopDownPixel((px + 1) * 0.5, (1 - py) * 0.5);

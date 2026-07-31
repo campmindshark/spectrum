@@ -14,6 +14,8 @@ namespace Spectrum.LayerPipeline.Tests {
         PackedHsvConversionMatchesColor);
       run("packed HSV pixel conversion allocates no managed memory",
         PackedHsvConversionDoesNotAllocate);
+      run("deferred pixel packing preserves channel semantics",
+        DeferredPixelPackingPreservesSemantics);
       run("multi-slot dome gradients preserve render semantics",
         DomeGradientSemantics);
       run("multi-slot dome gradient sampling allocates no managed memory",
@@ -92,6 +94,28 @@ namespace Spectrum.LayerPipeline.Tests {
       colorSink = checksum;
       Assert(allocated == 0,
         "packed HSV pixel loop allocated " + allocated + " bytes");
+    }
+
+    private static void DeferredPixelPackingPreservesSemantics() {
+      var pixel = new LEDDomeOutputPixel {
+        color = 0x102030,
+        hue = .42,
+      };
+      pixel.SetRGB(17.9, 34.9, 51.9);
+
+      // Copy before either pixel's packed getter runs. The copy must retain the
+      // pending channel state, not the stale packed value from the color setter.
+      var copy = new LEDDomeOutputPixel();
+      copy.CopyChannelsFrom(pixel);
+      Assert(copy.color == 0x112233 && pixel.color == 0x112233,
+        "deferred channel state did not pack after a copy");
+      Assert(copy.r == 17.9 && copy.g == 34.9 && copy.b == 51.9 &&
+          copy.a == 1 && copy.hue == .42,
+        "deferred channel copy changed mutable pixel state");
+
+      copy.SetRGB(-10, 300, 127.9);
+      Assert(copy.color == 0x00FF7F,
+        "deferred packing changed channel clamping");
     }
 
     private static void DomeGradientSemantics() {
