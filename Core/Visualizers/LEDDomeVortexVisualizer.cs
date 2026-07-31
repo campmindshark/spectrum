@@ -1,6 +1,7 @@
 using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
+using System.Runtime.CompilerServices;
 
 namespace Spectrum.Visualizers {
 
@@ -24,12 +25,16 @@ namespace Spectrum.Visualizers {
     // space here (unlike effects painted over the unit hemisphere surface).
     private readonly double[] radii;
     private readonly double[] angleTurns;
+    private readonly double[] angularSpeedFactors;
+    private readonly double[] spiralLogRadii;
+    private readonly double[] coreMasks;
     private readonly FrameClock frameClock = new FrameClock();
 
     private double time;
     private double lastBeatProgress = -1;
     private int previousStyle = -1;
     private double appliedBrightness = 1;
+    private double cachedCoreSize = double.NaN;
 
     // Never flatten the persistent field all the way to zero: keeping a tiny
     // double-precision scale lets the next frame restore the field before it
@@ -54,6 +59,9 @@ namespace Spectrum.Visualizers {
       int count = this.buffer.pixels.Length;
       this.radii = new double[count];
       this.angleTurns = new double[count];
+      this.angularSpeedFactors = new double[count];
+      this.spiralLogRadii = new double[count];
+      this.coreMasks = new double[count];
       for (int i = 0; i < count; i++) {
         DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
         double x = point.X * 2 - 1;
@@ -130,16 +138,16 @@ namespace Spectrum.Visualizers {
       // approximately isotropic near the rim.
       int angularPeriod = Math.Max(4, (int)Math.Round(2 * Math.PI * scale));
       double radialDrift = this.time * inflow * scale * 0.18;
+      this.EnsureCoreGeometry(coreSize);
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
         double radius = this.radii[i];
-        double safeRadius = coreSize + radius;
 
         // Inner material rotates faster, producing the characteristic vortex
         // shear. log(r) bends constant-phase lines into logarithmic spirals.
         double advectedTurns = this.angleTurns[i]
-          - this.time * speed * (0.035 + 0.045 / safeRadius)
-          + twist * Math.Log(safeRadius) * 0.12;
+          - this.time * speed * this.angularSpeedFactors[i]
+          + twist * this.spiralLogRadii[i] * 0.12;
         double angular = advectedTurns * angularPeriod;
         double radial = radius * scale + radialDrift;
 
@@ -154,7 +162,7 @@ namespace Spectrum.Visualizers {
 
         // Smooth dark eye. The transition remains stable at the minimum core
         // size and avoids a hard circular cutout on the low-resolution dome.
-        double coreMask = SmoothStep(coreSize * 0.45, coreSize, radius);
+        double coreMask = this.coreMasks[i];
         double value;
 
         if (style == 1) {
@@ -204,6 +212,24 @@ namespace Spectrum.Visualizers {
         ApplyFieldBrightness(Math.Max(
           MinimumBrightnessScale, audioLevel));
       }
+    }
+
+    // These radial terms only change with Core Size, but the old render loop
+    // recalculated a division, logarithm, and smoothstep for every pixel on
+    // every frame. Rebuild the arrays only when that operator setting changes.
+    private void EnsureCoreGeometry(double coreSize) {
+      if (coreSize == this.cachedCoreSize) {
+        return;
+      }
+      double innerCore = coreSize * 0.45;
+      for (int i = 0; i < this.radii.Length; i++) {
+        double radius = this.radii[i];
+        double safeRadius = coreSize + radius;
+        this.angularSpeedFactors[i] = 0.035 + 0.045 / safeRadius;
+        this.spiralLogRadii[i] = Math.Log(safeRadius);
+        this.coreMasks[i] = SmoothStep(innerCore, coreSize, radius);
+      }
+      this.cachedCoreSize = coreSize;
     }
 
     // Expand the quieter half of the peak meter so both audio modes remain
@@ -271,6 +297,7 @@ namespace Spectrum.Visualizers {
       return Lerp(a, b, fy);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static double Hash01(int x, int y) {
       uint h = (uint)(x * 374761393 + y * 668265263);
       h = (h ^ (h >> 13)) * 1274126177u;
@@ -278,29 +305,35 @@ namespace Spectrum.Visualizers {
       return (h & 0x00FFFFFFu) / 16777215.0;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int FastFloor(double value) {
       int integer = (int)value;
       return value < integer ? integer - 1 : integer;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int PositiveMod(int value, int modulus) {
       int result = value % modulus;
       return result < 0 ? result + modulus : result;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static double Fraction(double value) {
       return value - Math.Floor(value);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static double SmoothCurve(double value) {
       return value * value * (3 - 2 * value);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static double SmoothStep(double edge0, double edge1, double value) {
       double t = Math.Clamp((value - edge0) / (edge1 - edge0), 0, 1);
       return t * t * (3 - 2 * t);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static double Lerp(double a, double b, double t) {
       return a + (b - a) * t;
     }
