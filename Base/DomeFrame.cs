@@ -279,15 +279,14 @@ namespace Spectrum.Base {
       colorDirty = true;
     }
 
-    // Lerp a normalized tint after scaling it to this pixel's current peak
-    // brightness. Iridescence applies this to every masked pixel; doing the
-    // max-channel read and lerp together avoids three channel accessor calls
-    // and a second struct operation.
+    // Lerp a 0..1 tint after scaling it to this pixel's current 0..255 peak
+    // channel. Iridescence applies this to every masked pixel; keeping the tint
+    // normalized avoids a canceled *255 here and /255 in the color conversion.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void LerpRGBScaledToBrightness(
+    internal void LerpNormalizedRGBScaledToBrightness(
       double tr, double tg, double tb, double w
     ) {
-      double brightness = Math.Max(_r, Math.Max(_g, _b)) / 255;
+      double brightness = Math.Max(_r, Math.Max(_g, _b));
       double inverse = 1 - w;
       _r = tr * brightness * w + _r * inverse;
       _g = tg * brightness * w + _g * inverse;

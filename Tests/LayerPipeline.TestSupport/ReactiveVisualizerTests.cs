@@ -14,10 +14,59 @@ namespace Spectrum.LayerPipeline.Tests {
   public static class ReactiveVisualizerTests {
     public static void Register(Action<string, Action> run) {
       run(nameof(MagneticFieldUsesSignedCharges), MagneticFieldUsesSignedCharges);
+      run(nameof(MetaballPoleMetricsMatchAntipodalGeometry),
+        MetaballPoleMetricsMatchAntipodalGeometry);
       run(nameof(RippleTankIsOrientationOnly), RippleTankIsOrientationOnly);
       run(nameof(WatchfulIrisBehavesAsSceneCharacter), WatchfulIrisBehavesAsSceneCharacter);
       run(nameof(LivingSkinUsesReactionDiffusion), LivingSkinUsesReactionDiffusion);
     }
+
+    private static void MetaballPoleMetricsMatchAntipodalGeometry() {
+      OrientationCenter.UnitPoleMetrics(
+        Vector3.UnitY, out double equatorScale, out double equatorSign);
+      AssertClose(0.5, equatorScale,
+        "equatorial metaball potential changed");
+      AssertClose(0, equatorSign,
+        "equatorial color-center sign changed");
+
+      var point = new Vector3(-0.5f, (float)Math.Sqrt(0.75), 0);
+      OrientationCenter.UnitPoleMetrics(
+        point, out double scale, out double sign);
+      double radius = Math.Sqrt(0.75);
+      AssertClose(1 / (2 * radius), scale,
+        "off-axis metaball potential changed");
+      AssertClose(0.5 / (1 + radius), sign,
+        "off-axis color-center sign changed");
+
+      OrientationCenter.UnitPoleMetrics(
+        Vector3.UnitX, out double poleScale, out double poleSign);
+      AssertClose(1 / 1e-9, poleScale,
+        "pole singularity guard changed");
+      AssertClose(-1, poleSign,
+        "positive-X color-center sign changed");
+
+      Vector3[] samples = {
+        Vector3.UnitY,
+        Vector3.Normalize(new Vector3(-0.72f, 0.55f, 0.31f)),
+        Vector3.Normalize(new Vector3(0.41f, -0.28f, 0.87f)),
+      };
+      foreach (Vector3 sample in samples) {
+        double positiveDistance = Vector3.Distance(
+          sample, OrientationCenter.Spot);
+        double negativeDistance = Vector3.Distance(
+          sample, OrientationCenter.NegSpot);
+        double expectedScale = 1 / Math.Max(
+          positiveDistance * negativeDistance, 1e-9);
+        double expectedSign = (negativeDistance - positiveDistance) /
+          (negativeDistance + positiveDistance);
+        OrientationCenter.UnitPoleMetrics(
+          sample, out double actualScale, out double actualSign);
+        Assert(Math.Abs(expectedScale - actualScale) < 0.000001 &&
+            Math.Abs(expectedSign - actualSign) < 0.000001,
+          "optimized pole metrics diverged from antipodal distances");
+      }
+    }
+
     private static void MagneticFieldUsesSignedCharges() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("magnetic-field");
       Assert(definition != null && definition.DisplayName == "Magnetic Field",

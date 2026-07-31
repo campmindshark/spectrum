@@ -284,29 +284,31 @@ namespace Spectrum.Base {
       var options = (IridescenceOptions)ctx.Options;
       double strength = options.Strength;
       double bands = options.Bands;
+      double scale = ctx.Opacity * strength;
+      if (scale == 0) {
+        return;
+      }
       double azim = ctx.PrismAngle(
         options.Spin, options.FollowOrientation);
       // Virtual light swept in azimuth, held at a fixed elevation so the
       // sheen bands read as horizontal-ish arcs across the dome.
       Vector3 light = Vector3.Normalize(new Vector3(
         (float)Math.Cos(azim), (float)Math.Sin(azim), 0.6f));
-      ImmutableArray<Vector3> normals = ctx.Dest.Normals;
+      ReadOnlySpan<Vector3> normals = ctx.Dest.Normals.AsSpan();
       LEDDomeOutputPixel[] pixels = ctx.Dest.pixels;
       LEDDomeOutputPixel[] src = ctx.Src.pixels;
-      double o = ctx.Opacity;
-      if (o == 0 || strength == 0) {
-        return;
-      }
+      double bandScale = 0.5 * bands;
       for (int i = 0; i < pixels.Length; i++) {
-        double w = o * src[i].a * strength;
+        double w = src[i].a * scale;
         if (w == 0) {
           continue;
         }
         double d = Vector3.Dot(normals[i], light); // -1..1
-        double t = (d + 1) * 0.5 * bands;
+        double t = (d + 1) * bandScale;
         t -= Math.Floor(t); // wrap into 0..1 so bands repeat
-        LEDColor.SpectralColor(t, out double sr, out double sg, out double sb);
-        pixels[i].LerpRGBScaledToBrightness(sr, sg, sb, w);
+        LEDColor.SpectralColorNormalized(
+          t, out double sr, out double sg, out double sb);
+        pixels[i].LerpNormalizedRGBScaledToBrightness(sr, sg, sb, w);
       }
     }
   }

@@ -125,6 +125,11 @@ namespace Spectrum.Visualizers {
         elapsed, GlobeFollowTimeSeconds);
       Quaternion inverseGlobeRotation = Quaternion.Conjugate(
         NormalizeRotation(this.globeRotation));
+      // The inverse is fixed for the whole frame. Vector3's matrix transform
+      // is substantially cheaper than expanding the same quaternion rotation
+      // independently for every dome pixel.
+      Matrix4x4 inverseGlobeTransform =
+        Matrix4x4.CreateFromQuaternion(inverseGlobeRotation);
 
       int lidTint = this.dome.GetSingleColor(7, options.Palette);
       int eyelidColor = MixColor(0x09050D, lidTint, 0.10);
@@ -140,7 +145,7 @@ namespace Spectrum.Visualizers {
         // another square root for every pixel only gives up float-roundoff
         // correction far below the physical LED lattice's resolution.
         Vector3 globeLocal = Vector3.Transform(
-          position, inverseGlobeRotation);
+          position, inverseGlobeTransform);
 
         // The almond aperture and its blink seam are markings on the turning
         // globe in this scene, rather than a stationary screen-space mask.

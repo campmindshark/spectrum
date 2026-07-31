@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using System.Xml.Serialization;
 
 namespace Spectrum.Base {
@@ -105,6 +106,19 @@ namespace Spectrum.Base {
     public static void SpectralColor(
       double t, out double r, out double g, out double b
     ) {
+      SpectralColorNormalized(t, out r, out g, out b);
+      r *= 255;
+      g *= 255;
+      b *= 255;
+    }
+
+    // Normalized form for pixel loops that already work in 0..255 channel
+    // space. Iridescence scales this tint by the destination's peak channel,
+    // so multiplying here and dividing there would cancel on every pixel.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void SpectralColorNormalized(
+      double t, out double r, out double g, out double b
+    ) {
       if (t < 0) {
         t = 0;
       } else if (t > 1) {
@@ -135,9 +149,9 @@ namespace Spectrum.Base {
       } else {
         falloff = 1.0;
       }
-      r = rr * falloff * 255;
-      g = gg * falloff * 255;
-      b = bb * falloff * 255;
+      r = rr * falloff;
+      g = gg * falloff;
+      b = bb * falloff;
     }
 
     // Packed-int convenience over SpectralColor, so gradient-driven visualizers
