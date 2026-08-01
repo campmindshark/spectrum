@@ -70,8 +70,10 @@ namespace Spectrum.Visualizers {
       int negative = options.NegativeColor;
       int lineCount = options.LineCount;
       double lineWidth = options.LineWidth;
-      double positiveHue = new Color(positive).H;
-      double negativeHue = new Color(negative).H;
+      MathUtil.HsvFromInt(
+        positive, out double positiveHue, out _, out _);
+      MathUtil.HsvFromInt(
+        negative, out double negativeHue, out _, out _);
 
       int positiveR = (positive >> 16) & 0xFF;
       int positiveG = (positive >> 8) & 0xFF;

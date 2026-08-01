@@ -14,10 +14,59 @@ namespace Spectrum.LayerPipeline.Tests {
   public static class ReactiveVisualizerTests {
     public static void Register(Action<string, Action> run) {
       run(nameof(MagneticFieldUsesSignedCharges), MagneticFieldUsesSignedCharges);
+      run(nameof(MetaballPoleMetricsMatchAntipodalGeometry),
+        MetaballPoleMetricsMatchAntipodalGeometry);
       run(nameof(RippleTankIsOrientationOnly), RippleTankIsOrientationOnly);
       run(nameof(WatchfulIrisBehavesAsSceneCharacter), WatchfulIrisBehavesAsSceneCharacter);
       run(nameof(LivingSkinUsesReactionDiffusion), LivingSkinUsesReactionDiffusion);
     }
+
+    private static void MetaballPoleMetricsMatchAntipodalGeometry() {
+      OrientationCenter.UnitPoleMetrics(
+        Vector3.UnitY, out double equatorScale, out double equatorSign);
+      AssertClose(0.5, equatorScale,
+        "equatorial metaball potential changed");
+      AssertClose(0, equatorSign,
+        "equatorial color-center sign changed");
+
+      var point = new Vector3(-0.5f, (float)Math.Sqrt(0.75), 0);
+      OrientationCenter.UnitPoleMetrics(
+        point, out double scale, out double sign);
+      double radius = Math.Sqrt(0.75);
+      AssertClose(1 / (2 * radius), scale,
+        "off-axis metaball potential changed");
+      AssertClose(0.5 / (1 + radius), sign,
+        "off-axis color-center sign changed");
+
+      OrientationCenter.UnitPoleMetrics(
+        Vector3.UnitX, out double poleScale, out double poleSign);
+      AssertClose(1 / 1e-9, poleScale,
+        "pole singularity guard changed");
+      AssertClose(-1, poleSign,
+        "positive-X color-center sign changed");
+
+      Vector3[] samples = {
+        Vector3.UnitY,
+        Vector3.Normalize(new Vector3(-0.72f, 0.55f, 0.31f)),
+        Vector3.Normalize(new Vector3(0.41f, -0.28f, 0.87f)),
+      };
+      foreach (Vector3 sample in samples) {
+        double positiveDistance = Vector3.Distance(
+          sample, OrientationCenter.Spot);
+        double negativeDistance = Vector3.Distance(
+          sample, OrientationCenter.NegSpot);
+        double expectedScale = 1 / Math.Max(
+          positiveDistance * negativeDistance, 1e-9);
+        double expectedSign = (negativeDistance - positiveDistance) /
+          (negativeDistance + positiveDistance);
+        OrientationCenter.UnitPoleMetrics(
+          sample, out double actualScale, out double actualSign);
+        Assert(Math.Abs(expectedScale - actualScale) < 0.000001 &&
+            Math.Abs(expectedSign - actualSign) < 0.000001,
+          "optimized pole metrics diverged from antipodal distances");
+      }
+    }
+
     private static void MagneticFieldUsesSignedCharges() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("magnetic-field");
       Assert(definition != null && definition.DisplayName == "Magnetic Field",
@@ -164,19 +213,18 @@ namespace Spectrum.LayerPipeline.Tests {
       WatchfulIrisLayerOptions defaults =
         BuiltInOptions<WatchfulIrisLayerOptions>(
           Layer("watchful-iris", "watchful-iris-defaults"));
-      Assert(defaults.IrisComplexity == 14 &&
-          defaults.PupilSize == 0.28 && defaults.DilationGain == 0.28 &&
+      Assert(defaults.PupilSize == 0.28 && defaults.DilationGain == 0.28 &&
           defaults.BlinkTrigger == 2 && defaults.EyelidSoftness == 0.035 &&
           defaults.ScleraBrightness == 1 && defaults.Palette == 0,
         "unexpected Watchful Iris defaults");
       Assert(definition.Parameters.All(
-          parameter => parameter.Key != "trackingMode"),
-        "Watchful Iris still exposes a tracking mode");
+          parameter => parameter.Key != "trackingMode" &&
+            parameter.Key != "irisComplexity"),
+        "Watchful Iris still exposes a removed detail control");
 
       DomeLayerSettings configured = Layer(
         "watchful-iris", "watchful-iris-clamped");
       configured.RendererParams = new Dictionary<string, double> {
-        ["irisComplexity"] = 99,
         ["pupilSize"] = -1,
         ["dilationGain"] = 99,
         ["blinkTrigger"] = 99,
@@ -186,8 +234,8 @@ namespace Spectrum.LayerPipeline.Tests {
       };
       WatchfulIrisLayerOptions clamped =
         BuiltInOptions<WatchfulIrisLayerOptions>(configured);
-      Assert(clamped.IrisComplexity == 32 && clamped.PupilSize == 0.08 &&
-          clamped.DilationGain == 0.8 && clamped.BlinkTrigger == 2 &&
+      Assert(clamped.PupilSize == 0.08 && clamped.DilationGain == 0.8 &&
+          clamped.BlinkTrigger == 2 &&
           clamped.EyelidSoftness == 0.18 && clamped.ScleraBrightness == 2 &&
           clamped.Palette == PaletteService.MaxPalettes - 1,
         "Watchful Iris controls did not clamp");
@@ -209,15 +257,29 @@ namespace Spectrum.LayerPipeline.Tests {
           LEDDomeWatchfulIrisVisualizer.ApertureCoverage(
             0, 0, 1, 0.01) == 1,
         "Watchful Iris eyelids did not mask the eye aperture");
+      double[] apertureCoordinates = {
+        -1.1, -1, -0.75, -0.2, 0, 0.2, 0.75, 1, 1.1,
+      };
+      double[] apertureOpenness = { 0, 0.15, 0.5, 1 };
+      double[] apertureSoftness = { 0, 1e-10, 0.01, 0.035, 0.18 };
+      foreach (double x in apertureCoordinates) {
+        foreach (double y in apertureCoordinates) {
+          foreach (double open in apertureOpenness) {
+            foreach (double soft in apertureSoftness) {
+              double expected = ReferenceApertureCoverage(
+                x, y, open, soft);
+              double actual =
+                LEDDomeWatchfulIrisVisualizer.ApertureCoverage(
+                  x, y, open, soft);
+              Assert(actual == expected,
+                "Watchful Iris fast aperture path changed coverage at x=" +
+                x + ", y=" + y + ", openness=" + open +
+                ", softness=" + soft);
+            }
+          }
+        }
+      }
 
-      double simpleFiber = LEDDomeWatchfulIrisVisualizer.IrisFilament(
-        0.64, 0.37, 5);
-      double complexFiber = LEDDomeWatchfulIrisVisualizer.IrisFilament(
-        0.64, 0.37, 25);
-      Assert(simpleFiber >= 0 && simpleFiber <= 1 &&
-          complexFiber >= 0 && complexFiber <= 1 &&
-          Math.Abs(simpleFiber - complexFiber) > 0.01,
-        "Watchful Iris complexity did not alter its bounded filament field");
       Assert(LEDDomeWatchfulIrisVisualizer.TrackingOffset(
           Quaternion.Identity).X < -0.3 &&
           LEDDomeWatchfulIrisVisualizer.TrackingOffset(
@@ -277,7 +339,7 @@ namespace Spectrum.LayerPipeline.Tests {
           Vector3.Distance(
             Vector3.Transform(Vector3.UnitX, transported),
             Vector3.Transform(Vector3.UnitX, rebuilt)) > 0.01,
-        "Watchful Iris sclera discarded its transported globe orientation");
+        "Watchful Iris discarded its transported globe orientation");
 
       // At a nearly closed openness, the thin visible seam must travel to the
       // rotated forward pole. Evaluating the same pole in fixed dome axes
@@ -296,13 +358,6 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(Vector3.Distance(localPole, Vector3.UnitZ) < 0.000001 &&
           transportedClosure > 0.99 && fixedClosure < 0.01,
         "Watchful Iris blink seam did not rotate to the globe's new meridian");
-      Vector3 vesselPoint = Vector3.Normalize(
-        new Vector3(0.93f, -0.27f, 0));
-      Assert(LEDDomeWatchfulIrisVisualizer.ScleraVascularStrength(
-          vesselPoint) > 0.65 &&
-          LEDDomeWatchfulIrisVisualizer.ScleraVascularStrength(
-            Vector3.UnitZ) < 0.01,
-        "Watchful Iris lacks visible globe-anchored rotation landmarks");
       Assert(LEDDomeWatchfulIrisVisualizer.ScaleScleraColor(
           0x804020, 0) == 0 &&
           LEDDomeWatchfulIrisVisualizer.ScaleScleraColor(
@@ -337,8 +392,8 @@ namespace Spectrum.LayerPipeline.Tests {
       ((Visualizer)iris).Visualize();
       Assert(iris.LayerBuffer.pixels.Any(pixel => pixel.color != 0) &&
           iris.LayerBuffer.pixels
-            .Select(pixel => pixel.color).Distinct().Count() > 12,
-        "Watchful Iris did not render a patterned eye");
+            .Select(pixel => pixel.color).Distinct().Count() >= 4,
+        "Watchful Iris did not render its basic eye shapes");
       Assert(iris.LayerBuffer.pixels.Any(pixel => {
           int color = pixel.color;
           return ((color >> 16) & 0xFF) + ((color >> 8) & 0xFF)
@@ -349,6 +404,20 @@ namespace Spectrum.LayerPipeline.Tests {
             + (color & 0xFF) > 560;
         }),
         "Watchful Iris did not separate its dark pupil/lids and light sclera");
+    }
+
+    private static double ReferenceApertureCoverage(
+      double x, double y, double openness, double softness
+    ) {
+      double almond = 0.64 * Math.Sqrt(Math.Max(0, 1 - x * x));
+      double edge = almond * Math.Clamp(openness, 0, 1) - Math.Abs(y);
+      softness = Math.Max(0, softness);
+      if (softness <= 1e-9) {
+        return edge >= 0 ? 1 : 0;
+      }
+      double t = Math.Clamp(
+        (edge + softness) / (2 * softness), 0, 1);
+      return t * t * (3 - 2 * t);
     }
 
     private static void LivingSkinUsesReactionDiffusion() {

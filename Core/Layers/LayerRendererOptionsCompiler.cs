@@ -163,8 +163,8 @@ namespace Spectrum.Base {
     internal static ILayerRendererOptions WatchfulIris(
       ImmutableDictionary<string, ParameterValue> v
     ) => new WatchfulIrisLayerOptions(
-      TruncatedInteger(v, "irisComplexity"), Double(v, "pupilSize"),
-      Double(v, "dilationGain"), Integer(v, "blinkTrigger"),
+      Double(v, "pupilSize"), Double(v, "dilationGain"),
+      Integer(v, "blinkTrigger"),
       Double(v, "eyelidSoftness"), Double(v, "scleraBrightness"),
       Integer(v, "palette"));
 

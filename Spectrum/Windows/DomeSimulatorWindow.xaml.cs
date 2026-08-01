@@ -20,6 +20,7 @@ using Spectrum.LEDs;
 namespace Spectrum {
 
   public partial class DomeSimulatorWindow : Window {
+    private const int SimulatorFramesPerSecond = 120;
 
     private static Tuple<int, int> GetPoint(
       int strutIndex, int point, DomeProjection projection
@@ -119,7 +120,8 @@ namespace Spectrum {
       this.Draw();
       this.timer = new DispatcherTimer();
       this.timer.Tick += Update;
-      this.timer.Interval = new TimeSpan(100000); // every 10 milliseconds
+      this.timer.Interval = TimeSpan.FromSeconds(
+        1d / SimulatorFramesPerSecond);
       this.timer.Start();
     }
 

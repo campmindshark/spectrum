@@ -28,6 +28,9 @@ namespace Spectrum.LEDs {
       remove { this.outputSettingsCoordinator.SettingsApplied -= value; }
     }
     private readonly DomeOutputMapper outputMapper;
+    private DomeOutputMapping? cachedWriteMapping;
+    private int[] cachedMappedPixelIndices = Array.Empty<int>();
+    private int cachedMappedPixelCount;
 
     public const int NumCables = DomeOutputMapper.NumCables;
     public const int NumDomeBoxes = DomeOutputMapper.NumDomeBoxes;
@@ -315,19 +318,41 @@ namespace Spectrum.LEDs {
       }
       // The immutable mapping is snapshotted once for this write; calibration
       // can replace it concurrently without touching the logical frame.
-      int stride = DomeWiringLayout.ControlBoxPixelCount;
       DomeOutputMapping mapping = this.outputMapper.Current;
       this.transport.PrepareMapping(mapping);
-      for (int i = 0; i < buffer.pixels.Length; i++) {
-        LEDDomeOutputPixel pixel = buffer.pixels[i];
-        int totalPixelIndex =
-          mapping.ControlBoxAt(i) * stride + mapping.PixelWithinBoxAt(i);
-        this.transport.SetPixel(totalPixelIndex, pixel.color);
-        simulatorCapture.SetColor(i, pixel.color);
+      if (this.transport.CanWrite) {
+        this.EnsureMappedPixelIndices(mapping);
+        this.transport.SetPixels(
+          this.cachedMappedPixelIndices,
+          this.cachedMappedPixelCount,
+          buffer);
+      }
+      if (simulatorCapture.Enabled) {
+        for (int i = 0; i < buffer.pixels.Length; i++) {
+          simulatorCapture.SetColor(i, buffer.pixels[i].color);
+        }
       }
       this.simulatorPublisher.CompleteFrame(
         simulatorCapture,
         this.OutputSettings.SimulationEnabled);
+    }
+
+    private void EnsureMappedPixelIndices(DomeOutputMapping mapping) {
+      if (ReferenceEquals(mapping, this.cachedWriteMapping)) {
+        return;
+      }
+      int stride = DomeWiringLayout.ControlBoxPixelCount;
+      var indices = new int[mapping.Count];
+      int requiredPixelCount = 0;
+      for (int i = 0; i < indices.Length; i++) {
+        int mapped = mapping.ControlBoxAt(i) * stride +
+          mapping.PixelWithinBoxAt(i);
+        indices[i] = mapped;
+        requiredPixelCount = Math.Max(requiredPixelCount, mapped + 1);
+      }
+      this.cachedMappedPixelIndices = indices;
+      this.cachedMappedPixelCount = requiredPixelCount;
+      this.cachedWriteMapping = mapping;
     }
 
     /**

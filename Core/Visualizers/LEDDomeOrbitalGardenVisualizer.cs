@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
 using System.Numerics;
 
 namespace Spectrum.Visualizers {
@@ -25,6 +24,7 @@ namespace Spectrum.Visualizers {
     private readonly Stopwatch frameTimer = new Stopwatch();
     private readonly List<OrbitalGravityWell> gravityWells =
       new List<OrbitalGravityWell>();
+    private readonly List<int> gravityWellDeviceIds = new List<int>();
 
     public LEDDomeOrbitalGardenVisualizer(
       LayerRendererRuntime runtime,
@@ -83,13 +83,26 @@ namespace Spectrum.Visualizers {
       this.gravityWells.Clear();
       IReadOnlyDictionary<int, OrientationDevice> devices =
         this.orientationInput.OperatorFrameDevices;
-      foreach (var kvp in devices.OrderBy(item => item.Key)) {
+      this.gravityWellDeviceIds.Clear();
+      if (devices is Dictionary<int, OrientationDevice> deviceMap) {
+        foreach (int deviceId in deviceMap.Keys) {
+          this.gravityWellDeviceIds.Add(deviceId);
+        }
+      } else {
+        foreach (KeyValuePair<int, OrientationDevice> entry in devices) {
+          this.gravityWellDeviceIds.Add(entry.Key);
+        }
+      }
+      this.gravityWellDeviceIds.Sort();
+      for (int index = 0; index < this.gravityWellDeviceIds.Count; index++) {
+        int deviceId = this.gravityWellDeviceIds[index];
+        OrientationDevice device = devices[deviceId];
         Vector3 aim = Vector3.Transform(
           OrientationCenter.Spot,
-          Quaternion.Conjugate(kvp.Value.currentRotation()));
+          Quaternion.Conjugate(device.currentRotation()));
         this.gravityWells.Add(new OrbitalGravityWell(
           OrbitalGardenState.FoldToUpperHemisphere(aim),
-          kvp.Key & 7));
+          deviceId & 7));
       }
       if (this.gravityWells.Count == 0) {
         this.gravityWells.Add(OrbitalGardenState.FallbackWell);

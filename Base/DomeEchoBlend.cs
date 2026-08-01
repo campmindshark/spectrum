@@ -103,8 +103,9 @@ namespace Spectrum.Base {
       DomeFrame dest = ctx.Dest;
       LEDDomeOutputPixel[] pixels = dest.pixels;
       LEDDomeOutputPixel[] maskPixels = ctx.Src.pixels;
-      double driftX = options.Drift * Math.Cos(options.DriftDirection);
-      double driftY = options.Drift * Math.Sin(options.DriftDirection);
+      EchoSamplingState sampling = ctx.History.GetOrCreateState(
+        () => new EchoSamplingState());
+      sampling.Ensure(dest.Topology, options, copyCount);
       double weight = 1;
       for (int copy = 1; copy <= copyCount; copy++) {
         if (!ctx.History.TryGetAtOrBefore(
@@ -112,12 +113,6 @@ namespace Spectrum.Base {
             out int[]? historicalColors)) {
           continue;
         }
-        double angle = copy * options.Rotation;
-        double cos = Math.Cos(angle);
-        double sin = Math.Sin(angle);
-        double scale = Math.Pow(options.Scale, copy);
-        double offsetX = copy * driftX;
-        double offsetY = copy * driftY;
         double hueShift = copy * options.HueShift;
         double saturation = Math.Pow(options.Saturation, copy);
         for (int i = 0; i < pixels.Length; i++) {
@@ -125,16 +120,7 @@ namespace Spectrum.Base {
           if (mask == 0) {
             continue;
           }
-          DomeTopologyPixel point = dest.Topology.PixelAt(i);
-          double x = 2 * point.TopDownX - 1 - offsetX;
-          double y = 1 - 2 * point.TopDownY - offsetY;
-          double sampleX = (cos * x + sin * y) / scale;
-          double sampleY = (-sin * x + cos * y) / scale;
-          if (sampleX * sampleX + sampleY * sampleY > 1) {
-            continue;
-          }
-          int sample = dest.NearestTopDownPixel(
-            (sampleX + 1) * .5, (1 - sampleY) * .5);
+          int sample = sampling.SampleAt(copy - 1, i);
           if (sample < 0) {
             continue;
           }
@@ -150,6 +136,66 @@ namespace Spectrum.Base {
           break;
         }
       }
+    }
+
+    // Echo's geometric transform depends only on immutable operation options
+    // and the shared topology. Cache its exact nearest-pixel result with the
+    // compositor-owned per-layer state instead of repeating dictionary-backed
+    // spatial searches for every copy of every frame.
+    private sealed class EchoSamplingState {
+      private DomeTopology? topology;
+      private EchoOptions? options;
+      private int copyCount;
+      private int pixelCount;
+      private int[] samples = Array.Empty<int>();
+
+      public void Ensure(
+        DomeTopology topology, EchoOptions options, int copyCount
+      ) {
+        int pixelCount = topology.PixelCount;
+        if (ReferenceEquals(this.topology, topology) &&
+            ReferenceEquals(this.options, options) &&
+            this.copyCount == copyCount &&
+            this.pixelCount == pixelCount) {
+          return;
+        }
+
+        int required = checked(copyCount * pixelCount);
+        if (this.samples.Length != required) {
+          this.samples = new int[required];
+        }
+        double driftX = options.Drift * Math.Cos(options.DriftDirection);
+        double driftY = options.Drift * Math.Sin(options.DriftDirection);
+        for (int copyIndex = 0; copyIndex < copyCount; copyIndex++) {
+          int copy = copyIndex + 1;
+          double angle = copy * options.Rotation;
+          double cos = Math.Cos(angle);
+          double sin = Math.Sin(angle);
+          double scale = Math.Pow(options.Scale, copy);
+          double offsetX = copy * driftX;
+          double offsetY = copy * driftY;
+          int sampleOffset = copyIndex * pixelCount;
+          for (int i = 0; i < pixelCount; i++) {
+            DomeTopologyPixel point = topology.PixelAt(i);
+            double x = 2 * point.TopDownX - 1 - offsetX;
+            double y = 1 - 2 * point.TopDownY - offsetY;
+            double sampleX = (cos * x + sin * y) / scale;
+            double sampleY = (-sin * x + cos * y) / scale;
+            this.samples[sampleOffset + i] =
+              sampleX * sampleX + sampleY * sampleY > 1
+                ? -1
+                : topology.NearestTopDownPixel(
+                    (sampleX + 1) * .5, (1 - sampleY) * .5);
+          }
+        }
+        this.topology = topology;
+        this.options = options;
+        this.copyCount = copyCount;
+        this.pixelCount = pixelCount;
+      }
+
+      public int SampleAt(int copyIndex, int pixelIndex) =>
+        this.samples[copyIndex * this.pixelCount + pixelIndex];
     }
 
     // Scale HSV saturation without a full RGB/HSV round trip. Pulling every

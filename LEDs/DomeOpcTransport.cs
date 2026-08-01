@@ -72,6 +72,15 @@ namespace Spectrum.LEDs {
       this.opc?.SetPixel(pixelIndex, color);
     }
 
+    internal void SetPixels(
+      int[] mappedPixelIndices,
+      int requiredPixelCount,
+      DomeFrame frame
+    ) {
+      this.opc?.SetPixels(
+        mappedPixelIndices, requiredPixelCount, frame);
+    }
+
     internal void Flush() {
       this.opc?.Flush();
     }

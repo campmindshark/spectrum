@@ -93,9 +93,8 @@ public sealed record EmptyLayerRendererOptions : ILayerRendererOptions {
   ) : ILayerRendererOptions;
 
   public sealed record WatchfulIrisLayerOptions(
-    int IrisComplexity, double PupilSize, double DilationGain,
-    int BlinkTrigger, double EyelidSoftness, double ScleraBrightness,
-    int Palette
+    double PupilSize, double DilationGain, int BlinkTrigger,
+    double EyelidSoftness, double ScleraBrightness, int Palette
   ) : ILayerRendererOptions;
 
   public sealed record LivingSkinLayerOptions(

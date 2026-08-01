@@ -17,6 +17,8 @@ namespace Spectrum.LayerPipeline.Tests {
       run(nameof(OrbitalGardenUsesSphericalOrbits), OrbitalGardenUsesSphericalOrbits);
       run(nameof(LavaLampSkyUsesViscousThermalBlobs), LavaLampSkyUsesViscousThermalBlobs);
       run(nameof(VortexUsesGlobalFade), VortexUsesGlobalFade);
+      run(nameof(VortexNoiseCacheMatchesReference), VortexNoiseCacheMatchesReference);
+      run(nameof(RippleTankPowerLookupTracksPow), RippleTankPowerLookupTracksPow);
     }
     private static void TopographicDreamUsesEvolvingContours() {
       LayerDefinition? definition =
@@ -570,6 +572,49 @@ namespace Spectrum.LayerPipeline.Tests {
           frame.pixels[trailIndex].g > 0 &&
           frame.pixels[trailIndex].b == 0),
         "zero global fade retained stale vortex history");
+    }
+
+    private static void VortexNoiseCacheMatchesReference() {
+      var cache = new LEDDomeVortexVisualizer.PeriodicNoiseLattice();
+      double[] sampleXs = { -74.2, -1.01, 0, 1.25, 36.99, 75.4 };
+      double[] sampleYs = { -3.8, -2.01, -.2, 0, 4.99, 8.2 };
+
+      AssertCachedNoiseMatchesReference(cache, 37, sampleXs, sampleYs);
+
+      // Exercise reuse with both a disjoint row range and a new period.
+      AssertCachedNoiseMatchesReference(cache, 37, sampleXs,
+        new[] { 100.2, 101.75, 106.8 });
+      AssertCachedNoiseMatchesReference(cache, 64, sampleXs, sampleYs);
+    }
+
+    private static void AssertCachedNoiseMatchesReference(
+        LEDDomeVortexVisualizer.PeriodicNoiseLattice cache,
+        int period, double[] sampleXs, double[] sampleYs) {
+      cache.Prepare(period, sampleYs.Min(), sampleYs.Max());
+      foreach (double y in sampleYs) {
+        foreach (double x in sampleXs) {
+          double expected =
+            LEDDomeVortexVisualizer.PeriodicValueNoise(x, y, period);
+          double actual = cache.Sample(x, y);
+          Assert(expected == actual,
+            $"cached Vortex noise changed the reference value at ({x}, {y})");
+        }
+      }
+    }
+
+    private static void RippleTankPowerLookupTracksPow() {
+      var lookup = new LEDDomeRippleTankVisualizer.RipplePowerLookup();
+      double[] sharpnessValues = { 1, 1.5, 5, 12 };
+      foreach (double sharpness in sharpnessValues) {
+        lookup.Prepare(sharpness);
+        for (int i = 0; i <= 1000; i++) {
+          double value = i / 1000d;
+          double expected = Math.Pow(value, sharpness);
+          double actual = lookup.Sample(value);
+          Assert(Math.Abs(expected - actual) <= 0.000002,
+            $"Ripple Tank power lookup drifted at {value} ^ {sharpness}");
+        }
+      }
     }
 
   }

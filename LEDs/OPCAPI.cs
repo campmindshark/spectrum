@@ -537,17 +537,56 @@ namespace Spectrum.LEDs {
         );
       }
       ChannelBuffer channel = this.GetOrCreateChannel(channelIndex);
-      if (pixelIndex >= channel.next.Length) {
-        int newCapacity = channel.next.Length;
-        while (newCapacity <= pixelIndex) {
-          newCapacity *= 2;
-        }
-        Array.Resize(ref channel.next, newCapacity);
-      }
+      EnsureChannelCapacity(channel, pixelIndex + 1);
       channel.next[pixelIndex] = color;
       if (pixelIndex + 1 > channel.nextCount) {
         channel.nextCount = pixelIndex + 1;
       }
+    }
+
+    // Whole-dome publication resolves the default channel and its capacity
+    // once, then scatters the already-baked logical-to-wire projection. This
+    // removes a dictionary lookup, range check, and growth check from every
+    // logical LED while preserving the dense persistent-channel contract.
+    internal void SetPixels(
+      int[] mappedPixelIndices,
+      int requiredPixelCount,
+      DomeFrame frame
+    ) {
+      Debug.Assert(this.defaultChannelSet, "defaultChannel should be set");
+      if (mappedPixelIndices == null || frame == null ||
+          mappedPixelIndices.Length != frame.pixels.Length) {
+        throw new ArgumentException(
+          "Mapped indices and frame pixels must have equal lengths.");
+      }
+      if ((uint)requiredPixelCount > (uint)MaxPixelsPerChannel) {
+        throw new ArgumentOutOfRangeException(nameof(requiredPixelCount));
+      }
+
+      ChannelBuffer channel = this.GetOrCreateChannel(this.defaultChannel);
+      EnsureChannelCapacity(channel, requiredPixelCount);
+      int[] colors = channel.next;
+      for (int i = 0; i < mappedPixelIndices.Length; i++) {
+        int mappedPixel = mappedPixelIndices[i];
+        Debug.Assert((uint)mappedPixel < (uint)requiredPixelCount);
+        colors[mappedPixel] = frame.pixels[i].color;
+      }
+      if (requiredPixelCount > channel.nextCount) {
+        channel.nextCount = requiredPixelCount;
+      }
+    }
+
+    private static void EnsureChannelCapacity(
+      ChannelBuffer channel, int requiredPixelCount
+    ) {
+      if (requiredPixelCount <= channel.next.Length) {
+        return;
+      }
+      int newCapacity = channel.next.Length;
+      while (newCapacity < requiredPixelCount) {
+        newCapacity *= 2;
+      }
+      Array.Resize(ref channel.next, newCapacity);
     }
 
     // Looks up a channel's buffer, creating it on first use. The lock is taken

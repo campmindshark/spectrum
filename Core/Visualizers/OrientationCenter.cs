@@ -2,6 +2,7 @@ using Spectrum.Base;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace Spectrum.Visualizers {
 
@@ -66,6 +67,9 @@ namespace Spectrum.Visualizers {
     // bookkeeping.
     private struct DeviceFrame {
       public Quaternion rotation;
+      // World-space direction whose dot product with a dome pixel is the
+      // transformed point's local X coordinate (the dipole pole axis).
+      public Vector3 localXAxis;
       public bool isPoi;
       public double poiK;
     }
@@ -88,6 +92,7 @@ namespace Spectrum.Visualizers {
 
     // Idle drift state.
     private Quaternion currentOrientation = new Quaternion(0, 0, 0, 1);
+    private Vector3 currentLocalXAxis = Vector3.UnitX;
     private bool idle = false;
     private double yaw = 0, pitch = -.25, roll = 0;
     private double yawMomentum = 0, pitchMomentum = 0.0005, rollMomentum = 0;
@@ -207,6 +212,8 @@ namespace Spectrum.Visualizers {
         (float)(2 * Math.PI * this.roll)
       );
       this.currentOrientation = Quaternion.Normalize(dummy);
+      this.currentLocalXAxis = Vector3.Transform(
+        Vector3.UnitX, Quaternion.Conjugate(this.currentOrientation));
     }
 
     // Resolve each moving wand's rotation and scaling once, and pick the
@@ -250,6 +257,8 @@ namespace Spectrum.Visualizers {
         OrientationDevice device = kvp.Value;
         DeviceFrame frame = new DeviceFrame();
         frame.rotation = device.currentRotation();
+        frame.localXAxis = Vector3.Transform(
+          Vector3.UnitX, Quaternion.Conjugate(frame.rotation));
 
         // If only poi are moving, their visualization takes over the dome;
         // otherwise they are wands on strings. Numbers track the poi
@@ -279,21 +288,20 @@ namespace Spectrum.Visualizers {
     // collective rotation; its hue is HueFromColorCenter(colorCenter).
     public double PotentialAt(Vector3 pixelPoint, out Quaternion colorCenter) {
       if (this.idle) {
-        Vector3 t = Vector3.Transform(pixelPoint, this.currentOrientation);
-        double distance = Vector3.Distance(t, Spot);
-        double negadistance = Vector3.Distance(t, NegSpot);
+        PoleMetrics(
+          pixelPoint, this.currentLocalXAxis,
+          out double scale, out _);
         colorCenter = this.currentOrientation;
-        return 1 / Math.Max(distance * negadistance, MIN_POLE_PRODUCT);
+        return scale;
       }
 
       double potential = 0;
       Quaternion cc = new Quaternion(0, 0, 0, 0);
       for (int d = 0; d < this.activeDevices.Count; d++) {
         DeviceFrame dev = this.activeDevices[d];
-        Vector3 t = Vector3.Transform(pixelPoint, dev.rotation);
-        double distance = Vector3.Distance(t, Spot);
-        double negadistance = Vector3.Distance(t, NegSpot);
-        double scale = 1 / Math.Max(distance * negadistance, MIN_POLE_PRODUCT);
+        PoleMetrics(
+          pixelPoint, dev.localXAxis,
+          out double scale, out double sign);
         if (dev.isPoi) {
           scale = scale * dev.poiK + POI_MIN_SCALE;
         }
@@ -305,13 +313,35 @@ namespace Spectrum.Visualizers {
         // two along a great circle per device. Using a continuous sign that
         // passes through zero at the boundary keeps cc - and therefore the
         // hue sampled from it - continuous everywhere.
-        double sign = (negadistance - distance) / (negadistance + distance);
         cc += Quaternion.Multiply(dev.rotation, (float)(scale * sign));
         potential += scale;
       }
       colorCenter = Quaternion.Normalize(cc);
       return potential / this.activeDevices.Count;
     }
+
+    // For a unit point on the dome, its distances to the antipodal +/-X poles
+    // depend only on its local X coordinate. Their product is
+    // 2*sqrt(1-x^2), and their normalized difference is
+    // -x/(1+sqrt(1-x^2)). This replaces a quaternion transform and two vector
+    // distances per device and pixel with one cached-axis dot and one sqrt.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void PoleMetrics(
+      Vector3 pixelPoint, Vector3 localXAxis,
+      out double scale, out double sign
+    ) {
+      double x = Math.Clamp(
+        Vector3.Dot(pixelPoint, localXAxis), -1, 1);
+      double equatorialRadius = Math.Sqrt(Math.Max(0, 1 - x * x));
+      scale = 1 / Math.Max(
+        2 * equatorialRadius, MIN_POLE_PRODUCT);
+      sign = -x / (1 + equatorialRadius);
+    }
+
+    internal static void UnitPoleMetrics(
+      Vector3 transformedPoint, out double scale, out double sign
+    ) => PoleMetrics(
+      transformedPoint, Vector3.UnitX, out scale, out sign);
 
     // Signed version of the orientation metaball field. PotentialAt identifies
     // both ends of a wand by multiplying their distances; this keeps them
