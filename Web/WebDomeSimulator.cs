@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -95,7 +96,14 @@ namespace Spectrum.Web {
       } catch (WebSocketException) {
       } finally {
         linked.Cancel();
-        this.RemoveClient();
+        try {
+          // IsCompleted only reports state; it does not observe a fault. Always
+          // await the receive task before disposing its socket so a Windows
+          // socket-abort exception cannot surface later on the finalizer thread.
+          await receiver.ConfigureAwait(false);
+        } finally {
+          this.RemoveClient();
+        }
       }
     }
 
@@ -116,6 +124,9 @@ namespace Spectrum.Web {
         }
       } catch (OperationCanceledException) {
       } catch (WebSocketException) {
+      } catch (SocketException) {
+        // Windows can report an aborted WebSocket receive as the underlying
+        // WSA_OPERATION_ABORTED (995) instead of wrapping it.
       }
     }
 

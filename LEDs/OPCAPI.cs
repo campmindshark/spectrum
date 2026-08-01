@@ -308,10 +308,26 @@ namespace Spectrum.LEDs {
     }
 
     private void CloseSocket() {
+      IAsyncResult? pendingConnect = this.connectAttempt;
       try {
         this.socket.Close();
       } catch (Exception e) {
         Debug.WriteLine("OPCAPI: error closing socket: " + e);
+      }
+      if (pendingConnect != null) {
+        try {
+          // Every BeginConnect must be paired with EndConnect. Closing the
+          // socket aborts a pending operation; EndConnect then observes that
+          // expected failure instead of leaving its task-backed implementation
+          // to raise UnobservedTaskException later.
+          this.socket.EndConnect(pendingConnect);
+        } catch (Exception e) {
+          Debug.WriteLine(
+            "OPCAPI: pending connection ended during socket close: " + e);
+        } finally {
+          this.connectAttempt = null;
+          this.connectAttemptStartedTimestamp = 0;
+        }
       }
     }
 
