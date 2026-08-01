@@ -329,7 +329,7 @@ namespace Spectrum.LayerPipeline.Tests {
         Layer("background", "coalesced-show"));
       var telemetry = new RuntimeTelemetry();
       using var stream = new global::Spectrum.Web.ConfigEventStream(
-        global::Spectrum.Web.SpectrumParameters.BuildRegistry(),
+        global::Spectrum.SpectrumConfigurationSchema.BuildParameterRegistry(),
         config, null, telemetry, null);
       global::Spectrum.Web.ConfigEventStream.Subscriber subscriber =
         stream.Subscribe(ControlRole.Maintenance, out Guid id);

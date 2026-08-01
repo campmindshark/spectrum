@@ -103,12 +103,6 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     private static void OrientationRingsUseAngularDistance() {
-      AssertClose(
-        .5,
-        DomeSurfaceGeometry.NormalizedAngularDistance(
-          Vector3.UnitZ, Vector3.UnitX),
-        "normalized angular distance does not map a quarter turn to .5");
-
       AngularRingBand midRipple =
         OrientationRingGeometry.RippleBand(300);
       Assert(midRipple.Contains(Vector3.UnitZ, Vector3.UnitX),
@@ -173,7 +167,7 @@ namespace Spectrum.LayerPipeline.Tests {
         "Quaternion Test is still exposed as a layer renderer");
 
       ParameterRegistry registry =
-        global::Spectrum.Web.SpectrumParameters.BuildRegistry();
+        global::Spectrum.SpectrumConfigurationSchema.BuildParameterRegistry();
       Assert(registry.TryGet(
           "domeTestPattern", out ParameterDescriptor? testPattern) &&
         testPattern != null,

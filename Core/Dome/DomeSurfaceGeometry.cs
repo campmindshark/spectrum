@@ -33,14 +33,6 @@ namespace Spectrum {
       return Math.Acos(UnitSphereDot(first, second));
     }
 
-    // Great-circle distance normalized so coincident points are 0 and
-    // antipodal points are 1.
-    public static double NormalizedAngularDistance(
-      Vector3 first, Vector3 second
-    ) {
-      return AngularDistance(first, second) / Math.PI;
-    }
-
     public static double NormalizeAngularDistance(
       double angle, double maximumAngle
     ) => maximumAngle <= 0 ? 0 : Math.Clamp(angle / maximumAngle, 0, 1);

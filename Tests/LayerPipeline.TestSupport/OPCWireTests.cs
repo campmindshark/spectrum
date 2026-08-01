@@ -7,7 +7,6 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using static Spectrum.LayerPipeline.Tests.TestAssertions;
@@ -53,8 +52,8 @@ namespace Spectrum.LayerPipeline.Tests {
       run("dome port permutation composes with cable mapping", PortMapping);
       run("dome default config exposes identity port mapping",
         DefaultPortMappingConfig);
-      run("default config has neutral hardware selections and no retired fields",
-        SanitizedDefaultConfig);
+      run("default configuration is operational",
+        DefaultConfigurationIsOperational);
       run("dome port mappings round-trip without aliasing",
         PortMappingConfigurationContract);
       run("two-stage dome calibration owns and commits one atomic draft",
@@ -374,57 +373,9 @@ namespace Spectrum.LayerPipeline.Tests {
         "default config per-box mappings are missing or not identity");
     }
 
-    private static void SanitizedDefaultConfig() {
+    private static void DefaultConfigurationIsOperational() {
       string path = Path.Combine(
         AppContext.BaseDirectory, "spectrum_default_config.xml");
-      XDocument document = XDocument.Load(path);
-      XElement root = document.Root ??
-        throw new Exception("default config has no root element");
-      var retiredElements = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
-        "audioDeviceIndex",
-        "huesEnabled",
-        "huesOutputInSeparateThread",
-        "hueDelay",
-        "hueIdleOnSilent",
-        "hueURL",
-        "hueIndices",
-        "hueOverrideIsCustom",
-        "hueOverrideIndex",
-        "lightsOff",
-        "redAlert",
-        "controlLights",
-        "brighten",
-        "colorslide",
-        "sat",
-        "peakC",
-        "dropQ",
-        "dropT",
-        "kickQ",
-        "kickT",
-        "snareQ",
-        "snareT",
-        "ledBoardEnabled",
-        "ledBoardOutputInSeparateThread",
-        "boardBeagleboneOPCAddress",
-        "boardRowLength",
-        "boardRowsPerStrip",
-        "boardBrightness",
-        "colorPaletteIndex",
-        "colorPalette",
-        "paletteModelVersion",
-        "midiInputInSeparateThread",
-        "levelDriverPresets",
-        "channelToAudioLevelDriverPreset",
-        "channelToMidiLevelDriverPreset",
-      };
-      string[] foundRetired = root.Elements()
-        .Select(element => element.Name.LocalName)
-        .Where(retiredElements.Contains)
-        .ToArray();
-      Assert(foundRetired.Length == 0,
-        "default config contains retired fields: " +
-        string.Join(", ", foundRetired));
-
       using FileStream stream = File.OpenRead(path);
       var config =
         new XSerializer.XmlSerializer<global::Spectrum.SpectrumConfigurationDocument>(

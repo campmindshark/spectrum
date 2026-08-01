@@ -593,7 +593,7 @@ namespace Spectrum.Portability.Tests {
     [TestMethod]
     public void PortableWebHostServesOperatorApi() {
       ParameterRegistry desktopRegistry =
-        global::Spectrum.Web.SpectrumParameters.BuildRegistry(
+        global::Spectrum.SpectrumConfigurationSchema.BuildParameterRegistry(
           nativeWindowControlsAvailable: true);
       Assert(desktopRegistry.TryGet("vjHUDEnabled", out _) &&
           desktopRegistry.TryGet("domeSimulationEnabled", out _),

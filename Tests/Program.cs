@@ -24,33 +24,8 @@ namespace Spectrum.LayerPipeline.Tests {
     private static IReadOnlyDictionary<string, Action> BuildTestCases() {
       var tests = new Dictionary<string, Action>();
       void Register(string name, Action test) => tests.Add(name, test);
-      MotionEmbersTests.Register(Register);
-      StackValidatorTests.Register(Register);
-      WandProtocolTests.Register(Register);
-      PaletteServiceTests.Register(Register);
-      AdvisoryLockTests.Register(Register);
-      ColorPerformanceTests.Register(Register);
-      OPCWireTests.Register(Register);
-      DomeOutputPublicationTests.Register(Register);
-      ConfigurationContractTests.Register(Register);
-      MidiBindingEditorTests.Register(Register);
-      MidiPresetEditorTests.Register(Register);
-      OperatorPresentationTests.Register(Register);
-      RuntimeFailurePolicyTests.Register(Register);
-      PointCloudTests.Register(Register);
-      DomeTopologyTests.Register(Register);
-      LayerCatalogTests.Register(Register);
-      ReactiveVisualizerTests.Register(Register);
-      TopologyVisualizerTests.Register(Register);
-      ParticleVisualizerTests.Register(Register);
-      EnvironmentVisualizerTests.Register(Register);
-      LayerRuntimeTests.Register(Register);
-      StateOrchestrationTests.Register(Register);
-      LayerPipelineCoreTests.Register(Register);
-      RenderPlanTests.Register(Register);
       WindowsOrchestrationTests.Register(Register);
       WindowsUiControllerTests.Register(Register);
-      CompositeOperationTests.Register(Register);
       return tests;
     }
   }

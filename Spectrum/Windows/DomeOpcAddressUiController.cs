@@ -98,7 +98,7 @@ namespace Spectrum {
       [NotNullWhen(false)] out string? error
     ) {
       try {
-        normalized = Web.SpectrumParameters.NormalizeOpcAddress(value);
+        normalized = SpectrumConfigurationSchema.NormalizeOpcAddress(value);
         error = null;
         return true;
       } catch (ArgumentException validationError) {

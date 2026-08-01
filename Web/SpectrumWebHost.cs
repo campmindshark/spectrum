@@ -34,8 +34,9 @@ namespace Spectrum.Web {
         throw new ArgumentNullException(nameof(runtime));
       }
 
-      ParameterRegistry registry = SpectrumParameters.BuildRegistry(
-        nativeWindowControlsAvailable);
+      ParameterRegistry registry =
+        SpectrumConfigurationSchema.BuildParameterRegistry(
+          nativeWindowControlsAvailable);
       var controls = new ControlService(
         registry, stateDispatcher, config);
       this.eventStream = new ConfigEventStream(

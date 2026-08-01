@@ -109,10 +109,8 @@ namespace Spectrum.Audio {
             "The Madmom tracker path has no parent directory.");
         start.FileName = runtime.PythonPath;
         start.ArgumentList.Add(runtime.TrackerPath);
-        // Keep the legacy boolean form compatible with an already-created
-        // development environment. New tracker builds interpret it as the
-        // automatic platform default (WASAPI on Windows).
-        start.ArgumentList.Add("--host_api");
+        start.ArgumentList.Add("--host_api_name");
+        start.ArgumentList.Add("auto");
         start.ArgumentList.Add(string.Format(
           "--audio_input={0}", this.audio.CurrentAudioDeviceIndex
         ));

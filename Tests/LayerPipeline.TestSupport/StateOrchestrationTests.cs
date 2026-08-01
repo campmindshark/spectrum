@@ -134,7 +134,7 @@ namespace Spectrum.LayerPipeline.Tests {
         },
       });
       using var stream = new global::Spectrum.Web.ConfigEventStream(
-        global::Spectrum.Web.SpectrumParameters.BuildRegistry(),
+        global::Spectrum.SpectrumConfigurationSchema.BuildParameterRegistry(),
         config, null, null, null);
       global::Spectrum.Web.ConfigEventStream.Subscriber subscriber =
         stream.Subscribe(ControlRole.Maintenance, out Guid id);
@@ -174,7 +174,7 @@ namespace Spectrum.LayerPipeline.Tests {
       using var snapshotCaptured = new ManualResetEventSlim();
       using var continueSerialization = new ManualResetEventSlim();
       using var stream = new global::Spectrum.Web.ConfigEventStream(
-        global::Spectrum.Web.SpectrumParameters.BuildRegistry(),
+        global::Spectrum.SpectrumConfigurationSchema.BuildParameterRegistry(),
         config, null, null, null,
         snapshot => {
           if (Interlocked.Increment(ref captureCount) != 1) {
