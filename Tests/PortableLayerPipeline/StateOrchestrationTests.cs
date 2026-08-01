@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -10,37 +11,31 @@ using Spectrum.Base;
 using Spectrum.LEDs;
 using Spectrum.Visualizers;
 using static Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class StateOrchestrationTests {
-    public static void Register(Action<string, Action> run) {
-      run(nameof(ConfigurationPublishesSnapshot), ConfigurationPublishesSnapshot);
-      run(nameof(ShowStateTransactionsAreAtomic), ShowStateTransactionsAreAtomic);
-      run(nameof(ShowStateSseIsAtomic), ShowStateSseIsAtomic);
-      run(nameof(InitialShowStateSseIsAtomic), InitialShowStateSseIsAtomic);
-      run(nameof(ConfigurationMutationsUseStateDispatcher), ConfigurationMutationsUseStateDispatcher);
-      run(nameof(RuntimeSettingsPublishCompleteGenerations), RuntimeSettingsPublishCompleteGenerations);
-      run(nameof(WebReadsUseStateDispatcher), WebReadsUseStateDispatcher);
-    }
-    private static void ConfigurationPublishesSnapshot() {
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class StateOrchestrationTests {
+    [TestMethod]
+    public void ConfigurationPublishesSnapshot() {
       var config = ConfigurationWithLayers(Layer("background", null));
       var source = (ILayerStackSnapshotSource)config;
       LayerStackSnapshot published = source.DomeLayerStackSnapshot;
       DomeLayerView dto = config.domeLayerStack[0];
 
-      Assert(!string.IsNullOrWhiteSpace(dto.InstanceId),
+      Assert.IsTrue(!string.IsNullOrWhiteSpace(dto.InstanceId),
         "the publication boundary did not assign an instance ID");
-      Assert(published.Layers[0].Id.Value == dto.InstanceId,
+      Assert.IsTrue(published.Layers[0].Id.Value == dto.InstanceId,
         "the DTO and immutable snapshot received different identities");
       DomeLayerView changed = dto with { Enabled = false };
-      Assert(published.Layers[0].Enabled &&
+      Assert.IsTrue(published.Layers[0].Enabled &&
           config.domeLayerStack[0].Enabled && !changed.Enabled,
         "the published snapshot retained a mutable view");
     }
 
-    private static void ShowStateTransactionsAreAtomic() {
+    [TestMethod]
+    public void ShowStateTransactionsAreAtomic() {
       var colors = new LEDColor[DomePalette.SlotCount];
       colors[0] = new LEDColor(0x112233, 0x445566);
       var config = new global::Spectrum.SpectrumConfiguration {
@@ -60,9 +55,9 @@ namespace Spectrum.LayerPipeline.Tests {
       new PaletteService(config).ReplaceColors(
         "Live", new[] { new LEDColor(0xAABBCC) });
       DomeShowStateSnapshot afterPaletteEdit = source.DomeShowStateSnapshot;
-      Assert(afterPaletteEdit.Generation > beforePaletteEdit.Generation,
+      Assert.IsTrue(afterPaletteEdit.Generation > beforePaletteEdit.Generation,
         "an in-place palette edit did not publish a new generation");
-      Assert(beforePaletteEdit.Palettes[0].GetSingleColor(0) == 0x112233 &&
+      Assert.IsTrue(beforePaletteEdit.Palettes[0].GetSingleColor(0) == 0x112233 &&
           afterPaletteEdit.Palettes[0].GetSingleColor(0) == 0xAABBCC,
         "a show-state snapshot retained mutable palette objects");
 
@@ -88,7 +83,7 @@ namespace Spectrum.LayerPipeline.Tests {
             e.PropertyName == nameof(config.domeGlobalFadeSpeed) ||
             e.PropertyName == nameof(config.domeGlobalHueSpeed)) {
           compatibilityNotifications++;
-          Assert(config.domeLayerStack[0].InstanceId == "new-layer" &&
+          Assert.IsTrue(config.domeLayerStack[0].InstanceId == "new-layer" &&
               config.domeGlobalFadeSpeed == 0.75 &&
               config.domeGlobalHueSpeed == 1.5,
             "a subscriber observed a partially applied scene");
@@ -98,18 +93,19 @@ namespace Spectrum.LayerPipeline.Tests {
       (bool applied, string? error) = new SceneService(
         config, DomeLayerCatalog.Metadata).Apply("Next");
       DomeShowStateSnapshot appliedState = source.DomeShowStateSnapshot;
-      Assert(applied, error);
-      Assert(generationNotifications == 1 &&
+      Assert.IsTrue(applied, error);
+      Assert.IsTrue(generationNotifications == 1 &&
           compatibilityNotifications == 3,
         "scene recall did not publish exactly one show generation");
-      Assert(appliedState.LayerStack.Layers[0].Id.Value == "new-layer" &&
+      Assert.IsTrue(appliedState.LayerStack.Layers[0].Id.Value == "new-layer" &&
           appliedState.GlobalFadeSpeed == 0.75 &&
           appliedState.GlobalHueSpeed == 1.5 &&
           appliedState.Palettes[0].GetSingleColor(0) == 0xAABBCC,
         "the recalled generation mixed old and new show values");
     }
 
-    private static void ShowStateSseIsAtomic() {
+    [TestMethod]
+    public void ShowStateSseIsAtomic() {
       var config = new global::Spectrum.SpectrumConfiguration {
         domeGlobalFadeSpeed = 0.1,
         domeGlobalHueSpeed = 0.2,
@@ -142,12 +138,12 @@ namespace Spectrum.LayerPipeline.Tests {
       (bool applied, string? error) =
         new SceneService(
           config, DomeLayerCatalog.Metadata).Apply("SSE Next");
-      Assert(applied, error);
+      Assert.IsTrue(applied, error);
       var frames = new List<string>();
       while (subscriber.Reader.TryRead(out string? frame)) {
         frames.Add(frame);
       }
-      Assert(frames.Count == 1 &&
+      Assert.IsTrue(frames.Count == 1 &&
           frames[0].Contains("\"kind\":\"show\"") &&
           frames[0].Contains("sse-new") &&
           frames[0].Contains("\"globalFadeSpeed\":0.8") &&
@@ -156,7 +152,8 @@ namespace Spectrum.LayerPipeline.Tests {
       stream.Unsubscribe(id);
     }
 
-    private static void InitialShowStateSseIsAtomic() {
+    [TestMethod]
+    public void InitialShowStateSseIsAtomic() {
       var oldColors = new LEDColor[DomePalette.SlotCount];
       oldColors[0] = new LEDColor(0x112233);
       var config = new global::Spectrum.SpectrumConfiguration {
@@ -191,7 +188,7 @@ namespace Spectrum.LayerPipeline.Tests {
       if (!didCapture) {
         continueSerialization.Set();
       }
-      Assert(didCapture,
+      Assert.IsTrue(didCapture,
         "initial SSE serialization did not capture the show snapshot");
 
       var newColors = new LEDColor[DomePalette.SlotCount];
@@ -211,9 +208,9 @@ namespace Spectrum.LayerPipeline.Tests {
 
       string show = initialFrames.GetAwaiter().GetResult().Single(
         frame => frame.Contains("\"kind\":\"show\""));
-      Assert(captured != null,
+      Assert.IsTrue(captured != null,
         "the show-state serialization did not capture a snapshot");
-      Assert(show.Contains(
+      Assert.IsTrue(show.Contains(
             "\"generation\":" + captured.Generation) &&
           show.Contains("initial-old") &&
           show.Contains("#112233") &&
@@ -224,7 +221,8 @@ namespace Spectrum.LayerPipeline.Tests {
         "an initial SSE frame mixed fields from two show generations");
     }
 
-    private static void ConfigurationMutationsUseStateDispatcher() {
+    [TestMethod]
+    public void ConfigurationMutationsUseStateDispatcher() {
       var config = new global::Spectrum.SpectrumConfiguration();
       var dispatcher = new QueuedStateDispatcher();
       config.AttachMutationDispatcher(dispatcher);
@@ -241,18 +239,19 @@ namespace Spectrum.LayerPipeline.Tests {
         config.domeBrightness = 0.75;
         return true;
       });
-      Assert(Math.Abs(config.domeBrightness - 0.1) < 0.000001 &&
+      Assert.IsTrue(Math.Abs(config.domeBrightness - 0.1) < 0.000001 &&
           notifications == 0 && dispatcher.PendingCount == 1,
         "an off-thread configuration write bypassed the dispatcher");
 
       dispatcher.Drain();
-      Assert(Math.Abs(config.domeBrightness - 0.75) < 0.000001 &&
+      Assert.IsTrue(Math.Abs(config.domeBrightness - 0.75) < 0.000001 &&
           notifications == 1 &&
           notificationThread == Environment.CurrentManagedThreadId,
         "PropertyChanged was not delivered on the state-owner thread");
     }
 
-    private static void RuntimeSettingsPublishCompleteGenerations() {
+    [TestMethod]
+    public void RuntimeSettingsPublishCompleteGenerations() {
       var config = new global::Spectrum.SpectrumConfiguration();
       var source = (IRuntimeSettingsConfiguration)config;
 
@@ -262,7 +261,7 @@ namespace Spectrum.LayerPipeline.Tests {
       config.ReplaceDomeLayerFireCounters(aliasedCounters);
       DomeRuntimeFrameSnapshot retained = source.DomeRuntimeFrameSnapshot;
       aliasedCounters["immutable"] = 99;
-      Assert(retained.FireGeneration("immutable") == 7,
+      Assert.IsTrue(retained.FireGeneration("immutable") == 7,
         "a published command snapshot retained its mutable source map");
 
       var aliasedCableMapping = Enumerable.Range(
@@ -271,7 +270,7 @@ namespace Spectrum.LayerPipeline.Tests {
       DomeOutputSettingsSnapshot retainedOutput =
         source.DomeOutputSettingsSnapshot;
       aliasedCableMapping[0] = 9;
-      Assert(retainedOutput.CableMapping[0] == 0,
+      Assert.IsTrue(retainedOutput.CableMapping[0] == 0,
         "a published output snapshot retained its mutable source array");
 
       Exception? readerFailure = null;
@@ -297,7 +296,7 @@ namespace Spectrum.LayerPipeline.Tests {
           if (runtime.FireGenerations.Count == 16) {
             int expected = runtime.FireGenerations["layer-0"];
             foreach (int value in runtime.FireGenerations.Values) {
-              Assert(value == expected,
+              Assert.IsTrue(value == expected,
                 "a reader observed a torn fire-counter generation");
             }
           }
@@ -310,7 +309,7 @@ namespace Spectrum.LayerPipeline.Tests {
               identity &= mapping[i] == i;
               reverse &= mapping[i] == mapping.Length - 1 - i;
             }
-            Assert(identity || reverse,
+            Assert.IsTrue(identity || reverse,
               "a reader observed a torn cable-mapping generation");
           }
         } catch (Exception error) {
@@ -323,7 +322,8 @@ namespace Spectrum.LayerPipeline.Tests {
       }
     }
 
-    private static void WebReadsUseStateDispatcher() {
+    [TestMethod]
+    public void WebReadsUseStateDispatcher() {
       var layer = Layer("background", "web-owner-read");
       layer.RendererParams = new Dictionary<string, double> {
         ["level"] = 0.4,
@@ -340,21 +340,21 @@ namespace Spectrum.LayerPipeline.Tests {
       } catch (Exception error) {
         directReadError = error;
       }
-      Assert(directReadError == null,
+      Assert.IsTrue(directReadError == null,
         "an immutable off-owner configuration read was rejected");
 
       Task<global::Spectrum.Web.LayersController.LayersState> read =
         Task.Run(controller.StateAsync);
-      Assert(dispatcher.WaitForPending(TimeSpan.FromSeconds(2)) &&
+      Assert.IsTrue(dispatcher.WaitForPending(TimeSpan.FromSeconds(2)) &&
           dispatcher.PendingCount == 1 && !read.IsCompleted,
         "a compound web read bypassed the state-owner dispatcher");
       dispatcher.Drain();
       var state = read.GetAwaiter().GetResult();
-      Assert(state.layers.Count == 1 &&
+      Assert.IsTrue(state.layers.Count == 1 &&
           state.layers[0].instanceId == "web-owner-read",
         "the owner-thread web projection returned the wrong layer state");
       state.layers[0].rendererParams!["level"] = 0.9;
-      Assert(Math.Abs(
+      Assert.IsTrue(Math.Abs(
           config.domeLayerStack[0].RendererParams["level"] - 0.4) < 1e-9,
         "a web DTO retained a mutable configuration alias");
     }

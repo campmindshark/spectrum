@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using Spectrum.Visualizers;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Spectrum.LayerPipeline.Tests {
 
@@ -38,7 +38,7 @@ namespace Spectrum.LayerPipeline.Tests {
       }
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get(
         layer.VisualizerKey);
-      Assert(definition != null,
+      Assert.IsTrue(definition != null,
         "the built-in layer definition is missing");
       ILayerRendererOptions options = definition.CompileOptions(
         snapshot.Layers[0].RendererParameters);
@@ -151,10 +151,10 @@ namespace Spectrum.LayerPipeline.Tests {
     public static void AssertColors(
       string name, DomeFrame frame, int[] expected
     ) {
-      Assert(expected.Length == frame.pixels.Length,
+      Assert.IsTrue(expected.Length == frame.pixels.Length,
         name + " has the wrong fixture length");
       for (int i = 0; i < expected.Length; i++) {
-        Assert(frame.pixels[i].color == expected[i],
+        Assert.IsTrue(frame.pixels[i].color == expected[i],
           name + " pixel " + i + " expected 0x" +
           expected[i].ToString("X6") + " but got 0x" +
           frame.pixels[i].color.ToString("X6"));
@@ -164,7 +164,14 @@ namespace Spectrum.LayerPipeline.Tests {
     public static void AssertClose(
       double expected, double actual, string message
     ) {
-      Assert(Math.Abs(expected - actual) < 0.000000001,
+      Assert.IsTrue(Math.Abs(expected - actual) < 0.000000001,
+        message + " expected " + expected + " but got " + actual);
+    }
+
+    public static void AssertClose(
+      float expected, float actual, string message
+    ) {
+      Assert.IsTrue(Math.Abs(expected - actual) < 0.000001f,
         message + " expected " + expected + " but got " + actual);
     }
 
@@ -272,7 +279,7 @@ namespace Spectrum.LayerPipeline.Tests {
         IsBackground = true,
       };
       thread.Start();
-      Assert(thread.Join(TimeSpan.FromSeconds(3)),
+      Assert.IsTrue(thread.Join(TimeSpan.FromSeconds(3)),
         "dedicated test thread did not complete");
       return completion.Task.GetAwaiter().GetResult();
     }
@@ -340,7 +347,7 @@ namespace Spectrum.LayerPipeline.Tests {
       }
 
       public void Drain() {
-        Assert(this.CheckAccess(),
+        Assert.IsTrue(this.CheckAccess(),
           "state dispatcher drained from a non-owner thread");
         while (true) {
           Action mutation;

@@ -1,20 +1,17 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Globalization;
 using Spectrum.Base;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class MidiBindingEditorTests {
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class MidiBindingEditorTests {
 
-    public static void Register(Action<string, Action> run) {
-      run(nameof(MidiBindingDraftsCreateTypedModels),
-        MidiBindingDraftsCreateTypedModels);
-      run(nameof(MidiBindingValidationIdentifiesFields),
-        MidiBindingValidationIdentifiesFields);
-    }
 
-    private static void MidiBindingDraftsCreateTypedModels() {
+    [TestMethod]
+    public void MidiBindingDraftsCreateTypedModels() {
       string fractional = 1.5.ToString(CultureInfo.CurrentCulture);
       MidiBindingDraft[] drafts = {
         new MidiBindingDraft {
@@ -57,30 +54,30 @@ namespace Spectrum.LayerPipeline.Tests {
           drafts[i],
           out IMidiBindingConfig? binding,
           out MidiBindingValidationError? error);
-        Assert(created && binding != null && error == null,
+        Assert.IsTrue(created && binding != null && error == null,
           "valid MIDI draft " + i + " was rejected");
         bindings[i] = binding;
       }
 
-      Assert(bindings[0] is TapTempoMidiBindingConfig tap &&
+      Assert.IsTrue(bindings[0] is TapTempoMidiBindingConfig tap &&
           tap.BindingName == "Tap" &&
           tap.buttonType == MidiCommandType.Note &&
           tap.buttonIndex == 32,
         "tap-tempo draft mapped incorrectly");
-      Assert(bindings[1] is ContinuousKnobMidiBindingConfig continuous &&
+      Assert.IsTrue(bindings[1] is ContinuousKnobMidiBindingConfig continuous &&
           continuous.knobIndex == 4 &&
           continuous.configPropertyName ==
             nameof(Configuration.domeBrightness) &&
           continuous.startValue == 0 &&
           continuous.endValue == 1.5,
         "continuous-knob draft mapped incorrectly");
-      Assert(bindings[2] is DiscreteKnobMidiBindingConfig discrete &&
+      Assert.IsTrue(bindings[2] is DiscreteKnobMidiBindingConfig discrete &&
           discrete.knobIndex == 5 &&
           discrete.configPropertyName ==
             nameof(Configuration.domeTestPattern) &&
           discrete.numPossibleValues == 6,
         "discrete-knob draft mapped incorrectly");
-      Assert(
+      Assert.IsTrue(
         bindings[3] is DiscreteLogarithmicKnobMidiBindingConfig logarithmic &&
           logarithmic.knobIndex == 6 &&
           logarithmic.configPropertyName ==
@@ -88,14 +85,15 @@ namespace Spectrum.LayerPipeline.Tests {
           logarithmic.numPossibleValues == 8 &&
           logarithmic.startValue == 1.5,
         "logarithmic-knob draft mapped incorrectly");
-      Assert(
+      Assert.IsTrue(
         MidiBindingEditor.CommandTypeIndex(MidiCommandType.Knob) == 0 &&
         MidiBindingEditor.CommandTypeIndex(MidiCommandType.Program) == 1 &&
         MidiBindingEditor.CommandTypeIndex(MidiCommandType.Note) == 2,
         "MIDI command-type indices are not reversible");
     }
 
-    private static void MidiBindingValidationIdentifiesFields() {
+    [TestMethod]
+    public void MidiBindingValidationIdentifiesFields() {
       AssertError(
         new MidiBindingDraft(),
         MidiBindingEditorField.BindingName);
@@ -156,7 +154,7 @@ namespace Spectrum.LayerPipeline.Tests {
         draft,
         out IMidiBindingConfig? binding,
         out MidiBindingValidationError? error);
-      Assert(!created && binding == null && error != null &&
+      Assert.IsTrue(!created && binding == null && error != null &&
           error.Field == expectedField &&
           !string.IsNullOrWhiteSpace(error.Message),
         "MIDI validation did not identify " + expectedField);

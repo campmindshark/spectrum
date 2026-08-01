@@ -1,55 +1,55 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class AdvisoryLockTests {
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class AdvisoryLockTests {
 
-    public static void Register(Action<string, Action> run) {
-      run("advisory lock tokens govern writes and release", OwnershipPolicy);
-      run("advisory locks admit one concurrent holder", ConcurrentAcquire);
-    }
 
-    private static void OwnershipPolicy() {
+    [TestMethod]
+    public void OwnershipPolicy() {
       var locks = new global::Spectrum.Web.AdvisoryLockManager(
         TimeSpan.FromMinutes(1));
       string? resource = global::Spectrum.Web.LockPolicy.ResourceForKey(
         "domeTestPattern");
-      Assert(resource == "domeTest", "test-pattern lock policy changed");
+      Assert.IsTrue(resource == "domeTest", "test-pattern lock policy changed");
 
       string? alice = locks.TryAcquire(resource, "Alice", out var acquired);
-      Assert(!string.IsNullOrEmpty(alice), "first lock acquisition failed");
-      Assert(acquired.resource == resource && acquired.holderName == "Alice",
+      Assert.IsTrue(!string.IsNullOrEmpty(alice), "first lock acquisition failed");
+      Assert.IsTrue(acquired.resource == resource && acquired.holderName == "Alice",
         "acquisition returned the wrong owner");
 
       string? bob = locks.TryAcquire(resource, "Bob", out var blocked);
-      Assert(bob == null && blocked.holderName == "Alice",
+      Assert.IsTrue(bob == null && blocked.holderName == "Alice",
         "competing holder replaced the active lease");
-      Assert(locks.CanWrite(resource, alice),
+      Assert.IsTrue(locks.CanWrite(resource, alice),
         "active holder cannot write its resource");
-      Assert(!locks.CanWrite(resource, null) &&
+      Assert.IsTrue(!locks.CanWrite(resource, null) &&
         !locks.CanWrite(resource, "not-a-token"),
         "caller without the lease can write a locked resource");
-      Assert(locks.HoldsLock(resource, alice) &&
+      Assert.IsTrue(locks.HoldsLock(resource, alice) &&
         !locks.HoldsLock(resource, null),
         "explicit ownership check disagrees with the lease");
 
-      Assert(!locks.TryRenew(resource, "not-a-token"),
+      Assert.IsTrue(!locks.TryRenew(resource, "not-a-token"),
         "wrong token renewed the lease");
-      Assert(locks.TryRenew(resource, alice),
+      Assert.IsTrue(locks.TryRenew(resource, alice),
         "holder could not renew the lease");
-      Assert(!locks.TryRelease(resource, "not-a-token") &&
+      Assert.IsTrue(!locks.TryRelease(resource, "not-a-token") &&
         locks.Get(resource)?.holderName == "Alice",
         "wrong token released the lease");
-      Assert(locks.TryRelease(resource, alice),
+      Assert.IsTrue(locks.TryRelease(resource, alice),
         "holder could not release the lease");
-      Assert(locks.Get(resource) == null && locks.CanWrite(resource, null),
+      Assert.IsTrue(locks.Get(resource) == null && locks.CanWrite(resource, null),
         "released resource remained locked");
     }
 
-    private static void ConcurrentAcquire() {
+    [TestMethod]
+    public void ConcurrentAcquire() {
       const int contenders = 8;
       var locks = new global::Spectrum.Web.AdvisoryLockManager(
         TimeSpan.FromMinutes(1));
@@ -74,16 +74,16 @@ namespace Spectrum.LayerPipeline.Tests {
         threads[i].Start();
       }
 
-      Assert(ready.Wait(TimeSpan.FromSeconds(5)),
+      Assert.IsTrue(ready.Wait(TimeSpan.FromSeconds(5)),
         "lock contenders did not become ready");
       start.Set();
       foreach (Thread thread in threads) {
-        Assert(thread.Join(TimeSpan.FromSeconds(5)),
+        Assert.IsTrue(thread.Join(TimeSpan.FromSeconds(5)),
           "lock contender did not finish");
       }
-      Assert(tokens.Count == 1,
+      Assert.IsTrue(tokens.Count == 1,
         "concurrent acquisition produced " + tokens.Count + " holders");
-      Assert(locks.ActiveLocks().Count == 1,
+      Assert.IsTrue(locks.ActiveLocks().Count == 1,
         "concurrent acquisition published multiple leases");
     }
 

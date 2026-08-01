@@ -1,38 +1,32 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using Spectrum.Base;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
+using static Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class MotionEmbersTests {
-    public static void Register(Action<string, Action> run) {
-      run("Motion Embers exposes normalized composite controls",
-        ControlsCompileAndClamp);
-      run("Motion Embers isolates changes and retains their glow",
-        ChangesBecomeRetainedEmbers);
-      run("Motion Embers optionally detects fading and hue changes",
-        OptionalChangeChannels);
-      run("Motion Embers color modes and masks preserve frame metadata",
-        ColorModesAndMasking);
-    }
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class MotionEmbersTests {
 
-    private static void ControlsCompileAndClamp() {
-      Assert(ReferenceEquals(
+    [TestMethod]
+    public void ControlsCompileAndClamp() {
+      Assert.IsTrue(ReferenceEquals(
           DomeBlend.FromId("MotionEmbers"), DomeBlend.MotionEmbers),
         "Motion Embers was not registered");
-      Assert(DomeBlend.MotionEmbers.Params.Count == 6,
+      Assert.IsTrue(DomeBlend.MotionEmbers.Params.Count == 6,
         "Motion Embers did not expose all requested controls");
       foreach (DomeLayerParam parameter in DomeBlend.MotionEmbers.Params) {
-        Assert(parameter.CompositorConsumed,
+        Assert.IsTrue(parameter.CompositorConsumed,
           parameter.Key + " was not compositor-owned");
       }
-      Assert((DomeBlend.MotionEmbers.Requirements &
+      Assert.IsTrue((DomeBlend.MotionEmbers.Requirements &
           CompositeRequirements.ReadsHistory) != 0,
         "Motion Embers did not request isolated temporal state");
 
       MotionEmbersOptions defaults = Compile(null);
-      Assert(defaults.ChangeThreshold == .08 &&
+      Assert.IsTrue(defaults.ChangeThreshold == .08 &&
           defaults.EmberBrightness == 1.5 && defaults.Retention == .75 &&
           defaults.ColorMode == 1 && !defaults.CountFading &&
           !defaults.CountHueChanges,
@@ -45,25 +39,26 @@ namespace Spectrum.LayerPipeline.Tests {
         ["countFading"] = -1,
         ["countHueChanges"] = 2,
       });
-      Assert(clamped.ChangeThreshold == 1 &&
+      Assert.IsTrue(clamped.ChangeThreshold == 1 &&
           clamped.EmberBrightness == 0 && clamped.Retention == 5 &&
           clamped.ColorMode == 2 && clamped.CountFading &&
           clamped.CountHueChanges,
         "Motion Embers controls did not clamp or coerce");
     }
 
-    private static void ChangesBecomeRetainedEmbers() {
+    [TestMethod]
+    public void ChangesBecomeRetainedEmbers() {
       var options = new MotionEmbersOptions(0, 1, .5, 0, false, false);
       var fixture = new EmberFixture(options);
       DomeFrame initial = fixture.Render(0, .1, hue: .37);
-      Assert(initial.pixels[0].color == 0,
+      Assert.IsTrue(initial.pixels[0].color == 0,
         "Motion Embers showed a static first frame");
       AssertClose(1, initial.pixels[0].a,
         "Motion Embers changed destination coverage");
       AssertClose(.37, initial.pixels[0].hue,
         "Motion Embers changed destination published hue");
 
-      Assert(fixture.Render(0xFF0000, .2).pixels[0].color == 0xFF0000,
+      Assert.IsTrue(fixture.Render(0xFF0000, .2).pixels[0].color == 0xFF0000,
         "a full rising change did not become a source-colored ember");
       AssertClose(127.5, fixture.Render(0xFF0000, .7).pixels[0].r,
         "ember retention was not a frame-rate-independent half-life");
@@ -72,24 +67,25 @@ namespace Spectrum.LayerPipeline.Tests {
 
       var crisp = new EmberFixture(options with { Retention = 0 });
       crisp.Render(0, .1);
-      Assert(crisp.Render(0xFF0000, .2).pixels[0].r == 255,
+      Assert.IsTrue(crisp.Render(0xFF0000, .2).pixels[0].r == 255,
         "zero retention discarded the current change");
-      Assert(crisp.Render(0xFF0000, .3).pixels[0].color == 0,
+      Assert.IsTrue(crisp.Render(0xFF0000, .3).pixels[0].color == 0,
         "zero retention kept a static change");
     }
 
-    private static void OptionalChangeChannels() {
+    [TestMethod]
+    public void OptionalChangeChannels() {
       var baseOptions = new MotionEmbersOptions(
         0, 1, 0, 0, false, false);
-      Assert(TwoFrameColor(0xFF0000, 0, baseOptions) == 0,
+      Assert.IsTrue(TwoFrameColor(0xFF0000, 0, baseOptions) == 0,
         "a brightness fall counted as motion while fading was disabled");
-      Assert(TwoFrameColor(
+      Assert.IsTrue(TwoFrameColor(
           0xFF0000, 0, baseOptions with { CountFading = true }) ==
           0xFF0000,
         "an enabled brightness fall did not retain its departing color");
-      Assert(TwoFrameColor(0xFF0000, 0x0000FF, baseOptions) == 0,
+      Assert.IsTrue(TwoFrameColor(0xFF0000, 0x0000FF, baseOptions) == 0,
         "a hue-only change counted as motion while hue detection was disabled");
-      Assert(TwoFrameColor(
+      Assert.IsTrue(TwoFrameColor(
           0xFF0000, 0x0000FF,
           baseOptions with { CountHueChanges = true }) == 0x0000FF,
         "an enabled hue-only change did not become an ember");
@@ -97,19 +93,20 @@ namespace Spectrum.LayerPipeline.Tests {
       var thresholded = new EmberFixture(
         baseOptions with { ChangeThreshold = .25 });
       thresholded.Render(0, .1);
-      Assert(thresholded.Render(0x330000, .2).pixels[0].color == 0,
+      Assert.IsTrue(thresholded.Render(0x330000, .2).pixels[0].color == 0,
         "a sub-threshold change became an ember");
     }
 
-    private static void ColorModesAndMasking() {
+    [TestMethod]
+    public void ColorModesAndMasking() {
       var options = new MotionEmbersOptions(0, 1, 0, 0, false, true);
-      Assert(TwoFrameColor(0xFF0000, 0x00FF00, options) == 0x00FF00,
+      Assert.IsTrue(TwoFrameColor(0xFF0000, 0x00FF00, options) == 0x00FF00,
         "Source mode did not use the arriving color");
-      Assert(TwoFrameColor(
+      Assert.IsTrue(TwoFrameColor(
           0xFF0000, 0x00FF00, options with { ColorMode = 1 }) ==
           0xFFFFFF,
         "Ember Heat mode did not map a strong change to white heat");
-      Assert(TwoFrameColor(
+      Assert.IsTrue(TwoFrameColor(
           0xFF0000, 0x00FF00, options with { ColorMode = 2 }) ==
           0xFFFF00,
         "Difference mode did not preserve the RGB change signature");
@@ -145,18 +142,9 @@ namespace Spectrum.LayerPipeline.Tests {
       };
       (LayerStackSnapshot? snapshot, string? error) =
         new LayerStackService(DomeLayerCatalog.Metadata).CreateSnapshot(new[] { layer });
-      Assert(snapshot != null && error == null, error);
+      Assert.IsTrue(snapshot != null && error == null, error);
       return (MotionEmbersOptions)DomeBlend.MotionEmbers.CompileOptions(
         snapshot.Layers[0].OperationParameters);
-    }
-
-    private static void AssertClose(
-      double expected, double actual, string message
-    ) {
-      if (Math.Abs(expected - actual) > 1e-6) {
-        throw new InvalidOperationException(
-          message + " (expected " + expected + ", got " + actual + ")");
-      }
     }
 
     private sealed class EmberFixture {

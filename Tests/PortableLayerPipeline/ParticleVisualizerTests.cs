@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -6,25 +7,23 @@ using System.Numerics;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using Spectrum.Visualizers;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 using static Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class ParticleVisualizerTests {
-    public static void Register(Action<string, Action> run) {
-      run(nameof(FireflySwarmUsesCoherentFlock), FireflySwarmUsesCoherentFlock);
-      run(nameof(RainChamberUsesSphericalRain), RainChamberUsesSphericalRain);
-    }
-    private static void FireflySwarmUsesCoherentFlock() {
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class ParticleVisualizerTests {
+    [TestMethod]
+    public void FireflySwarmUsesCoherentFlock() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("firefly-swarm");
-      Assert(definition != null && definition.DisplayName == "Firefly Swarm",
+      Assert.IsTrue(definition != null && definition.DisplayName == "Firefly Swarm",
         "Firefly Swarm was not registered");
 
       FireflySwarmLayerOptions defaults =
         BuiltInOptions<FireflySwarmLayerOptions>(
           Layer("firefly-swarm", "firefly-defaults"));
-      Assert(defaults.Population == 48,
+      Assert.IsTrue(defaults.Population == 48,
         "unexpected Firefly Swarm population");
       AssertClose(1.2, defaults.Cohesion,
         "unexpected Firefly Swarm cohesion");
@@ -32,13 +31,13 @@ namespace Spectrum.LayerPipeline.Tests {
         "unexpected Firefly Swarm separation");
       AssertClose(0.65, defaults.Wander,
         "unexpected Firefly Swarm wander");
-      Assert(defaults.InteractionMode == 0,
+      Assert.IsTrue(defaults.InteractionMode == 0,
         "unexpected Firefly Swarm interaction mode");
       AssertClose(0.055, defaults.DotSize,
         "unexpected Firefly Swarm dot size");
       AssertClose(0.45, defaults.TrailLength,
         "unexpected Firefly Swarm trail length");
-      Assert(defaults.Palette == 0,
+      Assert.IsTrue(defaults.Palette == 0,
         "unexpected Firefly Swarm palette");
 
       DomeLayerSettings configured = Layer(
@@ -55,7 +54,7 @@ namespace Spectrum.LayerPipeline.Tests {
       };
       FireflySwarmLayerOptions clamped =
         BuiltInOptions<FireflySwarmLayerOptions>(configured);
-      Assert(clamped.Population == 160 && clamped.Cohesion == 0 &&
+      Assert.IsTrue(clamped.Population == 160 && clamped.Cohesion == 0 &&
           clamped.Separation == 4 && clamped.Wander == 4 &&
           clamped.InteractionMode == 1 && clamped.DotSize == 0.015 &&
           clamped.TrailLength == 3 &&
@@ -63,26 +62,26 @@ namespace Spectrum.LayerPipeline.Tests {
         "Firefly Swarm controls did not clamp");
 
       var flock = new FireflySwarmState(24, 23);
-      Assert(flock.Agents.Count == 24,
+      Assert.IsTrue(flock.Agents.Count == 24,
         "Firefly Swarm did not create its requested population");
       foreach (FireflyAgent agent in flock.Agents) {
-        Assert(agent.Position.Z >= 0 &&
+        Assert.IsTrue(agent.Position.Z >= 0 &&
             Math.Abs(agent.Position.Length() - 1) < 0.000001,
           "Firefly Swarm initialized off the visible unit hemisphere");
-        Assert(Math.Abs(Vector3.Dot(
+        Assert.IsTrue(Math.Abs(Vector3.Dot(
             agent.Position, agent.Velocity)) < 0.000001,
           "Firefly Swarm initialized non-tangent velocity");
       }
       Vector3 beforeWander = flock.Agents[0].Position;
       flock.Step(
         0.1, 0, 0, 1, 0, Array.Empty<Vector3>());
-      Assert(Vector3.Distance(beforeWander, flock.Agents[0].Position) > 0,
+      Assert.IsTrue(Vector3.Distance(beforeWander, flock.Agents[0].Position) > 0,
         "Firefly Swarm wander did not move a persistent agent");
       flock.Resize(37);
-      Assert(flock.Agents.Count == 37,
+      Assert.IsTrue(flock.Agents.Count == 37,
         "Firefly Swarm did not grow its bounded population in place");
       flock.Resize(12);
-      Assert(flock.Agents.Count == 12,
+      Assert.IsTrue(flock.Agents.Count == 12,
         "Firefly Swarm did not shrink its bounded population in place");
 
       Vector3 aim = Vector3.Normalize(new Vector3(0.9f, 0.1f, 0.3f));
@@ -96,7 +95,7 @@ namespace Spectrum.LayerPipeline.Tests {
         attracted.Step(0.1, 0, 0, 0, 0, new[] { aim });
         repelled.Step(0.1, 0, 0, 0, 1, new[] { aim });
       }
-      Assert(meanAimDistance(attracted) < initialAimDistance &&
+      Assert.IsTrue(meanAimDistance(attracted) < initialAimDistance &&
           meanAimDistance(repelled) > initialAimDistance,
         "Firefly Swarm wand attract/repel modes did not diverge");
 
@@ -106,7 +105,7 @@ namespace Spectrum.LayerPipeline.Tests {
         separating.Step(
           0.1, 0, 4, 0, 0, Array.Empty<Vector3>());
       }
-      Assert(NearestFireflyDistance(separating.Agents) > initialNearest,
+      Assert.IsTrue(NearestFireflyDistance(separating.Agents) > initialNearest,
         "Firefly Swarm separation did not open close spacing");
 
       var startled = new FireflySwarmState(32, 41);
@@ -117,27 +116,27 @@ namespace Spectrum.LayerPipeline.Tests {
           0.1, 0, 0, 0, 0, Array.Empty<Vector3>());
       }
       double startledSpread = startled.MeanAngularSpread();
-      Assert(startledSpread > clusteredSpread,
+      Assert.IsTrue(startledSpread > clusteredSpread,
         "Firefly Swarm startle did not disperse the group");
       for (int step = 0; step < 40; step++) {
         startled.Step(
           0.1, 4, 0, 0, 0, Array.Empty<Vector3>());
       }
-      Assert(startled.MeanAngularSpread() < startledSpread,
+      Assert.IsTrue(startled.MeanAngularSpread() < startledSpread,
         "Firefly Swarm cohesion did not regroup a startled flock");
-      Assert(startled.Agents.All(agent => agent.Position.Z >= 0 &&
+      Assert.IsTrue(startled.Agents.All(agent => agent.Position.Z >= 0 &&
           Math.Abs(agent.Position.Length() - 1) < 0.000001),
         "Firefly Swarm escaped the visible unit hemisphere");
 
       var detector = new FireflyStartleDetector();
-      Assert(!detector.Sample(0.1, 0.1) && detector.Sample(0.8, 0.1),
+      Assert.IsTrue(!detector.Sample(0.1, 0.1) && detector.Sample(0.8, 0.1),
         "Firefly Swarm did not detect a loud rising transient");
-      Assert(!detector.Sample(0.8, 0.1),
+      Assert.IsTrue(!detector.Sample(0.8, 0.1),
         "Firefly Swarm retriggered on a sustained loud level");
       for (int sample = 0; sample < 12; sample++) {
         detector.Sample(0.05, 0.1);
       }
-      Assert(detector.Sample(0.8, 0.1),
+      Assert.IsTrue(detector.Sample(0.8, 0.1),
         "Firefly Swarm did not re-arm after the audio envelope settled");
       AssertClose(0,
         LEDDomeFireflySwarmVisualizer.TrailRetention(0, 0.1),
@@ -158,14 +157,14 @@ namespace Spectrum.LayerPipeline.Tests {
           break;
         }
       }
-      Assert(fireflies != null, "Firefly Swarm renderer was not created");
+      Assert.IsTrue(fireflies != null, "Firefly Swarm renderer was not created");
       Input[] inputs = fireflies.GetInputs();
-      Assert(inputs.Length == 2 &&
+      Assert.IsTrue(inputs.Length == 2 &&
           ReferenceEquals(inputs[0], runtime.AudioInput) &&
           ReferenceEquals(inputs[1], runtime.OrientationInput),
         "Firefly Swarm did not declare audio and wand inputs");
       ((Visualizer)fireflies).Visualize();
-      Assert(fireflies.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
+      Assert.IsTrue(fireflies.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
         "Firefly Swarm did not render its persistent flock");
     }
 
@@ -182,9 +181,10 @@ namespace Spectrum.LayerPipeline.Tests {
       return nearest;
     }
 
-    private static void RainChamberUsesSphericalRain() {
+    [TestMethod]
+    public void RainChamberUsesSphericalRain() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("rain-chamber");
-      Assert(definition != null && definition.DisplayName == "Rain Chamber",
+      Assert.IsTrue(definition != null && definition.DisplayName == "Rain Chamber",
         "Rain Chamber was not registered");
 
       RainChamberLayerOptions defaults =
@@ -198,13 +198,13 @@ namespace Spectrum.LayerPipeline.Tests {
         "unexpected Rain Chamber droplet size");
       AssertClose(0.7, defaults.TrailRetention,
         "unexpected Rain Chamber trail retention");
-      Assert(defaults.InteractionMode == 0,
+      Assert.IsTrue(defaults.InteractionMode == 0,
         "unexpected Rain Chamber wand interaction mode");
       AssertClose(1.25, defaults.Wind,
         "unexpected Rain Chamber wand strength");
       AssertClose(0.9, defaults.SplashStrength,
         "unexpected Rain Chamber splash strength");
-      Assert(defaults.Palette == 0,
+      Assert.IsTrue(defaults.Palette == 0,
         "unexpected Rain Chamber palette");
 
       AssertClose(0.065, RainChamberState.SpawnPolar(0.015),
@@ -226,14 +226,14 @@ namespace Spectrum.LayerPipeline.Tests {
       double largeSpawnSeparation = Math.Acos(Math.Clamp(Vector3.Dot(
         largeSpawn.Droplets[0].Position,
         largeSpawn.Droplets[1].Position), -1, 1));
-      Assert(smallSpawn.Droplets.Count == 2 &&
+      Assert.IsTrue(smallSpawn.Droplets.Count == 2 &&
           largeSpawn.Droplets.Count == 2 &&
           largeSpawnSeparation > smallSpawnSeparation * 3,
         "larger Rain Chamber droplets did not spawn farther apart");
 
       var smallWarmStart = new RainChamberState(13, 1, 0.015);
       var largeWarmStart = new RainChamberState(13, 1, 0.14);
-      Assert(largeWarmStart.Droplets[0].Position.Z <
+      Assert.IsTrue(largeWarmStart.Droplets[0].Position.Z <
           smallWarmStart.Droplets[0].Position.Z,
         "initial Rain Chamber droplets ignored configured droplet size");
 
@@ -251,7 +251,7 @@ namespace Spectrum.LayerPipeline.Tests {
       };
       RainChamberLayerOptions clamped =
         BuiltInOptions<RainChamberLayerOptions>(configured);
-      Assert(clamped.RainfallRate == 0 && clamped.Gravity == 4 &&
+      Assert.IsTrue(clamped.RainfallRate == 0 && clamped.Gravity == 4 &&
           clamped.DropletSize == 0.015 &&
           clamped.TrailRetention == 3 && clamped.InteractionMode == 2 &&
           clamped.Wind == 4 &&
@@ -271,7 +271,7 @@ namespace Spectrum.LayerPipeline.Tests {
         quiet.Step(0.1, 40, 0, 0, 0, 0, 0, Array.Empty<Vector3>());
         loud.Step(0.1, 40, 0, 0, 0, 0, 1, Array.Empty<Vector3>());
       }
-      Assert(loud.Droplets.Count > quiet.Droplets.Count &&
+      Assert.IsTrue(loud.Droplets.Count > quiet.Droplets.Count &&
           loud.Droplets.Count == 40,
         "capture volume did not scale Rain Chamber spawning");
 
@@ -283,10 +283,10 @@ namespace Spectrum.LayerPipeline.Tests {
         falling.Step(
           0.1, 0, 1.4, 0, 0, 0, 0, Array.Empty<Vector3>());
       }
-      Assert(falling.Droplets.Count == 1 &&
+      Assert.IsTrue(falling.Droplets.Count == 1 &&
           falling.Droplets[0].Position.Z < initialHeight,
         "spherical gravity did not pull a droplet toward the rim");
-      Assert(Math.Abs(falling.Droplets[0].Position.Length() - 1) <
+      Assert.IsTrue(Math.Abs(falling.Droplets[0].Position.Length() - 1) <
           0.000001 &&
           Math.Abs(Vector3.Dot(
             falling.Droplets[0].Position,
@@ -301,7 +301,7 @@ namespace Spectrum.LayerPipeline.Tests {
         still.Step(0.1, 0, 0, 2, 0, 0, 0, Array.Empty<Vector3>());
         deflected.Step(0.1, 0, 0, 2, 0, 0, 0, new[] { upper });
       }
-      Assert(Vector3.Distance(
+      Assert.IsTrue(Vector3.Distance(
           still.Droplets[0].Position,
           deflected.Droplets[0].Position) > 0.01,
         "Rain Chamber umbrella did not deflect a nearby droplet");
@@ -314,16 +314,16 @@ namespace Spectrum.LayerPipeline.Tests {
       Vector3 inferredMotion =
         LEDDomeRainChamberVisualizer.InferWandMotion(
           upper, sweptAim, 0.1);
-      Assert(Math.Abs(inferredMotion.Length() - 0.5) < 0.00001,
+      Assert.IsTrue(Math.Abs(inferredMotion.Length() - 0.5) < 0.00001,
         "Rain Chamber wand motion did not preserve bounded angular speed");
-      Assert(Vector3.Dot(inferredMotion, sweepTangent) > 0.45,
+      Assert.IsTrue(Vector3.Dot(inferredMotion, sweepTangent) > 0.45,
         "Rain Chamber wand motion pointed against the wand sweep");
-      Assert(LEDDomeRainChamberVisualizer.InferWandMotion(
+      Assert.IsTrue(LEDDomeRainChamberVisualizer.InferWandMotion(
           upper, upper, 0.1) == Vector3.Zero &&
           LEDDomeRainChamberVisualizer.InferWandMotion(
             upper, sweptAim, 0) == Vector3.Zero,
         "stationary or zero-time wand motion produced a gust");
-      Assert(Math.Abs(LEDDomeRainChamberVisualizer.InferWandMotion(
+      Assert.IsTrue(Math.Abs(LEDDomeRainChamberVisualizer.InferWandMotion(
           upper, sweptAim, 0.01).Length() - 1) < 0.00001,
         "Rain Chamber wand motion exceeded its speed bound");
 
@@ -339,7 +339,7 @@ namespace Spectrum.LayerPipeline.Tests {
           0.1, 0, 0, 2, 0, 0, 0, new[] { sweptAim },
           interactionMode: 2, wandMotions: new[] { inferredMotion });
       }
-      Assert(Vector3.Distance(
+      Assert.IsTrue(Vector3.Distance(
           noGust.Droplets[0].Position,
           gust.Droplets[0].Position) > 0.01 &&
           Vector3.Dot(gust.Droplets[0].Velocity, inferredMotion) > 0,
@@ -359,7 +359,7 @@ namespace Spectrum.LayerPipeline.Tests {
       outsideGust.Step(
         0.1, 0, 0, 2, 0, 0, 0, new[] { sweptAim },
         interactionMode: 2, wandMotions: new[] { inferredMotion });
-      Assert(Vector3.Distance(
+      Assert.IsTrue(Vector3.Distance(
           outsideNoGust.Droplets[0].Position,
           outsideGust.Droplets[0].Position) < 0.000001,
         "Rain Chamber wind field reached beyond its bounded radius");
@@ -376,7 +376,7 @@ namespace Spectrum.LayerPipeline.Tests {
       drying.Step(
         0.01, 0, 0, 2, 0, 0, 0, new[] { upper },
         interactionMode: 1);
-      Assert(drying.Droplets.Count == 1 &&
+      Assert.IsTrue(drying.Droplets.Count == 1 &&
           Vector3.Dot(drying.Droplets[0].Position, outsideDryRegion) > 0.999,
         "Rain Chamber dry region did not remove only nearby droplets");
 
@@ -385,7 +385,7 @@ namespace Spectrum.LayerPipeline.Tests {
       disabledDrying.Step(
         0.01, 0, 0, 0, 0, 0, 0, new[] { upper },
         interactionMode: 1);
-      Assert(disabledDrying.Droplets.Count == 1,
+      Assert.IsTrue(disabledDrying.Droplets.Count == 1,
         "zero wand strength still removed a Rain Chamber droplet");
 
       var impacting = new RainChamberState(31);
@@ -394,21 +394,21 @@ namespace Spectrum.LayerPipeline.Tests {
       impacting.SeedDroplet(nearRim, -Vector3.UnitZ, 3);
       impacting.Step(
         0.1, 0, 1, 0, 0.045, 1, 0, Array.Empty<Vector3>());
-      Assert(impacting.Droplets.Count == 0 && impacting.Splashes.Count == 1,
+      Assert.IsTrue(impacting.Droplets.Count == 0 && impacting.Splashes.Count == 1,
         "rim impact did not replace a droplet with a splash ring");
       AssertClose(0, impacting.Splashes[0].Center.Z,
         "rim impact splash moved away from the dome rim");
-      Assert(RainChamberState.SplashRadius(0.4) >
+      Assert.IsTrue(RainChamberState.SplashRadius(0.4) >
           RainChamberState.SplashRadius(0),
         "Rain Chamber splash rings did not expand");
-      Assert(RainChamberState.SplashEnvelope(0.4, 1) <
+      Assert.IsTrue(RainChamberState.SplashEnvelope(0.4, 1) <
           RainChamberState.SplashEnvelope(0, 1),
         "Rain Chamber splash rings did not decay");
       for (int step = 0; step < 10; step++) {
         impacting.Step(
           0.1, 0, 0, 0, 0.045, 1, 0, Array.Empty<Vector3>());
       }
-      Assert(impacting.Splashes.Count == 0,
+      Assert.IsTrue(impacting.Splashes.Count == 0,
         "Rain Chamber retained an expired splash ring");
 
       double collisionDotSize = 0.06;
@@ -429,15 +429,15 @@ namespace Spectrum.LayerPipeline.Tests {
       colliding.Step(
         0.01, 0, 0, 0, collisionDotSize, 1, 0,
         Array.Empty<Vector3>());
-      Assert(colliding.Droplets.Count == 1 &&
+      Assert.IsTrue(colliding.Droplets.Count == 1 &&
           colliding.Splashes.Count == 1,
         "intersecting droplets did not coalesce into one splash");
-      Assert(colliding.Splashes[0].Center.Z > 0.8,
+      Assert.IsTrue(colliding.Splashes[0].Center.Z > 0.8,
         "droplet collision splash was projected to the rim");
       colliding.Step(
         0.01, 0, 0, 0, collisionDotSize, 1, 0,
         Array.Empty<Vector3>());
-      Assert(colliding.Splashes.Count == 1,
+      Assert.IsTrue(colliding.Splashes.Count == 1,
         "coalesced droplets retriggered their collision splash");
 
       Vector3 farNeighbor = Vector3.Normalize(
@@ -449,7 +449,7 @@ namespace Spectrum.LayerPipeline.Tests {
       separated.Step(
         0.01, 0, 0, 0, collisionDotSize, 1, 0,
         Array.Empty<Vector3>());
-      Assert(separated.Droplets.Count == 2 &&
+      Assert.IsTrue(separated.Droplets.Count == 2 &&
           separated.Splashes.Count == 0,
         "Rain Chamber collision reach caught separated droplets");
 
@@ -459,7 +459,7 @@ namespace Spectrum.LayerPipeline.Tests {
       splashDisabled.Step(
         0.01, 0, 0, 0, collisionDotSize, 0, 0,
         Array.Empty<Vector3>());
-      Assert(splashDisabled.Droplets.Count == 2 &&
+      Assert.IsTrue(splashDisabled.Droplets.Count == 2 &&
           splashDisabled.Splashes.Count == 0,
         "disabled splash strength still resolved droplet collisions");
 
@@ -474,7 +474,7 @@ namespace Spectrum.LayerPipeline.Tests {
       insideTrail.pixels[0].color = 0xFFFFFF;
       LEDDomeRainChamberVisualizer.ApplyDryRegions(
         insideTrail, new[] { upper }, new[] { upper }, 2);
-      Assert(insideTrail.pixels[0].color == 0 &&
+      Assert.IsTrue(insideTrail.pixels[0].color == 0 &&
           insideTrail.pixels[0].a == 0,
         "Rain Chamber dry region retained old trail light");
 
@@ -482,7 +482,7 @@ namespace Spectrum.LayerPipeline.Tests {
       outsideTrail.pixels[0].color = 0xFFFFFF;
       LEDDomeRainChamberVisualizer.ApplyDryRegions(
         outsideTrail, new[] { outsideDryRegion }, new[] { upper }, 2);
-      Assert(outsideTrail.pixels[0].color == 0xFFFFFF &&
+      Assert.IsTrue(outsideTrail.pixels[0].color == 0xFFFFFF &&
           outsideTrail.pixels[0].a == 1,
         "Rain Chamber dry region cleared trail light beyond its reach");
 
@@ -498,14 +498,14 @@ namespace Spectrum.LayerPipeline.Tests {
           break;
         }
       }
-      Assert(rain != null, "Rain Chamber renderer was not created");
+      Assert.IsTrue(rain != null, "Rain Chamber renderer was not created");
       Input[] inputs = rain.GetInputs();
-      Assert(inputs.Length == 2 &&
+      Assert.IsTrue(inputs.Length == 2 &&
           ReferenceEquals(inputs[0], runtime.AudioInput) &&
           ReferenceEquals(inputs[1], runtime.OrientationInput),
         "Rain Chamber did not declare audio and wand inputs");
       ((Visualizer)rain).Visualize();
-      Assert(rain.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
+      Assert.IsTrue(rain.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
         "Rain Chamber did not render its established rainfall state");
     }
 

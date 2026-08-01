@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -5,30 +6,15 @@ using System.Linq;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using Spectrum.Visualizers;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
+using static Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class CompositeOperationTests {
-    public static void Register(Action<string, Action> run) {
-      run(nameof(ZeroOpacityIdentity), ZeroOpacityIdentity);
-      run(nameof(KernelMatrix), KernelMatrix);
-      run(
-        nameof(OperationOptionsAreNormalized),
-        OperationOptionsAreNormalized);
-      run(
-        nameof(KaleidoscopeFoldsCompositeCoordinates),
-        KaleidoscopeFoldsCompositeCoordinates);
-      run(
-        nameof(EchoRetainsDelayedTransformedComposites),
-        EchoRetainsDelayedTransformedComposites);
-      run(nameof(HalftoneBuildsPaletteCells), HalftoneBuildsPaletteCells);
-      run(nameof(SpatialRequirements), SpatialRequirements);
-      run(nameof(SpatialPassSnapshots), SpatialPassSnapshots);
-      run(nameof(MaskedAdjustmentFixtures), MaskedAdjustmentFixtures);
-      run(nameof(PrismFixtures), PrismFixtures);
-    }
-    private static void ZeroOpacityIdentity() {
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class CompositeOperationTests {
+    [TestMethod]
+    public void ZeroOpacityIdentity() {
       DomeTopology topology = OnePixelTopology();
       foreach (DomeBlend operation in DomeBlend.All) {
         var dest = new DomeFrame(topology);
@@ -48,13 +34,14 @@ namespace Spectrum.LayerPipeline.Tests {
           operation.CompileOptions(
             ImmutableDictionary<string, ParameterValue>.Empty),
           0, 0, null));
-        Assert(dest.pixels[0].color == 0x123456 &&
+        Assert.IsTrue(dest.pixels[0].color == 0x123456 &&
           dest.pixels[0].a == .35 && dest.pixels[0].hue == .25,
           operation.Id + " changed the destination");
       }
     }
 
-    private static void KernelMatrix() {
+    [TestMethod]
+    public void KernelMatrix() {
       var expectedHalf = new Dictionary<DomeBlend, int[]> {
         [DomeBlend.Over] = new[] {
           0x000000, 0x7F7F7F, 0x7F7F00, 0x00FF00, 0x3F00BF, 0x504040,
@@ -164,7 +151,8 @@ namespace Spectrum.LayerPipeline.Tests {
       }
     }
 
-    private static void OperationOptionsAreNormalized() {
+    [TestMethod]
+    public void OperationOptionsAreNormalized() {
       ChromaticFringeOptions fringe = (ChromaticFringeOptions)
         CompileOptions(DomeBlend.ChromaticFringe, new Dictionary<string, double> {
           ["offset"] = double.NaN,
@@ -173,7 +161,7 @@ namespace Spectrum.LayerPipeline.Tests {
         });
       AssertClose(.045, fringe.Offset, "fringe NaN default");
       AssertClose(2, fringe.Spin, "fringe spin clamp");
-      Assert(fringe.FollowOrientation, "fringe bool coercion failed");
+      Assert.IsTrue(fringe.FollowOrientation, "fringe bool coercion failed");
 
       EdgeSpectrumOptions edge = (EdgeSpectrumOptions)
         CompileOptions(DomeBlend.EdgeSpectrum, new Dictionary<string, double> {
@@ -199,7 +187,7 @@ namespace Spectrum.LayerPipeline.Tests {
       AssertClose(0, iridescence.Strength, "iridescence strength clamp");
       AssertClose(8, iridescence.Bands, "iridescence bands clamp");
       AssertClose(.2, iridescence.Spin, "iridescence spin default");
-      Assert(!iridescence.FollowOrientation,
+      Assert.IsTrue(!iridescence.FollowOrientation,
         "iridescence bool coercion failed");
 
       HalftoneOptions halftone = (HalftoneOptions)
@@ -212,7 +200,7 @@ namespace Spectrum.LayerPipeline.Tests {
           ["rotation"] = double.PositiveInfinity,
           ["palette"] = 99,
         });
-      Assert(halftone.CellType == 2 &&
+      Assert.IsTrue(halftone.CellType == 2 &&
           halftone.Palette == PaletteService.MaxPalettes - 1,
         "halftone enum clamp failed");
       AssertClose(.14, halftone.Scale, "halftone scale default");
@@ -222,17 +210,18 @@ namespace Spectrum.LayerPipeline.Tests {
       AssertClose(Math.PI, halftone.Rotation, "halftone rotation clamp");
     }
 
-    private static void KaleidoscopeFoldsCompositeCoordinates() {
-      Assert(ReferenceEquals(
+    [TestMethod]
+    public void KaleidoscopeFoldsCompositeCoordinates() {
+      Assert.IsTrue(ReferenceEquals(
           DomeBlend.FromId("Kaleidoscope"), DomeBlend.Kaleidoscope),
         "Kaleidoscope was not registered");
-      Assert(DomeBlend.Kaleidoscope.Params.Count == 6 &&
+      Assert.IsTrue(DomeBlend.Kaleidoscope.Params.Count == 6 &&
           DomeBlend.Kaleidoscope.Params.All(p => p.CompositorConsumed),
         "Kaleidoscope controls are not compositor-owned");
 
       KaleidoscopeOptions defaults = (KaleidoscopeOptions)
         CompileOptions(DomeBlend.Kaleidoscope, null);
-      Assert(defaults.SectorCount == 8 && defaults.MirrorSectors &&
+      Assert.IsTrue(defaults.SectorCount == 8 && defaults.MirrorSectors &&
           defaults.Spin == .05 && defaults.FocalAngle == 0 &&
           defaults.FocalDistance == 0 && !defaults.FollowOrientation,
         "unexpected Kaleidoscope defaults");
@@ -247,16 +236,16 @@ namespace Spectrum.LayerPipeline.Tests {
             ["focalDistance"] = 99,
             ["follow"] = -1,
           });
-      Assert(clamped.SectorCount == 24 && !clamped.MirrorSectors &&
+      Assert.IsTrue(clamped.SectorCount == 24 && !clamped.MirrorSectors &&
           clamped.Spin == 2 && clamped.FocalAngle == -Math.PI &&
           clamped.FocalDistance == .8 && clamped.FollowOrientation,
         "Kaleidoscope controls did not clamp or coerce");
 
       DomeTopology topology = RingTopology(16, .6);
       var lookupFrame = new DomeFrame(topology);
-      Assert(lookupFrame.NearestTopDownPixel(.8, .5) == 0,
+      Assert.IsTrue(lookupFrame.NearestTopDownPixel(.8, .5) == 0,
         "top-down lookup missed an exact projected pixel");
-      Assert(lookupFrame.NearestTopDownPixel(.79, .49) == 0,
+      Assert.IsTrue(lookupFrame.NearestTopDownPixel(.79, .49) == 0,
         "top-down lookup did not return the nearest projected pixel");
 
       var repeatOptions = new KaleidoscopeOptions(
@@ -298,7 +287,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
       DomeFrame spun = ExecuteKaleidoscope(
         topology, repeatOptions with { Spin = 1d / 16 }, 1, 1, null);
-      Assert(ColorSignature(spun) != ColorSignature(repeat),
+      Assert.IsTrue(ColorSignature(spun) != ColorSignature(repeat),
         "Kaleidoscope spin did not rotate the sectors");
 
       var fixedFocal = repeatOptions with {
@@ -310,10 +299,10 @@ namespace Spectrum.LayerPipeline.Tests {
         topology,
         fixedFocal with { FocalAngle = 0, FollowOrientation = true },
         1, 0, new FixedOrientation(Math.PI / 2));
-      Assert(ColorSignature(fixedFocalFrame) ==
+      Assert.IsTrue(ColorSignature(fixedFocalFrame) ==
           ColorSignature(followedFocalFrame),
         "Kaleidoscope orientation did not replace the focal angle");
-      Assert(ColorSignature(fixedFocalFrame) != ColorSignature(repeat),
+      Assert.IsTrue(ColorSignature(fixedFocalFrame) != ColorSignature(repeat),
         "Kaleidoscope focal point did not affect coordinate sampling");
 
       var liveOrientation = new FixedOrientation(Math.PI / 2);
@@ -340,7 +329,7 @@ namespace Spectrum.LayerPipeline.Tests {
         elapsedSeconds: () => 0);
       liveCompositor.Publish(livePlan);
       liveCompositor.Compose();
-      Assert(liveOrientation.UpdateCount == 1,
+      Assert.IsTrue(liveOrientation.UpdateCount == 1,
         "Kaleidoscope did not refresh standalone orientation state");
     }
 
@@ -363,18 +352,19 @@ namespace Spectrum.LayerPipeline.Tests {
       return dest;
     }
 
-    private static void EchoRetainsDelayedTransformedComposites() {
-      Assert(ReferenceEquals(DomeBlend.FromId("Echo"), DomeBlend.Echo),
+    [TestMethod]
+    public void EchoRetainsDelayedTransformedComposites() {
+      Assert.IsTrue(ReferenceEquals(DomeBlend.FromId("Echo"), DomeBlend.Echo),
         "Echo was not registered");
-      Assert(DomeBlend.Echo.Params.Count == 9 &&
+      Assert.IsTrue(DomeBlend.Echo.Params.Count == 9 &&
           DomeBlend.Echo.Params.All(p => p.CompositorConsumed),
         "Echo controls are not compositor-owned");
-      Assert((DomeBlend.Echo.Requirements &
+      Assert.IsTrue((DomeBlend.Echo.Requirements &
           CompositeRequirements.ReadsHistory) != 0,
         "Echo did not declare retained history");
 
       EchoOptions defaults = (EchoOptions)CompileOptions(DomeBlend.Echo, null);
-      Assert(defaults.CopyCount == 4 && defaults.Delay == .2 &&
+      Assert.IsTrue(defaults.CopyCount == 4 && defaults.Delay == .2 &&
           defaults.Rotation == .12 && defaults.Scale == .94 &&
           defaults.Drift == .025 && defaults.DriftDirection == 0 &&
           defaults.Decay == .65 && defaults.HueShift == .04 &&
@@ -392,7 +382,7 @@ namespace Spectrum.LayerPipeline.Tests {
           ["hueShift"] = double.PositiveInfinity,
           ["saturation"] = -1,
         });
-      Assert(clamped.CopyCount == 4 && clamped.Delay == .05 &&
+      Assert.IsTrue(clamped.CopyCount == 4 && clamped.Delay == .05 &&
           clamped.Rotation == Math.PI && clamped.Scale == 1.3 &&
           clamped.Drift == 0 && clamped.DriftDirection == -Math.PI &&
           clamped.Decay == 1 && clamped.HueShift == .5 &&
@@ -403,7 +393,7 @@ namespace Spectrum.LayerPipeline.Tests {
         ("copies", 1), ("delay", .1), ("rotation", 0),
         ("scale", 1), ("drift", 0), ("direction", 0),
         ("decay", 1), ("hueShift", 0));
-      Assert(((EchoOptions)DomeBlend.Echo.CompileOptions(neutral)).Saturation == 1,
+      Assert.IsTrue(((EchoOptions)DomeBlend.Echo.CompileOptions(neutral)).Saturation == 1,
         "Echo changed legacy parameter bags that predate saturation control");
       DomeTopology one = OnePixelTopology();
       var bottom = new DomeFrame(one);
@@ -432,7 +422,7 @@ namespace Spectrum.LayerPipeline.Tests {
       retained.Publish(replacementPlan);
       DomeFrame recalled = RequireFrame(
         retained.Compose(), "Echo replacement frame");
-      Assert(recalled.pixels[0].r == 192,
+      Assert.IsTrue(recalled.pixels[0].r == 192,
         "Echo lost its delayed frame across plan replacement");
       AssertClose(1, recalled.pixels[0].a,
         "Echo changed destination coverage");
@@ -445,10 +435,10 @@ namespace Spectrum.LayerPipeline.Tests {
         Compiled(new FakeRenderer("echo-bottom", bottom), DomeBlend.Over, 1,
           ImmutableDictionary<string, ParameterValue>.Empty))));
       retained.Compose();
-      Assert(retained.HistoryStateCount == 0,
+      Assert.IsTrue(retained.HistoryStateCount == 0,
         "Echo retained state after its layer was removed");
       retained.Publish(replacementPlan);
-      Assert(RequireFrame(
+      Assert.IsTrue(RequireFrame(
           retained.Compose(), "Echo re-added frame").pixels[0].color == 0,
         "Echo resurrected history after layer removal");
 
@@ -482,10 +472,10 @@ namespace Spectrum.LayerPipeline.Tests {
       middle.ResetComposite();
       DomeFrame isolatedResult = RequireFrame(
         isolated.Compose(), "isolated Echo frame");
-      Assert(isolatedResult.pixels[0].color == 0xFF0000 &&
+      Assert.IsTrue(isolatedResult.pixels[0].color == 0xFF0000 &&
           isolatedResult.pixels[1].color == 0x00FFFF,
         "duplicate Echo layers shared or captured the wrong history");
-      Assert(isolated.HistoryStateCount == 2,
+      Assert.IsTrue(isolated.HistoryStateCount == 2,
         "duplicate Echo layers did not receive isolated history state");
 
       // Rotation, scaling, and drift are cumulative per copy and resolve
@@ -548,7 +538,7 @@ namespace Spectrum.LayerPipeline.Tests {
         ("decay", 1), ("hueShift", 1d / 3));
       DomeFrame hueShifted = TwoFrameEcho(
         one, 0xFF0000, 0, hueOptions, 1, 1);
-      Assert(hueShifted.pixels[0].color == 0x00FF00,
+      Assert.IsTrue(hueShifted.pixels[0].color == 0x00FF00,
         "Echo did not apply cumulative hue shift");
       var saturationOptions = Parameters(
         ("copies", 1), ("delay", .1), ("rotation", 0),
@@ -605,7 +595,7 @@ namespace Spectrum.LayerPipeline.Tests {
       for (int i = 0; i < 100; i++) {
         coloredEcho.Compose();
       }
-      Assert(coloredEcho.RetainedHistoryFrameCount <= 4,
+      Assert.IsTrue(coloredEcho.RetainedHistoryFrameCount <= 4,
         "Echo history grew beyond its configured delay horizon");
     }
 
@@ -631,7 +621,7 @@ namespace Spectrum.LayerPipeline.Tests {
       bottom.ResetComposite();
       DomeFrame moved = RequireFrame(
         compositor.Compose(), "transformed Echo frame");
-      Assert(moved.pixels[targetIndex].r == 255,
+      Assert.IsTrue(moved.pixels[targetIndex].r == 255,
         "Echo " + transform + " transformed the delayed copy incorrectly");
     }
 
@@ -666,15 +656,16 @@ namespace Spectrum.LayerPipeline.Tests {
       layer.OperationParams = parameters;
       (LayerStackSnapshot? snapshot, string? error) =
         new LayerStackService(DomeLayerCatalog.Metadata).CreateSnapshot(new[] { layer });
-      Assert(snapshot != null && error == null, error);
+      Assert.IsTrue(snapshot != null && error == null, error);
       return operation.CompileOptions(snapshot.Layers[0].OperationParameters);
     }
 
-    private static void HalftoneBuildsPaletteCells() {
-      Assert(ReferenceEquals(
+    [TestMethod]
+    public void HalftoneBuildsPaletteCells() {
+      Assert.IsTrue(ReferenceEquals(
           DomeBlend.FromId("Halftone"), DomeBlend.Halftone),
         "Halftone was not registered");
-      Assert(DomeBlend.Halftone.Params.Count == 7 &&
+      Assert.IsTrue(DomeBlend.Halftone.Params.Count == 7 &&
           DomeBlend.Halftone.Params.All(p => p.CompositorConsumed),
         "Halftone controls are not compositor-owned");
 
@@ -696,21 +687,21 @@ namespace Spectrum.LayerPipeline.Tests {
       DomeBlend.Halftone.Execute(new DomeBlendContext(
         dest, mask, snapshot, options, 1, 0, null,
         paletteColor: (palette, position) => {
-          Assert(palette == 3, "Halftone used the wrong palette");
+          Assert.IsTrue(palette == 3, "Halftone used the wrong palette");
           AssertClose(128d / 255, position,
             "Halftone did not palette-map sampled brightness");
           paletteCalls++;
           return 0xFF0000;
         }));
-      Assert(dest.pixels[0].r == 255 && dest.pixels[0].g == 0 &&
+      Assert.IsTrue(dest.pixels[0].r == 255 && dest.pixels[0].g == 0 &&
           dest.pixels[0].b == 0,
         "Halftone did not light the center of a dot");
-      Assert(dest.pixels[2].color == 0,
+      Assert.IsTrue(dest.pixels[2].color == 0,
         "Halftone did not replace the gap between dots with black");
-      Assert(dest.pixels[0].a == .25 && dest.pixels[0].hue == 0 &&
+      Assert.IsTrue(dest.pixels[0].a == .25 && dest.pixels[0].hue == 0 &&
           dest.pixels[1].hue == .1,
         "Halftone changed destination side channels");
-      Assert(paletteCalls == 3,
+      Assert.IsTrue(paletteCalls == 3,
         "Halftone did not resolve one palette color per masked pixel");
 
       DomeTopology triangleTopology = ProjectedTopology(
@@ -726,7 +717,7 @@ namespace Spectrum.LayerPipeline.Tests {
       DomeBlend.Halftone.Execute(new DomeBlendContext(
         triangleDest, triangleMask, triangleSnapshot,
         options with { CellType = 1 }, 1, 0, null));
-      Assert(triangleDest.pixels[0].color == 0xFFFFFF &&
+      Assert.IsTrue(triangleDest.pixels[0].color == 0xFFFFFF &&
           triangleDest.pixels[1].color == 0,
         "Halftone did not size an equilateral triangle around its centroid");
 
@@ -745,25 +736,27 @@ namespace Spectrum.LayerPipeline.Tests {
         strutDest, strutMask, strutSnapshot,
         options with { CellType = 2, Scale = .052 },
         1, 0, null));
-      Assert(strutDest.pixels.Any(p => p.color != 0),
+      Assert.IsTrue(strutDest.pixels.Any(p => p.color != 0),
         "Halftone strut segments produced no luminous cells");
     }
 
-    private static void SpatialRequirements() {
+    [TestMethod]
+    public void SpatialRequirements() {
       foreach (DomeBlend operation in new[] {
         DomeBlend.ChromaticFringe, DomeBlend.EdgeSpectrum, DomeBlend.Refract,
         DomeBlend.Kaleidoscope, DomeBlend.Echo, DomeBlend.Halftone,
       }) {
-        Assert((operation.Requirements &
+        Assert.IsTrue((operation.Requirements &
           CompositeRequirements.ReadsDestinationNeighbors) != 0,
           operation.Id + " omitted neighbor requirement");
       }
-      Assert((DomeBlend.Iridescence.Requirements &
+      Assert.IsTrue((DomeBlend.Iridescence.Requirements &
         CompositeRequirements.ReadsDestinationNeighbors) == 0,
         "Iridescence requested unnecessary scratch");
     }
 
-    private static void SpatialPassSnapshots() {
+    [TestMethod]
+    public void SpatialPassSnapshots() {
       DomeTopology topology = TwoPixelTopology();
       var bottomFrame = new DomeFrame(topology);
       bottomFrame.pixels[0].color = 0x110000;
@@ -792,23 +785,24 @@ namespace Spectrum.LayerPipeline.Tests {
 
       DomeFrame result = RequireFrame(
         compositor.Compose(), "spatial-pass result");
-      Assert(firstOperation.FirstSeen == 0x110000 &&
+      Assert.IsTrue(firstOperation.FirstSeen == 0x110000 &&
         firstOperation.SecondSeen == 0x002200,
         "the first spatial pass did not see the pre-pass destination");
-      Assert(secondOperation.FirstSeen == 0x002200 &&
+      Assert.IsTrue(secondOperation.FirstSeen == 0x002200 &&
         secondOperation.SecondSeen == 0x110000,
         "the second spatial pass received a stale snapshot");
-      Assert(ReferenceEquals(
+      Assert.IsTrue(ReferenceEquals(
         firstOperation.SeenSnapshot, secondOperation.SeenSnapshot),
         "spatial passes did not reuse scratch storage");
-      Assert(frameAllocations == 2,
+      Assert.IsTrue(frameAllocations == 2,
         "expected one destination and one scratch frame");
-      Assert(result.pixels[0].color == 0x110000 &&
+      Assert.IsTrue(result.pixels[0].color == 0x110000 &&
         result.pixels[1].color == 0x002200,
         "spatial writes smeared instead of reading the snapshot");
     }
 
-    private static void MaskedAdjustmentFixtures() {
+    [TestMethod]
+    public void MaskedAdjustmentFixtures() {
       AssertFixture(
         DomeBlend.Desaturate,
         ImmutableDictionary<string, ParameterValue>.Empty,
@@ -819,7 +813,8 @@ namespace Spectrum.LayerPipeline.Tests {
         "000000 000000 E57F00 33FF00 003FD8 087078 0066FF 234020 102030");
     }
 
-    private static void PrismFixtures() {
+    [TestMethod]
+    public void PrismFixtures() {
       AssertFixture(
         DomeBlend.ChromaticFringe,
         Parameters(("offset", .02), ("spin", 0), ("follow", 0)),
@@ -846,7 +841,7 @@ namespace Spectrum.LayerPipeline.Tests {
     ) {
       DomeFrame full = ComposeFixture(operation, parameters, 1);
       string actual = ColorSignature(full);
-      Assert(actual == expectedFull,
+      Assert.IsTrue(actual == expectedFull,
         operation.Id + " fixture expected " + expectedFull +
         " but got " + actual);
 
@@ -939,137 +934,6 @@ namespace Spectrum.LayerPipeline.Tests {
         colors[i] = frame.pixels[i].color.ToString("X6");
       }
       return string.Join(" ", colors);
-    }
-
-    private static CompiledLayer Compiled(
-      ILayerRenderer renderer, ICompositeOperation operation, double opacity,
-      ImmutableDictionary<string, ParameterValue> parameters
-    ) {
-      var snapshot = new LayerSnapshot(
-        new LayerInstanceId(renderer.RendererId), renderer.RendererId,
-        operation.Id, opacity, true, parameters, parameters, null);
-      return new CompiledLayer(
-        snapshot, renderer, ImmutableArray<Input>.Empty, operation,
-        operation.CompileOptions(parameters));
-    }
-
-    private static DomeLayerSettings Layer(string key, string? id) => new() {
-      InstanceId = id,
-      VisualizerKey = key,
-      BlendMode = DomeBlend.Add.Id,
-      Opacity = 1,
-      Enabled = true,
-    };
-
-    private static DomeTopology OnePixelTopology() => new(new[] {
-      new DomeTopologyPixel(0, 0, .5, .5),
-    });
-
-    private static DomeTopology TwoPixelTopology() => new(new[] {
-      new DomeTopologyPixel(0, 0, .45, .5),
-      new DomeTopologyPixel(1, 0, .55, .5),
-    });
-
-    private static DomeTopology LinearTopology(int count) {
-      var pixels = new DomeTopologyPixel[count];
-      for (int i = 0; i < count; i++) {
-        pixels[i] = new DomeTopologyPixel(0, i, .4 + i * .02, .5);
-      }
-      return new DomeTopology(pixels);
-    }
-
-    private static DomeTopology GridTopology(
-      int width, int height, double spacing
-    ) {
-      var pixels = new DomeTopologyPixel[width * height];
-      double left = 0.5 - (width - 1) * spacing / 2;
-      double top = 0.5 - (height - 1) * spacing / 2;
-      for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-          int i = y * width + x;
-          pixels[i] = new DomeTopologyPixel(
-            0, i, left + x * spacing, top + y * spacing);
-        }
-      }
-      return new DomeTopology(pixels);
-    }
-
-    private static DomeTopology RingTopology(int count, double radius) {
-      var pixels = new DomeTopologyPixel[count];
-      for (int i = 0; i < count; i++) {
-        double angle = 2 * Math.PI * i / count;
-        double x = radius * Math.Cos(angle);
-        double y = radius * Math.Sin(angle);
-        pixels[i] = new DomeTopologyPixel(
-          0, i, (x + 1) * .5, (1 - y) * .5);
-      }
-      return new DomeTopology(pixels);
-    }
-
-    private static DomeTopology ProjectedTopology(
-      params (double X, double Y)[] points
-    ) {
-      var pixels = new DomeTopologyPixel[points.Length];
-      for (int i = 0; i < points.Length; i++) {
-        double topDownX = (points[i].X + 1) * .5;
-        double topDownY = (1 - points[i].Y) * .5;
-        pixels[i] = new DomeTopologyPixel(
-          i, 0, topDownX, topDownY, topDownX, topDownY);
-      }
-      return new DomeTopology(pixels);
-    }
-
-    private static void SetPaletteColors(
-      global::Spectrum.SpectrumConfiguration config,
-      Func<int, int> colorAt
-    ) {
-      var colors = new LEDColor[DomePalette.SlotCount];
-      for (int color = 0; color < colors.Length; color++) {
-        colors[color] = new LEDColor(colorAt(color));
-      }
-      config.ReplaceDomePalettes(new List<DomePalette> {
-        new DomePalette { Name = "Test", Colors = colors },
-      });
-    }
-
-    private static void AssertColors(
-      string name, DomeFrame frame, int[] expected
-    ) {
-      Assert(expected.Length == frame.pixels.Length,
-        name + " has the wrong fixture length");
-      for (int i = 0; i < expected.Length; i++) {
-        Assert(frame.pixels[i].color == expected[i],
-          name + " pixel " + i + " expected 0x" +
-          expected[i].ToString("X6") + " but got 0x" +
-          frame.pixels[i].color.ToString("X6"));
-      }
-    }
-
-    private static void AssertClose(
-      double expected, double actual, string message
-    ) {
-      Assert(Math.Abs(expected - actual) < 0.000000001,
-        message + " expected " + expected + " but got " + actual);
-    }
-
-    private static DomeFrame RequireFrame(
-      DomeFrame? frame, string context
-    ) => frame ?? throw new InvalidOperationException(
-      context + " produced no frame");
-
-    private sealed class FakeRenderer : ILayerRenderer {
-      public string RendererId { get; }
-      public DomeFrame Frame { get; }
-      public bool IsAvailable => true;
-      public IReadOnlyList<Input> RequiredInputs { get; }
-      public FakeRenderer(
-        string id, DomeFrame frame,
-        IReadOnlyList<Input>? requiredInputs = null
-      ) {
-        this.RendererId = id;
-        this.Frame = frame;
-        this.RequiredInputs = requiredInputs ?? Array.Empty<Input>();
-      }
     }
 
     private sealed class FixedOrientation : OrientationAngleProvider {

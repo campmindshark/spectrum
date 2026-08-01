@@ -1,22 +1,17 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using Spectrum.Base;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class StackValidatorTests {
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class StackValidatorTests {
 
-    public static void Register(Action<string, Action> run) {
-      run("stack validation rejects invalid identity and schema",
-        InvalidIdentityAndSchema);
-      run("stack validation enforces size and opacity boundaries",
-        SizeAndOpacityBoundaries);
-      run("validated stacks own their mutable state", ValidatedStackOwnership);
-      run("invalid scene recall leaves live state untouched", SceneApplyIsAtomic);
-    }
 
-    private static void InvalidIdentityAndSchema() {
+    [TestMethod]
+    public void InvalidIdentityAndSchema() {
       AssertRejected(new[] {
         ValidLayer("same"),
         ValidLayer("same"),
@@ -34,7 +29,8 @@ namespace Spectrum.LayerPipeline.Tests {
         new DomeLayerSettings[] { null! }, "needs a visualizerKey");
     }
 
-    private static void SizeAndOpacityBoundaries() {
+    [TestMethod]
+    public void SizeAndOpacityBoundaries() {
       foreach (double opacity in new[] { double.NaN, -0.001, 1.001 }) {
         DomeLayerSettings layer = ValidLayer("opacity-" + opacity);
         layer.Opacity = opacity;
@@ -48,7 +44,7 @@ namespace Spectrum.LayerPipeline.Tests {
       (List<DomeLayerSettings>? boundaryStack, string? boundaryError) =
         StackValidator.Validate(
           new[] { transparent, opaque }, DomeLayerCatalog.Metadata);
-      Assert(boundaryError == null && boundaryStack?.Count == 2,
+      Assert.IsTrue(boundaryError == null && boundaryStack?.Count == 2,
         "valid opacity boundaries were rejected: " + boundaryError);
 
       var oversized = new List<DomeLayerSettings>();
@@ -58,14 +54,15 @@ namespace Spectrum.LayerPipeline.Tests {
       AssertRejected(oversized, "too many layers");
     }
 
-    private static void ValidatedStackOwnership() {
+    [TestMethod]
+    public void ValidatedStackOwnership() {
       DomeLayerSettings input = ValidLayer("owned");
       input.Notes = new string('n', StackValidator.MaxNotesLength + 10);
       var source = new List<DomeLayerSettings> { input };
 
       (List<DomeLayerSettings>? validated, string? error) =
         StackValidator.Validate(source, DomeLayerCatalog.Metadata);
-      Assert(validated != null && error == null, error);
+      Assert.IsTrue(validated != null && error == null, error);
       DomeLayerSettings output = validated[0];
 
       string inputNotes = Require(input.Notes, "input notes");
@@ -79,25 +76,26 @@ namespace Spectrum.LayerPipeline.Tests {
       Dictionary<string, double> outputOperationParams = Require(
         output.OperationParams, "validated operation parameters");
 
-      Assert(!ReferenceEquals(source, validated) &&
+      Assert.IsTrue(!ReferenceEquals(source, validated) &&
         !ReferenceEquals(input, output),
         "validator returned caller-owned stack objects");
-      Assert(!ReferenceEquals(inputRendererParams, outputRendererParams) &&
+      Assert.IsTrue(!ReferenceEquals(inputRendererParams, outputRendererParams) &&
         !ReferenceEquals(inputOperationParams, outputOperationParams),
         "validator returned caller-owned parameter dictionaries");
-      Assert(outputNotes.Length == StackValidator.MaxNotesLength &&
+      Assert.IsTrue(outputNotes.Length == StackValidator.MaxNotesLength &&
         inputNotes.Length == StackValidator.MaxNotesLength + 10,
         "notes were not normalized without mutating the input");
 
       inputRendererParams["color"] = 0;
-      Assert(outputRendererParams["color"] == 0x123456,
+      Assert.IsTrue(outputRendererParams["color"] == 0x123456,
         "validated renderer parameters changed with their source");
       outputOperationParams["offset"] = 0;
-      Assert(inputOperationParams["offset"] == 0.045,
+      Assert.IsTrue(inputOperationParams["offset"] == 0.045,
         "source operation parameters changed with validated output");
     }
 
-    private static void SceneApplyIsAtomic() {
+    [TestMethod]
+    public void SceneApplyIsAtomic() {
       var liveLayer = ValidLayer("live");
       var liveStack = new List<DomeLayerSettings> { liveLayer };
       var config = new global::Spectrum.SpectrumConfiguration {
@@ -129,17 +127,17 @@ namespace Spectrum.LayerPipeline.Tests {
 
       (bool applied, string? error) = new SceneService(
         config, DomeLayerCatalog.Metadata).Apply("Broken");
-      Assert(!applied && error != null,
+      Assert.IsTrue(!applied && error != null,
         "invalid scene was accepted");
-      Assert(config.domeLayerStack.Length == 1 &&
+      Assert.IsTrue(config.domeLayerStack.Length == 1 &&
         config.domeLayerStack[0].InstanceId == liveLayer.InstanceId,
         "invalid scene partially replaced the live stack");
-      Assert(config.domeGlobalFadeSpeed == 0.25 &&
+      Assert.IsTrue(config.domeGlobalFadeSpeed == 0.25 &&
         config.domeGlobalHueSpeed == 0.5,
         "invalid scene partially replaced global settings");
-      Assert(config.domePalettes[0].GetSingleColor(0) == 0x112233,
+      Assert.IsTrue(config.domePalettes[0].GetSingleColor(0) == 0x112233,
         "invalid scene partially replaced the palette");
-      Assert(incompleteFirstLayer.InstanceId == null,
+      Assert.IsTrue(incompleteFirstLayer.InstanceId == null,
         "failed validation mutated an earlier scene layer");
     }
 
@@ -163,8 +161,8 @@ namespace Spectrum.LayerPipeline.Tests {
     ) {
       (List<DomeLayerSettings>? stack, string? error) =
         StackValidator.Validate(input, DomeLayerCatalog.Metadata);
-      Assert(stack == null, "invalid stack produced normalized output");
-      Assert(error != null && error.Contains(
+      Assert.IsTrue(stack == null, "invalid stack produced normalized output");
+      Assert.IsTrue(error != null && error.Contains(
           expectedError, StringComparison.OrdinalIgnoreCase),
         "expected error containing '" + expectedError + "', got '" + error + "'");
     }

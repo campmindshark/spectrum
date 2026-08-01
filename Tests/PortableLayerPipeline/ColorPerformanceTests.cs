@@ -1,30 +1,19 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using Spectrum.Base;
 using Spectrum.LEDs;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class ColorPerformanceTests {
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class ColorPerformanceTests {
     private static int colorSink;
 
-    public static void Register(Action<string, Action> run) {
-      run("packed HSV conversion matches Color at sector boundaries",
-        PackedHsvConversionMatchesColor);
-      run("packed HSV pixel conversion allocates no managed memory",
-        PackedHsvConversionDoesNotAllocate);
-      run("deferred pixel packing preserves channel semantics",
-        DeferredPixelPackingPreservesSemantics);
-      run("global hue rotation preserves wrapped RGB semantics",
-        GlobalHueRotationPreservesSemantics);
-      run("multi-slot dome gradients preserve render semantics",
-        DomeGradientSemantics);
-      run("multi-slot dome gradient sampling allocates no managed memory",
-        DomeGradientSamplingDoesNotAllocate);
-    }
 
-    private static void PackedHsvConversionMatchesColor() {
+    [TestMethod]
+    public void PackedHsvConversionMatchesColor() {
       var hues = new List<double>();
       for (int sector = -6; sector <= 12; sector++) {
         double boundary = sector / 6d;
@@ -41,7 +30,7 @@ namespace Spectrum.LayerPipeline.Tests {
               new global::Spectrum.Color(hue, saturation, value).ToInt();
             int actual = global::Spectrum.MathUtil.HsvToInt(
               hue, saturation, value);
-            Assert(actual == expected,
+            Assert.IsTrue(actual == expected,
               "HSV mismatch at h=" + hue + ", s=" + saturation +
               ", v=" + value + ": expected 0x" +
               expected.ToString("X6") + ", got 0x" +
@@ -51,7 +40,7 @@ namespace Spectrum.LayerPipeline.Tests {
       }
 
       // Exercise the positive modulo wrapping used by the legacy converter.
-      Assert(global::Spectrum.MathUtil.HsvToInt(.25, .7, .9) ==
+      Assert.IsTrue(global::Spectrum.MathUtil.HsvToInt(.25, .7, .9) ==
           global::Spectrum.MathUtil.HsvToInt(1.25, .7, .9),
         "wrapped positive hue changed");
 
@@ -66,7 +55,7 @@ namespace Spectrum.LayerPipeline.Tests {
               out double hue,
               out double saturation,
               out double value);
-            Assert(hue == expected.H && saturation == expected.S &&
+            Assert.IsTrue(hue == expected.H && saturation == expected.S &&
                 value == expected.V,
               "packed HSV decode mismatch for 0x" + packed.ToString("X6"));
           }
@@ -74,7 +63,8 @@ namespace Spectrum.LayerPipeline.Tests {
       }
     }
 
-    private static void PackedHsvConversionDoesNotAllocate() {
+    [TestMethod]
+    public void PackedHsvConversionDoesNotAllocate() {
       int checksum = 0;
       for (int i = 0; i < 10000; i++) {
         checksum ^= global::Spectrum.MathUtil.HsvToInt(
@@ -94,11 +84,12 @@ namespace Spectrum.LayerPipeline.Tests {
       }
       long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
       colorSink = checksum;
-      Assert(allocated == 0,
+      Assert.IsTrue(allocated == 0,
         "packed HSV pixel loop allocated " + allocated + " bytes");
     }
 
-    private static void DeferredPixelPackingPreservesSemantics() {
+    [TestMethod]
+    public void DeferredPixelPackingPreservesSemantics() {
       var pixel = new LEDDomeOutputPixel {
         color = 0x102030,
         hue = .42,
@@ -109,18 +100,19 @@ namespace Spectrum.LayerPipeline.Tests {
       // pending channel state, not the stale packed value from the color setter.
       var copy = new LEDDomeOutputPixel();
       copy.CopyChannelsFrom(pixel);
-      Assert(copy.color == 0x112233 && pixel.color == 0x112233,
+      Assert.IsTrue(copy.color == 0x112233 && pixel.color == 0x112233,
         "deferred channel state did not pack after a copy");
-      Assert(copy.r == 17.9 && copy.g == 34.9 && copy.b == 51.9 &&
+      Assert.IsTrue(copy.r == 17.9 && copy.g == 34.9 && copy.b == 51.9 &&
           copy.a == 1 && copy.hue == .42,
         "deferred channel copy changed mutable pixel state");
 
       copy.SetRGB(-10, 300, 127.9);
-      Assert(copy.color == 0x00FF7F,
+      Assert.IsTrue(copy.color == 0x00FF7F,
         "deferred packing changed channel clamping");
     }
 
-    private static void GlobalHueRotationPreservesSemantics() {
+    [TestMethod]
+    public void GlobalHueRotationPreservesSemantics() {
       int[] channels = { 0, 1, 17, 127, 128, 254, 255 };
       double[] rates = { -.5, -1 / 6d, -.01, .01, 1 / 6d, .5 };
       foreach (double rate in rates) {
@@ -131,7 +123,7 @@ namespace Spectrum.LayerPipeline.Tests {
               var pixel = new LEDDomeOutputPixel { color = input };
               pixel.HueRotate(rate);
               int expected = LegacyHueRotate(input, rate);
-              Assert(pixel.color == expected,
+              Assert.IsTrue(pixel.color == expected,
                 "hue rotation mismatch for 0x" + input.ToString("X6") +
                 " at " + rate + " turns: expected 0x" +
                 expected.ToString("X6") + ", got 0x" +
@@ -149,13 +141,13 @@ namespace Spectrum.LayerPipeline.Tests {
       frame.pixels[0].color = 0x123456;
       frame.pixels[1].color = 0xABCDEF;
       frame.HueRotate(1.25);
-      Assert(frame.pixels[0].color == LegacyHueRotate(0x123456, .25) &&
+      Assert.IsTrue(frame.pixels[0].color == LegacyHueRotate(0x123456, .25) &&
           frame.pixels[1].color == LegacyHueRotate(0xABCDEF, .25),
         "frame hue rotation did not reduce whole turns once");
 
       int unchanged = frame.pixels[0].color;
       frame.HueRotate(-2);
-      Assert(frame.pixels[0].color == unchanged,
+      Assert.IsTrue(frame.pixels[0].color == unchanged,
         "whole-turn hue rotation changed a pixel");
     }
 
@@ -175,7 +167,8 @@ namespace Spectrum.LayerPipeline.Tests {
         shiftedHue, hsv.S, hsv.V).ToInt();
     }
 
-    private static void DomeGradientSemantics() {
+    [TestMethod]
+    public void DomeGradientSemantics() {
       LEDDomeOutput output = GradientOutput(out var config);
       output.BeginOperatorFrame();
 
@@ -205,7 +198,8 @@ namespace Spectrum.LayerPipeline.Tests {
         "single post-interpolation brightness scale");
     }
 
-    private static void DomeGradientSamplingDoesNotAllocate() {
+    [TestMethod]
+    public void DomeGradientSamplingDoesNotAllocate() {
       LEDDomeOutput output = GradientOutput(out _);
       output.BeginOperatorFrame();
       int checksum = 0;
@@ -221,7 +215,7 @@ namespace Spectrum.LayerPipeline.Tests {
       }
       long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
       colorSink = checksum;
-      Assert(allocated == 0,
+      Assert.IsTrue(allocated == 0,
         "multi-slot gradient loop allocated " + allocated + " bytes");
     }
 
@@ -253,7 +247,7 @@ namespace Spectrum.LayerPipeline.Tests {
     ) {
       int actual = output.GetGradientBetweenColors(
         0, 2, pixelPos, focusPos, wrap);
-      Assert(actual == expected,
+      Assert.IsTrue(actual == expected,
         context + ": expected 0x" + expected.ToString("X6") +
         ", got 0x" + actual.ToString("X6"));
     }

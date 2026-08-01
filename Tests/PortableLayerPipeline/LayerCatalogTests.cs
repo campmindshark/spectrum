@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -5,59 +6,54 @@ using System.Numerics;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using Spectrum.Visualizers;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
+using static Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class LayerCatalogTests {
-    public static void Register(Action<string, Action> run) {
-      run(nameof(CatalogIsUnique), CatalogIsUnique);
-      run(nameof(TunnelParametersCompile), TunnelParametersCompile);
-      run(nameof(OrientationRingsUseAngularDistance), OrientationRingsUseAngularDistance);
-      run(nameof(RippleDesaturationReducesSaturation), RippleDesaturationReducesSaturation);
-      run(nameof(QuaternionTestIsDiagnostic), QuaternionTestIsDiagnostic);
-      run(nameof(DuplicateKinds), DuplicateKinds);
-      run(nameof(ParameterNamespaces), ParameterNamespaces);
-    }
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class LayerCatalogTests {
 
-    private static void CatalogIsUnique() {
+    [TestMethod]
+    public void CatalogIsUnique() {
       var ids = new HashSet<string>();
       foreach (LayerDefinition definition in DomeLayerCatalog.Metadata.Definitions) {
-        Assert(ids.Add(definition.Id), "duplicate " + definition.Id);
-        Assert(definition.CompileOptions != null,
+        Assert.IsTrue(ids.Add(definition.Id), "duplicate " + definition.Id);
+        Assert.IsTrue(definition.CompileOptions != null,
           "missing options compiler for " + definition.Id);
         var keys = new HashSet<string>();
         foreach (DomeLayerParam parameter in definition.Parameters) {
-          Assert(keys.Add(parameter.Key), "duplicate parameter " + parameter.Key);
+          Assert.IsTrue(keys.Add(parameter.Key), "duplicate parameter " + parameter.Key);
         }
         (LayerStackSnapshot? snapshot, string? error) =
           new LayerStackService(DomeLayerCatalog.Metadata).CreateSnapshot(new[] {
             Layer(definition.Id, "options-" + definition.Id),
           });
-        Assert(snapshot != null && error == null, error);
+        Assert.IsTrue(snapshot != null && error == null, error);
         ILayerRendererOptions options = definition.CompileOptions(
           snapshot.Layers[0].RendererParameters);
-        Assert(options != null, "null options for " + definition.Id);
+        Assert.IsTrue(options != null, "null options for " + definition.Id);
       }
     }
 
-    private static void TunnelParametersCompile() {
+    [TestMethod]
+    public void TunnelParametersCompile() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("tunnel");
-      Assert(definition != null && definition.DisplayName == "Tunnel",
+      Assert.IsTrue(definition != null && definition.DisplayName == "Tunnel",
         "Tunnel is missing from the layer catalog");
 
       TunnelLayerOptions defaults = BuiltInOptions<TunnelLayerOptions>(
         Layer("tunnel", "tunnel-defaults"));
-      Assert(defaults.RingCount == 12, "unexpected Tunnel ring count");
-      Assert(Math.Abs(defaults.Speed - 0.18) < 1e-9,
+      Assert.IsTrue(defaults.RingCount == 12, "unexpected Tunnel ring count");
+      Assert.IsTrue(Math.Abs(defaults.Speed - 0.18) < 1e-9,
         "unexpected Tunnel speed");
-      Assert(Math.Abs(defaults.Thickness - 0.025) < 1e-9,
+      Assert.IsTrue(Math.Abs(defaults.Thickness - 0.025) < 1e-9,
         "unexpected Tunnel thickness");
-      Assert(defaults.Brightness == 1 && defaults.Variation == 0.8,
+      Assert.IsTrue(defaults.Brightness == 1 && defaults.Variation == 0.8,
         "unexpected Tunnel brightness or variation");
-      Assert(!defaults.BindToOrientation,
+      Assert.IsTrue(!defaults.BindToOrientation,
         "Tunnel unexpectedly binds orientation by default");
-      Assert(defaults.Color == 0xFFFFFF, "unexpected Tunnel color");
+      Assert.IsTrue(defaults.Color == 0xFFFFFF, "unexpected Tunnel color");
 
       var configured = Layer("tunnel", "tunnel-clamped");
       configured.RendererParams = new Dictionary<string, double> {
@@ -71,14 +67,14 @@ namespace Spectrum.LayerPipeline.Tests {
       };
       TunnelLayerOptions clamped =
         BuiltInOptions<TunnelLayerOptions>(configured);
-      Assert(clamped.RingCount == 24 && clamped.Speed == 0,
+      Assert.IsTrue(clamped.RingCount == 24 && clamped.Speed == 0,
         "Tunnel count or speed did not clamp");
-      Assert(clamped.Thickness == 0.12 && clamped.Brightness == 1 &&
+      Assert.IsTrue(clamped.Thickness == 0.12 && clamped.Brightness == 1 &&
           clamped.Variation == 0,
         "Tunnel shape controls did not clamp");
-      Assert(clamped.BindToOrientation,
+      Assert.IsTrue(clamped.BindToOrientation,
         "Tunnel orientation binding did not compile");
-      Assert(clamped.Color == 0x123456, "Tunnel color did not compile");
+      Assert.IsTrue(clamped.Color == 0x123456, "Tunnel color did not compile");
 
       AssertClose(
         0,
@@ -102,17 +98,18 @@ namespace Spectrum.LayerPipeline.Tests {
         "Tunnel oriented radius is not linear in surface angle");
     }
 
-    private static void OrientationRingsUseAngularDistance() {
+    [TestMethod]
+    public void OrientationRingsUseAngularDistance() {
       AngularRingBand midRipple =
         OrientationRingGeometry.RippleBand(300);
-      Assert(midRipple.Contains(Vector3.UnitZ, Vector3.UnitX),
+      Assert.IsTrue(midRipple.Contains(Vector3.UnitZ, Vector3.UnitX),
         "Ripple did not reach a quarter turn halfway to the antipode");
       Vector3 sixtyDegrees = new Vector3(
         (float)Math.Sin(Math.PI / 3), 0,
         (float)Math.Cos(Math.PI / 3));
-      Assert(!midRipple.Contains(Vector3.UnitZ, sixtyDegrees),
+      Assert.IsTrue(!midRipple.Contains(Vector3.UnitZ, sixtyDegrees),
         "Ripple retained its nonlinear chord-distance radius");
-      Assert(!OrientationRingGeometry.RippleBand(700).Contains(
+      Assert.IsTrue(!OrientationRingGeometry.RippleBand(700).Contains(
           Vector3.UnitZ, -Vector3.UnitZ),
         "Ripple remained visible after passing the antipode");
 
@@ -121,7 +118,7 @@ namespace Spectrum.LayerPipeline.Tests {
         Vector3 onRing = new Vector3(
           (float)Math.Sin(ringCenter * Math.PI), 0,
           (float)Math.Cos(ringCenter * Math.PI));
-        Assert(OrientationRingGeometry.StampGridContains(
+        Assert.IsTrue(OrientationRingGeometry.StampGridContains(
             DomeSurfaceGeometry.UnitSphereDot(Vector3.UnitZ, onRing)),
           "Stamp grid lost angular ring " + ring);
 
@@ -129,18 +126,19 @@ namespace Spectrum.LayerPipeline.Tests {
         Vector3 betweenRings = new Vector3(
           (float)Math.Sin(gapCenter * Math.PI), 0,
           (float)Math.Cos(gapCenter * Math.PI));
-        Assert(!OrientationRingGeometry.StampGridContains(
+        Assert.IsTrue(!OrientationRingGeometry.StampGridContains(
             DomeSurfaceGeometry.UnitSphereDot(
               Vector3.UnitZ, betweenRings)),
           "Stamp grid spacing is not angular at gap " + ring);
       }
     }
 
-    private static void RippleDesaturationReducesSaturation() {
+    [TestMethod]
+    public void RippleDesaturationReducesSaturation() {
       LayerDefinition? ripple = DomeLayerCatalog.Metadata.Get("ripple");
       DomeLayerParam? desaturation = ripple?.Parameters.FirstOrDefault(
         parameter => parameter.Key == "desaturation");
-      Assert(desaturation != null && desaturation.Min == 0 &&
+      Assert.IsTrue(desaturation != null && desaturation.Min == 0 &&
         desaturation.Max == 1 && desaturation.Step == 0.05 &&
         desaturation.Default == 0,
         "Ripple desaturation slider is missing or malformed");
@@ -162,18 +160,19 @@ namespace Spectrum.LayerPipeline.Tests {
         "full Ripple desaturation was not grayscale");
     }
 
-    private static void QuaternionTestIsDiagnostic() {
-      Assert(DomeLayerCatalog.Metadata.Get("quaternion-test") == null,
+    [TestMethod]
+    public void QuaternionTestIsDiagnostic() {
+      Assert.IsTrue(DomeLayerCatalog.Metadata.Get("quaternion-test") == null,
         "Quaternion Test is still exposed as a layer renderer");
 
       ParameterRegistry registry =
         global::Spectrum.SpectrumConfigurationSchema.BuildParameterRegistry();
-      Assert(registry.TryGet(
+      Assert.IsTrue(registry.TryGet(
           "domeTestPattern", out ParameterDescriptor? testPattern) &&
         testPattern != null,
         "Quaternion Test parameter is missing");
       IReadOnlyList<string>? testPatternOptions = testPattern.Options;
-      Assert(testPatternOptions?.Count == 6 &&
+      Assert.IsTrue(testPatternOptions?.Count == 6 &&
         testPatternOptions[5] == "Quaternion Test",
         "Quaternion Test is missing from the dome test-pattern selector");
 
@@ -181,31 +180,33 @@ namespace Spectrum.LayerPipeline.Tests {
       var runtime = new global::Spectrum.Operator(config);
       Visualizer? diagnostic = runtime.DomeOutput.GetVisualizers()
         .FirstOrDefault(v => v is LEDDomeQuaternionTestVisualizer);
-      Assert(diagnostic != null && diagnostic is not DomeLayerVisualizer,
+      Assert.IsTrue(diagnostic != null && diagnostic is not DomeLayerVisualizer,
         "Quaternion Test was not registered as a diagnostic visualizer");
-      Assert(diagnostic.GetInputs().Length == 1 && ReferenceEquals(
+      Assert.IsTrue(diagnostic.GetInputs().Length == 1 && ReferenceEquals(
           diagnostic.GetInputs()[0], runtime.OrientationInput),
         "Quaternion Test is not bound to the orientation input");
       config.domeTestPattern = 5;
-      Assert(diagnostic.Priority == 1000,
+      Assert.IsTrue(diagnostic.Priority == 1000,
         "Quaternion Test does not override the active layer stack");
       config.domeTestPattern = 0;
-      Assert(diagnostic.Priority == 0,
+      Assert.IsTrue(diagnostic.Priority == 0,
         "Quaternion Test remains active after clearing the test pattern");
     }
 
-    private static void DuplicateKinds() {
+    [TestMethod]
+    public void DuplicateKinds() {
       var input = new[] {
         Layer("wave", "a"), Layer("wave", "b"),
       };
       (List<DomeLayerSettings>? stack, string? error) =
         new LayerStackService(DomeLayerCatalog.Metadata).Normalize(input);
-      Assert(stack != null && error == null, error);
-      Assert(stack.Count == 2, "layers were rejected");
-      Assert(stack[0].InstanceId != stack[1].InstanceId, "IDs collided");
+      Assert.IsTrue(stack != null && error == null, error);
+      Assert.IsTrue(stack.Count == 2, "layers were rejected");
+      Assert.IsTrue(stack[0].InstanceId != stack[1].InstanceId, "IDs collided");
     }
 
-    private static void ParameterNamespaces() {
+    [TestMethod]
+    public void ParameterNamespaces() {
       DomeLayerSettings layer = Layer("wave", "wave-1");
       layer.BlendMode = DomeBlend.ChromaticFringe.Id;
       layer.RendererParams = new Dictionary<string, double> {
@@ -218,48 +219,16 @@ namespace Spectrum.LayerPipeline.Tests {
       };
       (LayerStackSnapshot? snapshot, string? error) =
         new LayerStackService(DomeLayerCatalog.Metadata).CreateSnapshot(new[] { layer });
-      Assert(snapshot != null && error == null, error);
+      Assert.IsTrue(snapshot != null && error == null, error);
       LayerSnapshot compiled = snapshot.Layers[0];
-      Assert(compiled.RendererParameters.ContainsKey("speed"),
+      Assert.IsTrue(compiled.RendererParameters.ContainsKey("speed"),
         "renderer option missing");
-      Assert(!compiled.RendererParameters.ContainsKey("offset"),
+      Assert.IsTrue(!compiled.RendererParameters.ContainsKey("offset"),
         "operation option leaked into renderer namespace");
-      Assert(compiled.OperationParameters.ContainsKey("offset"),
+      Assert.IsTrue(compiled.OperationParameters.ContainsKey("offset"),
         "operation option missing");
-      Assert(!compiled.OperationParameters.ContainsKey("unknown"),
+      Assert.IsTrue(!compiled.OperationParameters.ContainsKey("unknown"),
         "unknown option survived");
-    }
-    private static T BuiltInOptions<T>(DomeLayerSettings layer)
-      where T : class, ILayerRendererOptions {
-      (LayerStackSnapshot? snapshot, string? error) =
-        new LayerStackService(DomeLayerCatalog.Metadata).CreateSnapshot(
-          new[] { layer });
-      if (snapshot == null || error != null) {
-        throw new InvalidOperationException(error);
-      }
-      LayerDefinition? definition = DomeLayerCatalog.Metadata.Get(
-        layer.VisualizerKey);
-      Assert(definition != null,
-        "the built-in layer definition is missing");
-      ILayerRendererOptions options = definition.CompileOptions(
-        snapshot.Layers[0].RendererParameters);
-      return options as T ?? throw new InvalidOperationException(
-        "Unexpected options type " + options.GetType().Name + ".");
-    }
-
-    private static DomeLayerSettings Layer(string key, string? id) => new() {
-      InstanceId = id,
-      VisualizerKey = key,
-      BlendMode = DomeBlend.Add.Id,
-      Opacity = 1,
-      Enabled = true,
-    };
-
-    private static void AssertClose(
-      double expected, double actual, string message
-    ) {
-      Assert(Math.Abs(expected - actual) < 0.000000001,
-        message + " expected " + expected + " but got " + actual);
     }
   }
 }

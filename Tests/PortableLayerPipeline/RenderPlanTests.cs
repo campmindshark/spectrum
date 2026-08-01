@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -10,36 +11,33 @@ using Spectrum.Base;
 using Spectrum.LEDs;
 using Spectrum.Visualizers;
 using static Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class RenderPlanTests {
-    public static void Register(Action<string, Action> run) {
-      run(nameof(PlanSchedulesInstances), PlanSchedulesInstances);
-      run(nameof(SceneRecallRetainsState), SceneRecallRetainsState);
-      run(nameof(DuplicateCommandsNeedIds), DuplicateCommandsNeedIds);
-      run(nameof(PlanReplacement), PlanReplacement);
-    }
-    private static void PlanSchedulesInstances() {
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class RenderPlanTests {
+    [TestMethod]
+    public void PlanSchedulesInstances() {
       DomeLayerSettings disabled = Layer("background", "background-off");
       disabled.Enabled = false;
       var config = ConfigurationWithLayers(
         disabled, Layer("background", "background-on"));
       var runtime = new global::Spectrum.Operator(config);
       RenderPlan plan = runtime.DomeOutput.RenderPlan;
-      Assert(plan.Layers.Length == 1, "disabled layer entered the plan");
-      Assert(plan.Layers[0].Snapshot.Id.Value == "background-on",
+      Assert.IsTrue(plan.Layers.Length == 1, "disabled layer entered the plan");
+      Assert.IsTrue(plan.Layers[0].Snapshot.Id.Value == "background-on",
         "the enabled instance was not scheduled");
     }
 
-    private static void SceneRecallRetainsState() {
+    [TestMethod]
+    public void SceneRecallRetainsState() {
       var config = ConfigurationWithLayers(
         Layer("wave", "scene-wave-a"),
         Layer("wave", "scene-wave-b"));
       var scenes = new SceneService(config, DomeLayerCatalog.Metadata);
       (bool saved, string? saveError) = scenes.Save("duplicates");
-      Assert(saved, saveError);
+      Assert.IsTrue(saved, saveError);
 
       int created = 0;
       DomeTopology topology = OnePixelTopology();
@@ -66,7 +64,7 @@ namespace Spectrum.LayerPipeline.Tests {
       RenderPlan first = Compile(compiler, store, initial);
       ILayerRenderer rendererA = first.Layers[0].Renderer;
       ILayerRenderer rendererB = first.Layers[1].Renderer;
-      Assert(!ReferenceEquals(rendererA, rendererB),
+      Assert.IsTrue(!ReferenceEquals(rendererA, rendererB),
         "duplicate instances shared renderer state");
       rendererA.Frame.pixels[0].color = 0x110000;
       rendererB.Frame.pixels[0].color = 0x002200;
@@ -74,7 +72,7 @@ namespace Spectrum.LayerPipeline.Tests {
       var reorderedSnapshot = new LayerStackSnapshot(ImmutableArray.Create(
         initial.Layers[1], initial.Layers[0]));
       RenderPlan reordered = Compile(compiler, store, reorderedSnapshot);
-      Assert(ReferenceEquals(reordered.Layers[0].Renderer, rendererB) &&
+      Assert.IsTrue(ReferenceEquals(reordered.Layers[0].Renderer, rendererB) &&
         ReferenceEquals(reordered.Layers[1].Renderer, rendererA),
         "reordering changed instance identity");
 
@@ -86,24 +84,25 @@ namespace Spectrum.LayerPipeline.Tests {
         ((ILayerStackSnapshotSource)config).DomeLayerStackSnapshot);
 
       (bool applied, string? applyError) = scenes.Apply("duplicates");
-      Assert(applied, applyError);
+      Assert.IsTrue(applied, applyError);
       RenderPlan recalled = Compile(
         compiler, store,
         ((ILayerStackSnapshotSource)config).DomeLayerStackSnapshot);
 
-      Assert(config.domeLayerStack[0].InstanceId == "scene-wave-a" &&
+      Assert.IsTrue(config.domeLayerStack[0].InstanceId == "scene-wave-a" &&
         config.domeLayerStack[1].InstanceId == "scene-wave-b",
         "scene recall regenerated instance IDs");
-      Assert(ReferenceEquals(recalled.Layers[0].Renderer, rendererA) &&
+      Assert.IsTrue(ReferenceEquals(recalled.Layers[0].Renderer, rendererA) &&
         ReferenceEquals(recalled.Layers[1].Renderer, rendererB),
         "scene recall recreated matching renderer instances");
-      Assert(rendererA.Frame.pixels[0].color == 0x110000 &&
+      Assert.IsTrue(rendererA.Frame.pixels[0].color == 0x110000 &&
         rendererB.Frame.pixels[0].color == 0x002200,
         "scene recall lost retained renderer state");
-      Assert(created == 2, "scene recall created extra renderers");
+      Assert.IsTrue(created == 2, "scene recall created extra renderers");
     }
 
-    private static void DuplicateCommandsNeedIds() {
+    [TestMethod]
+    public void DuplicateCommandsNeedIds() {
       var config = ConfigurationWithLayers(
         Layer("wave", "command-wave-a"),
         Layer("wave", "command-wave-b"));
@@ -112,36 +111,37 @@ namespace Spectrum.LayerPipeline.Tests {
 
       (bool ambiguousFire, string? fireError) =
         controller.FireAsync("wave").GetAwaiter().GetResult();
-      Assert(!ambiguousFire &&
+      Assert.IsTrue(!ambiguousFire &&
           fireError?.Contains("unknown layer instance") == true,
         "renderer-key fire was accepted");
-      Assert(config.domeLayerFireCounters.Count == 0,
+      Assert.IsTrue(config.domeLayerFireCounters.Count == 0,
         "ambiguous fire changed a counter");
 
       (bool fired, string? targetedFireError) =
         controller.FireAsync("command-wave-b").GetAwaiter().GetResult();
-      Assert(fired, targetedFireError);
-      Assert(config.domeLayerFireCounters.Count == 1 &&
+      Assert.IsTrue(fired, targetedFireError);
+      Assert.IsTrue(config.domeLayerFireCounters.Count == 1 &&
         config.domeLayerFireCounters["command-wave-b"] == 1,
         "targeted fire reached the wrong duplicate");
 
       (bool ambiguousClear, string? clearError) =
         controller.ClearAsync("wave").GetAwaiter().GetResult();
-      Assert(!ambiguousClear &&
+      Assert.IsTrue(!ambiguousClear &&
           clearError?.Contains("unknown layer instance") == true,
         "renderer-key clear was accepted");
-      Assert(config.domeLayerClearCounters.Count == 0,
+      Assert.IsTrue(config.domeLayerClearCounters.Count == 0,
         "ambiguous clear changed a counter");
 
       (bool cleared, string? targetedClearError) =
         controller.ClearAsync("command-wave-a").GetAwaiter().GetResult();
-      Assert(cleared, targetedClearError);
-      Assert(config.domeLayerClearCounters.Count == 1 &&
+      Assert.IsTrue(cleared, targetedClearError);
+      Assert.IsTrue(config.domeLayerClearCounters.Count == 1 &&
         config.domeLayerClearCounters["command-wave-a"] == 1,
         "targeted clear reached the wrong duplicate");
     }
 
-    private static void PlanReplacement() {
+    [TestMethod]
+    public void PlanReplacement() {
       DomeTopology topology = OnePixelTopology();
       var firstFrame = new DomeFrame(topology);
       firstFrame.pixels[0].color = 0x120000;
@@ -153,7 +153,7 @@ namespace Spectrum.LayerPipeline.Tests {
         Compiled(
           new FakeRenderer("first", firstFrame), DomeBlend.Add, 1,
           ImmutableDictionary<string, ParameterValue>.Empty))));
-      Assert(RequireFrame(
+      Assert.IsTrue(RequireFrame(
           compositor.Compose(), "initial plan frame").pixels[0].color ==
           0x120000,
         "the first plan did not render");
@@ -162,7 +162,7 @@ namespace Spectrum.LayerPipeline.Tests {
         Compiled(
           new FakeRenderer("second", secondFrame), DomeBlend.Add, 1,
           ImmutableDictionary<string, ParameterValue>.Empty))));
-      Assert(RequireFrame(
+      Assert.IsTrue(RequireFrame(
           compositor.Compose(), "replacement plan frame").pixels[0].color ==
           0x003400,
         "the replacement plan retained the old destination");
@@ -176,13 +176,13 @@ namespace Spectrum.LayerPipeline.Tests {
           ImmutableDictionary<string, ParameterValue>.Empty))));
       DomeFrame blankAdjustment = RequireFrame(
         compositor.Compose(), "blank adjustment frame");
-      Assert(blankAdjustment.pixels[0].color == 0 &&
+      Assert.IsTrue(blankAdjustment.pixels[0].color == 0 &&
         blankAdjustment.pixels[0].a == 0 &&
         blankAdjustment.pixels[0].hue == 0,
         "the explicit destination retained stale mutable channels");
 
       compositor.Publish(RenderPlan.Empty);
-      Assert(compositor.Compose() == null,
+      Assert.IsTrue(compositor.Compose() == null,
         "an empty plan did not preserve the hold-last-frame contract");
     }
 

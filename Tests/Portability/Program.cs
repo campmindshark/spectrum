@@ -17,7 +17,6 @@ using Spectrum.LEDs;
 using Spectrum.Platform.Linux;
 using Spectrum.Visualizers;
 using Spectrum.Web;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.Portability.Tests {
 
@@ -42,18 +41,18 @@ namespace Spectrum.Portability.Tests {
       using var dispatcher =
         new DedicatedThreadApplicationStateDispatcher();
       int ownerThread = dispatcher.InvokeAsync(() => {
-        Assert(dispatcher.CheckAccess(),
+        Assert.IsTrue(dispatcher.CheckAccess(),
           "CheckAccess was false on the state-owner thread");
         dispatcher.InvokeAsync(() => {
-          Assert(dispatcher.CheckAccess(),
+          Assert.IsTrue(dispatcher.CheckAccess(),
             "a reentrant invocation left the state-owner thread");
         }).GetAwaiter().GetResult();
         return Environment.CurrentManagedThreadId;
       }).GetAwaiter().GetResult();
 
-      Assert(ownerThread != callerThread,
+      Assert.IsTrue(ownerThread != callerThread,
         "application state remained on the calling thread");
-      Assert(!dispatcher.CheckAccess(),
+      Assert.IsTrue(!dispatcher.CheckAccess(),
         "CheckAccess was true away from the state-owner thread");
     }
 
@@ -76,7 +75,7 @@ namespace Spectrum.Portability.Tests {
 
       int captured = dispatcher.InvokeAsync(() => value)
         .GetAwaiter().GetResult();
-      Assert(captured == producerCount * commandsPerProducer,
+      Assert.IsTrue(captured == producerCount * commandsPerProducer,
         "the serialized state lost a concurrent command");
     }
 
@@ -89,7 +88,7 @@ namespace Spectrum.Portability.Tests {
       dispatcher.Post(() => throw new InvalidOperationException("posted"));
       Exception postError = reported.Task.WaitAsync(TimeSpan.FromSeconds(2))
         .GetAwaiter().GetResult();
-      Assert(postError is InvalidOperationException &&
+      Assert.IsTrue(postError is InvalidOperationException &&
           postError.Message == "posted",
         "a failed Post command was not reported");
 
@@ -100,12 +99,12 @@ namespace Spectrum.Portability.Tests {
         throw new InvalidOperationException(
           "a failed InvokeAsync command completed successfully");
       } catch (InvalidOperationException error) {
-        Assert(error.Message == "invoked",
+        Assert.IsTrue(error.Message == "invoked",
           "InvokeAsync returned the wrong failure");
       }
 
       int result = dispatcher.InvokeAsync(() => 42).GetAwaiter().GetResult();
-      Assert(result == 42,
+      Assert.IsTrue(result == 42,
         "a failed command terminated the state-owner thread");
     }
 
@@ -117,7 +116,7 @@ namespace Spectrum.Portability.Tests {
         dispatcher.Post(() => value++);
       }
       dispatcher.Dispose();
-      Assert(value == 50,
+      Assert.IsTrue(value == 50,
         "shutdown discarded an accepted state command");
 
       try {
@@ -156,7 +155,7 @@ namespace Spectrum.Portability.Tests {
 
         ConfigurationLoadResult<string> packaged =
           store.Load(() => "empty");
-        Assert(packaged.Value == "packaged" &&
+        Assert.IsTrue(packaged.Value == "packaged" &&
             packaged.SourcePath == defaults,
           "the packaged default was not selected");
 
@@ -164,20 +163,20 @@ namespace Spectrum.Portability.Tests {
         store.Save("second");
         ConfigurationLoadResult<string> current =
           store.Load(() => "empty");
-        Assert(current.Value == "second" && current.SourcePath == primary,
+        Assert.IsTrue(current.Value == "second" && current.SourcePath == primary,
           "the primary configuration did not contain the latest save");
-        Assert(File.ReadAllText(backup) == "first",
+        Assert.IsTrue(File.ReadAllText(backup) == "first",
           "atomic replacement did not preserve the prior configuration");
-        Assert(!File.Exists(store.TemporaryPath),
+        Assert.IsTrue(!File.Exists(store.TemporaryPath),
           "the save left its temporary file behind");
 
         File.WriteAllText(primary, "!invalid!primary");
         ConfigurationLoadResult<string> recovered =
           store.Load(() => "empty");
-        Assert(recovered.Value == "first" &&
+        Assert.IsTrue(recovered.Value == "first" &&
             recovered.SourcePath == backup,
           "an invalid primary configuration did not recover from backup");
-        Assert(recovered.Failures.Count == 1 &&
+        Assert.IsTrue(recovered.Failures.Count == 1 &&
             recovered.Failures[0].Path == primary,
           "the failed primary load was not reported");
       } finally {
@@ -206,7 +205,7 @@ namespace Spectrum.Portability.Tests {
 
         MadmomRuntimePaths? windows = MadmomRuntimeLocator.Find(
           nested, useWindowsLayout: true);
-        Assert(windows != null &&
+        Assert.IsTrue(windows != null &&
             windows.PythonPath == windowsPython &&
             windows.TrackerPath == windowsTracker,
           "the Windows virtual-environment layout was not found");
@@ -225,7 +224,7 @@ namespace Spectrum.Portability.Tests {
 
         windows = MadmomRuntimeLocator.Find(
           nested, useWindowsLayout: true);
-        Assert(windows != null &&
+        Assert.IsTrue(windows != null &&
             windows.PythonPath == packagedWindowsPython &&
             windows.TrackerPath == packagedWindowsTracker,
           "the packaged Windows layout was not preferred");
@@ -241,7 +240,7 @@ namespace Spectrum.Portability.Tests {
 
         MadmomRuntimePaths? unix = MadmomRuntimeLocator.Find(
           nested, useWindowsLayout: false);
-        Assert(unix != null &&
+        Assert.IsTrue(unix != null &&
             unix.PythonPath == unixPython &&
             unix.TrackerPath == unixTracker,
           "the packaged Unix runtime layout was not found");
@@ -251,7 +250,7 @@ namespace Spectrum.Portability.Tests {
             Path.GetTempPath(),
             "spectrum-madmom-missing-" + Guid.NewGuid()),
           useWindowsLayout: false);
-        Assert(missing == null,
+        Assert.IsTrue(missing == null,
           "runtime discovery escaped its ancestor search roots");
       } finally {
         Directory.Delete(directory, recursive: true);
@@ -273,14 +272,14 @@ namespace Spectrum.Portability.Tests {
 
       LayerStackSnapshot snapshot =
         ((ILayerStackSnapshotSource)config).DomeLayerStackSnapshot;
-      Assert(snapshot.Layers.Length == 1 &&
+      Assert.IsTrue(snapshot.Layers.Length == 1 &&
           snapshot.Layers[0].Id.Value == "portable-radial",
         "the portable configuration did not publish its layer snapshot");
       LayerDefinition? definition =
         global::Spectrum.BuiltInDomeLayerCatalog.Metadata.Get("radial");
-      Assert(definition != null,
+      Assert.IsTrue(definition != null,
         "the portable built-in catalog omitted the radial definition");
-      Assert(definition.CompileOptions(
+      Assert.IsTrue(definition.CompileOptions(
             snapshot.Layers[0].RendererParameters)
           is RadialLayerOptions options && options.Size == 0.25,
         "the portable built-in catalog did not compile typed layer options");
@@ -298,19 +297,19 @@ namespace Spectrum.Portability.Tests {
 
       IReadOnlyList<AudioCaptureDevice> devices =
         input.GetAvailableDevices();
-      Assert(devices.Count == 1 &&
+      Assert.IsTrue(devices.Count == 1 &&
           devices[0].Id == "hw:test,0" &&
           devices[0].Name == "Test capture",
         "the ALSA device identity was not exposed unchanged");
 
       input.Active = true;
-      Assert(api.FrameProcessed.Wait(TimeSpan.FromSeconds(2)) &&
+      Assert.IsTrue(api.FrameProcessed.Wait(TimeSpan.FromSeconds(2)) &&
           input.Volume > 0.99f,
         "signed 16-bit PCM did not publish a normalized peak level");
-      Assert(api.OpenCount > 0 && input.LastError == null,
+      Assert.IsTrue(api.OpenCount > 0 && input.LastError == null,
         "the ALSA worker did not open the configured device cleanly");
       input.Active = false;
-      Assert(input.Volume == 0,
+      Assert.IsTrue(input.Volume == 0,
         "stopping ALSA capture left a stale peak level");
 
       api.FailOpen = true;
@@ -318,11 +317,11 @@ namespace Spectrum.Portability.Tests {
       using var failing = new AlsaAudioLevelInput(
         config, api, failingTracker, TimeSpan.FromMilliseconds(5));
       failing.Active = true;
-      Assert(api.RepeatedOpenFailure.Wait(TimeSpan.FromSeconds(2)) &&
+      Assert.IsTrue(api.RepeatedOpenFailure.Wait(TimeSpan.FromSeconds(2)) &&
           failing.LastError?.Contains("test device unavailable") == true,
         "an ALSA open failure was not reported");
       failing.GetAvailableDevices();
-      Assert(failing.LastError?.Contains("test device unavailable") == true,
+      Assert.IsTrue(failing.LastError?.Contains("test device unavailable") == true,
         "device polling erased the active ALSA capture failure");
       failing.Active = false;
     }
@@ -340,21 +339,21 @@ namespace Spectrum.Portability.Tests {
       using var input = new AlsaAudioLevelInput(
         config, api, tracker, TimeSpan.FromMilliseconds(5));
       input.Active = true;
-      Assert(tracker.Written.Wait(TimeSpan.FromSeconds(2)) &&
+      Assert.IsTrue(tracker.Written.Wait(TimeSpan.FromSeconds(2)) &&
           tracker.WriteCount > 0,
         "the selected Madmom source did not receive ALSA PCM");
-      Assert(tracker.Enabled && tracker.LastChannels == 2 &&
+      Assert.IsTrue(tracker.Enabled && tracker.LastChannels == 2 &&
           tracker.LastSampleCount > 0,
         "the ALSA worker published the wrong PCM shape to Madmom");
-      Assert(input.LastError == "test tracker unavailable",
+      Assert.IsTrue(input.LastError == "test tracker unavailable",
         "the audio health surface hid the Madmom process error");
 
       tracker.Disabled.Reset();
       config.beatInput = 0;
-      Assert(tracker.Disabled.Wait(TimeSpan.FromSeconds(2)) &&
+      Assert.IsTrue(tracker.Disabled.Wait(TimeSpan.FromSeconds(2)) &&
           !tracker.Enabled,
         "changing tempo source did not stop the Madmom process");
-      Assert(input.LastError == null,
+      Assert.IsTrue(input.LastError == null,
         "a disabled Madmom source left a stale audio health error");
       input.Active = false;
 
@@ -365,12 +364,12 @@ namespace Spectrum.Portability.Tests {
       byte[]? encoded = null;
       int byteCount = MadmomPcmBeatTracker.EncodeMonoPcm(
         stereo, stereo.Length, channels: 2, ref encoded);
-      Assert(byteCount == 4 && encoded != null &&
+      Assert.IsTrue(byteCount == 4 && encoded != null &&
           encoded[0] == 0 && encoded[1] == 0 &&
           encoded[2] == 0 && encoded[3] == 0x80,
         "stereo ALSA PCM was not downmixed to signed-16-bit little endian");
 
-      Assert(MadmomPcmBeatTracker.TryParseBeat(
+      Assert.IsTrue(MadmomPcmBeatTracker.TryParseBeat(
           "BEAT:12.345", out long milliseconds) &&
           milliseconds == 12345 &&
           !MadmomPcmBeatTracker.TryParseBeat("BEAT:not-a-number", out _),
@@ -379,7 +378,7 @@ namespace Spectrum.Portability.Tests {
         "/runtime/bin/python", "/runtime/bin/DBNBeatTracker");
       System.Diagnostics.ProcessStartInfo start =
         MadmomPcmBeatTracker.CreateStartInfo(runtime);
-      Assert(start.RedirectStandardInput &&
+      Assert.IsTrue(start.RedirectStandardInput &&
           start.RedirectStandardOutput &&
           start.RedirectStandardError &&
           start.ArgumentList.Count == 3 &&
@@ -418,14 +417,14 @@ namespace Spectrum.Portability.Tests {
       };
 
       input.Active = true;
-      Assert(beatReceived.Wait(TimeSpan.FromSeconds(5)) &&
+      Assert.IsTrue(beatReceived.Wait(TimeSpan.FromSeconds(5)) &&
           beat.MeasureLength == 500,
         "Madmom child stdout did not publish its two 120 BPM beat events");
-      Assert(trackerFailed.Wait(TimeSpan.FromSeconds(5)) &&
+      Assert.IsTrue(trackerFailed.Wait(TimeSpan.FromSeconds(5)) &&
           !string.IsNullOrWhiteSpace(input.LastError),
         "an unexpected Madmom child exit was not reported");
       string? lastError = input.LastError;
-      Assert(lastError != null &&
+      Assert.IsTrue(lastError != null &&
           lastError.Contains("Madmom", StringComparison.Ordinal),
         "the Madmom child failure was reported as the wrong health error: " +
         lastError);
@@ -509,13 +508,13 @@ namespace Spectrum.Portability.Tests {
           beatReceived.Set();
         }
       };
-      Assert(input.Enabled,
+      Assert.IsTrue(input.Enabled,
         "the Pro DJ Link input did not follow the selected tempo source");
       input.Active = true;
-      Assert(failureReported.Wait(TimeSpan.FromSeconds(2)),
+      Assert.IsTrue(failureReported.Wait(TimeSpan.FromSeconds(2)),
         "a busy Pro DJ Link port did not report a contained bind error");
       blocker.Dispose();
-      Assert(listening.Wait(TimeSpan.FromSeconds(2)),
+      Assert.IsTrue(listening.Wait(TimeSpan.FromSeconds(2)),
         "the portable Pro DJ Link listener did not recover after the port " +
         "became available");
 
@@ -535,18 +534,18 @@ namespace Spectrum.Portability.Tests {
       using var sender = new UdpClient();
       var endpoint = new IPEndPoint(IPAddress.Loopback, port);
       sender.Send(packet, packet.Length, endpoint);
-      Assert(beatReceived.Wait(TimeSpan.FromSeconds(2)) &&
+      Assert.IsTrue(beatReceived.Wait(TimeSpan.FromSeconds(2)) &&
           beat.MeasureLength == 500 &&
           beat.LatestBeatWithinBar == 3,
         "the portable UDP input did not publish the 120 BPM beat packet");
-      Assert(input.LastError == null,
+      Assert.IsTrue(input.LastError == null,
         "the Pro DJ Link listener reported an unexpected error");
 
       input.Active = false;
-      Assert(!input.Listening,
+      Assert.IsTrue(!input.Listening,
         "stopping Pro DJ Link left its UDP socket published");
       config.beatInput = 0;
-      Assert(!input.Enabled,
+      Assert.IsTrue(!input.Enabled,
         "the Pro DJ Link input stayed enabled for another tempo source");
     }
 
@@ -561,7 +560,7 @@ namespace Spectrum.Portability.Tests {
         "WindowsBase",
       };
       foreach (var reference in assembly.GetReferencedAssemblies()) {
-        Assert(reference.Name == null || !forbidden.Contains(reference.Name),
+        Assert.IsTrue(reference.Name == null || !forbidden.Contains(reference.Name),
           "portable runtime referenced " + reference.Name);
       }
 
@@ -571,7 +570,7 @@ namespace Spectrum.Portability.Tests {
         new global::Spectrum.SpectrumConfiguration(),
         dispatcher,
         new DisabledSpectrumInputFactory());
-      Assert(runtime.AudioInput.Volume == 0 &&
+      Assert.IsTrue(runtime.AudioInput.Volume == 0 &&
           runtime.MidiInput.MidiLog != null,
         "the portable disabled inputs were not composed");
     }
@@ -581,12 +580,12 @@ namespace Spectrum.Portability.Tests {
       using Stream? texture = typeof(LEDDomeEarthVisualizer).Assembly
         .GetManifestResourceStream(
           LEDDomeEarthVisualizer.TextureResourceName);
-      Assert(texture != null, "the Earth texture was not embedded in core");
+      Assert.IsTrue(texture != null, "the Earth texture was not embedded in core");
       global::Spectrum.PortablePngImage image =
         global::Spectrum.PortablePngImage.Load(texture);
-      Assert(image.Width == 1774 && image.Height == 887,
+      Assert.IsTrue(image.Width == 1774 && image.Height == 887,
         "the Earth texture dimensions changed during portable decoding");
-      Assert(image.Rgb.Length == image.Width * image.Height * 3,
+      Assert.IsTrue(image.Rgb.Length == image.Width * image.Height * 3,
         "the portable decoder returned an invalid RGB buffer");
     }
 
@@ -595,7 +594,7 @@ namespace Spectrum.Portability.Tests {
       ParameterRegistry desktopRegistry =
         global::Spectrum.SpectrumConfigurationSchema.BuildParameterRegistry(
           nativeWindowControlsAvailable: true);
-      Assert(desktopRegistry.TryGet("vjHUDEnabled", out _) &&
+      Assert.IsTrue(desktopRegistry.TryGet("vjHUDEnabled", out _) &&
           desktopRegistry.TryGet("domeSimulationEnabled", out _),
         "the Windows web registry lost its native-window controls");
 
@@ -632,7 +631,7 @@ namespace Spectrum.Portability.Tests {
           "http://127.0.0.1:" + port + "/api/operator")
           .GetAwaiter().GetResult();
         using (JsonDocument document = JsonDocument.Parse(response)) {
-          Assert(document.RootElement.TryGetProperty(
+          Assert.IsTrue(document.RootElement.TryGetProperty(
               "enabled", out JsonElement enabled) &&
               enabled.ValueKind == JsonValueKind.False,
             "the operator API returned an unexpected response: " + response);
@@ -642,7 +641,7 @@ namespace Spectrum.Portability.Tests {
           .GetAwaiter().GetResult();
         using (JsonDocument document = JsonDocument.Parse(audioResponse)) {
           JsonElement root = document.RootElement;
-          Assert(root.TryGetProperty("backend", out JsonElement backend) &&
+          Assert.IsTrue(root.TryGetProperty("backend", out JsonElement backend) &&
               backend.GetString() == "Disabled" &&
               root.TryGetProperty(
                 "availableDevices", out JsonElement availableDevices) &&
@@ -656,7 +655,7 @@ namespace Spectrum.Portability.Tests {
           .GetAwaiter().GetResult();
         using (JsonDocument document = JsonDocument.Parse(runtimeResponse)) {
           JsonElement root = document.RootElement;
-          Assert(root.TryGetProperty("enabled", out JsonElement enabled) &&
+          Assert.IsTrue(root.TryGetProperty("enabled", out JsonElement enabled) &&
               enabled.ValueKind == JsonValueKind.False &&
               root.TryGetProperty(
                 "operatorFps", out JsonElement operatorFps) &&
@@ -674,11 +673,11 @@ namespace Spectrum.Portability.Tests {
             "/api/maintenance/parameters")
           .GetAwaiter().GetResult();
         using (JsonDocument document = JsonDocument.Parse(parametersResponse)) {
-          Assert(document.RootElement.ValueKind == JsonValueKind.Array,
+          Assert.IsTrue(document.RootElement.ValueKind == JsonValueKind.Array,
             "the maintenance parameter API did not return an array");
           foreach (JsonElement parameter in
               document.RootElement.EnumerateArray()) {
-            Assert(parameter.GetProperty("key").GetString() != "vjHUDEnabled" &&
+            Assert.IsTrue(parameter.GetProperty("key").GetString() != "vjHUDEnabled" &&
                 parameter.GetProperty("key").GetString() !=
                   "domeSimulationEnabled",
               "the headless API exposed native WPF window controls: " +
@@ -691,7 +690,7 @@ namespace Spectrum.Portability.Tests {
           "http://127.0.0.1:" + port +
             "/api/maintenance/parameters/vjHUDEnabled",
           nativeWindowWrite).GetAwaiter().GetResult();
-        Assert(nativeWindowWriteResponse.StatusCode == HttpStatusCode.NotFound &&
+        Assert.IsTrue(nativeWindowWriteResponse.StatusCode == HttpStatusCode.NotFound &&
             config.vjHUDEnabled,
           "the headless API accepted a native WPF window setting");
         using var audioWrite = new StringContent(
@@ -702,7 +701,7 @@ namespace Spectrum.Portability.Tests {
           "http://127.0.0.1:" + port +
             "/api/maintenance/parameters/audioDeviceID",
           audioWrite).GetAwaiter().GetResult();
-        Assert(audioWriteResponse.IsSuccessStatusCode &&
+        Assert.IsTrue(audioWriteResponse.IsSuccessStatusCode &&
             config.audioDeviceID == "hw:test,0",
           "the browser audio selection did not reach configuration");
 
@@ -714,7 +713,7 @@ namespace Spectrum.Portability.Tests {
             .GetAwaiter().GetResult())
         using (Stream eventsBody = eventsResponse.Content.ReadAsStream())
         using (var eventsReader = new StreamReader(eventsBody)) {
-          Assert(eventsResponse.IsSuccessStatusCode &&
+          Assert.IsTrue(eventsResponse.IsSuccessStatusCode &&
               eventsResponse.Content.Headers.ContentType?.MediaType ==
                 "text/event-stream",
             "the change-feed endpoint did not open an SSE response");
@@ -724,7 +723,7 @@ namespace Spectrum.Portability.Tests {
             "http://127.0.0.1:" + port +
               "/api/parameters/flashSpeed",
             flashWrite).GetAwaiter().GetResult();
-          Assert(flashWriteResponse.IsSuccessStatusCode,
+          Assert.IsTrue(flashWriteResponse.IsSuccessStatusCode,
             "the user parameter write failed while SSE was connected");
 
           bool sawFlashEvent = false;
@@ -732,7 +731,7 @@ namespace Spectrum.Portability.Tests {
             string? eventLine = eventsReader.ReadLineAsync()
               .WaitAsync(TimeSpan.FromSeconds(2))
               .GetAwaiter().GetResult();
-            Assert(eventLine != null,
+            Assert.IsTrue(eventLine != null,
               "the SSE response ended before publishing the parameter write");
             if (!eventLine.StartsWith("data: ")) {
               continue;
@@ -748,7 +747,7 @@ namespace Spectrum.Portability.Tests {
               root.TryGetProperty("value", out JsonElement value) &&
               value.GetDouble() == 0.375;
           }
-          Assert(sawFlashEvent,
+          Assert.IsTrue(sawFlashEvent,
             "the real SSE endpoint did not publish the parameter write");
         }
       } finally {
@@ -793,7 +792,7 @@ namespace Spectrum.Portability.Tests {
           new DedicatedThreadApplicationStateDispatcher();
         var session = new global::Spectrum.SpectrumConfigurationSession(
           store, dispatcher, TimeSpan.FromMilliseconds(40));
-        Assert(session.Configuration.domeBeagleboneOPCAddress == "packaged" &&
+        Assert.IsTrue(session.Configuration.domeBeagleboneOPCAddress == "packaged" &&
             session.LoadResult.SourcePath == defaults,
           "the configuration session did not load the packaged default");
 
@@ -802,11 +801,11 @@ namespace Spectrum.Portability.Tests {
           session.Configuration.domeBeagleboneOPCAddress = "second";
           session.Configuration.domeBeagleboneOPCAddress = "debounced";
         }).GetAwaiter().GetResult();
-        Assert(saved.Wait(TimeSpan.FromSeconds(2)),
+        Assert.IsTrue(saved.Wait(TimeSpan.FromSeconds(2)),
           "the debounced configuration save did not run");
-        Assert(Volatile.Read(ref saveCount) == 1,
+        Assert.IsTrue(Volatile.Read(ref saveCount) == 1,
           "one change burst produced more than one configuration save");
-        Assert(saveThread == dispatcher.InvokeAsync(
+        Assert.IsTrue(saveThread == dispatcher.InvokeAsync(
               () => Environment.CurrentManagedThreadId)
             .GetAwaiter().GetResult(),
           "configuration serialization ran away from the state-owner thread");
@@ -816,9 +815,9 @@ namespace Spectrum.Portability.Tests {
           session.Configuration.domeBeagleboneOPCAddress = "shutdown")
           .GetAwaiter().GetResult();
         session.Dispose();
-        Assert(saved.IsSet && Volatile.Read(ref saveCount) == 2,
+        Assert.IsTrue(saved.IsSet && Volatile.Read(ref saveCount) == 2,
           "session shutdown did not flush exactly one pending save");
-        Assert(File.ReadAllText(primary).Contains("shutdown"),
+        Assert.IsTrue(File.ReadAllText(primary).Contains("shutdown"),
           "the shutdown flush did not persist the latest generation");
       } finally {
         Directory.Delete(directory, recursive: true);
@@ -861,22 +860,22 @@ namespace Spectrum.Portability.Tests {
         using var session = new global::Spectrum.SpectrumConfigurationSession(
           store, dispatcher, TimeSpan.Zero);
         session.Configuration.domeBeagleboneOPCAddress = "shutdown";
-        Assert(dispatcher.WaitForPending(TimeSpan.FromSeconds(2)),
+        Assert.IsTrue(dispatcher.WaitForPending(TimeSpan.FromSeconds(2)),
           "the zero-delay configuration debounce was not queued");
 
         session.Dispose();
-        Assert(Volatile.Read(ref saveCount) == 1 &&
+        Assert.IsTrue(Volatile.Read(ref saveCount) == 1 &&
             File.ReadAllText(primary).Contains("shutdown"),
           "shutdown did not perform exactly one final configuration save");
-        Assert(dispatcher.PendingCount == 1,
+        Assert.IsTrue(dispatcher.PendingCount == 1,
           "shutdown unexpectedly consumed owner work from a foreign thread");
 
         dispatcher.Drain();
-        Assert(Volatile.Read(ref saveCount) == 1,
+        Assert.IsTrue(Volatile.Read(ref saveCount) == 1,
           "queued debounce work saved again after the final shutdown save");
 
         session.Configuration.domeBeagleboneOPCAddress = "disposed";
-        Assert(dispatcher.PendingCount == 0,
+        Assert.IsTrue(dispatcher.PendingCount == 0,
           "a disposed persistence listener accepted another save");
       } finally {
         Directory.Delete(directory, recursive: true);
@@ -925,7 +924,7 @@ namespace Spectrum.Portability.Tests {
         int sampleRate,
         int framesPerRead
       ) {
-        Assert(deviceId == "hw:test,0" && sampleRate == 44100,
+        Assert.IsTrue(deviceId == "hw:test,0" && sampleRate == 44100,
           "the ALSA worker opened the wrong device or sample rate");
         this.OpenCount++;
         if (this.FailOpen) {
@@ -1063,10 +1062,10 @@ namespace Spectrum.Portability.Tests {
                 .domeOutputInSeparateThread),
             });
 
-        Assert(runtime != null,
+        Assert.IsTrue(runtime != null,
           "the host did not construct its runtime");
 
-        Assert(host.Configuration.domeBeagleboneOPCAddress == "packaged",
+        Assert.IsTrue(host.Configuration.domeBeagleboneOPCAddress == "packaged",
           "the host did not expose the loaded configuration");
         host.Start();
         dispatcher.InvokeAsync(() => {
@@ -1074,17 +1073,17 @@ namespace Spectrum.Portability.Tests {
           host.Configuration.domeOutputInSeparateThread =
             !host.Configuration.domeOutputInSeparateThread;
         }).GetAwaiter().GetResult();
-        Assert(runtime.RebootCount == 1,
+        Assert.IsTrue(runtime.RebootCount == 1,
           "the host did not apply its reboot-on-setting policy");
 
         host.Dispose();
-        Assert(host.ServiceStartError == null,
+        Assert.IsTrue(host.ServiceStartError == null,
           "a successful host service reported a startup failure");
-        Assert(!runtime.Enabled,
+        Assert.IsTrue(!runtime.Enabled,
           "host shutdown left the runtime enabled");
-        Assert(File.ReadAllText(primary).Contains("shutdown"),
+        Assert.IsTrue(File.ReadAllText(primary).Contains("shutdown"),
           "host shutdown did not flush the latest configuration");
-        Assert(lifecycle.IndexOf("service-stop") >= 0 &&
+        Assert.IsTrue(lifecycle.IndexOf("service-stop") >= 0 &&
             lifecycle.IndexOf("runtime-stop") >
               lifecycle.IndexOf("service-stop") &&
             lifecycle.IndexOf("configuration-save") >
@@ -1116,7 +1115,7 @@ namespace Spectrum.Portability.Tests {
           homeDirectory,
           Path.Combine(root, "local-app-data"),
           isWindows: false);
-      Assert(explicitPaths.PrimaryPath == Path.Combine(
+      Assert.IsTrue(explicitPaths.PrimaryPath == Path.Combine(
             explicitDirectory, "spectrum_config.xml") &&
           explicitPaths.DefaultPath == packagedDefault,
         "the explicit headless data directory did not take precedence");
@@ -1131,7 +1130,7 @@ namespace Spectrum.Portability.Tests {
           homeDirectory,
           Path.Combine(root, "local-app-data"),
           isWindows: false);
-      Assert(environmentPaths.BackupPath == Path.Combine(
+      Assert.IsTrue(environmentPaths.BackupPath == Path.Combine(
             environmentDirectory, "spectrum_old_config.xml"),
         "SPECTRUM_DATA_DIR did not override XDG_CONFIG_HOME");
 
@@ -1143,7 +1142,7 @@ namespace Spectrum.Portability.Tests {
           homeDirectory,
           Path.Combine(root, "local-app-data"),
           isWindows: false);
-      Assert(xdgPaths.PrimaryPath == Path.Combine(
+      Assert.IsTrue(xdgPaths.PrimaryPath == Path.Combine(
             xdgDirectory, "spectrum", "spectrum_config.xml"),
         "the Linux host did not use XDG_CONFIG_HOME");
 
@@ -1155,7 +1154,7 @@ namespace Spectrum.Portability.Tests {
           homeDirectory,
           Path.Combine(root, "local-app-data"),
           isWindows: false);
-      Assert(fallbackPaths.PrimaryPath == Path.Combine(
+      Assert.IsTrue(fallbackPaths.PrimaryPath == Path.Combine(
             homeDirectory, ".config", "spectrum", "spectrum_config.xml"),
         "the Linux host did not fall back to ~/.config/spectrum");
     }
@@ -1183,7 +1182,7 @@ namespace Spectrum.Portability.Tests {
         byPathBridge,
         "/dev/ttyUSB0",
       };
-      Assert(ports.AsSpan().SequenceEqual(expected),
+      Assert.IsTrue(ports.AsSpan().SequenceEqual(expected),
         "stable aliases did not replace transient or duplicate Linux ports");
     }
 
@@ -1195,7 +1194,7 @@ namespace Spectrum.Portability.Tests {
       var partialSender = new PartialOpcSender(2);
       OPCAPI.SendAll(
         partialPayload, partialPayload.Length, partialSender);
-      Assert(partialSender.Calls >= 4 &&
+      Assert.IsTrue(partialSender.Calls >= 4 &&
           partialSender.Bytes.AsSpan().SequenceEqual(partialPayload),
         "the OPC send loop truncated a sequence of partial writes");
 
@@ -1228,10 +1227,10 @@ namespace Spectrum.Portability.Tests {
             "retrying the OPC connection blocked the operator");
           Thread.Sleep(10);
         }
-        Assert(accept.IsCompleted,
+        Assert.IsTrue(accept.IsCompleted,
           "the OPC connection did not complete after the controller started");
         WaitHandle? pendingConnect = opc.PendingConnectWaitHandle;
-        Assert(pendingConnect == null ||
+        Assert.IsTrue(pendingConnect == null ||
             pendingConnect.WaitOne(TimeSpan.FromSeconds(2)),
           "the accepted OPC connection did not complete on the client");
         using Socket connection = accept.GetAwaiter().GetResult();
@@ -1246,7 +1245,7 @@ namespace Spectrum.Portability.Tests {
           0x00, 0x00, 0x00,
           0xAB, 0xCD, 0xEF,
         };
-        Assert(actual.AsSpan().SequenceEqual(expected),
+        Assert.IsTrue(actual.AsSpan().SequenceEqual(expected),
           "the OPC header or RGB payload changed");
       } finally {
         opc.Active = false;

@@ -1,23 +1,16 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
 using Spectrum.Base;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class OperatorPresentationTests {
-    public static void Register(Action<string, Action> run) {
-      run("readiness evaluator reports blocking configuration failures",
-        BlockingReadiness);
-      run("readiness evaluator distinguishes ready and stopped systems",
-        ReadyAndStoppedReadiness);
-      run("wand serial presentation retains configured missing ports",
-        MissingWandPort);
-      run("wand serial presentation classifies receiver liveness",
-        WandReceiverLiveness);
-    }
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class OperatorPresentationTests {
 
-    private static void BlockingReadiness() {
+    [TestMethod]
+    public void BlockingReadiness() {
       ShowReadinessSnapshot snapshot = ShowReadinessEvaluator.Evaluate(
         new ShowReadinessInput(
           Running: true,
@@ -33,7 +26,7 @@ namespace Spectrum.LayerPipeline.Tests {
           WebServerError: "port in use",
           WebServerPort: 8080));
 
-      Assert(snapshot.Audio.Level == ReadinessLevel.Error &&
+      Assert.IsTrue(snapshot.Audio.Level == ReadinessLevel.Error &&
           snapshot.Dome.Level == ReadinessLevel.Error &&
           snapshot.Dome.Detail.Contains("invalid host") &&
           snapshot.Wand.Level == ReadinessLevel.Error &&
@@ -42,7 +35,8 @@ namespace Spectrum.LayerPipeline.Tests {
         "blocking readiness inputs did not produce action-required state");
     }
 
-    private static void ReadyAndStoppedReadiness() {
+    [TestMethod]
+    public void ReadyAndStoppedReadiness() {
       ShowReadinessSnapshot ready = ShowReadinessEvaluator.Evaluate(
         new ShowReadinessInput(
           Running: true,
@@ -57,7 +51,7 @@ namespace Spectrum.LayerPipeline.Tests {
           WandReceiverError: null,
           WebServerError: null,
           WebServerPort: 8080));
-      Assert(ready.Engine.Level == ReadinessLevel.Ready &&
+      Assert.IsTrue(ready.Engine.Level == ReadinessLevel.Ready &&
           ready.Audio.Level == ReadinessLevel.Ready &&
           ready.Dome.Level == ReadinessLevel.Ready &&
           ready.Wand.Level == ReadinessLevel.Ready &&
@@ -79,29 +73,31 @@ namespace Spectrum.LayerPipeline.Tests {
           WandReceiverError: null,
           WebServerError: null,
           WebServerPort: 8080));
-      Assert(stopped.Engine.Level == ReadinessLevel.Disabled &&
+      Assert.IsTrue(stopped.Engine.Level == ReadinessLevel.Disabled &&
           stopped.Audio.Level == ReadinessLevel.Warning &&
           stopped.Dome.Level == ReadinessLevel.Disabled &&
           stopped.Overall.Level == ReadinessLevel.Warning,
         "stopped configured system was not distinguished from a live show");
     }
 
-    private static void MissingWandPort() {
+    [TestMethod]
+    public void MissingWandPort() {
       var options = global::Spectrum.WandSerialPresentationModel
         .BuildPortOptions("COM7", new[] { "COM2", "COM4" });
-      Assert(options.Select(option => option.Value).SequenceEqual(
+      Assert.IsTrue(options.Select(option => option.Value).SequenceEqual(
             new[] { "", "COM2", "COM4", "COM7" }) &&
           options[^1].Display == "COM7 (missing)",
         "configured missing receiver port was not retained");
 
       var present = global::Spectrum.WandSerialPresentationModel
         .BuildPortOptions("COM4", new[] { "COM2", "COM4" });
-      Assert(present.Count(option => option.Value == "COM4") == 1 &&
+      Assert.IsTrue(present.Count(option => option.Value == "COM4") == 1 &&
           !present.Any(option => option.Display.Contains("missing")),
         "live configured receiver port was duplicated as missing");
     }
 
-    private static void WandReceiverLiveness() {
+    [TestMethod]
+    public void WandReceiverLiveness() {
       var liveStatus = new global::Spectrum.WandSerialStatus(
         "COM7", true, 200, 300, null);
       var staleStatus = new global::Spectrum.WandSerialStatus(
@@ -109,7 +105,7 @@ namespace Spectrum.LayerPipeline.Tests {
       var errorStatus = new global::Spectrum.WandSerialStatus(
         "COM7", false, 5000, 5000, "access denied");
 
-      Assert(global::Spectrum.WandSerialPresentationModel.EvaluateStatus(
+      Assert.IsTrue(global::Spectrum.WandSerialPresentationModel.EvaluateStatus(
             "", liveStatus).Kind ==
           global::Spectrum.WandSerialPresentationKind.Inactive &&
           global::Spectrum.WandSerialPresentationModel.EvaluateStatus(

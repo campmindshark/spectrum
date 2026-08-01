@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
 using System.Threading;
@@ -5,23 +6,15 @@ using System.Threading.Tasks;
 using Spectrum.Base;
 using Spectrum.Web;
 using static Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class RuntimeFailurePolicyTests {
-    public static void Register(Action<string, Action> run) {
-      run("runtime failure streaks reset after successful work",
-        ConsecutiveFailuresOnly);
-      run("failing input updates are quarantined until engine restart",
-        InputUpdateQuarantine);
-      run("input activation failures are isolated and reported",
-        InputActivationQuarantine);
-      run("component faults are exposed as read-only telemetry",
-        FaultTelemetryCatalog);
-    }
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class RuntimeFailurePolicyTests {
 
-    private static void ConsecutiveFailuresOnly() {
+    [TestMethod]
+    public void ConsecutiveFailuresOnly() {
       var component = new object();
       var tracker = new ConsecutiveFailureTracker<object>(3);
 
@@ -31,7 +24,7 @@ namespace Spectrum.LayerPipeline.Tests {
       FailureUpdate second = tracker.RecordFailure(component);
       FailureUpdate quarantined = tracker.RecordFailure(component);
 
-      Assert(first.ConsecutiveFailures == 1 &&
+      Assert.IsTrue(first.ConsecutiveFailures == 1 &&
           afterSuccess.ConsecutiveFailures == 1 &&
           second.ConsecutiveFailures == 2 &&
           !second.NewlyQuarantined &&
@@ -41,19 +34,20 @@ namespace Spectrum.LayerPipeline.Tests {
         "transient failures accumulated across a successful update");
 
       tracker.RecordSuccess(component);
-      Assert(tracker.IsQuarantined(component),
+      Assert.IsTrue(tracker.IsQuarantined(component),
         "successful work incorrectly released an existing quarantine");
       tracker.Reset();
-      Assert(!tracker.IsQuarantined(component),
+      Assert.IsTrue(!tracker.IsQuarantined(component),
         "engine restart did not clear component quarantine");
     }
 
-    private static void InputUpdateQuarantine() {
+    [TestMethod]
+    public void InputUpdateQuarantine() {
       var input = new ThrowingUpdateAudioInput();
       var op = CreateOperator(input);
       try {
         op.Enabled = true;
-        Assert(SpinWait.SpinUntil(
+        Assert.IsTrue(SpinWait.SpinUntil(
             () => input.UpdateCount >= 3 &&
               op.Telemetry.InputFault?.Contains(
                 nameof(ThrowingUpdateAudioInput),
@@ -63,12 +57,12 @@ namespace Spectrum.LayerPipeline.Tests {
 
         int quarantinedCount = input.UpdateCount;
         Thread.Sleep(100);
-        Assert(input.UpdateCount == quarantinedCount && !input.Active,
+        Assert.IsTrue(input.UpdateCount == quarantinedCount && !input.Active,
           "quarantined input continued updating");
 
         op.Enabled = false;
         op.Enabled = true;
-        Assert(SpinWait.SpinUntil(
+        Assert.IsTrue(SpinWait.SpinUntil(
             () => input.UpdateCount >= quarantinedCount + 3,
             TimeSpan.FromSeconds(3)),
           "engine restart did not reset the input quarantine");
@@ -77,12 +71,13 @@ namespace Spectrum.LayerPipeline.Tests {
       }
     }
 
-    private static void InputActivationQuarantine() {
+    [TestMethod]
+    public void InputActivationQuarantine() {
       var input = new ThrowingActivationAudioInput();
       var op = CreateOperator(input);
       try {
         op.Enabled = true;
-        Assert(SpinWait.SpinUntil(
+        Assert.IsTrue(SpinWait.SpinUntil(
             () => input.ActivationAttempts == 1 &&
               op.Telemetry.InputFault?.Contains(
                 nameof(ThrowingActivationAudioInput),
@@ -91,18 +86,19 @@ namespace Spectrum.LayerPipeline.Tests {
           "input activation failure was not isolated and reported");
 
         Thread.Sleep(100);
-        Assert(input.ActivationAttempts == 1 && input.UpdateCount == 0,
+        Assert.IsTrue(input.ActivationAttempts == 1 && input.UpdateCount == 0,
           "failed input activation was retried or updated in the same run");
       } finally {
         op.Enabled = false;
       }
     }
 
-    private static void FaultTelemetryCatalog() {
+    [TestMethod]
+    public void FaultTelemetryCatalog() {
       string[] keys = TelemetryCatalog.Items
         .Select(item => item.Key)
         .ToArray();
-      Assert(keys.Contains("visualizerFault", StringComparer.Ordinal) &&
+      Assert.IsTrue(keys.Contains("visualizerFault", StringComparer.Ordinal) &&
           keys.Contains("inputFault", StringComparer.Ordinal) &&
           keys.Contains("outputFault", StringComparer.Ordinal),
         "component fault telemetry is missing from the web event catalog");

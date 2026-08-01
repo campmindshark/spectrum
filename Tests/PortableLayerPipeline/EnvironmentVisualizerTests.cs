@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -6,24 +7,18 @@ using System.Numerics;
 using Spectrum.Base;
 using Spectrum.LEDs;
 using Spectrum.Visualizers;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 using static Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class EnvironmentVisualizerTests {
-    public static void Register(Action<string, Action> run) {
-      run(nameof(TopographicDreamUsesEvolvingContours), TopographicDreamUsesEvolvingContours);
-      run(nameof(OrbitalGardenUsesSphericalOrbits), OrbitalGardenUsesSphericalOrbits);
-      run(nameof(LavaLampSkyUsesViscousThermalBlobs), LavaLampSkyUsesViscousThermalBlobs);
-      run(nameof(VortexUsesGlobalFade), VortexUsesGlobalFade);
-      run(nameof(VortexNoiseCacheMatchesReference), VortexNoiseCacheMatchesReference);
-      run(nameof(RippleTankPowerLookupTracksPow), RippleTankPowerLookupTracksPow);
-    }
-    private static void TopographicDreamUsesEvolvingContours() {
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class EnvironmentVisualizerTests {
+    [TestMethod]
+    public void TopographicDreamUsesEvolvingContours() {
       LayerDefinition? definition =
         DomeLayerCatalog.Metadata.Get("topographic-dream");
-      Assert(definition != null &&
+      Assert.IsTrue(definition != null &&
           definition.DisplayName == "Topographic Dream",
         "Topographic Dream was not registered");
 
@@ -40,7 +35,7 @@ namespace Spectrum.LayerPipeline.Tests {
         "unexpected Topographic Dream line width");
       AssertClose(0.42, defaults.SeaLevel,
         "unexpected Topographic Dream sea level");
-      Assert(!defaults.BindToOrientation && defaults.Palette == 0,
+      Assert.IsTrue(!defaults.BindToOrientation && defaults.Palette == 0,
         "unexpected Topographic Dream orientation or palette default");
 
       DomeLayerSettings configured = Layer(
@@ -56,7 +51,7 @@ namespace Spectrum.LayerPipeline.Tests {
       };
       TopographicDreamLayerOptions clamped =
         BuiltInOptions<TopographicDreamLayerOptions>(configured);
-      Assert(clamped.TerrainScale == 6 &&
+      Assert.IsTrue(clamped.TerrainScale == 6 &&
           clamped.EvolutionSpeed == 0 &&
           clamped.ContourInterval == 0.04 &&
           clamped.LineWidth == 0.45 && clamped.SeaLevel == 0 &&
@@ -90,9 +85,9 @@ namespace Spectrum.LayerPipeline.Tests {
       double rescaledElevation =
         LEDDomeTopographicDreamVisualizer.ElevationField(
           sample, 4.4, 0);
-      Assert(Math.Abs(baseElevation - evolvedElevation) > 0.005,
+      Assert.IsTrue(Math.Abs(baseElevation - evolvedElevation) > 0.005,
         "Topographic Dream terrain did not evolve");
-      Assert(Math.Abs(baseElevation - rescaledElevation) > 0.005,
+      Assert.IsTrue(Math.Abs(baseElevation - rescaledElevation) > 0.005,
         "Topographic Dream terrain scale did not change its field");
       for (int index = 0; index < 32; index++) {
         double angle = 2 * Math.PI * index / 32;
@@ -102,7 +97,7 @@ namespace Spectrum.LayerPipeline.Tests {
         double elevation =
           LEDDomeTopographicDreamVisualizer.ElevationField(
             direction, 6, index * 0.13);
-        Assert(elevation >= 0 && elevation <= 1,
+        Assert.IsTrue(elevation >= 0 && elevation <= 1,
           "Topographic Dream elevation escaped its normalized range");
       }
 
@@ -114,7 +109,7 @@ namespace Spectrum.LayerPipeline.Tests {
         LEDDomeTopographicDreamVisualizer.ContourStrength(
           0.4675, 0.11, 0.14),
         "narrow Topographic Dream contour flooded an interline region");
-      Assert(
+      Assert.IsTrue(
         LEDDomeTopographicDreamVisualizer.ContourStrength(
           0.455, 0.11, 0.30) >
         LEDDomeTopographicDreamVisualizer.ContourStrength(
@@ -141,45 +136,46 @@ namespace Spectrum.LayerPipeline.Tests {
           break;
         }
       }
-      Assert(topographic != null,
+      Assert.IsTrue(topographic != null,
         "Topographic Dream renderer was not created");
       Input[] inputs = topographic.GetInputs();
-      Assert(inputs.Length == 2 &&
+      Assert.IsTrue(inputs.Length == 2 &&
           ReferenceEquals(inputs[0], runtime.AudioInput) &&
           ReferenceEquals(inputs[1], runtime.OrientationInput),
         "Topographic Dream did not declare audio and orientation inputs");
       ((Visualizer)topographic).Visualize();
-      Assert(topographic.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
+      Assert.IsTrue(topographic.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
         "Topographic Dream rendered an empty field");
-      Assert(topographic.LayerBuffer.pixels
+      Assert.IsTrue(topographic.LayerBuffer.pixels
           .Select(pixel => pixel.color).Distinct().Count() > 8,
         "Topographic Dream did not produce varied terrain shading");
-      Assert(topographic.LayerBuffer.pixels.Any(pixel => pixel.a > 0.5) &&
+      Assert.IsTrue(topographic.LayerBuffer.pixels.Any(pixel => pixel.a > 0.5) &&
           topographic.LayerBuffer.pixels.Any(pixel => pixel.a < 0.25),
         "Topographic Dream did not separate contour and fill coverage");
     }
 
-    private static void OrbitalGardenUsesSphericalOrbits() {
+    [TestMethod]
+    public void OrbitalGardenUsesSphericalOrbits() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("orbital-garden");
-      Assert(definition != null && definition.DisplayName == "Orbital Garden",
+      Assert.IsTrue(definition != null && definition.DisplayName == "Orbital Garden",
         "Orbital Garden was not registered");
 
       OrbitalGardenLayerOptions defaults =
         BuiltInOptions<OrbitalGardenLayerOptions>(
           Layer("orbital-garden", "orbital-defaults"));
-      Assert(defaults.BodyCount == 28,
+      Assert.IsTrue(defaults.BodyCount == 28,
         "unexpected Orbital Garden body count");
       AssertClose(1.6, defaults.Gravity,
         "unexpected Orbital Garden gravity");
       AssertClose(0.12, defaults.OrbitalDamping,
         "unexpected Orbital Garden damping");
-      Assert(defaults.CollisionBehavior == 2,
+      Assert.IsTrue(defaults.CollisionBehavior == 2,
         "unexpected Orbital Garden collision behavior");
       AssertClose(0.8, defaults.TrailLength,
         "unexpected Orbital Garden trail length");
       AssertClose(0.05, defaults.BodySize,
         "unexpected Orbital Garden body size");
-      Assert(defaults.Palette == 0,
+      Assert.IsTrue(defaults.Palette == 0,
         "unexpected Orbital Garden palette");
 
       DomeLayerSettings configured = Layer(
@@ -195,7 +191,7 @@ namespace Spectrum.LayerPipeline.Tests {
       };
       OrbitalGardenLayerOptions clamped =
         BuiltInOptions<OrbitalGardenLayerOptions>(configured);
-      Assert(clamped.BodyCount == 96 && clamped.Gravity == 0 &&
+      Assert.IsTrue(clamped.BodyCount == 96 && clamped.Gravity == 0 &&
           clamped.OrbitalDamping == 3 &&
           clamped.CollisionBehavior == 2 &&
           clamped.TrailLength == 4 && clamped.BodySize == 0.015 &&
@@ -203,23 +199,23 @@ namespace Spectrum.LayerPipeline.Tests {
         "Orbital Garden controls did not clamp");
 
       var garden = new OrbitalGardenState(20, 17);
-      Assert(garden.Bodies.Count == 20,
+      Assert.IsTrue(garden.Bodies.Count == 20,
         "Orbital Garden did not create its requested body count");
       foreach (OrbitalBody body in garden.Bodies) {
-        Assert(body.Position.Z >= 0 &&
+        Assert.IsTrue(body.Position.Z >= 0 &&
             Math.Abs(body.Position.Length() - 1) < 0.000001,
           "Orbital Garden initialized off the visible unit hemisphere");
-        Assert(Math.Abs(Vector3.Dot(
+        Assert.IsTrue(Math.Abs(Vector3.Dot(
             body.Position, body.Velocity)) < 0.000001,
           "Orbital Garden initialized non-tangent velocity");
       }
       Vector3 retainedBody = garden.Bodies[0].Position;
       garden.Resize(31);
-      Assert(garden.Bodies.Count == 31 &&
+      Assert.IsTrue(garden.Bodies.Count == 31 &&
           garden.Bodies[0].Position == retainedBody,
         "Orbital Garden did not grow its persistent body array in place");
       garden.Resize(9);
-      Assert(garden.Bodies.Count == 9 &&
+      Assert.IsTrue(garden.Bodies.Count == 9 &&
           garden.Bodies[0].Position == retainedBody,
         "Orbital Garden did not shrink its persistent body array in place");
 
@@ -235,12 +231,12 @@ namespace Spectrum.LayerPipeline.Tests {
       OrbitalBody orbiter = orbit.Bodies[0];
       double finalWellDistance = Math.Acos(Math.Clamp(
         Vector3.Dot(orbiter.Position, wellPosition), -1, 1));
-      Assert(Math.Abs(orbiter.Position.Y) > 0.02 &&
+      Assert.IsTrue(Math.Abs(orbiter.Position.Y) > 0.02 &&
           finalWellDistance > 0.03 && finalWellDistance < 0.9,
         "Orbital Garden did not sustain a curved orbit around its well");
-      Assert(orbiter.PaletteIndex == 5,
+      Assert.IsTrue(orbiter.PaletteIndex == 5,
         "Orbital Garden body did not inherit its strongest well color");
-      Assert(orbiter.Position.Z >= 0 &&
+      Assert.IsTrue(orbiter.Position.Z >= 0 &&
           Math.Abs(orbiter.Position.Length() - 1) < 0.000001 &&
           Math.Abs(Vector3.Dot(
             orbiter.Position, orbiter.Velocity)) < 0.000001,
@@ -257,7 +253,7 @@ namespace Spectrum.LayerPipeline.Tests {
       }
       double afterPull = Math.Acos(Math.Clamp(
         Vector3.Dot(falling.Bodies[0].Position, wellPosition), -1, 1));
-      Assert(afterPull < beforePull,
+      Assert.IsTrue(afterPull < beforePull,
         "Orbital Garden gravity did not pull a body toward a wand well");
 
       Vector3 collisionPoint = Vector3.Normalize(
@@ -267,7 +263,7 @@ namespace Spectrum.LayerPipeline.Tests {
       bounced.SeedBody(1, collisionPoint, Vector3.Zero, 2);
       bounced.Step(
         0.01, 0, 0, 0, 0.1, Array.Empty<OrbitalGravityWell>());
-      Assert(bounced.Blooms.Count == 0 && bounced.Fragments.Count == 0 &&
+      Assert.IsTrue(bounced.Blooms.Count == 0 && bounced.Fragments.Count == 0 &&
           Vector3.Distance(
             bounced.Bodies[0].Velocity,
             bounced.Bodies[1].Velocity) > 0.1,
@@ -278,7 +274,7 @@ namespace Spectrum.LayerPipeline.Tests {
       bloomed.SeedBody(1, collisionPoint, Vector3.Zero, 2);
       bloomed.Step(
         0.01, 0, 0, 1, 0.1, Array.Empty<OrbitalGravityWell>());
-      Assert(bloomed.Blooms.Count == 1 && bloomed.Fragments.Count == 0,
+      Assert.IsTrue(bloomed.Blooms.Count == 1 && bloomed.Fragments.Count == 0,
         "Orbital Garden bloom mode did not emit only a bloom");
 
       var fragmented = new OrbitalGardenState(2, 41);
@@ -286,10 +282,10 @@ namespace Spectrum.LayerPipeline.Tests {
       fragmented.SeedBody(1, collisionPoint, Vector3.Zero, 4);
       fragmented.Step(
         0.01, 0, 0, 2, 0.1, Array.Empty<OrbitalGravityWell>());
-      Assert(fragmented.Blooms.Count == 1 &&
+      Assert.IsTrue(fragmented.Blooms.Count == 1 &&
           fragmented.Fragments.Count == 4,
         "Orbital Garden fragment mode did not launch collision debris");
-      Assert(OrbitalGardenState.BloomRadius(0.4) >
+      Assert.IsTrue(OrbitalGardenState.BloomRadius(0.4) >
           OrbitalGardenState.BloomRadius(0) &&
           OrbitalGardenState.BloomEnvelope(0.4) <
           OrbitalGardenState.BloomEnvelope(0) &&
@@ -303,7 +299,7 @@ namespace Spectrum.LayerPipeline.Tests {
           0.1, 0, 0, 0, 0.02,
           Array.Empty<OrbitalGravityWell>());
       }
-      Assert(fragmented.Blooms.Count == 0 &&
+      Assert.IsTrue(fragmented.Blooms.Count == 0 &&
           fragmented.Fragments.Count == 0,
         "Orbital Garden retained expired collision effects");
 
@@ -326,26 +322,27 @@ namespace Spectrum.LayerPipeline.Tests {
           break;
         }
       }
-      Assert(orbital != null,
+      Assert.IsTrue(orbital != null,
         "Orbital Garden renderer was not created");
       Input[] inputs = orbital.GetInputs();
-      Assert(inputs.Length == 1 &&
+      Assert.IsTrue(inputs.Length == 1 &&
           ReferenceEquals(inputs[0], runtime.OrientationInput),
         "Orbital Garden did not declare its wand input");
       ((Visualizer)orbital).Visualize();
-      Assert(orbital.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
+      Assert.IsTrue(orbital.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
         "Orbital Garden did not render its fallback solar system");
     }
 
-    private static void LavaLampSkyUsesViscousThermalBlobs() {
+    [TestMethod]
+    public void LavaLampSkyUsesViscousThermalBlobs() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("lava-lamp-sky");
-      Assert(definition != null && definition.DisplayName == "Lava Lamp Sky",
+      Assert.IsTrue(definition != null && definition.DisplayName == "Lava Lamp Sky",
         "Lava Lamp Sky was not registered");
 
       LavaLampSkyLayerOptions defaults =
         BuiltInOptions<LavaLampSkyLayerOptions>(
           Layer("lava-lamp-sky", "lava-defaults"));
-      Assert(defaults.BlobCount == 9,
+      Assert.IsTrue(defaults.BlobCount == 9,
         "unexpected Lava Lamp Sky blob count");
       AssertClose(1.8, defaults.Viscosity,
         "unexpected Lava Lamp Sky viscosity");
@@ -355,7 +352,7 @@ namespace Spectrum.LayerPipeline.Tests {
         "unexpected Lava Lamp Sky surface tension");
       AssertClose(0.35, defaults.Heat,
         "unexpected Lava Lamp Sky heat");
-      Assert(defaults.BindGravity && defaults.Palette == 0,
+      Assert.IsTrue(defaults.BindGravity && defaults.Palette == 0,
         "unexpected Lava Lamp Sky gravity binding or palette");
 
       DomeLayerSettings configured = Layer(
@@ -371,34 +368,34 @@ namespace Spectrum.LayerPipeline.Tests {
       };
       LavaLampSkyLayerOptions clamped =
         BuiltInOptions<LavaLampSkyLayerOptions>(configured);
-      Assert(clamped.BlobCount == 24 && clamped.Viscosity == 0.2 &&
+      Assert.IsTrue(clamped.BlobCount == 24 && clamped.Viscosity == 0.2 &&
           clamped.Buoyancy == 3 && clamped.SurfaceTension == 3 &&
           clamped.Heat == 1 && !clamped.BindGravity &&
           clamped.Palette == PaletteService.MaxPalettes - 1,
         "Lava Lamp Sky controls did not clamp");
 
       var state = new LavaLampSkyState(9, 17);
-      Assert(state.Blobs.Count == 9,
+      Assert.IsTrue(state.Blobs.Count == 9,
         "Lava Lamp Sky did not create its requested blob count");
       foreach (LavaLampBlob blob in state.Blobs) {
-        Assert(blob.Position.Z >= 0 &&
+        Assert.IsTrue(blob.Position.Z >= 0 &&
             Math.Abs(blob.Position.Length() - 1) < 0.000001,
           "Lava Lamp Sky initialized off the visible unit hemisphere");
-        Assert(Math.Abs(Vector3.Dot(
+        Assert.IsTrue(Math.Abs(Vector3.Dot(
             blob.Position, blob.Velocity)) < 0.000001,
           "Lava Lamp Sky initialized non-tangent velocity");
       }
       Vector3 retained = state.Blobs[0].Position;
       state.Resize(14);
-      Assert(state.Blobs.Count == 14 && state.Blobs[0].Position == retained,
+      Assert.IsTrue(state.Blobs.Count == 14 && state.Blobs[0].Position == retained,
         "Lava Lamp Sky did not grow its persistent blob array in place");
       state.Resize(5);
-      Assert(state.Blobs.Count == 5 && state.Blobs[0].Position == retained,
+      Assert.IsTrue(state.Blobs.Count == 5 && state.Blobs[0].Position == retained,
         "Lava Lamp Sky did not shrink its persistent blob array in place");
 
       AssertClose(1, LavaLampSkyState.EffectiveHeat(1, 0),
         "configured Lava Lamp Sky heat changed at quiet audio");
-      Assert(LavaLampSkyState.EffectiveHeat(0.2, 1) >
+      Assert.IsTrue(LavaLampSkyState.EffectiveHeat(0.2, 1) >
           LavaLampSkyState.EffectiveHeat(0.2, 0) &&
           LavaLampSkyState.EffectiveBuoyancy(1, 1) >
           LavaLampSkyState.EffectiveBuoyancy(1, 0) &&
@@ -406,7 +403,7 @@ namespace Spectrum.LayerPipeline.Tests {
           LavaLampSkyState.SeparationResponse(0.2, 0),
         "audio did not raise Lava Lamp Sky heat, buoyancy, and separation");
 
-      Assert(LEDDomeLavaLampSkyVisualizer.GravityAxis(
+      Assert.IsTrue(LEDDomeLavaLampSkyVisualizer.GravityAxis(
           Quaternion.Identity, false) == Vector3.UnitZ &&
           Vector3.Distance(
             LEDDomeLavaLampSkyVisualizer.GravityAxis(
@@ -421,7 +418,7 @@ namespace Spectrum.LayerPipeline.Tests {
       for (int step = 0; step < 30; step++) {
         rising.Step(0.05, 0.2, 2.5, 0, 0.8, 0, Vector3.UnitZ);
       }
-      Assert(rising.Blobs[0].Position.Z > riseStart.Z + 0.02,
+      Assert.IsTrue(rising.Blobs[0].Position.Z > riseStart.Z + 0.02,
         "a warm Lava Lamp Sky body did not rise through spherical buoyancy");
 
       Vector3 movingPosition = Vector3.Normalize(
@@ -432,7 +429,7 @@ namespace Spectrum.LayerPipeline.Tests {
       thick.SeedBlob(0, movingPosition, Vector3.UnitY * 0.35f, 0.58);
       thin.Step(0.1, 0.2, 0, 0, 0, 0, Vector3.UnitZ);
       thick.Step(0.1, 4, 0, 0, 0, 0, Vector3.UnitZ);
-      Assert(thick.Blobs[0].Velocity.Length() <
+      Assert.IsTrue(thick.Blobs[0].Velocity.Length() <
           thin.Blobs[0].Velocity.Length(),
         "Lava Lamp Sky viscosity did not damp body motion");
 
@@ -448,7 +445,7 @@ namespace Spectrum.LayerPipeline.Tests {
       }
       double distanceAfter = Math.Acos(Math.Clamp(Vector3.Dot(
         merging.Blobs[0].Position, merging.Blobs[1].Position), -1, 1));
-      Assert(distanceAfter < distanceBefore &&
+      Assert.IsTrue(distanceAfter < distanceBefore &&
           (merging.Blobs[0].Stretch > 0.05 ||
            merging.Blobs[1].Stretch > 0.05),
         "Lava Lamp Sky surface tension did not merge and stretch neighbors");
@@ -461,7 +458,7 @@ namespace Spectrum.LayerPipeline.Tests {
         quiet.Step(0.05, 1, 0, 0.1, 0.2, 0, Vector3.UnitZ);
         loud.Step(0.05, 1, 0, 0.1, 0.2, 1, Vector3.UnitZ);
       }
-      Assert(loud.Blobs[0].Split > quiet.Blobs[0].Split + 0.1,
+      Assert.IsTrue(loud.Blobs[0].Split > quiet.Blobs[0].Split + 0.1,
         "audio heat did not divide a Lava Lamp Sky body");
 
       LavaLampBlob divided = loud.Blobs[0] with {
@@ -479,7 +476,7 @@ namespace Spectrum.LayerPipeline.Tests {
         Vector3.UnitZ * (float)Math.Cos(0.31) +
         Vector3.UnitX * (float)Math.Sin(0.31));
       double lobe = dividedField.Sample(lobePoint).StrongestStrength;
-      Assert(lobe > 0.8 && lobe > pinch + 0.5,
+      Assert.IsTrue(lobe > 0.8 && lobe > pinch + 0.5,
         "Lava Lamp Sky division did not form two pinched soft lobes");
 
       var config = ConfigurationWithLayers(
@@ -494,21 +491,22 @@ namespace Spectrum.LayerPipeline.Tests {
           break;
         }
       }
-      Assert(lava != null, "Lava Lamp Sky renderer was not created");
+      Assert.IsTrue(lava != null, "Lava Lamp Sky renderer was not created");
       Input[] inputs = lava.GetInputs();
-      Assert(inputs.Length == 2 &&
+      Assert.IsTrue(inputs.Length == 2 &&
           ReferenceEquals(inputs[0], runtime.AudioInput) &&
           ReferenceEquals(inputs[1], runtime.OrientationInput),
         "Lava Lamp Sky did not declare audio and orientation inputs");
       ((Visualizer)lava).Visualize();
-      Assert(lava.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
+      Assert.IsTrue(lava.LayerBuffer.pixels.Any(pixel => pixel.color != 0),
         "Lava Lamp Sky rendered an empty foundation");
-      Assert(lava.LayerBuffer.pixels.Any(pixel => pixel.a > 0.8) &&
+      Assert.IsTrue(lava.LayerBuffer.pixels.Any(pixel => pixel.a > 0.8) &&
           lava.LayerBuffer.pixels.Any(pixel => pixel.a < 0.2),
         "Lava Lamp Sky did not render soft separated silhouettes");
     }
 
-    private static void VortexUsesGlobalFade() {
+    [TestMethod]
+    public void VortexUsesGlobalFade() {
       var config = new global::Spectrum.SpectrumConfiguration {
         domeGlobalFadeSpeed = 3,
         domeGlobalHueSpeed = 0,
@@ -525,10 +523,10 @@ namespace Spectrum.LayerPipeline.Tests {
           break;
         }
       }
-      Assert(vortex != null, "vortex renderer was not created");
+      Assert.IsTrue(vortex != null, "vortex renderer was not created");
 
       Visualizer renderer = (Visualizer)vortex;
-      Assert(renderer.GetInputs().Length == 1 &&
+      Assert.IsTrue(renderer.GetInputs().Length == 1 &&
           ReferenceEquals(renderer.GetInputs()[0], runtime.AudioInput),
         "vortex did not declare its audio input");
       AssertClose(0, LEDDomeVortexVisualizer.AudioResponseLevel(-1),
@@ -560,7 +558,7 @@ namespace Spectrum.LayerPipeline.Tests {
       }
       frame.pixels[trailIndex].color = 0x00FF00;
       renderer.Visualize();
-      Assert(frame.pixels[trailIndex].r == 0 &&
+      Assert.IsTrue(frame.pixels[trailIndex].r == 0 &&
           frame.pixels[trailIndex].g > 0 &&
           frame.pixels[trailIndex].b == 0,
         "global fade did not retain the hue-bearing vortex trail");
@@ -569,13 +567,14 @@ namespace Spectrum.LayerPipeline.Tests {
       // removed and replaced only by this frame's brown-tinted field sample.
       config.domeGlobalFadeSpeed = 0;
       renderer.Visualize();
-      Assert(!(frame.pixels[trailIndex].r == 0 &&
+      Assert.IsTrue(!(frame.pixels[trailIndex].r == 0 &&
           frame.pixels[trailIndex].g > 0 &&
           frame.pixels[trailIndex].b == 0),
         "zero global fade retained stale vortex history");
     }
 
-    private static void VortexNoiseCacheMatchesReference() {
+    [TestMethod]
+    public void VortexNoiseCacheMatchesReference() {
       var cache = new LEDDomeVortexVisualizer.PeriodicNoiseLattice();
       double[] sampleXs = { -74.2, -1.01, 0, 1.25, 36.99, 75.4 };
       double[] sampleYs = { -3.8, -2.01, -.2, 0, 4.99, 8.2 };
@@ -597,13 +596,14 @@ namespace Spectrum.LayerPipeline.Tests {
           double expected =
             LEDDomeVortexVisualizer.PeriodicValueNoise(x, y, period);
           double actual = cache.Sample(x, y);
-          Assert(expected == actual,
+          Assert.IsTrue(expected == actual,
             $"cached Vortex noise changed the reference value at ({x}, {y})");
         }
       }
     }
 
-    private static void RippleTankPowerLookupTracksPow() {
+    [TestMethod]
+    public void RippleTankPowerLookupTracksPow() {
       var lookup = new LEDDomeRippleTankVisualizer.RipplePowerLookup();
       double[] sharpnessValues = { 1, 1.5, 5, 12 };
       foreach (double sharpness in sharpnessValues) {
@@ -612,7 +612,7 @@ namespace Spectrum.LayerPipeline.Tests {
           double value = i / 1000d;
           double expected = Math.Pow(value, sharpness);
           double actual = lookup.Sample(value);
-          Assert(Math.Abs(expected - actual) <= 0.000002,
+          Assert.IsTrue(Math.Abs(expected - actual) <= 0.000002,
             $"Ripple Tank power lookup drifted at {value} ^ {sharpness}");
         }
       }

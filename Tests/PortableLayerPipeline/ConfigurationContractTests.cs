@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -5,32 +6,16 @@ using System.Linq;
 using System.Threading.Tasks;
 using Spectrum.Base;
 using XSerializer;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
+using static Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class ConfigurationContractTests {
-    public static void Register(Action<string, Action> run) {
-      run(nameof(ConfigurationSerializes), ConfigurationSerializes);
-      run(
-        nameof(ConfigurationScalarSchemaIsExhaustive),
-        ConfigurationScalarSchemaIsExhaustive);
-      run(
-        nameof(ConfigurationCollectionsIsolateNestedAliases),
-        ConfigurationCollectionsIsolateNestedAliases);
-      run(
-        nameof(ConfigurationCollectionNotificationsAreExact),
-        ConfigurationCollectionNotificationsAreExact);
-      run(
-        nameof(ConfigurationSurfaceRejectsMutableCollections),
-        ConfigurationSurfaceRejectsMutableCollections);
-      run(
-        nameof(EventStreamSubscribersAreBounded),
-        EventStreamSubscribersAreBounded);
-      run(nameof(WebLayerContract), WebLayerContract);
-    }
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class ConfigurationContractTests {
 
-    private static void ConfigurationSerializes() {
+    [TestMethod]
+    public void ConfigurationSerializes() {
       DomeLayerSettings serializedLayer = Layer(
         "background", "serialize-background");
       serializedLayer.RendererParams = new Dictionary<string, double> {
@@ -49,25 +34,26 @@ namespace Spectrum.LayerPipeline.Tests {
           stream,
           global::Spectrum.SpectrumConfigurationDocument.FromConfiguration(
             config));
-      Assert(stream.Length > 0, "serializer produced no XML");
+      Assert.IsTrue(stream.Length > 0, "serializer produced no XML");
       string xml = System.Text.Encoding.UTF8.GetString(stream.ToArray());
-      Assert(xml.Contains("<SpectrumConfiguration") &&
+      Assert.IsTrue(xml.Contains("<SpectrumConfiguration") &&
           !xml.Contains("<SpectrumConfigurationDocument"),
         "the configuration document emitted the wrong XML root");
       stream.Position = 0;
       var restored =
         new XmlSerializer<global::Spectrum.SpectrumConfigurationDocument>()
           .Deserialize(stream).ToConfiguration();
-      Assert(restored.audioDeviceID == "test-device", "round trip lost config");
-      Assert(restored.domeLayerStack.Length == 1 &&
+      Assert.IsTrue(restored.audioDeviceID == "test-device", "round trip lost config");
+      Assert.IsTrue(restored.domeLayerStack.Length == 1 &&
         restored.domeLayerStack[0].InstanceId == "serialize-background",
         "round trip lost layer identity");
-      Assert(restored.domeLayerStack[0].RendererParams["color"] == 0x123456 &&
+      Assert.IsTrue(restored.domeLayerStack[0].RendererParams["color"] == 0x123456 &&
           restored.domeLayerStack[0].OperationParams["amount"] == .5,
         "round trip merged or lost parameter namespaces");
     }
 
-    private static void ConfigurationScalarSchemaIsExhaustive() {
+    [TestMethod]
+    public void ConfigurationScalarSchemaIsExhaustive() {
       Type[] scalarTypes = {
         typeof(bool),
         typeof(double),
@@ -96,12 +82,12 @@ namespace Spectrum.LayerPipeline.Tests {
           .Select(property => property.Key)
           .ToHashSet();
 
-      Assert(schemaNames.SetEquals(liveScalarNames),
+      Assert.IsTrue(schemaNames.SetEquals(liveScalarNames),
         "the scalar schema and Configuration surface differ: schema=" +
         string.Join(",", schemaNames.OrderBy(name => name)) +
         "; live=" +
         string.Join(",", liveScalarNames.OrderBy(name => name)));
-      Assert(schemaNames.SetEquals(documentScalarNames),
+      Assert.IsTrue(schemaNames.SetEquals(documentScalarNames),
         "the scalar schema and persistence document differ: schema=" +
         string.Join(",", schemaNames.OrderBy(name => name)) +
         "; document=" +
@@ -116,15 +102,15 @@ namespace Spectrum.LayerPipeline.Tests {
           typeof(Configuration).GetProperty(property.Key);
         System.Reflection.PropertyInfo? documentProperty =
           document.GetType().GetProperty(property.Key);
-        Assert(liveProperty != null &&
+        Assert.IsTrue(liveProperty != null &&
             liveProperty.PropertyType == property.ValueType,
           property.Key + " has the wrong live schema type");
-        Assert(documentProperty != null &&
+        Assert.IsTrue(documentProperty != null &&
             documentProperty.PropertyType == property.ValueType,
           property.Key + " has the wrong document schema type");
-        Assert(Equals(property.DefaultValue, property.Read(config)),
+        Assert.IsTrue(Equals(property.DefaultValue, property.Read(config)),
           property.Key + " live default bypasses the scalar schema");
-        Assert(Equals(
+        Assert.IsTrue(Equals(
             property.DefaultValue,
             documentProperty!.GetValue(document)),
           property.Key + " document default bypasses the scalar schema");
@@ -138,7 +124,7 @@ namespace Spectrum.LayerPipeline.Tests {
           .Where(property => property.WebParameter != null)
           .Select(property => property.Key)
           .ToHashSet();
-      Assert(
+      Assert.IsTrue(
         schemaWebKeys.SetEquals(
           desktopRegistry.All.Select(descriptor => descriptor.Key)),
         "the desktop web registry bypasses the scalar schema");
@@ -153,14 +139,14 @@ namespace Spectrum.LayerPipeline.Tests {
             key != nameof(Configuration.vjHUDEnabled) &&
             key != nameof(Configuration.domeSimulationEnabled))
           .ToHashSet();
-      Assert(
+      Assert.IsTrue(
         headlessKeys.SetEquals(
           headlessRegistry.All.Select(descriptor => descriptor.Key)),
         "the headless registry did not apply native-window availability");
 
       string defaultPath = Path.Combine(
         AppContext.BaseDirectory, "spectrum_default_config.xml");
-      Assert(File.Exists(defaultPath),
+      Assert.IsTrue(File.Exists(defaultPath),
         "the packaged default configuration is missing");
       using FileStream defaultStream = File.OpenRead(defaultPath);
       global::Spectrum.SpectrumConfiguration defaultConfig =
@@ -171,13 +157,14 @@ namespace Spectrum.LayerPipeline.Tests {
       foreach (ParameterDescriptor descriptor in desktopRegistry.All) {
         object current = descriptor.Get(defaultConfig);
         object validated = descriptor.Coerce(current);
-        Assert(Equals(current, validated),
+        Assert.IsTrue(Equals(current, validated),
           "the packaged default configuration violates the schema for " +
           descriptor.Key);
       }
     }
 
-    private static void ConfigurationCollectionsIsolateNestedAliases() {
+    [TestMethod]
+    public void ConfigurationCollectionsIsolateNestedAliases() {
       var layer = Layer("background", "alias-layer");
       layer.RendererParams = new Dictionary<string, double> {
         ["color"] = 0x123456,
@@ -222,7 +209,7 @@ namespace Spectrum.LayerPipeline.Tests {
       paletteColor.color1 = 0;
       binding.endValue = 0;
       preset.Bindings.Clear();
-      Assert(config.domeLayerStack[0].RendererParams["color"] == 0x123456 &&
+      Assert.IsTrue(config.domeLayerStack[0].RendererParams["color"] == 0x123456 &&
           config.domeScenes[0].Layers[0].OperationParams["amount"] == 0.25 &&
           config.domePalettes[0].Colors[0]?.Color1 == 0x112233 &&
           config.midiPresets[3].Bindings.Length == 1 &&
@@ -237,14 +224,15 @@ namespace Spectrum.LayerPipeline.Tests {
       document.domeScenes![0].Layers![0].OperationParams!["amount"] = 7;
       document.domePalettes![0].Colors![0]!.color1 = 7;
       document.midiPresets[3].Bindings.Clear();
-      Assert(config.domeLayerStack[0].RendererParams["color"] == 0x123456 &&
+      Assert.IsTrue(config.domeLayerStack[0].RendererParams["color"] == 0x123456 &&
           config.domeScenes[0].Layers[0].OperationParams["amount"] == 0.25 &&
           config.domePalettes[0].Colors[0]?.Color1 == 0x112233 &&
           config.midiPresets[3].Bindings.Length == 1,
         "the persistence document retained a live configuration alias");
     }
 
-    private static void ConfigurationCollectionNotificationsAreExact() {
+    [TestMethod]
+    public void ConfigurationCollectionNotificationsAreExact() {
       var config = new global::Spectrum.SpectrumConfiguration();
       var names = new List<string>();
       config.PropertyChanged += (_, e) => {
@@ -256,7 +244,7 @@ namespace Spectrum.LayerPipeline.Tests {
       config.ReplaceDomeLayerStack(new[] {
         Layer("background", "notification-layer"),
       });
-      Assert(names.SequenceEqual(new[] {
+      Assert.IsTrue(names.SequenceEqual(new[] {
           nameof(config.domeLayerStack),
           DomeShowStateSnapshot.NotificationPropertyName,
         }),
@@ -266,7 +254,7 @@ namespace Spectrum.LayerPipeline.Tests {
       config.ReplaceDomePalettes(new[] {
         new DomePalette { Name = "Notification palette" },
       });
-      Assert(names.SequenceEqual(new[] {
+      Assert.IsTrue(names.SequenceEqual(new[] {
           nameof(config.domePalettes),
           DomeShowStateSnapshot.NotificationPropertyName,
         }),
@@ -277,11 +265,12 @@ namespace Spectrum.LayerPipeline.Tests {
         id = 4,
         Name = "Notification MIDI",
       });
-      Assert(names.SequenceEqual(new[] { nameof(config.midiPresets) }),
+      Assert.IsTrue(names.SequenceEqual(new[] { nameof(config.midiPresets) }),
         "a MIDI preset edit published extra or missing notifications");
     }
 
-    private static void ConfigurationSurfaceRejectsMutableCollections() {
+    [TestMethod]
+    public void ConfigurationSurfaceRejectsMutableCollections() {
       Type[] mutableDefinitions = {
         typeof(List<>),
         typeof(Dictionary<,>),
@@ -299,14 +288,15 @@ namespace Spectrum.LayerPipeline.Tests {
           bool mutable = type.IsArray ||
             type.IsGenericType && mutableDefinitions.Contains(
               type.GetGenericTypeDefinition());
-          Assert(!mutable,
+          Assert.IsTrue(!mutable,
             surface.Name + "." + property.Name +
             " exposes mutable collection type " + type.Name);
         }
       }
     }
 
-    private static void EventStreamSubscribersAreBounded() {
+    [TestMethod]
+    public void EventStreamSubscribersAreBounded() {
       var config = ConfigurationWithLayers(
         Layer("background", "coalesced-show"));
       var telemetry = new RuntimeTelemetry();
@@ -326,7 +316,7 @@ namespace Spectrum.LayerPipeline.Tests {
       while (subscriber.Reader.TryRead(out string? frame)) {
         retained.Add(frame);
       }
-      Assert(retained.Count == 2 &&
+      Assert.IsTrue(retained.Count == 2 &&
           retained.Any(frame =>
             frame.Contains("\"kind\":\"show\"") &&
             frame.Contains("coalesced-show")) &&
@@ -344,7 +334,7 @@ namespace Spectrum.LayerPipeline.Tests {
       while (subscriber.Reader.TryRead(out string? frame)) {
         retained.Add(frame);
       }
-      Assert(retained.Count <=
+      Assert.IsTrue(retained.Count <=
           global::Spectrum.Web.ConfigEventStream.SubscriberCapacity &&
           retained.Any(frame =>
             frame.Contains("\"kind\":\"reset\"")),
@@ -352,7 +342,8 @@ namespace Spectrum.LayerPipeline.Tests {
       stream.Unsubscribe(id);
     }
 
-    private static void WebLayerContract() {
+    [TestMethod]
+    public void WebLayerContract() {
       DomeLayerSettings layer = Layer("background", "web-background");
       layer.RendererParams = new Dictionary<string, double> {
         ["color"] = 0xABCDEF,
@@ -366,7 +357,7 @@ namespace Spectrum.LayerPipeline.Tests {
         new InlineGateway(), config);
       global::Spectrum.Web.LayersController.LayersState state =
         controller.State();
-      Assert(state.layers[0].rendererParams!["color"] == 0xABCDEF &&
+      Assert.IsTrue(state.layers[0].rendererParams!["color"] == 0xABCDEF &&
         state.layers[0].operationParams!["offset"] == .125,
         "web contract merged parameter namespaces");
       global::Spectrum.Web.LayersController.OperationOptionDto? operation =
@@ -380,7 +371,7 @@ namespace Spectrum.LayerPipeline.Tests {
           break;
         }
       }
-      Assert(operation != null &&
+      Assert.IsTrue(operation != null &&
         operation.label == DomeBlend.ChromaticFringe.DisplayName &&
         operation.@params.Count > 0,
         "web operation descriptor is incomplete");
@@ -396,46 +387,21 @@ namespace Spectrum.LayerPipeline.Tests {
       global::Spectrum.Web.LayersController.ParamDto? showNighttimeSky =
         astronomy?.@params.FirstOrDefault(
           p => p.key == "showNighttimeSky");
-      Assert(startDate != null && startDate.type == "Date" &&
+      Assert.IsTrue(startDate != null && startDate.type == "Date" &&
           DomeLayerDate.TryDecode(startDate.@default, out _),
         "web astronomy start-date descriptor is incomplete");
-      Assert(showDaytimeSky != null && showDaytimeSky.type == "Bool" &&
+      Assert.IsTrue(showDaytimeSky != null && showDaytimeSky.type == "Bool" &&
           showDaytimeSky.@default == 1,
         "web astronomy daytime-sky checkbox descriptor is incomplete");
-      Assert(showNighttimeSky != null &&
+      Assert.IsTrue(showNighttimeSky != null &&
           showNighttimeSky.type == "Bool" &&
           showNighttimeSky.@default == 1,
         "web astronomy nighttime-sky checkbox descriptor is incomplete");
-      Assert(astronomy?.fireAction?.label == "Play" &&
+      Assert.IsTrue(astronomy?.fireAction?.label == "Play" &&
           astronomy.clearAction?.label == "Stop" &&
           background?.fireAction == null && background?.clearAction == null,
         "web layer action descriptors are incomplete");
     }
 
-    private static global::Spectrum.SpectrumConfiguration
-      ConfigurationWithLayers(params DomeLayerSettings[] layers) {
-      var config = new global::Spectrum.SpectrumConfiguration();
-      config.ReplaceDomeLayerStack(layers);
-      return config;
-    }
-
-    private static DomeLayerSettings Layer(string key, string? id) => new() {
-      InstanceId = id,
-      VisualizerKey = key,
-      BlendMode = DomeBlend.Add.Id,
-      Opacity = 1,
-      Enabled = true,
-    };
-
-    private sealed class InlineGateway : ApplicationStateDispatcher {
-      public bool CheckAccess() => true;
-      public void Post(Action mutation) => mutation();
-      public Task InvokeAsync(Action mutation) {
-        mutation();
-        return Task.CompletedTask;
-      }
-      public Task<T> InvokeAsync<T>(Func<T> read) =>
-        Task.FromResult(read());
-    }
   }
 }

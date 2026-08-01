@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -8,48 +9,43 @@ using Spectrum.Base;
 using Spectrum.LEDs;
 using Spectrum.MIDI;
 using static Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class WindowsOrchestrationTests {
-    public static void Register(Action<string, Action> run) {
-      run(nameof(PortableCoreStaysOutsideWindowsApplication),
-        PortableCoreStaysOutsideWindowsApplication);
-      run(nameof(AstronomyLayerActionsUseWindowsLabels),
-        AstronomyLayerActionsUseWindowsLabels);
-      run(nameof(AstronomyPlaybackDisplayUpdatesStayTransient), AstronomyPlaybackDisplayUpdatesStayTransient);
-      run(nameof(EnabledOperatorConcurrentSettingsAreIsolated), EnabledOperatorConcurrentSettingsAreIsolated);
-      run(nameof(MidiBindingFailuresAreContained), MidiBindingFailuresAreContained);
-    }
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class WindowsOrchestrationTests {
 
-    private static void PortableCoreStaysOutsideWindowsApplication() {
+    [TestMethod]
+    public void PortableCoreStaysOutsideWindowsApplication() {
       Type coreType = typeof(global::Spectrum.BuiltInDomeLayerCatalog);
       Type applicationType = typeof(global::Spectrum.MainWindow);
-      Assert(coreType.Assembly != applicationType.Assembly,
+      Assert.IsTrue(coreType.Assembly != applicationType.Assembly,
         "portable runtime still compiles into the Windows application");
     }
 
-    private static void AstronomyLayerActionsUseWindowsLabels() {
+    [TestMethod]
+    public void AstronomyLayerActionsUseWindowsLabels() {
       var astronomyRow = new global::Spectrum.DomeLayerRowViewModel {
         VisualizerKey = "astronomy",
       };
-      Assert(astronomyRow.FireLabel == "Play" &&
+      Assert.IsTrue(astronomyRow.FireLabel == "Play" &&
           astronomyRow.ClearLabel == "Stop" &&
           astronomyRow.HasFireAction && astronomyRow.HasClearAction,
         "astronomy layer actions were not labeled Play and Stop");
       astronomyRow.VisualizerKey = "earth";
-      Assert(!astronomyRow.HasFireAction && !astronomyRow.HasClearAction &&
+      Assert.IsTrue(!astronomyRow.HasFireAction && !astronomyRow.HasClearAction &&
           astronomyRow.FireLabel == null && astronomyRow.ClearLabel == null,
         "non-triggerable layer retained action controls");
       astronomyRow.VisualizerKey = "shooting-star";
-      Assert(astronomyRow.HasFireAction && astronomyRow.HasClearAction &&
+      Assert.IsTrue(astronomyRow.HasFireAction && astronomyRow.HasClearAction &&
           astronomyRow.FireLabel == "Fire" &&
           astronomyRow.ClearLabel == "Clear",
         "triggerable layer actions were not exposed");
     }
 
-    private static void AstronomyPlaybackDisplayUpdatesStayTransient() {
+    [TestMethod]
+    public void AstronomyPlaybackDisplayUpdatesStayTransient() {
       var descriptor = new DomeLayerParam {
         Key = "timeOffsetHours",
         Label = "Time (hours from start)",
@@ -71,16 +67,17 @@ namespace Spectrum.LayerPipeline.Tests {
       };
 
       param.SetDisplayedValue(13.5);
-      Assert(param.Value == 13.5 && param.StoredValue == 12 &&
+      Assert.IsTrue(param.Value == 13.5 && param.StoredValue == 12 &&
           edits == 0 && valueChanged,
         "astronomy playback display persisted a timer tick");
 
       param.Value = 14;
-      Assert(param.Value == 14 && param.StoredValue == 14 && edits == 1,
+      Assert.IsTrue(param.Value == 14 && param.StoredValue == 14 && edits == 1,
         "astronomy time slider edit was not persisted");
     }
 
-    private static void EnabledOperatorConcurrentSettingsAreIsolated() {
+    [TestMethod]
+    public void EnabledOperatorConcurrentSettingsAreIsolated() {
       var layers = new List<DomeLayerSettings>();
       for (int i = 0; i < StackValidator.MaxLayers; i++) {
         layers.Add(Layer("background", "enabled-storm-" + i));
@@ -122,32 +119,32 @@ namespace Spectrum.LayerPipeline.Tests {
           while (!stopReader.IsCancellationRequested) {
             DomeRuntimeFrameSnapshot frame =
               settings.DomeRuntimeFrameSnapshot;
-            Assert(frame.FireGenerations.All(pair =>
+            Assert.IsTrue(frame.FireGenerations.All(pair =>
                 pair.Key.StartsWith("enabled-storm-") && pair.Value > 0),
               "a reader observed an invalid fire-counter generation");
 
             AudioSettingsSnapshot audio = settings.AudioSettingsSnapshot;
-            Assert(audio.DeviceId == null || audio.DeviceId == "fake-a" ||
+            Assert.IsTrue(audio.DeviceId == null || audio.DeviceId == "fake-a" ||
                 audio.DeviceId == "fake-b",
               "a reader observed a torn Audio generation");
 
             MidiSettingsSnapshot midi = settings.MidiSettingsSnapshot;
-            Assert(midi.Devices.Count == 1 &&
+            Assert.IsTrue(midi.Devices.Count == 1 &&
                 midi.Devices.TryGetValue(42, out int preset) &&
                 (preset == 9 || preset == 10),
               "a reader observed a torn MIDI device generation");
 
             DomeOutputSettingsSnapshot output =
               settings.DomeOutputSettingsSnapshot;
-            Assert(IsIdentityOrReverse(output.CableMapping),
+            Assert.IsTrue(IsIdentityOrReverse(output.CableMapping),
               "a reader observed a torn cable-mapping generation");
             foreach (ImmutableArray<int> ports in output.PortMappings) {
-              Assert(IsIdentityOrReverse(ports),
+              Assert.IsTrue(IsIdentityOrReverse(ports),
                 "a reader observed a torn port-mapping generation");
             }
 
             ImmutableArray<DomeLayerView> stack = config.domeLayerStack;
-            Assert(stack.Length == StackValidator.MaxLayers &&
+            Assert.IsTrue(stack.Length == StackValidator.MaxLayers &&
                 stack.All(layer => layer.RendererParams != null &&
                   layer.OperationParams != null),
               "a reader observed a partial immutable layer view");
@@ -228,7 +225,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
         stopReader.Cancel();
         reader.GetAwaiter().GetResult();
-        Assert(readerFailure == null,
+        Assert.IsTrue(readerFailure == null,
           "concurrent reader failed: " + readerFailure);
         long expectedMidiGeneration =
           settings.MidiSettingsSnapshot.DeviceGeneration;
@@ -252,34 +249,34 @@ namespace Spectrum.LayerPipeline.Tests {
         runtime.DomeOutput.OutputSettingsApplied += ObserveOutputSettings;
         ObserveMidiSettings();
         ObserveOutputSettings();
-        Assert(midiSettingsApplied.Wait(TimeSpan.FromSeconds(3)) &&
+        Assert.IsTrue(midiSettingsApplied.Wait(TimeSpan.FromSeconds(3)) &&
             outputSettingsApplied.Wait(TimeSpan.FromSeconds(3)),
           "the enabled operator did not reconcile the latest device generations");
         runtimeMidi.SettingsApplied -= ObserveMidiSettings;
         runtime.DomeOutput.OutputSettingsApplied -= ObserveOutputSettings;
-        Assert(runtime.DomeOutput.AppliedTransportGeneration ==
+        Assert.IsTrue(runtime.DomeOutput.AppliedTransportGeneration ==
             transportGeneration,
           "a wiring-only update reconciled the OPC transport");
-        Assert(runtime.LayerPlanReconciliationCount == reconciliations,
+        Assert.IsTrue(runtime.LayerPlanReconciliationCount == reconciliations,
           "control/device traffic reconciled the layer plan");
-        Assert(ReferenceEquals(runtime.DomeOutput.RenderPlan, acceptedPlan),
+        Assert.IsTrue(ReferenceEquals(runtime.DomeOutput.RenderPlan, acceptedPlan),
           "control/device traffic replaced the accepted render plan");
 
-        Assert(firstFpsPublished.Wait(TimeSpan.FromSeconds(4)),
+        Assert.IsTrue(firstFpsPublished.Wait(TimeSpan.FromSeconds(4)),
           "the enabled operator did not complete its first FPS window");
         Task measurementCompleted = runtime.BeginAllocationMeasurement(30);
         measurementCompleted
           .WaitAsync(TimeSpan.FromSeconds(4))
           .GetAwaiter().GetResult();
         var allocation = runtime.EndAllocationMeasurement();
-        Assert(allocation.Frames >= 30,
+        Assert.IsTrue(allocation.Frames >= 30,
           "too few enabled operator frames were measured: " +
           allocation.Frames);
         // The CLR can charge one 64-byte thread/runtime bookkeeping object to
         // this window nondeterministically. Bound fixed noise tightly enough
         // that any recurring per-frame allocation still fails the test.
         const long maxFixedMeasurementNoise = 128;
-        Assert(allocation.Bytes <= maxFixedMeasurementNoise,
+        Assert.IsTrue(allocation.Bytes <= maxFixedMeasurementNoise,
           "the steady-state enabled operator exceeded fixed measurement " +
           "noise with " +
           allocation.Bytes + " managed bytes across " +
@@ -318,7 +315,8 @@ namespace Spectrum.LayerPipeline.Tests {
       return identity || reverse;
     }
 
-    private static void MidiBindingFailuresAreContained() {
+    [TestMethod]
+    public void MidiBindingFailuresAreContained() {
       Configuration config = new ThrowingBrightnessConfiguration();
       ConfigurationEditor editor = (ConfigurationEditor)config;
       editor.ReplaceMidiDevices(new Dictionary<int, int> { [42] = 9 });
@@ -355,19 +353,19 @@ namespace Spectrum.LayerPipeline.Tests {
           index = 7,
           value = 0.5,
         }));
-      Assert(dispatcher.WaitForPending(TimeSpan.FromSeconds(2)) &&
+      Assert.IsTrue(dispatcher.WaitForPending(TimeSpan.FromSeconds(2)) &&
           dispatcher.PendingCount == 1,
         "the valid MIDI mutation was not queued");
       dispatcher.Drain();
       invocation.GetAwaiter().GetResult();
 
       MidiLogMessage[] messages = midi.MidiLog.DequeueAllMessages();
-      Assert(messages.Any(message =>
+      Assert.IsTrue(messages.Any(message =>
           message.message != null &&
           message.message.Contains("wrong numeric type") &&
           message.message.Contains("has type Int32")),
         "an incompatible existing MIDI target was not rejected at compile time");
-      Assert(messages.Any(message =>
+      Assert.IsTrue(messages.Any(message =>
           message.message != null &&
           message.message.Contains("throwing setter") &&
           message.message.Contains("setter exploded")),

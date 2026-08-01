@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,31 +9,15 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Spectrum.Base;
 using static Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class WindowsUiControllerTests {
-    public static void Register(Action<string, Action> run) {
-      run(nameof(WandSerialUiOwnsSelectionAndTimer),
-        WandSerialUiOwnsSelectionAndTimer);
-      run(nameof(ReadinessDashboardOwnsRuntimePresentation),
-        ReadinessDashboardOwnsRuntimePresentation);
-      run(nameof(DomeOpcAddressUiOwnsValidationAndSynchronization),
-        DomeOpcAddressUiOwnsValidationAndSynchronization);
-      run(nameof(OperatorSettingsOwnBindingsAndAudioSelection),
-        OperatorSettingsOwnBindingsAndAudioSelection);
-      run(nameof(LocalLayerEditsRetainSliderControls),
-        LocalLayerEditsRetainSliderControls);
-      run(nameof(MidiDeviceUiOwnsDiscoveryAndAssignment),
-        MidiDeviceUiOwnsDiscoveryAndAssignment);
-      run(nameof(MidiPresetUiOwnsSparseIdentityAndEditModes),
-        MidiPresetUiOwnsSparseIdentityAndEditModes);
-      run(nameof(MidiSetupUiOwnsDevicePresetAndBindingPresentation),
-        MidiSetupUiOwnsDevicePresetAndBindingPresentation);
-    }
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class WindowsUiControllerTests {
 
-    private static void WandSerialUiOwnsSelectionAndTimer() {
+    [TestMethod]
+    public void WandSerialUiOwnsSelectionAndTimer() {
       RunOnStaThread("WandSerialUiTest", () => {
         var config = new global::Spectrum.SpectrumConfiguration {
           wandSerialPort = "COM9",
@@ -49,25 +34,25 @@ namespace Spectrum.LayerPipeline.Tests {
 
         controller.Start();
 
-        Assert(selector.Items.Count == 3 &&
+        Assert.IsTrue(selector.Items.Count == 3 &&
             selector.SelectedItem is
               global::Spectrum.WandSerialPortOption selected &&
             selected.Value == "COM9" &&
             config.wandSerialPort == "COM9",
           "programmatic wand-port population rewrote configuration");
-        Assert(status.Text == "Opening…",
+        Assert.IsTrue(status.Text == "Opening…",
           "wand status was not presented when the controller started");
 
         selector.SelectedItem = selector.Items
           .OfType<global::Spectrum.WandSerialPortOption>()
           .Single(option => option.Value == "COM3");
         controller.ApplySelectedPort();
-        Assert(config.wandSerialPort == "COM3",
+        Assert.IsTrue(config.wandSerialPort == "COM3",
           "a genuine wand-port selection was not persisted");
 
         config.wandSerialPort = "COM9";
         DrainDispatcher(Dispatcher.CurrentDispatcher);
-        Assert(selector.SelectedItem is
+        Assert.IsTrue(selector.SelectedItem is
             global::Spectrum.WandSerialPortOption externalSelection &&
             externalSelection.Value == "COM9",
           "an external wand-port update did not reach the selector");
@@ -77,14 +62,15 @@ namespace Spectrum.LayerPipeline.Tests {
         DrainDispatcher(Dispatcher.CurrentDispatcher);
         controller.ApplySelectedPort();
         controller.RepopulatePorts();
-        Assert(selector.SelectedItem is
+        Assert.IsTrue(selector.SelectedItem is
             global::Spectrum.WandSerialPortOption disposedSelection &&
             disposedSelection.Value == "COM9",
           "disposed wand UI controller accepted a queued UI update");
       });
     }
 
-    private static void ReadinessDashboardOwnsRuntimePresentation() {
+    [TestMethod]
+    public void ReadinessDashboardOwnsRuntimePresentation() {
       RunOnStaThread("ReadinessDashboardUiTest", () => {
         var config = new global::Spectrum.SpectrumConfiguration {
           domeBeagleboneOPCAddress = "127.0.0.1:7890",
@@ -152,12 +138,12 @@ namespace Spectrum.LayerPipeline.Tests {
             webServerPort: 8080,
             resolveControllerHost: () => "show-host");
 
-        Assert(webAddress.Text == "http://show-host:8080" &&
+        Assert.IsTrue(webAddress.Text == "http://show-host:8080" &&
             Equals(powerButton.Content, "Start engine") &&
             ReferenceEquals(powerButton.Style, primaryButton),
           "the readiness controller did not initialize its address and " +
           "stopped-engine presentation");
-        Assert(audio.Text.Text == "○ Configured" &&
+        Assert.IsTrue(audio.Text.Text == "○ Configured" &&
             audio.Detail?.Text.Contains("Test audio") == true &&
             ReferenceEquals(audio.Badge.Style, warningBadge) &&
             webStatus.Text == "Ready — listening on port 8080." &&
@@ -167,7 +153,7 @@ namespace Spectrum.LayerPipeline.Tests {
         config.domeEnabled = true;
         config.domeBeagleboneOPCAddress = "missing-port";
         DrainDispatcher(Dispatcher.CurrentDispatcher);
-        Assert(dome.Text.Text == "! Invalid address" &&
+        Assert.IsTrue(dome.Text.Text == "! Invalid address" &&
             ReferenceEquals(dome.Badge.Style, errorBadge) &&
             overall.Text.Text == "! Action required" &&
             ReferenceEquals(overall.Badge.Style, errorBadge),
@@ -176,7 +162,7 @@ namespace Spectrum.LayerPipeline.Tests {
         string? copiedAddress = null;
         controller.CopyControllerAddress(
           address => copiedAddress = address);
-        Assert(copiedAddress == "http://show-host:8080" &&
+        Assert.IsTrue(copiedAddress == "http://show-host:8080" &&
             webStatus.Text == "Address copied to the clipboard." &&
             ReferenceEquals(webStatus.Foreground, successBrush),
           "the readiness controller did not own address-copy presentation");
@@ -185,13 +171,14 @@ namespace Spectrum.LayerPipeline.Tests {
         string disposedStatus = webStatus.Text;
         webStatus.Text = "disposed";
         controller.Refresh();
-        Assert(webStatus.Text == "disposed" &&
+        Assert.IsTrue(webStatus.Text == "disposed" &&
             disposedStatus != webStatus.Text,
           "the disposed readiness controller accepted a queued refresh");
       });
     }
 
-    private static void OperatorSettingsOwnBindingsAndAudioSelection() {
+    [TestMethod]
+    public void OperatorSettingsOwnBindingsAndAudioSelection() {
       RunOnStaThread("OperatorSettingsUiTest", () => {
         var config = new global::Spectrum.SpectrumConfiguration {
           audioDeviceID = "audio-a",
@@ -253,7 +240,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
         controller.Start();
 
-        Assert(audioDevices.Items.Count == 2 &&
+        Assert.IsTrue(audioDevices.Items.Count == 2 &&
             audioDevices.SelectedItem is
               global::Spectrum.Audio.AudioDevice selected &&
             selected.id == "audio-a" &&
@@ -261,14 +248,14 @@ namespace Spectrum.LayerPipeline.Tests {
             readinessRefreshes == 1,
           "settings startup did not preserve and present the configured " +
           "audio device");
-        Assert(midiEnabled.IsChecked == true &&
+        Assert.IsTrue(midiEnabled.IsChecked == true &&
             Math.Abs(brightness.Value - 0.4) < 0.0001 &&
             testPattern.Items.Count ==
               global::Spectrum.DomeTestPatterns.Names.Count,
           "settings startup did not establish configuration bindings");
 
         audioDevices.SelectedIndex = 1;
-        Assert(config.audioDeviceID == "audio-b" &&
+        Assert.IsTrue(config.audioDeviceID == "audio-b" &&
             readinessRefreshes == 2,
           "a genuine audio-device selection was not persisted");
 
@@ -280,20 +267,21 @@ namespace Spectrum.LayerPipeline.Tests {
           },
         };
         controller.RefreshAudioDevices();
-        Assert(audioDevices.SelectedIndex == -1 &&
+        Assert.IsTrue(audioDevices.SelectedIndex == -1 &&
             config.audioDeviceID == "audio-b" &&
             readinessRefreshes == 3,
           "programmatic audio-device population rewrote configuration");
 
         config.midiInputEnabled = false;
         brightness.Value = 0.7;
-        Assert(midiEnabled.IsChecked == false &&
+        Assert.IsTrue(midiEnabled.IsChecked == false &&
             Math.Abs(config.domeBrightness - 0.7) < 0.0001,
           "settings bindings did not synchronize both directions");
       });
     }
 
-    private static void LocalLayerEditsRetainSliderControls() {
+    [TestMethod]
+    public void LocalLayerEditsRetainSliderControls() {
       RunOnStaThread("LocalLayerSliderUiTest", () => {
         DomeLayerSettings layer = Layer("wave", "native-slider");
         var config = ConfigurationWithLayers(layer);
@@ -309,7 +297,7 @@ namespace Spectrum.LayerPipeline.Tests {
         original.Opacity = 0.35;
         DrainDispatcher(Dispatcher.CurrentDispatcher);
 
-        Assert(ReferenceEquals(controller.Rows.Single(), original) &&
+        Assert.IsTrue(ReferenceEquals(controller.Rows.Single(), original) &&
             Math.Abs(config.domeLayerStack[0].Opacity - 0.35) < 0.0001,
           "a local layer slider edit rebuilt its own captured control");
 
@@ -318,13 +306,14 @@ namespace Spectrum.LayerPipeline.Tests {
         config.ReplaceDomeLayerStack(new[] { external });
         DrainDispatcher(Dispatcher.CurrentDispatcher);
 
-        Assert(!ReferenceEquals(controller.Rows.Single(), original) &&
+        Assert.IsTrue(!ReferenceEquals(controller.Rows.Single(), original) &&
             Math.Abs(controller.Rows.Single().Opacity - 0.8) < 0.0001,
           "an external layer-stack edit did not refresh the native controls");
       });
     }
 
-    private static void DomeOpcAddressUiOwnsValidationAndSynchronization() {
+    [TestMethod]
+    public void DomeOpcAddressUiOwnsValidationAndSynchronization() {
       RunOnStaThread("DomeOpcAddressUiTest", () => {
         var config = new global::Spectrum.SpectrumConfiguration {
           domeBeagleboneOPCAddress = "initial-host:7890",
@@ -349,20 +338,20 @@ namespace Spectrum.LayerPipeline.Tests {
             FindResource);
 
         controller.Start();
-        Assert(address.Text == "initial-host:7890" &&
+        Assert.IsTrue(address.Text == "initial-host:7890" &&
             status.Text == "Valid host and port format." &&
             ReferenceEquals(status.Foreground, successBrush),
           "the OPC editor did not initialize from configuration");
 
         config.domeBeagleboneOPCAddress = "external-host:7891";
         DrainDispatcher(dispatcher);
-        Assert(address.Text == "external-host:7891",
+        Assert.IsTrue(address.Text == "external-host:7891",
           "an external OPC address update did not reach the editor");
 
         address.Text = "missing-port";
         controller.ShowValidation();
         controller.CommitAddress();
-        Assert(status.Text.StartsWith("Error: ") &&
+        Assert.IsTrue(status.Text.StartsWith("Error: ") &&
             ReferenceEquals(status.Foreground, errorBrush) &&
             config.domeBeagleboneOPCAddress == "external-host:7891",
           "an invalid OPC address was persisted");
@@ -371,7 +360,7 @@ namespace Spectrum.LayerPipeline.Tests {
         controller.ShowValidation();
         controller.CommitAddress();
         DrainDispatcher(dispatcher);
-        Assert(address.Text == "committed-host:7892:7" &&
+        Assert.IsTrue(address.Text == "committed-host:7892:7" &&
             config.domeBeagleboneOPCAddress == "committed-host:7892:7" &&
             status.Text == "Valid host and port format.",
           "a valid OPC address was not normalized and persisted");
@@ -380,12 +369,13 @@ namespace Spectrum.LayerPipeline.Tests {
         config.domeBeagleboneOPCAddress = "after-disposal:7893";
         DrainDispatcher(dispatcher);
         controller.SynchronizeFromConfiguration();
-        Assert(address.Text == "committed-host:7892:7",
+        Assert.IsTrue(address.Text == "committed-host:7892:7",
           "the disposed OPC editor accepted a queued update");
       });
     }
 
-    private static void MidiDeviceUiOwnsDiscoveryAndAssignment() {
+    [TestMethod]
+    public void MidiDeviceUiOwnsDiscoveryAndAssignment() {
       RunOnStaThread("MidiDeviceUiTest", () => {
         var config = new global::Spectrum.SpectrumConfiguration();
         config.ReplaceMidiPresets(new Dictionary<int,
@@ -424,7 +414,7 @@ namespace Spectrum.LayerPipeline.Tests {
           view.ConfiguredDevices.Items
             .OfType<global::Spectrum.MidiDeviceEntry>()
             .Single(entry => entry.DeviceID == 5);
-        Assert(connected.PresetID == 4 &&
+        Assert.IsTrue(connected.PresetID == 4 &&
             connected.DeviceName == "Device 0" &&
             connected.PresetName == "Warm" &&
             disconnected.DeviceName == "< DISCONNECTED >" &&
@@ -436,7 +426,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
         view.ConfiguredDevices.SelectedItem = connected;
         controller.SelectionChanged();
-        Assert(view.DeleteDevice.IsEnabled &&
+        Assert.IsTrue(view.DeleteDevice.IsEnabled &&
             view.LoadPreset.IsEnabled &&
             controller.TryGetSelectedPreset(out int selectedPresetId) &&
             selectedPresetId == 4,
@@ -444,7 +434,7 @@ namespace Spectrum.LayerPipeline.Tests {
           "stable preset identity");
 
         view.AvailableDevices.SelectedIndex = 0;
-        Assert(controller.EnsureAvailableDeviceSelected() &&
+        Assert.IsTrue(controller.EnsureAvailableDeviceSelected() &&
             controller.TryAssignSelectedDevice(9) &&
             config.midiDevices.TryGetValue(1, out int assignedPresetId) &&
             assignedPresetId == 9 &&
@@ -455,14 +445,14 @@ namespace Spectrum.LayerPipeline.Tests {
           view.ConfiguredDevices.Items
             .OfType<global::Spectrum.MidiDeviceEntry>()
             .Single(entry => entry.DeviceID == 1);
-        Assert(!controller.TryDeleteSelectedDevice(
+        Assert.IsTrue(!controller.TryDeleteSelectedDevice(
               out int cancelledPresetId) &&
             cancelledPresetId == 0 &&
             config.midiDevices.ContainsKey(1),
           "cancelled device removal mutated configuration");
 
         allowDeletion = true;
-        Assert(controller.TryDeleteSelectedDevice(
+        Assert.IsTrue(controller.TryDeleteSelectedDevice(
               out int removedPresetId) &&
             removedPresetId == 9 &&
             !config.midiDevices.ContainsKey(1) &&
@@ -473,8 +463,8 @@ namespace Spectrum.LayerPipeline.Tests {
       });
     }
 
-    private static void
-      MidiPresetUiOwnsSparseIdentityAndEditModes() {
+    [TestMethod]
+    public void MidiPresetUiOwnsSparseIdentityAndEditModes() {
       RunOnStaThread("MidiPresetUiTest", () => {
         var config = new global::Spectrum.SpectrumConfiguration();
         config.ReplaceMidiPresets(new Dictionary<int,
@@ -507,13 +497,13 @@ namespace Spectrum.LayerPipeline.Tests {
         controller.Start();
         setup.Preset.Presets.SelectedIndex = 1;
         controller.SelectionChanged();
-        Assert(setup.Preset.DeletePreset.IsEnabled &&
+        Assert.IsTrue(setup.Preset.DeletePreset.IsEnabled &&
             setup.Binding.Save.IsEnabled,
           "the preset controller did not project sparse preset " +
           "selection into actions and bindings");
 
         controller.BeginRename();
-        Assert(setup.Preset.EditLabel.Content?.ToString() ==
+        Assert.IsTrue(setup.Preset.EditLabel.Content?.ToString() ==
               "Rename preset" &&
             setup.Preset.Name.Text == "Cool" &&
             setup.Preset.Cancel.Visibility == Visibility.Visible,
@@ -521,7 +511,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
         setup.Preset.Name.Text = "Warm";
         controller.Save();
-        Assert(config.midiPresets[9].Name == "Cool" &&
+        Assert.IsTrue(config.midiPresets[9].Name == "Cool" &&
             setup.Preset.EditLabel.Content?.ToString() ==
               "Rename preset" &&
             setup.Preset.Cancel.Visibility == Visibility.Visible,
@@ -530,7 +520,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
         setup.Preset.Name.Text = "Cooler";
         controller.Save();
-        Assert(config.midiPresets[9].Name == "Cooler" &&
+        Assert.IsTrue(config.midiPresets[9].Name == "Cooler" &&
             Equals(setup.Preset.Presets.Items[1], "Cooler") &&
             Equals(setup.Device.NewDevicePreset.Items[1], "Cooler") &&
             setup.Preset.EditLabel.Content?.ToString() ==
@@ -541,7 +531,7 @@ namespace Spectrum.LayerPipeline.Tests {
           "and restore add mode");
 
         controller.CloneSelected();
-        Assert(config.midiPresets.TryGetValue(
+        Assert.IsTrue(config.midiPresets.TryGetValue(
               10, out global::Spectrum.Base.MidiPresetView? clone) &&
             clone.Name == "Cooler (clone)" &&
             setup.Preset.Presets.Items.Count == 3 &&
@@ -553,18 +543,18 @@ namespace Spectrum.LayerPipeline.Tests {
           [1] = 9,
         });
         controller.RefreshDeletionState(9);
-        Assert(!setup.Preset.DeletePreset.IsEnabled,
+        Assert.IsTrue(!setup.Preset.DeletePreset.IsEnabled,
           "an assigned preset remained deletable");
 
         config.ReplaceMidiDevices(new Dictionary<int, int> {
           [0] = 4,
         });
         controller.RefreshDeletionState(9);
-        Assert(setup.Preset.DeletePreset.IsEnabled,
+        Assert.IsTrue(setup.Preset.DeletePreset.IsEnabled,
           "an unassigned preset did not become deletable");
 
         controller.DeleteSelected();
-        Assert(!config.midiPresets.ContainsKey(9) &&
+        Assert.IsTrue(!config.midiPresets.ContainsKey(9) &&
             config.midiPresets.ContainsKey(4) &&
             config.midiPresets.ContainsKey(10) &&
             setup.Preset.Presets.Items.Count == 2 &&
@@ -575,8 +565,8 @@ namespace Spectrum.LayerPipeline.Tests {
       });
     }
 
-    private static void
-      MidiSetupUiOwnsDevicePresetAndBindingPresentation() {
+    [TestMethod]
+    public void MidiSetupUiOwnsDevicePresetAndBindingPresentation() {
       RunOnStaThread("MidiSetupUiTest", () => {
         var config = new global::Spectrum.SpectrumConfiguration();
         config.ReplaceMidiPresets(new Dictionary<int,
@@ -607,7 +597,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
         controller.Start();
 
-        Assert(view.Device.ConfiguredDevices.Items.Count == 1 &&
+        Assert.IsTrue(view.Device.ConfiguredDevices.Items.Count == 1 &&
             view.Device.ConfiguredDevices.Items[0] is
               global::Spectrum.MidiDeviceEntry configured &&
             configured.DeviceID == 0 &&
@@ -624,7 +614,7 @@ namespace Spectrum.LayerPipeline.Tests {
         view.Device.NewDevicePreset.SelectedIndex = 1;
         view.Device.AvailableDevices.SelectedIndex = 0;
         controller.AddDevice();
-        Assert(config.midiDevices.TryGetValue(1, out int presetId) &&
+        Assert.IsTrue(config.midiDevices.TryGetValue(1, out int presetId) &&
             presetId == 9 &&
             view.Device.ConfiguredDevices.Items.Count == 2 &&
             view.Device.AvailableDevices.Items.Count == 0,
@@ -636,12 +626,12 @@ namespace Spectrum.LayerPipeline.Tests {
             .OfType<global::Spectrum.MidiDeviceEntry>()
             .Single(entry => entry.DeviceID == 1);
         controller.LoadSelectedDevicePreset();
-        Assert(view.Preset.Presets.SelectedIndex == 1 &&
+        Assert.IsTrue(view.Preset.Presets.SelectedIndex == 1 &&
             Equals(view.Preset.Presets.SelectedItem, "Cool"),
           "configured-device navigation lost the assigned sparse " +
           "preset identity");
         controller.PresetSelectionChanged();
-        Assert(!view.Preset.DeletePreset.IsEnabled &&
+        Assert.IsTrue(!view.Preset.DeletePreset.IsEnabled &&
             view.Binding.Save.IsEnabled,
           "the MIDI controller did not apply assigned-preset action state");
 
@@ -650,7 +640,7 @@ namespace Spectrum.LayerPipeline.Tests {
         view.Binding.TapTempoButtonType.SelectedIndex = 2;
         view.Binding.TapTempoButtonIndex.Text = "60";
         controller.SaveBinding();
-        Assert(view.Binding.ValidationMessage.Visibility ==
+        Assert.IsTrue(view.Binding.ValidationMessage.Visibility ==
             Visibility.Visible &&
             view.Binding.ValidationMessage.Text.Contains(
               "name", StringComparison.OrdinalIgnoreCase) &&
@@ -659,7 +649,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
         view.Binding.Name.Text = "Beat tap";
         controller.SaveBinding();
-        Assert(config.midiPresets[9].Bindings.Length == 1 &&
+        Assert.IsTrue(config.midiPresets[9].Bindings.Length == 1 &&
             config.midiPresets[9].Bindings[0] is
               global::Spectrum.Base.TapTempoMidiBindingView binding &&
             binding.BindingName == "Beat tap" &&
@@ -677,7 +667,7 @@ namespace Spectrum.LayerPipeline.Tests {
         view.Binding.Bindings.SelectedIndex = 0;
         controller.BindingSelectionChanged();
         controller.BeginBindingEdit();
-        Assert(view.Binding.EditLabel.Content?.ToString() ==
+        Assert.IsTrue(view.Binding.EditLabel.Content?.ToString() ==
               "Edit binding" &&
             view.Binding.Name.Text == "Beat tap" &&
             view.Binding.Type.SelectedIndex == 0 &&
@@ -688,7 +678,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
         view.Binding.Name.Text = "Renamed beat tap";
         controller.SaveBinding();
-        Assert(config.midiPresets[9].Bindings.Length == 1 &&
+        Assert.IsTrue(config.midiPresets[9].Bindings.Length == 1 &&
             config.midiPresets[9].Bindings[0].BindingName ==
               "Renamed beat tap" &&
             config.midiPresets[4].Bindings.Length == 0 &&
@@ -699,7 +689,7 @@ namespace Spectrum.LayerPipeline.Tests {
 
         view.Binding.Bindings.SelectedIndex = 0;
         controller.DeleteSelectedBinding();
-        Assert(config.midiPresets[9].Bindings.Length == 0 &&
+        Assert.IsTrue(config.midiPresets[9].Bindings.Length == 0 &&
             config.midiPresets[4].Bindings.Length == 0 &&
             view.Binding.Bindings.Items.Count == 0,
           "binding deletion did not persist through the isolated " +
@@ -794,7 +784,7 @@ namespace Spectrum.LayerPipeline.Tests {
       };
       thread.SetApartmentState(ApartmentState.STA);
       thread.Start();
-      Assert(thread.Join(TimeSpan.FromSeconds(5)),
+      Assert.IsTrue(thread.Join(TimeSpan.FromSeconds(5)),
         name + " did not complete");
       if (failure != null) {
         throw new InvalidOperationException(name + " contract failed", failure);

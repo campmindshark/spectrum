@@ -1,36 +1,33 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Immutable;
 using System.Numerics;
 using Spectrum.Visualizers;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class PointCloudTests {
-    public static void Register(Action<string, Action> run) {
-      run(nameof(PointCloudUsesVisibleHemisphere),
-        PointCloudUsesVisibleHemisphere);
-      run(nameof(PointCloudSpatialIndexMatchesBruteForce),
-        PointCloudSpatialIndexMatchesBruteForce);
-    }
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class PointCloudTests {
 
-    private static void PointCloudUsesVisibleHemisphere() {
+    [TestMethod]
+    public void PointCloudUsesVisibleHemisphere() {
       const int count = 320;
       double previousZ = double.PositiveInfinity;
       for (int i = 0; i < count; i++) {
         Vector3 point =
           LEDDomePointCloudVisualizer.FibonacciHemispherePoint(i, count);
-        Assert(point.Z > 0 && point.Z <= 1,
+        Assert.IsTrue(point.Z > 0 && point.Z <= 1,
           "Point Cloud seeded a home outside the visible hemisphere");
-        Assert(Math.Abs(point.Length() - 1) < .000001,
+        Assert.IsTrue(Math.Abs(point.Length() - 1) < .000001,
           "Point Cloud seeded a non-unit home");
         if (i > 0) {
-          Assert(Math.Abs((previousZ - point.Z) - 1d / count) < .000001,
+          Assert.IsTrue(Math.Abs((previousZ - point.Z) - 1d / count) < .000001,
             "Point Cloud hemisphere bands are not equal-area");
         }
         previousZ = point.Z;
       }
-      Assert(
+      Assert.IsTrue(
         LEDDomePointCloudVisualizer.FibonacciHemispherePoint(0, count).Z > .99f &&
         LEDDomePointCloudVisualizer.FibonacciHemispherePoint(
           count - 1, count).Z < .01f,
@@ -39,10 +36,10 @@ namespace Spectrum.LayerPipeline.Tests {
       Vector3 lowerAxis = Vector3.Normalize(new Vector3(1, 2, -3));
       Vector3 folded =
         LEDDomePointCloudVisualizer.FoldAxisToUpperHemisphere(lowerAxis);
-      Assert(folded.Z > 0 && Vector3.Distance(folded, -lowerAxis) < .000001,
+      Assert.IsTrue(folded.Z > 0 && Vector3.Distance(folded, -lowerAxis) < .000001,
         "Point Cloud did not fold a lower-hemisphere aim axis");
       Vector3 upperAxis = Vector3.Normalize(new Vector3(-2, 1, 3));
-      Assert(Vector3.Distance(
+      Assert.IsTrue(Vector3.Distance(
           LEDDomePointCloudVisualizer.FoldAxisToUpperHemisphere(upperAxis),
           upperAxis) < .000001,
         "Point Cloud changed an already-visible aim axis");
@@ -50,13 +47,14 @@ namespace Spectrum.LayerPipeline.Tests {
       Vector3 crossing = Vector3.Normalize(new Vector3(.4f, .2f, -.1f));
       Vector3 reflected =
         LEDDomePointCloudVisualizer.ReflectAcrossRim(crossing);
-      Assert(reflected.Z > 0 && Math.Abs(reflected.Length() - 1) < .000001,
+      Assert.IsTrue(reflected.Z > 0 && Math.Abs(reflected.Length() - 1) < .000001,
         "Point Cloud rim reflection left the visible hemisphere");
-      Assert(reflected.X == crossing.X && reflected.Y == crossing.Y,
+      Assert.IsTrue(reflected.X == crossing.X && reflected.Y == crossing.Y,
         "Point Cloud rim reflection jumped across the dome");
     }
 
-    private static void PointCloudSpatialIndexMatchesBruteForce() {
+    [TestMethod]
+    public void PointCloudSpatialIndexMatchesBruteForce() {
       const int pixelCount = 1024;
       var positionBuilder = ImmutableArray.CreateBuilder<Vector3>(pixelCount);
       for (int pixel = 0; pixel < pixelCount; pixel++) {
@@ -92,11 +90,11 @@ namespace Spectrum.LayerPipeline.Tests {
           positions, spots, size, expectedValues, expectedHues);
 
         for (int pixel = 0; pixel < pixelCount; pixel++) {
-          Assert(actualValues[pixel] == expectedValues[pixel],
+          Assert.IsTrue(actualValues[pixel] == expectedValues[pixel],
             "Point Cloud spatial value differed from brute force at size " +
             size + ", pixel " + pixel);
           if (expectedValues[pixel] > 0) {
-            Assert(actualHues[pixel] == expectedHues[pixel],
+            Assert.IsTrue(actualHues[pixel] == expectedHues[pixel],
               "Point Cloud spatial winner differed from brute force at size " +
               size + ", pixel " + pixel);
           }
@@ -115,7 +113,7 @@ namespace Spectrum.LayerPipeline.Tests {
         }
         long allocated =
           GC.GetAllocatedBytesForCurrentThread() - before;
-        Assert(allocated == 0,
+        Assert.IsTrue(allocated == 0,
           "Point Cloud spatial render allocated " + allocated +
           " bytes at size " + size);
       }

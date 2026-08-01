@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -10,22 +11,14 @@ using Spectrum.Base;
 using Spectrum.LEDs;
 using Spectrum.Visualizers;
 using static Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures;
-using static Spectrum.LayerPipeline.Tests.TestAssertions;
 
 namespace Spectrum.LayerPipeline.Tests {
 
-  public static class LayerRuntimeTests {
-    public static void Register(Action<string, Action> run) {
-      run(nameof(RuntimeUpdatesInPlace), RuntimeUpdatesInPlace);
-      run(nameof(RuntimeOptionsSwap), RuntimeOptionsSwap);
-      run(nameof(RendererStoreLifecycle), RendererStoreLifecycle);
-      run(nameof(RendererStoreRollsBackGeneration), RendererStoreRollsBackGeneration);
-      run(nameof(TypedOptionsPreserveNumericCasts), TypedOptionsPreserveNumericCasts);
-      run(nameof(IdleOrientationSuppliesBlendAngle), IdleOrientationSuppliesBlendAngle);
-      run(nameof(EarthTextureFollowsSpotlight), EarthTextureFollowsSpotlight);
-      run(nameof(PlanFreezesRendererInputs), PlanFreezesRendererInputs);
-    }
-    private static void RuntimeUpdatesInPlace() {
+  [TestClass]
+  [DoNotParallelize]
+  public sealed class LayerRuntimeTests {
+    [TestMethod]
+    public void RuntimeUpdatesInPlace() {
       LayerSnapshot first = SnapshotWithParameter("runtime-1", "speed", 1);
       LayerRendererRuntime? captured = null;
       var topology = OnePixelTopology();
@@ -55,43 +48,45 @@ namespace Spectrum.LayerPipeline.Tests {
         compiler, store,
         new LayerStackSnapshot(ImmutableArray.Create(second)));
 
-      Assert(ReferenceEquals(
+      Assert.IsTrue(ReferenceEquals(
         initial.Layers[0].Renderer, updated.Layers[0].Renderer),
         "renderer instance was recreated");
-      Assert(captured != null &&
+      Assert.IsTrue(captured != null &&
           captured.GetOptions<ScalarOptions>().Value == 2,
         "renderer runtime kept stale parameters");
     }
 
-    private static void RuntimeOptionsSwap() {
+    [TestMethod]
+    public void RuntimeOptionsSwap() {
       DomeLayerSettings first = Layer("wave", "runtime-wave");
       first.RendererParams = new Dictionary<string, double> { ["speed"] = .25 };
       (LayerStackSnapshot? initial, string? initialError) =
         new LayerStackService(DomeLayerCatalog.Metadata).CreateSnapshot(new[] { first });
-      Assert(initial != null && initialError == null, initialError);
+      Assert.IsTrue(initial != null && initialError == null, initialError);
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("wave");
-      Assert(definition != null, "Wave is missing from the layer catalog");
+      Assert.IsTrue(definition != null, "Wave is missing from the layer catalog");
       var runtime = new LayerRendererRuntime(
         initial.Layers[0], definition.CompileOptions);
       WaveLayerOptions original = runtime.GetOptions<WaveLayerOptions>();
-      Assert(original.Speed == .25, "initial typed option missing");
+      Assert.IsTrue(original.Speed == .25, "initial typed option missing");
 
       DomeLayerSettings second = Layer("wave", "runtime-wave");
       second.RendererParams = new Dictionary<string, double> { ["speed"] = 1.25 };
       (LayerStackSnapshot? changed, string? changedError) =
         new LayerStackService(DomeLayerCatalog.Metadata).CreateSnapshot(new[] { second });
-      Assert(changed != null && changedError == null, changedError);
+      Assert.IsTrue(changed != null && changedError == null, changedError);
       runtime.Publish(changed.Layers[0]);
       WaveLayerOptions replacement = runtime.GetOptions<WaveLayerOptions>();
-      Assert(replacement.Speed == 1.25,
+      Assert.IsTrue(replacement.Speed == 1.25,
         "replacement typed option was not published");
-      Assert(original.Speed == .25,
+      Assert.IsTrue(original.Speed == .25,
         "the original typed options were mutated");
-      Assert(initial.Layers[0].RendererParameters["speed"].Value == .25,
+      Assert.IsTrue(initial.Layers[0].RendererParameters["speed"].Value == .25,
         "the original snapshot was mutated");
     }
 
-    private static void RendererStoreLifecycle() {
+    [TestMethod]
+    public void RendererStoreLifecycle() {
       var created = new List<DisposableFakeRenderer>();
       LayerDefinition Definition(string id) => new(
         id, id,
@@ -110,29 +105,30 @@ namespace Spectrum.LayerPipeline.Tests {
         SnapshotForRenderer("lifecycle", "first"));
       LayerRendererBinding retained = store.Resolve(
         SnapshotForRenderer("lifecycle", "first"));
-      Assert(initial.Created && !retained.Created,
+      Assert.IsTrue(initial.Created && !retained.Created,
         "matching instance was not retained");
-      Assert(ReferenceEquals(initial.Renderer, retained.Renderer),
+      Assert.IsTrue(ReferenceEquals(initial.Renderer, retained.Renderer),
         "matching instance changed renderer");
 
       LayerRendererBinding replaced = store.Resolve(
         SnapshotForRenderer("lifecycle", "second"));
-      Assert(replaced.Created, "renderer-kind change was not created");
-      Assert(ReferenceEquals(initial.Renderer, replaced.ReplacedRenderer),
+      Assert.IsTrue(replaced.Created, "renderer-kind change was not created");
+      Assert.IsTrue(ReferenceEquals(initial.Renderer, replaced.ReplacedRenderer),
         "replaced renderer was not returned to the owner");
       ((IDisposable)replaced.ReplacedRenderer).Dispose();
-      Assert(created[0].Disposed, "replaced renderer was not disposable");
+      Assert.IsTrue(created[0].Disposed, "replaced renderer was not disposable");
 
       IReadOnlyList<ILayerRenderer> evicted = store.Retain(
         new HashSet<LayerInstanceId>());
-      Assert(evicted.Count == 1 &&
+      Assert.IsTrue(evicted.Count == 1 &&
         ReferenceEquals(evicted[0], replaced.Renderer),
         "unretained renderer was not evicted");
       ((IDisposable)evicted[0]).Dispose();
-      Assert(created[1].Disposed, "evicted renderer was not disposable");
+      Assert.IsTrue(created[1].Disposed, "evicted renderer was not disposable");
     }
 
-    private static void RendererStoreRollsBackGeneration() {
+    [TestMethod]
+    public void RendererStoreRollsBackGeneration() {
       var created = new List<DisposableFakeRenderer>();
       LayerRendererRuntime? retainedRuntime = null;
       var catalog = new LayerCatalog(new[] {
@@ -160,7 +156,7 @@ namespace Spectrum.LayerPipeline.Tests {
         initial.Commit();
       }
       ILayerRenderer? liveRenderer = store.Get(initialLayer);
-      Assert(retainedRuntime != null &&
+      Assert.IsTrue(retainedRuntime != null &&
           retainedRuntime.GetOptions<ScalarOptions>().Value == 1,
         "initial renderer options were not committed");
 
@@ -171,38 +167,39 @@ namespace Spectrum.LayerPipeline.Tests {
       using (LayerRendererStore.Transaction candidate = store.Prepare(
           new LayerStackSnapshot(
             ImmutableArray.Create(changedLayer, newLayer)))) {
-        Assert(retainedRuntime.GetOptions<ScalarOptions>().Value == 1,
+        Assert.IsTrue(retainedRuntime.GetOptions<ScalarOptions>().Value == 1,
           "candidate options leaked into the live runtime before commit");
-        Assert(candidate.Bindings.Count == 2 &&
+        Assert.IsTrue(candidate.Bindings.Count == 2 &&
             candidate.Bindings[1].Created,
           "candidate generation did not construct its new renderer");
         // Simulate a later operation-compiler failure by leaving the complete
         // renderer candidate uncommitted.
       }
 
-      Assert(ReferenceEquals(store.Get(initialLayer), liveRenderer) &&
+      Assert.IsTrue(ReferenceEquals(store.Get(initialLayer), liveRenderer) &&
           retainedRuntime.GetOptions<ScalarOptions>().Value == 1,
         "rolling back a candidate changed the live renderer generation");
-      Assert(created.Count == 2 && created[1].Disposed,
+      Assert.IsTrue(created.Count == 2 && created[1].Disposed,
         "rolling back did not dispose the unpublished renderer");
     }
 
-    private static void TypedOptionsPreserveNumericCasts() {
+    [TestMethod]
+    public void TypedOptionsPreserveNumericCasts() {
       DomeLayerSettings volume = Layer("volume", "typed-volume");
       volume.RendererParams = new Dictionary<string, double> {
         ["animationSize"] = 3.75,
       };
-      Assert(BuiltInOptions<VolumeLayerOptions>(volume).AnimationSize == 3,
+      Assert.IsTrue(BuiltInOptions<VolumeLayerOptions>(volume).AnimationSize == 3,
         "volume animation size no longer truncates");
 
       DomeLayerSettings points = Layer("point-cloud", "typed-points");
       points.RendererParams = new Dictionary<string, double> { ["count"] = 47.75 };
-      Assert(BuiltInOptions<PointCloudLayerOptions>(points).Count == 47,
+      Assert.IsTrue(BuiltInOptions<PointCloudLayerOptions>(points).Count == 47,
         "point count no longer truncates");
 
       DomeLayerSettings noise = Layer("noise-cloud", "typed-noise");
       noise.RendererParams = new Dictionary<string, double> { ["octaves"] = 2.75 };
-      Assert(BuiltInOptions<NoiseCloudLayerOptions>(noise).Octaves == 2,
+      Assert.IsTrue(BuiltInOptions<NoiseCloudLayerOptions>(noise).Octaves == 2,
         "noise octave count no longer truncates");
 
       DomeLayerSettings sparkler = Layer("sparkler", "typed-sparkler");
@@ -220,11 +217,12 @@ namespace Spectrum.LayerPipeline.Tests {
       };
       VortexLayerOptions vortexOptions =
         BuiltInOptions<VortexLayerOptions>(vortex);
-      Assert(vortexOptions.AudioBrightness && vortexOptions.BeatSpeed,
+      Assert.IsTrue(vortexOptions.AudioBrightness && vortexOptions.BeatSpeed,
         "vortex audio/beat hooks did not compile into renderer options");
     }
 
-    private static void IdleOrientationSuppliesBlendAngle() {
+    [TestMethod]
+    public void IdleOrientationSuppliesBlendAngle() {
       var config = new global::Spectrum.SpectrumConfiguration();
       var input = new OrientationInput(config, new InlineGateway(), false);
       var center = new OrientationCenter(config, input);
@@ -232,9 +230,9 @@ namespace Spectrum.LayerPipeline.Tests {
       input.BeginOperatorFrame();
       center.Update(1);
 
-      Assert(center.Idle,
+      Assert.IsTrue(center.Idle,
         "an orientation center with no connected wands was not idle");
-      Assert(center.TryGetAngle(out double angle),
+      Assert.IsTrue(center.TryGetAngle(out double angle),
         "the idle orientation did not supply an angle to following blends");
 
       Vector3 idlePoint = Vector3.Transform(
@@ -250,9 +248,10 @@ namespace Spectrum.LayerPipeline.Tests {
         "Follow Orientation did not override spin with the idle angle");
     }
 
-    private static void EarthTextureFollowsSpotlight() {
+    [TestMethod]
+    public void EarthTextureFollowsSpotlight() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("earth");
-      Assert(definition != null && definition.DisplayName == "Earth",
+      Assert.IsTrue(definition != null && definition.DisplayName == "Earth",
         "Earth was not registered");
 
       DomeLayerSettings layer = Layer("earth", "typed-earth");
@@ -291,13 +290,13 @@ namespace Spectrum.LayerPipeline.Tests {
         OrientationCenter.Spot, Quaternion.Conjugate(orientation));
       LEDDomeEarthVisualizer.TextureCoordinates(
         aimedNorth, orientation, 0, out _, out double aimedV);
-      Assert(aimedV < 0.001,
+      Assert.IsTrue(aimedV < 0.001,
         "the orientation aim did not move the globe's north pole");
 
       using Stream? texture = typeof(LEDDomeEarthVisualizer).Assembly
         .GetManifestResourceStream(
           LEDDomeEarthVisualizer.TextureResourceName);
-      Assert(texture != null && texture.Length > 0,
+      Assert.IsTrue(texture != null && texture.Length > 0,
         "the Earth texture was not embedded in the application");
 
       var config = ConfigurationWithLayers(layer);
@@ -310,15 +309,16 @@ namespace Spectrum.LayerPipeline.Tests {
           break;
         }
       }
-      Assert(earth != null && earth.GetInputs().Length == 1 &&
+      Assert.IsTrue(earth != null && earth.GetInputs().Length == 1 &&
         ReferenceEquals(earth.GetInputs()[0], runtime.OrientationInput),
         "Earth is not bound exclusively to OrientationInput");
       ((Visualizer)earth).Visualize();
-      Assert(earth.LayerBuffer.pixels[0].a == 1,
+      Assert.IsTrue(earth.LayerBuffer.pixels[0].a == 1,
         "Earth did not paint its upper-hemisphere texture");
     }
 
-    private static void PlanFreezesRendererInputs() {
+    [TestMethod]
+    public void PlanFreezesRendererInputs() {
       LayerSnapshot snapshot = SnapshotWithParameter("input-1", "speed", 1);
       var first = new FakeInput();
       var second = new FakeInput();
@@ -344,9 +344,9 @@ namespace Spectrum.LayerPipeline.Tests {
         new LayerStackSnapshot(ImmutableArray.Create(snapshot)));
 
       declared[0] = null!;
-      Assert(plan.Layers[0].RequiredInputs.Length == 2,
+      Assert.IsTrue(plan.Layers[0].RequiredInputs.Length == 2,
         "duplicate input requirements survived compilation");
-      Assert(ReferenceEquals(plan.Layers[0].RequiredInputs[0], first) &&
+      Assert.IsTrue(ReferenceEquals(plan.Layers[0].RequiredInputs[0], first) &&
         ReferenceEquals(plan.Layers[0].RequiredInputs[1], second),
         "the plan retained the renderer's mutable input array");
     }
