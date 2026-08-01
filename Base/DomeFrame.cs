@@ -144,13 +144,22 @@ namespace Spectrum.Base {
     }
 
     public void HueRotate(double rate) {
-      // Black pixels have saturation 0, so the original skipped the write for
-      // them anyway (the "if (s != 0)" branch below). Bailing early just avoids
-      // the RGB->HSV round-trip for the (common, after a fade) all-black case.
-      if (colorDirty) {
-        updateColor();
+      rate %= 1;
+      if (rate == 0) {
+        return;
       }
-      if (_color == 0) {
+      this.HueRotateNormalized(rate);
+    }
+
+    // rate is reduced to one signed turn by DomeFrame before entering its
+    // pixel loop. Keeping that modulo out of the loop and deferring the packed
+    // RGB write removes the two largest avoidable costs from global hue
+    // rotation; compositing already reads the double-precision channels.
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+    internal void HueRotateNormalized(double rate) {
+      // Match the packed-black guard without forcing a pack. ClampByte truncates
+      // every channel below 1 to zero, including negative fade accumulators.
+      if (_r < 1 && _g < 1 && _b < 1) {
         return;
       }
 
@@ -184,8 +193,8 @@ namespace Spectrum.Base {
 
           h /= 6;
         }
-        double shifted_hue = (h + rate) % 1;
-        if (shifted_hue > 1) {
+        double shifted_hue = h + rate;
+        if (shifted_hue >= 1) {
           shifted_hue -= 1;
         }
         if (shifted_hue < 0) {
@@ -209,7 +218,7 @@ namespace Spectrum.Base {
         _r = r * 255;
         _g = g * 255;
         _b = b * 255;
-        updateColor();
+        colorDirty = true;
       }
     }
 
@@ -684,8 +693,12 @@ namespace Spectrum.Base {
     }
 
     public void HueRotate(double rate) {
+      rate %= 1;
+      if (rate == 0) {
+        return;
+      }
       for (int i = 0; i < pixels.Length; i++) {
-        pixels[i].HueRotate(rate);
+        pixels[i].HueRotateNormalized(rate);
       }
     }
 
@@ -693,10 +706,10 @@ namespace Spectrum.Base {
     // plan. Pixel.Clear deliberately preserves a renderer's published hue, so
     // the compositor resets that auxiliary channel explicitly as well.
     public void ResetComposite() {
-      for (int i = 0; i < pixels.Length; i++) {
-        pixels[i].Clear();
-        pixels[i].hue = 0;
-      }
+      // The required state is exactly the all-zero/default struct. Let the
+      // runtime bulk-clear the contiguous frame instead of invoking two field
+      // mutations for every pixel before the first blend pass.
+      Array.Clear(this.pixels);
     }
 
     // ---- Spatial-sampling infrastructure for the prism blends -------------

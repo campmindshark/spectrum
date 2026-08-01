@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace Spectrum.Visualizers {
 
@@ -65,6 +66,7 @@ namespace Spectrum.Visualizers {
     private int[] tankCell = Array.Empty<int>();
     private double[] tankWeightX = Array.Empty<double>();
     private double[] tankWeightY = Array.Empty<double>();
+    private readonly RipplePowerLookup powerLookup = new RipplePowerLookup();
     private int lastClearCounter = -1;
 
     private struct TankObjectState {
@@ -132,31 +134,76 @@ namespace Spectrum.Visualizers {
       double tr = (tint >> 16) & 0xFF;
       double tg = (tint >> 8) & 0xFF;
       double tb = tint & 0xFF;
-
-      for (int i = 0; i < this.buffer.pixels.Length; i++) {
-        ref var pixel = ref this.buffer.pixels[i];
-        double lap = this.TankSampleAt(this.tankLap, i);
-        double v = TankBright / (Math.Abs(1 - TankFocus * lap) + TankEps);
-        if (v > 1) {
-          v = 1;
-        }
-        double lum = Math.Pow(v, options.Sharpness) * options.Brightness;
-        lum = Math.Clamp(lum, 0, 1);
-        int r = (int)(tr * lum);
-        int g = (int)(tg * lum);
-        int b = (int)(tb * lum);
-        pixel.color = (r << 16) | (g << 8) | b;
-
-        if (refracting) {
-          double gx = this.TankSampleAt(this.tankGradX, i);
-          double gy = this.TankSampleAt(this.tankGradY, i);
-          double angle = Math.Atan2(gy, gx);
-          double huePart = angle / (2 * Math.PI);
-          pixel.hue = huePart - Math.Floor(huePart);
-          double mag = Math.Sqrt(gx * gx + gy * gy) * TankGradGain;
-          pixel.SetAlpha(mag > 1 ? 1 : mag);
-        }
+      this.powerLookup.Prepare(options.Sharpness);
+      if (refracting) {
+        this.RenderRefracting(
+          tr, tg, tb, options.Brightness);
+      } else {
+        this.RenderColorOnly(
+          tr, tg, tb, options.Brightness);
       }
+    }
+
+    private void RenderColorOnly(
+      double tr, double tg, double tb, double brightness
+    ) {
+      for (int i = 0; i < this.buffer.pixels.Length; i++) {
+        double lap = this.TankSampleAt(this.tankLap, i);
+        double lum = this.LuminanceFromLaplacian(lap, brightness);
+        this.buffer.pixels[i].color =
+          ((int)(tr * lum) << 16) |
+          ((int)(tg * lum) << 8) |
+          (int)(tb * lum);
+      }
+    }
+
+    private void RenderRefracting(
+      double tr, double tg, double tb, double brightness
+    ) {
+      const double inverseTwoPi = 1 / (2 * Math.PI);
+      const double saturatedGradientSquared =
+        1 / (TankGradGain * TankGradGain);
+      for (int i = 0; i < this.buffer.pixels.Length; i++) {
+        int cell = this.tankCell[i];
+        double wx = this.tankWeightX[i];
+        double wy = this.tankWeightY[i];
+        double lap = BilinearAt(this.tankLap, cell, wx, wy);
+        double gx = BilinearAt(this.tankGradX, cell, wx, wy);
+        double gy = BilinearAt(this.tankGradY, cell, wx, wy);
+
+        double lum = this.LuminanceFromLaplacian(lap, brightness);
+        ref LEDDomeOutputPixel pixel = ref this.buffer.pixels[i];
+        pixel.color =
+          ((int)(tr * lum) << 16) |
+          ((int)(tg * lum) << 8) |
+          (int)(tb * lum);
+
+        double magnitudeSquared = gx * gx + gy * gy;
+        if (magnitudeSquared == 0) {
+          pixel.hue = 0;
+          pixel.SetAlpha(0);
+          continue;
+        }
+        double angle = Math.Atan2(gy, gx);
+        double hue = angle * inverseTwoPi;
+        pixel.hue = hue < 0 ? hue + 1 : hue;
+        pixel.SetAlpha(magnitudeSquared >= saturatedGradientSquared
+          ? 1
+          : Math.Sqrt(magnitudeSquared) * TankGradGain);
+      }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private double LuminanceFromLaplacian(
+      double laplacian, double brightness
+    ) {
+      double value = TankBright /
+        (Math.Abs(1 - TankFocus * laplacian) + TankEps);
+      if (value > 1) {
+        value = 1;
+      }
+      return Math.Clamp(
+        this.powerLookup.Sample(value) * brightness, 0, 1);
     }
 
     private void TankAdvance(
@@ -440,13 +487,62 @@ namespace Spectrum.Visualizers {
       }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private double TankSampleAt(double[] field, int i) {
       int c = this.tankCell[i];
       double wx = this.tankWeightX[i], wy = this.tankWeightY[i];
+      return BilinearAt(field, c, wx, wy);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static double BilinearAt(
+      double[] field, int c, double wx, double wy
+    ) {
       double top = field[c] + (field[c + 1] - field[c]) * wx;
       double bottom = field[c + TankSize]
         + (field[c + TankSize + 1] - field[c + TankSize]) * wx;
       return top + (bottom - top) * wy;
+    }
+
+    // Sharpness changes only when its operator parameter changes. Interpolate a
+    // dense power curve instead of crossing the managed/native Math.Pow boundary
+    // for every dome pixel. The maximum interpolation error over the supported
+    // 1..12 range is well below one packed RGB step.
+    internal sealed class RipplePowerLookup {
+      private const int Resolution = 4096;
+      private readonly double[] values = new double[Resolution + 1];
+      private double sharpness = double.NaN;
+
+      internal void Prepare(double nextSharpness) {
+        if (nextSharpness == this.sharpness) {
+          return;
+        }
+        this.sharpness = nextSharpness;
+        if (nextSharpness == 1) {
+          return;
+        }
+        for (int i = 0; i <= Resolution; i++) {
+          this.values[i] = Math.Pow((double)i / Resolution, nextSharpness);
+        }
+      }
+
+      [MethodImpl(MethodImplOptions.AggressiveInlining)]
+      internal double Sample(double value) {
+        if (this.sharpness == 1) {
+          return value;
+        }
+        if (value <= 0) {
+          return 0;
+        }
+        if (value >= 1) {
+          return 1;
+        }
+        double position = value * Resolution;
+        int index = (int)position;
+        double fraction = position - index;
+        return this.values[index] +
+          (this.values[index + 1] - this.values[index]) * fraction;
+      }
     }
   }
 }

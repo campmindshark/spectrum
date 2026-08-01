@@ -1,6 +1,7 @@
 using Spectrum.Base;
 using Spectrum.LEDs;
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace Spectrum.Visualizers {
@@ -28,7 +29,10 @@ namespace Spectrum.Visualizers {
     private readonly double[] angularSpeedFactors;
     private readonly double[] spiralLogRadii;
     private readonly double[] coreMasks;
+    private readonly PeriodicNoiseLattice coarseNoise = new();
+    private readonly PeriodicNoiseLattice fineNoise = new();
     private readonly FrameClock frameClock = new FrameClock();
+    private readonly double maximumRadius;
 
     private double time;
     private double lastBeatProgress = -1;
@@ -62,14 +66,17 @@ namespace Spectrum.Visualizers {
       this.angularSpeedFactors = new double[count];
       this.spiralLogRadii = new double[count];
       this.coreMasks = new double[count];
+      double maxRadius = 0;
       for (int i = 0; i < count; i++) {
         DomeTopologyPixel point = this.buffer.Topology.PixelAt(i);
         double x = point.X * 2 - 1;
         double y = 1 - point.Y * 2;
         this.radii[i] = Math.Sqrt(x * x + y * y);
+        maxRadius = Math.Max(maxRadius, this.radii[i]);
         double turns = Math.Atan2(y, x) / (2 * Math.PI);
         this.angleTurns[i] = turns < 0 ? turns + 1 : turns;
       }
+      this.maximumRadius = maxRadius;
     }
 
     public int Priority => 2;
@@ -138,6 +145,21 @@ namespace Spectrum.Visualizers {
       // approximately isotropic near the rim.
       int angularPeriod = Math.Max(4, (int)Math.Round(2 * Math.PI * scale));
       double radialDrift = this.time * inflow * scale * 0.18;
+      int fineAngularPeriod = angularPeriod * 2;
+      double fineRadialScale = scale * 2;
+      double fineRadialOffset = radialDrift * 2
+        - this.time * inflow * scale * 0.11;
+      this.coarseNoise.Prepare(
+        angularPeriod,
+        radialDrift,
+        this.maximumRadius * scale + radialDrift);
+      this.fineNoise.Prepare(
+        fineAngularPeriod,
+        fineRadialOffset,
+        this.maximumRadius * fineRadialScale + fineRadialOffset);
+      double fineWeight = 0.35 * turbulence;
+      double coarseWeight = 1 - fineWeight;
+      double grainThreshold = 0.92 - density * 0.72;
       this.EnsureCoreGeometry(coreSize);
 
       for (int i = 0; i < this.buffer.pixels.Length; i++) {
@@ -151,14 +173,12 @@ namespace Spectrum.Visualizers {
         double angular = advectedTurns * angularPeriod;
         double radial = radius * scale + radialDrift;
 
-        double coarse = PeriodicValueNoise(angular, radial, angularPeriod);
-        double fine = PeriodicValueNoise(
+        double coarse = this.coarseNoise.Sample(angular, radial);
+        double fine = this.fineNoise.Sample(
           angular * 2 + 17.3,
-          radial * 2 - this.time * inflow * scale * 0.11,
-          angularPeriod * 2
+          radius * fineRadialScale + fineRadialOffset
         );
-        double noise = coarse * (1 - 0.35 * turbulence)
-          + fine * (0.35 * turbulence);
+        double noise = coarse * coarseWeight + fine * fineWeight;
 
         // Smooth dark eye. The transition remains stable at the minimum core
         // size and avoids a hard circular cutout on the low-resolution dome.
@@ -169,8 +189,8 @@ namespace Spectrum.Visualizers {
           // Thresholded fine structure: apparent particle count changes with
           // density, but evaluation cost does not. Only current bright grains
           // are stamped; Fade above turns their previous positions into trails.
-          double threshold = 0.92 - density * 0.72;
-          value = SmoothStep(threshold, threshold + 0.12, noise) * coreMask;
+          value = SmoothStep(
+            grainThreshold, grainThreshold + 0.12, noise) * coreMask;
           if (value <= 0.02) {
             continue;
           }
@@ -275,10 +295,10 @@ namespace Spectrum.Visualizers {
       }
     }
 
-    // Bilinearly interpolated value noise on a lattice whose x axis wraps at
-    // `period`. Four hashes per sample; SmoothStep interpolation hides cell
-    // edges while keeping this much cheaper than the 16-corner 4D cloud noise.
-    private static double PeriodicValueNoise(
+    // Retained as the exact reference for regression tests. Production prepares
+    // the same integer lattice rows once and reuses their hash values across all
+    // pixels and subsequent frames.
+    internal static double PeriodicValueNoise(
       double x, double y, int period
     ) {
       int x0 = FastFloor(x);
@@ -295,6 +315,111 @@ namespace Spectrum.Visualizers {
       double a = Lerp(Hash01(wx0, y0), Hash01(wx1, y0), fx);
       double b = Lerp(Hash01(wx0, y0 + 1), Hash01(wx1, y0 + 1), fx);
       return Lerp(a, b, fy);
+    }
+
+    // PeriodicValueNoise's hash depends only on integer lattice coordinates.
+    // At the default scale thousands of dome pixels repeatedly request a few
+    // dozen rows, so cache those rows and leave only interpolation in the pixel
+    // loop. A bounded reusable store prevents an endlessly drifting field from
+    // retaining rows for the lifetime of the show.
+    internal sealed class PeriodicNoiseLattice {
+      private const int MaxCachedRows = 256;
+
+      private readonly Dictionary<int, int> rowSlots =
+        new Dictionary<int, int>(MaxCachedRows);
+      private double[] rowValues = Array.Empty<double>();
+      private int[] preparedOffsets = Array.Empty<int>();
+      private int period;
+      private int nextSlot;
+      private int preparedFirstY;
+      private int preparedRowCount;
+
+      internal void Prepare(int nextPeriod, double minimumY, double maximumY) {
+        if (nextPeriod <= 0 || !double.IsFinite(minimumY) ||
+            !double.IsFinite(maximumY)) {
+          throw new ArgumentOutOfRangeException(nameof(nextPeriod));
+        }
+        if (maximumY < minimumY) {
+          (minimumY, maximumY) = (maximumY, minimumY);
+        }
+
+        int firstY = FastFloor(minimumY);
+        // A bilinear sample at floor(maximumY) also reads the following row.
+        int lastY = FastFloor(maximumY) + 1;
+        int rowCount = lastY - firstY + 1;
+        if (rowCount > MaxCachedRows) {
+          throw new ArgumentOutOfRangeException(
+            nameof(maximumY), "Prepared noise range is too large.");
+        }
+
+        if (this.period != nextPeriod) {
+          this.period = nextPeriod;
+          this.rowValues = new double[MaxCachedRows * nextPeriod];
+          this.rowSlots.Clear();
+          this.nextSlot = 0;
+        }
+
+        int missingRows = 0;
+        for (int y = firstY; y <= lastY; y++) {
+          if (!this.rowSlots.ContainsKey(y)) {
+            missingRows++;
+          }
+        }
+        if (this.nextSlot + missingRows > MaxCachedRows) {
+          this.rowSlots.Clear();
+          this.nextSlot = 0;
+        }
+
+        if (this.preparedOffsets.Length < rowCount) {
+          int capacity = 16;
+          while (capacity < rowCount) {
+            capacity *= 2;
+          }
+          this.preparedOffsets = new int[capacity];
+        }
+
+        for (int row = 0; row < rowCount; row++) {
+          int y = firstY + row;
+          if (!this.rowSlots.TryGetValue(y, out int slot)) {
+            slot = this.nextSlot++;
+            this.rowSlots.Add(y, slot);
+            int offset = slot * this.period;
+            for (int x = 0; x < this.period; x++) {
+              this.rowValues[offset + x] = Hash01(x, y);
+            }
+          }
+          this.preparedOffsets[row] = slot * this.period;
+        }
+        this.preparedFirstY = firstY;
+        this.preparedRowCount = rowCount;
+      }
+
+      [MethodImpl(MethodImplOptions.AggressiveInlining)]
+      internal double Sample(double x, double y) {
+        int x0 = FastFloor(x);
+        int y0 = FastFloor(y);
+        int preparedRow = y0 - this.preparedFirstY;
+        if ((uint)preparedRow >= (uint)(this.preparedRowCount - 1)) {
+          throw new InvalidOperationException(
+            "Noise lattice was not prepared for the requested row.");
+        }
+
+        double fx = SmoothCurve(x - x0);
+        double fy = SmoothCurve(y - y0);
+        int wx0 = PositiveMod(x0, this.period);
+        int wx1 = wx0 + 1;
+        if (wx1 == this.period) {
+          wx1 = 0;
+        }
+
+        int row0 = this.preparedOffsets[preparedRow];
+        int row1 = this.preparedOffsets[preparedRow + 1];
+        double a = Lerp(
+          this.rowValues[row0 + wx0], this.rowValues[row0 + wx1], fx);
+        double b = Lerp(
+          this.rowValues[row1 + wx0], this.rowValues[row1 + wx1], fx);
+        return Lerp(a, b, fy);
+      }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

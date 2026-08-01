@@ -8,29 +8,13 @@ using System.Runtime.CompilerServices;
 
 namespace Spectrum.Visualizers {
 
-  // One scene-scale spherical eye whose complete painted anatomy rotates. The
-  // globe, iris, pupil, and eyelid meridians pursue the spotlighted wand or
-  // idle target together with visible inertia. Scleral color, bold vascular
-  // landmarks, and the blink aperture all live in globe-local coordinates, so
-  // their sweep makes the entire eyeball roll instead of reading as a flat iris
-  // sliding under a stationary mask.
-  // The iris is a spherical cap and therefore foreshortens off-axis.
+  // One scene-scale spherical eye built from flat, inexpensive regions. The
+  // eyelid, sclera, iris, pupil, and highlight pursue the spotlighted wand or
+  // idle target together with visible inertia. All shapes live in globe-local
+  // coordinates, so the iris naturally foreshortens off-axis.
   // Capture level dilates the pupil. The manual action always blinks; the
   // selected source can additionally blink on beats or strong audio onsets.
   class LEDDomeWatchfulIrisVisualizer : DomeLayerVisualizer {
-    private static readonly Vector3 GlobeLightDirection = Vector3.Normalize(
-      new Vector3(-0.34f, 0.28f, 0.90f));
-    private static readonly Vector3 ScleraToneAxis = Vector3.Normalize(
-      new Vector3(-0.70f, 0.25f, 0.67f));
-    private static readonly Vector3 ScleraSheenAxis = Vector3.Normalize(
-      new Vector3(0.24f, -0.36f, 0.90f));
-    private static readonly Vector3 ScleraVeinNormalA = Vector3.Normalize(
-      new Vector3(0.27f, 0.93f, -0.24f));
-    private static readonly Vector3 ScleraVeinNormalB = Vector3.Normalize(
-      new Vector3(-0.76f, 0.41f, 0.50f));
-    private static readonly Vector3 ScleraVeinNormalC = Vector3.Normalize(
-      new Vector3(0.58f, 0.32f, 0.75f));
-
     private const double IrisRadius = 0.34;
     private const double GlobeFollowTimeSeconds = 0.34;
     private const double BlinkDurationSeconds = 0.46;
@@ -44,7 +28,6 @@ namespace Spectrum.Visualizers {
     private readonly DomeRenderContext dome;
     private readonly DomeFrame buffer;
     private readonly ImmutableArray<Vector3> pixelPositions;
-    private readonly ScleraSurfaceSample[] scleraSurfaceSamples;
     private readonly LayerTrigger trigger;
     private readonly IrisTransientDetector transientDetector =
       new IrisTransientDetector(BlinkAudioThreshold, BlinkAudioRise);
@@ -70,8 +53,6 @@ namespace Spectrum.Visualizers {
       this.dome = dome;
       this.buffer = this.dome.MakeDomeFrame();
       this.pixelPositions = this.buffer.BakePixelPositions();
-      this.scleraSurfaceSamples = BakeScleraSurfaceSamples(
-        this.pixelPositions);
       this.trigger = new LayerTrigger(
         environment, orientation, runtime.InstanceId, beats, audio);
     }
@@ -123,6 +104,7 @@ namespace Spectrum.Visualizers {
       this.globeRotation = SmoothGlobeRotation(
         this.globeRotation, targetFacing,
         elapsed, GlobeFollowTimeSeconds);
+
       Quaternion inverseGlobeRotation = Quaternion.Conjugate(
         NormalizeRotation(this.globeRotation));
       // The inverse is fixed for the whole frame. Vector3's matrix transform
@@ -133,11 +115,10 @@ namespace Spectrum.Visualizers {
 
       int lidTint = this.dome.GetSingleColor(7, options.Palette);
       int eyelidColor = MixColor(0x09050D, lidTint, 0.10);
-      int pupilColor = MixColor(
-        0x000002,
-        LEDColor.ScaleColor(
-          this.dome.GetSingleColor(0, options.Palette), 0.025),
-        0.18);
+      int scleraColor = ScaleScleraColor(
+        0xFFF4E8, options.ScleraBrightness);
+      int irisColor = this.dome.GetSingleColor(0, options.Palette);
+      const int pupilColor = 0x010104;
       for (int index = 0; index < this.buffer.pixels.Length; index++) {
         Vector3 position = this.pixelPositions[index];
         // Baked topology positions and the inverse rotation are normalized.
@@ -156,25 +137,21 @@ namespace Spectrum.Visualizers {
           openness, options.EyelidSoftness);
         ref LEDDomeOutputPixel pixel = ref this.buffer.pixels[index];
         if (aperture <= 0) {
-          // Outside the almond, MixColor would return eyelidColor and the eye
-          // material (including its trigonometric vessel texture) is invisible.
           pixel.color = eyelidColor;
           pixel.hue = 0;
           continue;
         }
 
-        double hue = 0;
-        int eyeColor = this.EyeColorAt(
-          this.scleraSurfaceSamples[index], globeLocal,
-          pupilRatio, options.IrisComplexity,
-          options.ScleraBrightness, options.Palette, pupilColor, out hue);
+        int eyeColor = EyeColorAt(
+          globeLocal, pupilRatio,
+          scleraColor, irisColor, pupilColor);
 
         // SmoothStep returns exactly one away from the narrow antialiased
         // boundary, so most visible pixels can also skip the final blend.
         pixel.color = aperture >= 1
           ? eyeColor
           : MixColor(eyelidColor, eyeColor, aperture);
-        pixel.hue = hue;
+        pixel.hue = 0;
       }
     }
 
@@ -188,148 +165,33 @@ namespace Spectrum.Visualizers {
       return Math.Clamp(elapsed, 0, 0.1);
     }
 
-    private int EyeColorAt(
-      in ScleraSurfaceSample surfaceSample,
-      Vector3 globeLocalPosition,
+    private static int EyeColorAt(
+      Vector3 globeLocal,
       double pupilRatio,
-      int complexity,
-      double scleraBrightness,
-      int selectedPalette,
-      int pupilColor,
-      out double hue
+      int scleraColor,
+      int irisColor,
+      int pupilColor
     ) {
-      // Every large material cue is sampled in the same persistent globe-local
-      // frame. Fixed venue light still models the dome's volume, but the broad
-      // warm/cool hemispheres, sheen, rear blush, limbus, and vessels now roll
-      // together with the eyelid meridians. This makes the sclera read as the
-      // surface of the turning eyeball instead of a white backdrop.
-      Vector3 globeLocal = globeLocalPosition;
-      double rollTone = 0.5 + 0.5 * Math.Clamp(
-        Vector3.Dot(globeLocal, ScleraToneAxis), -1, 1);
-      double poleLight = SmoothStep(-0.55, 0.92, globeLocal.Z);
-      double baseScleraBrightness = Math.Clamp(
-        0.29 + 0.14 * surfaceSample.Diffuse
-          + 0.20 * surfaceSample.Limb
-          - 0.07 * surfaceSample.EyeRadius
-          + 0.29 * rollTone + 0.17 * poleLight,
-        0.38, 1);
-      int scleraTint = MixColor(0xE6C7BA, 0xFFF8E8, rollTone);
-      int sclera = LEDColor.ScaleColor(
-        scleraTint, baseScleraBrightness);
+      if (globeLocal.Z <= 0) {
+        return scleraColor;
+      }
 
-      double rearBlush = SmoothStep(
-        -0.10, 0.82, -globeLocal.X + 0.28 * globeLocal.Y);
-      double rearHemisphere = 1 - SmoothStep(
-        -0.46, 0.58, globeLocal.Z);
-      rearBlush *= 0.34 + 0.66 * rearHemisphere;
-      double fineVeinPhase =
-        16 * globeLocal.X + 9 * globeLocal.Y
-        + 4.5 * Math.Sin(5 * globeLocal.Z - 3 * globeLocal.Y);
-      double branchPhase =
-        25 * globeLocal.Y - 7 * globeLocal.Z
-        + 3 * Math.Sin(8 * globeLocal.X);
-      double fineVein = SmoothStep(
-        0.76, 0.98,
-        Math.Abs(Math.Sin(fineVeinPhase) * Math.Sin(branchPhase)));
-      double vascularMeridians =
-        ScleraVascularStrengthNormalized(globeLocal);
-      double blood = Math.Clamp(
-        0.31 * rearBlush + 0.18 * fineVein
-          + 0.66 * vascularMeridians,
-        0, 0.76);
-      sclera = MixColor(sclera, 0xA91F38, blood);
-
-      // The dark outer limbus belongs to the corneal pole, not to the socket.
-      // Its traveling arc ties the iris position to the rotation of the whole
-      // shell, particularly at the strongly foreshortened gaze extremes.
-      double irisAlignment = Math.Clamp(globeLocal.Z, -1, 1);
-      double irisTangent = Math.Sqrt(Math.Max(
-        0, 1 - irisAlignment * irisAlignment)) / IrisRadius;
-      double limbusOffset = (irisTangent - 1.08) / 0.13;
-      double limbus = Math.Exp(-limbusOffset * limbusOffset);
-      limbus *= SmoothStep(0.08, 0.72, irisAlignment);
-      sclera = MixColor(sclera, 0x5B273A, 0.44 * limbus);
-
-      // A broad globe-attached sheen is intentionally stronger than a
-      // physically neutral sclera. On the sparse LED lattice it provides one
-      // coherent highlight that visibly sweeps with the rotating sphere.
-      double sheenBase = Math.Max(
-        0, Vector3.Dot(globeLocal, ScleraSheenAxis));
-      double sheenSquared = sheenBase * sheenBase;
-      double sheen = sheenSquared * sheenSquared * sheenSquared * sheenBase;
-      sclera = MixColor(sclera, 0xFFFFFF, 0.42 * sheen);
-      sclera = ScaleScleraColor(sclera, scleraBrightness);
-      hue = 0;
-
-      // The iris, pupil, fibers, and reflections use the same transported
-      // globe axes as the sclera and eyelids. This retains their roll around
-      // the gaze pole instead of rebuilding an always-upright tangent frame.
-      // A circular cap still foreshortens naturally near the visible rim.
       double localX = globeLocal.X / IrisRadius;
       double localY = globeLocal.Y / IrisRadius;
-      double radial = Math.Sqrt(localX * localX + localY * localY);
-      if (irisAlignment <= 0 || radial >= 1) {
-        return sclera;
+      double radialSquared = localX * localX + localY * localY;
+      if (radialSquared >= 1) {
+        return scleraColor;
       }
 
-      double angle = Math.Atan2(localY, localX);
+      int color = radialSquared <= pupilRatio * pupilRatio
+        ? pupilColor : irisColor;
       double hx = localX + 0.28;
       double hy = localY - 0.31;
-      bool highlightPoint = hx * hx + hy * hy < 0.011;
-      if (radial <= pupilRatio) {
-        return highlightPoint
-          ? MixColor(pupilColor, 0xFFFFFF, 0.95)
-          : pupilColor;
+      if (hx * hx + hy * hy < 0.011) {
+        return 0xFFFFFF;
       }
-
-      double fiber = IrisFilament(radial, angle, complexity);
-      double collaretteOffset = (radial - 0.53) / 0.095;
-      double collarette = Math.Exp(
-        -collaretteOffset * collaretteOffset);
-      double outerRing = SmoothStep(0.84, 1, radial);
-      double pupilRim = 1 - SmoothStep(
-        pupilRatio, Math.Min(1, pupilRatio + 0.10), radial);
-      double palettePosition = Fract(
-        0.08 + 0.58 * radial + 0.27 * fiber + 0.07 * Math.Sin(3 * angle));
-      int irisTint = this.dome.GetGradientBetweenColors(
-        0, 7, palettePosition, 0, true, selectedPalette);
-      double brightness = Math.Clamp(
-        0.32 + 0.58 * fiber + 0.18 * collarette
-          - 0.48 * outerRing - 0.30 * pupilRim,
-        0.10, 1);
-      int iris = LEDColor.ScaleColor(irisTint, brightness);
-
-      // Thin upper-left reflection: a short curved glint plus a pinpoint. The
-      // pupil branch above draws the same pinpoint when dilation reaches it.
-      double highlightAngle = Math.Abs(WrapAngle(angle - 2.15));
-      bool highlightArc = radial > 0.55 && radial < 0.61
-        && highlightAngle < 0.42;
-      if (highlightArc || highlightPoint) {
-        iris = MixColor(iris, 0xFFFFFF, highlightPoint ? 0.95 : 0.78);
-      }
-
-      hue = palettePosition;
-      return iris;
+      return color;
     }
-
-    private static ScleraSurfaceSample[] BakeScleraSurfaceSamples(
-      ImmutableArray<Vector3> positions
-    ) {
-      var samples = new ScleraSurfaceSample[positions.Length];
-      for (int i = 0; i < positions.Length; i++) {
-        Vector3 position = positions[i];
-        samples[i] = new ScleraSurfaceSample(
-          0.5 + 0.5 * Math.Clamp(
-            Vector3.Dot(position, GlobeLightDirection), -1, 1),
-          Math.Sqrt(
-            position.X * position.X + position.Y * position.Y / 0.42),
-          Math.Sqrt(Math.Clamp(position.Z, 0, 1)));
-      }
-      return samples;
-    }
-
-    private readonly record struct ScleraSurfaceSample(
-      double Diffuse, double EyeRadius, double Limb);
 
     internal static Vector2 TrackingOffset(Quaternion orientation) {
       if (orientation.LengthSquared() < 1e-10f) {
@@ -386,8 +248,8 @@ namespace Spectrum.Visualizers {
 
     // Preserve the globe's complete orientation while its forward pole chases
     // the gaze. Applying each shortest-arc delta to the existing quaternion
-    // transports every scleral landmark around curved gaze paths and retains
-    // the subtle torsion that a direction-only reconstruction discards.
+    // transports the complete eye around curved gaze paths and retains the
+    // subtle torsion that a direction-only reconstruction discards.
     internal static Quaternion SmoothGlobeRotation(
       Quaternion currentRotation,
       Vector3 targetFacing,
@@ -405,9 +267,9 @@ namespace Spectrum.Visualizers {
         currentRotation, delta));
     }
 
-    // Move a visible dome point back into the eyeball's transported material
-    // frame. Every anatomical feature, including the aperture/blink seam, must
-    // use this mapping for the whole object to rotate around the sphere.
+    // Move a visible dome point back into the eye's transported shape frame.
+    // The aperture and color regions use this mapping so the whole object
+    // rotates around the sphere.
     internal static Vector3 GlobeLocalPosition(
       Vector3 surfacePosition, Quaternion globeRotation
     ) {
@@ -419,7 +281,7 @@ namespace Spectrum.Visualizers {
 
     // Minimal rotation taking the viewer-facing pole (+Z) to the globe's
     // lagged facing direction. Applying its conjugate to a surface point gives
-    // stable globe-local coordinates for the rolling scleral landmarks.
+    // stable globe-local coordinates for all of the eye's shapes.
     internal static Quaternion RotationFromForward(Vector3 facing) {
       return RotationBetween(Vector3.UnitZ, facing);
     }
@@ -442,30 +304,6 @@ namespace Spectrum.Visualizers {
         Vector3.Cross(from, to));
       return Quaternion.Normalize(Quaternion.CreateFromAxisAngle(
         axis, (float)Math.Acos(dot)));
-    }
-
-    // Three broken great-circle vessels are fixed to the eyeball. Unlike fine
-    // procedural texture, their width survives the physical LED spacing and
-    // gives the audience unmistakable landmarks to watch roll across the dome.
-    internal static double ScleraVascularStrength(Vector3 globeLocal) {
-      globeLocal = NormalizeDirection(globeLocal);
-      return ScleraVascularStrengthNormalized(globeLocal);
-    }
-
-    private static double ScleraVascularStrengthNormalized(
-      Vector3 globeLocal
-    ) {
-      double vesselA = VeinBand(Math.Abs(Vector3.Dot(
-        globeLocal, ScleraVeinNormalA)));
-      double vesselB = 0.86 * VeinBand(Math.Abs(Vector3.Dot(
-        globeLocal, ScleraVeinNormalB)));
-      double vesselC = 0.72 * VeinBand(Math.Abs(Vector3.Dot(
-        globeLocal, ScleraVeinNormalC)));
-      double vessel = Math.Max(vesselA, Math.Max(vesselB, vesselC));
-      double brokenPhase = Math.Sin(
-        11 * globeLocal.X - 7 * globeLocal.Y + 5 * globeLocal.Z);
-      double broken = 0.72 + 0.28 * brokenPhase * brokenPhase;
-      return Math.Clamp(vessel * broken, 0, 1);
     }
 
     internal static int ScaleScleraColor(int color, double brightness) {
@@ -517,23 +355,16 @@ namespace Spectrum.Visualizers {
       if (softness <= 1e-9) {
         return edge >= 0 ? 1 : 0;
       }
+      // SmoothStep clamps to these exact values. Most LEDs are well away from
+      // the narrow antialiased lid boundary, so classify them before doing its
+      // divide and cubic interpolation.
+      if (edge <= -softness) {
+        return 0;
+      }
+      if (edge >= softness) {
+        return 1;
+      }
       return SmoothStep(-softness, softness, edge);
-    }
-
-    internal static double IrisFilament(
-      double radial, double angle, int complexity
-    ) {
-      radial = Math.Clamp(radial, 0, 1);
-      complexity = Math.Clamp(complexity, 1, 64);
-      double broad = 0.5 + 0.5 * Math.Sin(
-        complexity * angle + 17 * radial
-          + 1.8 * Math.Sin(3 * angle - 8 * radial));
-      double fine = 0.5 + 0.5 * Math.Sin(
-        (complexity + 7) * angle - 29 * radial
-          + 0.9 * Math.Sin(5 * angle + 11 * radial));
-      double crypt = 0.5 + 0.5 * Math.Sin(
-        (complexity * 0.5 + 2) * angle + 43 * radial * radial);
-      return Math.Clamp(0.52 * broad + 0.30 * fine + 0.18 * crypt, 0, 1);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -544,16 +375,6 @@ namespace Spectrum.Visualizers {
       double t = Math.Clamp((x - edge0) / (edge1 - edge0), 0, 1);
       return t * t * (3 - 2 * t);
     }
-
-    private static double Fract(double value) =>
-      value - Math.Floor(value);
-
-    private static double WrapAngle(double angle) =>
-      angle - 2 * Math.PI * Math.Floor((angle + Math.PI) / (2 * Math.PI));
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static double VeinBand(double planeDistance) =>
-      1 - SmoothStep(0.018, 0.070, planeDistance);
 
     private static Vector3 NormalizeDirection(Vector3 direction) =>
       direction.LengthSquared() > 1e-10f

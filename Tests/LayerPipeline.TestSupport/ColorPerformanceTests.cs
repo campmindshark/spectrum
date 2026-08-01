@@ -16,6 +16,8 @@ namespace Spectrum.LayerPipeline.Tests {
         PackedHsvConversionDoesNotAllocate);
       run("deferred pixel packing preserves channel semantics",
         DeferredPixelPackingPreservesSemantics);
+      run("global hue rotation preserves wrapped RGB semantics",
+        GlobalHueRotationPreservesSemantics);
       run("multi-slot dome gradients preserve render semantics",
         DomeGradientSemantics);
       run("multi-slot dome gradient sampling allocates no managed memory",
@@ -116,6 +118,61 @@ namespace Spectrum.LayerPipeline.Tests {
       copy.SetRGB(-10, 300, 127.9);
       Assert(copy.color == 0x00FF7F,
         "deferred packing changed channel clamping");
+    }
+
+    private static void GlobalHueRotationPreservesSemantics() {
+      int[] channels = { 0, 1, 17, 127, 128, 254, 255 };
+      double[] rates = { -.5, -1 / 6d, -.01, .01, 1 / 6d, .5 };
+      foreach (double rate in rates) {
+        foreach (int red in channels) {
+          foreach (int green in channels) {
+            foreach (int blue in channels) {
+              int input = (red << 16) | (green << 8) | blue;
+              var pixel = new LEDDomeOutputPixel { color = input };
+              pixel.HueRotate(rate);
+              int expected = LegacyHueRotate(input, rate);
+              Assert(pixel.color == expected,
+                "hue rotation mismatch for 0x" + input.ToString("X6") +
+                " at " + rate + " turns: expected 0x" +
+                expected.ToString("X6") + ", got 0x" +
+                pixel.color.ToString("X6"));
+            }
+          }
+        }
+      }
+
+      var topology = new DomeTopology(new[] {
+        new DomeTopologyPixel(0, 0, 0, 0),
+        new DomeTopologyPixel(0, 1, 1, 1),
+      });
+      var frame = new DomeFrame(topology);
+      frame.pixels[0].color = 0x123456;
+      frame.pixels[1].color = 0xABCDEF;
+      frame.HueRotate(1.25);
+      Assert(frame.pixels[0].color == LegacyHueRotate(0x123456, .25) &&
+          frame.pixels[1].color == LegacyHueRotate(0xABCDEF, .25),
+        "frame hue rotation did not reduce whole turns once");
+
+      int unchanged = frame.pixels[0].color;
+      frame.HueRotate(-2);
+      Assert(frame.pixels[0].color == unchanged,
+        "whole-turn hue rotation changed a pixel");
+    }
+
+    private static int LegacyHueRotate(int color, double rate) {
+      var hsv = new global::Spectrum.Color(color);
+      if (color == 0 || hsv.S == 0) {
+        return color;
+      }
+      double shiftedHue = (hsv.H + rate) % 1;
+      if (shiftedHue > 1) {
+        shiftedHue -= 1;
+      }
+      if (shiftedHue < 0) {
+        shiftedHue += 1;
+      }
+      return new global::Spectrum.Color(
+        shiftedHue, hsv.S, hsv.V).ToInt();
     }
 
     private static void DomeGradientSemantics() {

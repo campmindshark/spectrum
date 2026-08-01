@@ -629,22 +629,15 @@ namespace Spectrum.Base {
       PaletteParam,
       };
 
-    // Watchful Iris turns the full dome into one theatrical eye. The iris
-    // pattern is analytic and stable on the dome projection; complexity changes
-    // its radial filament count without introducing per-frame noise. The shared
-    // orientation center supplies either the spotlighted wand or its idle drift,
-    // constrained to a natural gaze range inside the sclera. Capture level
-    // dilates the pupil. The manual action always blinks, while blinkTrigger
-    // adds a beat or strong-audio source. Eyelid softness controls the resting
-    // almond edge and closing lid; sclera brightness scales the completed white,
-    // blush, and vascular surface without changing the iris or eyelids.
+    // Watchful Iris turns the full dome into one eye made from flat lid, sclera,
+    // iris, pupil, and highlight colors. The shared orientation center supplies
+    // either the spotlighted wand or its idle drift, constrained to a natural
+    // gaze range inside the sclera. Capture level dilates the pupil. The manual
+    // action always blinks, while blinkTrigger adds a beat or strong-audio
+    // source. Eyelid softness controls the almond edge and closing lid; sclera
+    // brightness scales only the flat sclera color.
     internal static readonly DomeLayerParam[] WatchfulIrisParams =
       new DomeLayerParam[] {
-        new DomeLayerParam {
-          Key = "irisComplexity", Label = "Iris Complexity",
-          Type = DomeLayerParamType.Double,
-          Min = 3, Max = 32, Step = 1, Default = 14,
-        },
         new DomeLayerParam {
           Key = "pupilSize", Label = "Pupil Size",
           Type = DomeLayerParamType.Double,
