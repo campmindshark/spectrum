@@ -48,9 +48,6 @@ namespace Spectrum {
       new Dictionary<int, int>();
     public Dictionary<int, MidiPreset> midiPresets { get; set; } =
       new Dictionary<int, MidiPreset>();
-    public Dictionary<int, MidiLevelDriverPreset> midiLevelDriverChannels {
-      get; set;
-    } = new Dictionary<int, MidiLevelDriverPreset>();
     public double flashSpeed { get; set; } =
       SpectrumConfigurationSchema.FlashSpeed.TypedDefaultValue;
     public int beatInput { get; set; } =
@@ -92,7 +89,6 @@ namespace Spectrum {
       config.ReplaceDomePalettes(this.domePalettes);
       config.ReplaceMidiDevices(this.midiDevices);
       config.ReplaceMidiPresets(this.midiPresets);
-      config.ReplaceMidiLevelDriverChannels(this.midiLevelDriverChannels);
       return config;
     }
 
@@ -240,20 +236,5 @@ namespace Spectrum {
       };
     }
 
-    internal static Dictionary<int, MidiLevelDriverPreset>
-      MidiLevelDriverChannels(
-        IReadOnlyDictionary<int, MidiLevelDriverPreset>? source
-      ) {
-      if (source == null) {
-        return new Dictionary<int, MidiLevelDriverPreset>();
-      }
-      var copy = new Dictionary<int, MidiLevelDriverPreset>();
-      foreach (KeyValuePair<int, MidiLevelDriverPreset> pair in source) {
-        if (pair.Value != null) {
-          copy[pair.Key] = (MidiLevelDriverPreset)pair.Value.Clone();
-        }
-      }
-      return copy;
-    }
   }
 }

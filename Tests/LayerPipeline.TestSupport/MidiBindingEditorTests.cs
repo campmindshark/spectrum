@@ -49,11 +49,6 @@ namespace Spectrum.LayerPipeline.Tests {
           LogarithmicKnobNumPossibleValues = "8",
           LogarithmicKnobStartValue = fractional,
         },
-        new MidiBindingDraft {
-          BindingName = "ADSR",
-          BindingType = 4,
-          AdsrLevelDriverIndexRangeStart = "48",
-        },
       };
 
       var bindings = new IMidiBindingConfig[drafts.Length];
@@ -93,9 +88,6 @@ namespace Spectrum.LayerPipeline.Tests {
           logarithmic.numPossibleValues == 8 &&
           logarithmic.startValue == 1.5,
         "logarithmic-knob draft mapped incorrectly");
-      Assert(bindings[4] is AdsrLevelDriverMidiBindingConfig adsr &&
-          adsr.indexRangeStart == 48,
-        "ADSR draft mapped incorrectly");
       Assert(
         MidiBindingEditor.CommandTypeIndex(MidiCommandType.Knob) == 0 &&
         MidiBindingEditor.CommandTypeIndex(MidiCommandType.Program) == 1 &&

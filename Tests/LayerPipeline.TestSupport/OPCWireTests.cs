@@ -386,14 +386,6 @@ namespace Spectrum.LayerPipeline.Tests {
         "default config selects a MIDI device");
       Assert(config.domePalettes.Length == 8,
         "default config does not use the named live palette model");
-      BeatSettingsSnapshot beat =
-        ((IRuntimeSettingsConfiguration)config).BeatSettingsSnapshot;
-      Assert(beat.TryGetMidiPreset(
-          0, out MidiLevelDriverSettingsSnapshot envelope) &&
-          envelope.AttackTime == 10 && envelope.PeakLevel == 1 &&
-          envelope.DecayTime == 20 && envelope.SustainLevel == 0.8 &&
-          envelope.ReleaseTime == 10,
-        "default config does not define its MIDI level-driver channel");
     }
 
     private static void PortMappingConfigurationContract() {

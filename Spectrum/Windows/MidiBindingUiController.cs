@@ -34,8 +34,6 @@ namespace Spectrum {
     TextBox LogarithmicKnobPropertyName,
     TextBox LogarithmicKnobNumPossibleValues,
     TextBox LogarithmicKnobStartValue,
-    StackPanel AdsrLevelDriverPanel,
-    TextBox AdsrLevelDriverIndexRangeStart,
     TextBlock ValidationMessage,
     Button Save,
     Button Cancel
@@ -102,8 +100,6 @@ namespace Spectrum {
         selectedType == 2 ? Visibility.Visible : Visibility.Collapsed;
       this.view.LogarithmicKnobPanel.Visibility =
         selectedType == 3 ? Visibility.Visible : Visibility.Collapsed;
-      this.view.AdsrLevelDriverPanel.Visibility =
-        selectedType == 4 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     internal void Save() {
@@ -270,10 +266,6 @@ namespace Spectrum {
           this.view.LogarithmicKnobStartValue.Text =
             logarithmic.StartValue.ToString();
           break;
-        case AdsrLevelDriverMidiBindingView adsr:
-          this.view.AdsrLevelDriverIndexRangeStart.Text =
-            adsr.IndexRangeStart.ToString();
-          break;
       }
     }
 
@@ -331,8 +323,6 @@ namespace Spectrum {
           this.view.LogarithmicKnobNumPossibleValues.Text,
         LogarithmicKnobStartValue =
           this.view.LogarithmicKnobStartValue.Text,
-        AdsrLevelDriverIndexRangeStart =
-          this.view.AdsrLevelDriverIndexRangeStart.Text,
       };
 
     private void ShowValidation(MidiBindingValidationError error) {
@@ -367,8 +357,6 @@ namespace Spectrum {
           this.view.LogarithmicKnobNumPossibleValues,
         MidiBindingEditorField.LogarithmicKnobStartValue =>
           this.view.LogarithmicKnobStartValue,
-        MidiBindingEditorField.AdsrLevelDriverIndexRangeStart =>
-          this.view.AdsrLevelDriverIndexRangeStart,
         _ => this.view.Type,
       };
       control.Focus();
@@ -403,15 +391,11 @@ namespace Spectrum {
             string.Empty;
           this.view.LogarithmicKnobStartValue.Text = string.Empty;
           break;
-        case 4:
-          this.view.AdsrLevelDriverIndexRangeStart.Text =
-            string.Empty;
-          break;
       }
     }
 
     private void ClearAllFields() {
-      for (int bindingType = 0; bindingType <= 4; bindingType++) {
+      for (int bindingType = 0; bindingType <= 3; bindingType++) {
         this.ClearFields(bindingType);
       }
     }

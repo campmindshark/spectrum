@@ -471,13 +471,14 @@ namespace Spectrum.LayerPipeline.Tests {
         Stretch = 0,
         Split = 1,
       };
-      double pinch = LEDDomeLavaLampSkyVisualizer.BlobStrength(
-        Vector3.UnitZ, divided);
+      var dividedField = new LavaLampBlobField();
+      dividedField.Prepare(new[] { divided });
+      double pinch = dividedField.Sample(
+        Vector3.UnitZ).StrongestStrength;
       Vector3 lobePoint = Vector3.Normalize(
         Vector3.UnitZ * (float)Math.Cos(0.31) +
         Vector3.UnitX * (float)Math.Sin(0.31));
-      double lobe = LEDDomeLavaLampSkyVisualizer.BlobStrength(
-        lobePoint, divided);
+      double lobe = dividedField.Sample(lobePoint).StrongestStrength;
       Assert(lobe > 0.8 && lobe > pinch + 0.5,
         "Lava Lamp Sky division did not form two pinched soft lobes");
 

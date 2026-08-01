@@ -9,13 +9,6 @@ using System.Timers;
 
 namespace Spectrum.Base {
 
-  public class MidiLevelDriverInstance {
-    public int ChannelIndex { get; set; }
-    public long PressTimestamp { get; set; }
-    public double PressVelocity { get; set; }
-    public long? ReleaseTimestamp { get; set; }
-  }
-
   public class BeatBroadcaster : INotifyPropertyChanged {
 
     private enum TimeRelativeTo { Timestamp, SystemBoot };
@@ -23,7 +16,7 @@ namespace Spectrum.Base {
     private static readonly int tapTempoConclusionTime = 2000;
 
     private readonly IRuntimeSettingsConfiguration settings;
-    // Guards all of the mutable beat/tap/driver state below, which is touched
+    // Guards all of the mutable beat/tap state below, which is touched
     // from the Madmom output thread, the MIDI thread, the tap-tempo Timer
     // thread, the operator thread, and the UI thread. PropertyChanged is always
     // raised outside this lock to avoid reentrancy into the locked getters.
@@ -43,11 +36,6 @@ namespace Spectrum.Base {
     private int measureLength = -1;
     private TimeRelativeTo timeRelativeTo = TimeRelativeTo.Timestamp;
     private readonly Timer tapTempoConclusionTimer = new Timer(tapTempoConclusionTime);
-    private readonly MidiLevelDriverInstance?[] driversByChannel = new MidiLevelDriverInstance?[] {
-      null, null, null, null, null, null, null, null,
-    };
-    private long lastChannelInteractionTime = 0;
-
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public BeatBroadcaster(Configuration config) {
@@ -251,94 +239,6 @@ namespace Spectrum.Base {
         BeatSettingsSnapshot snapshot = this.settings.BeatSettingsSnapshot;
         return snapshot.FlashSpeed != 0.0 &&
           this.ProgressThroughBeat(snapshot.FlashSpeed) >= 0.5;
-      }
-    }
-
-    private bool TryGetPresetForChannelIndex(
-      int channelIndex,
-      out MidiLevelDriverSettingsSnapshot preset
-    ) => this.settings.BeatSettingsSnapshot.TryGetMidiPreset(
-      channelIndex, out preset);
-
-    public void MidiReleaseOnChannel(int channelIndex) {
-      lock (this.beatLock) {
-        MidiLevelDriverInstance? driver = this.driversByChannel[channelIndex];
-        if (driver != null) {
-          long now = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-          driver.ReleaseTimestamp = now;
-          this.lastChannelInteractionTime = now;
-        }
-      }
-    }
-
-    public void MidiPress(MidiLevelDriverInstance newDriver) {
-      if (this.TryGetPresetForChannelIndex(
-          newDriver.ChannelIndex, out _)) {
-        lock (this.beatLock) {
-          this.driversByChannel[newDriver.ChannelIndex] = newDriver;
-          this.lastChannelInteractionTime = newDriver.PressTimestamp;
-        }
-      }
-    }
-
-    private double CurrentMidiLevelDriverValueWithoutReleaseForChannel(
-      MidiLevelDriverInstance driver,
-      MidiLevelDriverSettingsSnapshot preset,
-      long currentTime
-    ) {
-      long timeSincePress = currentTime - driver.PressTimestamp;
-      double realPeak = driver.PressVelocity * preset.PeakLevel;
-      if (timeSincePress < preset.AttackTime) {
-        return ((double)timeSincePress / preset.AttackTime) * realPeak;
-      }
-      long timeSinceDecayBegan = timeSincePress - preset.AttackTime;
-      double realSustain = driver.PressVelocity * preset.SustainLevel;
-      if (timeSinceDecayBegan > preset.DecayTime) {
-        return realSustain;
-      }
-      return realPeak -
-        (double)timeSinceDecayBegan / preset.DecayTime * (realPeak - realSustain);
-    }
-
-    public double? CurrentMidiLevelDriverValueForChannel(int channelIndex) {
-      bool hasPreset = this.TryGetPresetForChannelIndex(
-        channelIndex, out MidiLevelDriverSettingsSnapshot preset);
-      lock (this.beatLock) {
-        var driver = this.driversByChannel[channelIndex];
-        if (driver == null || !hasPreset) {
-          return null;
-        }
-        long currentTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-        long timeSincePress = currentTime - driver.PressTimestamp;
-        if (timeSincePress < 0.0) {
-          return 0.0;
-        }
-        if (
-          !driver.ReleaseTimestamp.HasValue ||
-          currentTime < driver.ReleaseTimestamp.Value
-        ) {
-          return this.CurrentMidiLevelDriverValueWithoutReleaseForChannel(
-            driver,
-            preset,
-            currentTime
-          );
-        }
-        long timeSinceRelease = currentTime - driver.ReleaseTimestamp.Value;
-        if (timeSinceRelease > preset.ReleaseTime) {
-          if (currentTime > this.lastChannelInteractionTime + 5000) {
-            // Pass control back to the audio stream
-            return null;
-          }
-          return 0.0;
-        }
-        double levelAtRelease =
-          this.CurrentMidiLevelDriverValueWithoutReleaseForChannel(
-            driver,
-            preset,
-            driver.ReleaseTimestamp.Value
-          );
-        return levelAtRelease * (preset.ReleaseTime - timeSinceRelease)
-          / preset.ReleaseTime;
       }
     }
 

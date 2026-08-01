@@ -594,6 +594,10 @@ namespace Spectrum.LayerPipeline.Tests {
           [0] = 4,
         });
         global::Spectrum.MidiSetupView view = MidiSetupView();
+        foreach (string commandType in new[] { "K", "P", "N" }) {
+          view.Binding.TapTempoButtonType.Items.Add(
+            new ComboBoxItem { Content = commandType });
+        }
         var controller = new global::Spectrum.MidiSetupUiController(
           config,
           view,
@@ -641,9 +645,10 @@ namespace Spectrum.LayerPipeline.Tests {
             view.Binding.Save.IsEnabled,
           "the MIDI controller did not apply assigned-preset action state");
 
-        view.Binding.Type.SelectedIndex = 4;
+        view.Binding.Type.SelectedIndex = 0;
         controller.BindingTypeSelectionChanged();
-        view.Binding.AdsrLevelDriverIndexRangeStart.Text = "60";
+        view.Binding.TapTempoButtonType.SelectedIndex = 2;
+        view.Binding.TapTempoButtonIndex.Text = "60";
         controller.SaveBinding();
         Assert(view.Binding.ValidationMessage.Visibility ==
             Visibility.Visible &&
@@ -652,17 +657,18 @@ namespace Spectrum.LayerPipeline.Tests {
             config.midiPresets[9].Bindings.Length == 0,
           "the MIDI controller persisted an invalid binding draft");
 
-        view.Binding.Name.Text = "Envelope";
+        view.Binding.Name.Text = "Beat tap";
         controller.SaveBinding();
         Assert(config.midiPresets[9].Bindings.Length == 1 &&
             config.midiPresets[9].Bindings[0] is
-              global::Spectrum.Base.AdsrLevelDriverMidiBindingView binding &&
-            binding.BindingName == "Envelope" &&
-            binding.IndexRangeStart == 60 &&
+              global::Spectrum.Base.TapTempoMidiBindingView binding &&
+            binding.BindingName == "Beat tap" &&
+            binding.ButtonType == global::Spectrum.Base.MidiCommandType.Note &&
+            binding.ButtonIndex == 60 &&
             view.Binding.Bindings.Items.Count == 1 &&
             view.Binding.Bindings.Items[0] is
               global::Spectrum.MidiBindingEntry entry &&
-            entry.BindingTypeName == "ADSR level driver" &&
+            entry.BindingTypeName == "Tap tempo" &&
             view.Binding.ValidationMessage.Visibility ==
               Visibility.Collapsed,
           "the MIDI controller did not persist and present a valid " +
@@ -673,21 +679,22 @@ namespace Spectrum.LayerPipeline.Tests {
         controller.BeginBindingEdit();
         Assert(view.Binding.EditLabel.Content?.ToString() ==
               "Edit binding" &&
-            view.Binding.Name.Text == "Envelope" &&
-            view.Binding.Type.SelectedIndex == 4 &&
-            view.Binding.AdsrLevelDriverIndexRangeStart.Text == "60",
+            view.Binding.Name.Text == "Beat tap" &&
+            view.Binding.Type.SelectedIndex == 0 &&
+            view.Binding.TapTempoButtonType.SelectedIndex == 2 &&
+            view.Binding.TapTempoButtonIndex.Text == "60",
           "the MIDI binding controller did not restore the selected " +
           "binding draft");
 
-        view.Binding.Name.Text = "Renamed envelope";
+        view.Binding.Name.Text = "Renamed beat tap";
         controller.SaveBinding();
         Assert(config.midiPresets[9].Bindings.Length == 1 &&
             config.midiPresets[9].Bindings[0].BindingName ==
-              "Renamed envelope" &&
+              "Renamed beat tap" &&
             config.midiPresets[4].Bindings.Length == 0 &&
             view.Binding.Bindings.Items[0] is
               global::Spectrum.MidiBindingEntry edited &&
-            edited.BindingName == "Renamed envelope",
+            edited.BindingName == "Renamed beat tap",
           "binding editing lost the explicit sparse preset identity");
 
         view.Binding.Bindings.SelectedIndex = 0;
@@ -707,7 +714,6 @@ namespace Spectrum.LayerPipeline.Tests {
           "Continuous knob",
           "Discrete knob",
           "Logarithmic knob",
-          "ADSR level driver",
         }) {
         bindingType.Items.Add(new ComboBoxItem { Content = name });
       }
@@ -753,8 +759,6 @@ namespace Spectrum.LayerPipeline.Tests {
           new TextBox(),
           new TextBox(),
           new TextBox(),
-          new TextBox(),
-          new StackPanel(),
           new TextBox(),
           new TextBlock(),
           new Button(),

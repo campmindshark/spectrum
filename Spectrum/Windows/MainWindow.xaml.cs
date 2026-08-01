@@ -199,8 +199,6 @@ namespace Spectrum {
           this.midiLogarithmicKnobPropertyName,
           this.midiLogarithmicKnobNumPossibleValues,
           this.midiLogarithmicKnobStartValue,
-          this.midiAdsrLevelDriverBindingPanel,
-          this.midiAdsrLevelDriverIndexRangeStart,
           this.midiBindingValidationMessage,
           this.midiAddBinding,
           this.midiCancelEditBinding));

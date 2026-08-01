@@ -23,8 +23,7 @@ namespace Spectrum.Visualizers {
     private readonly ImmutableArray<Vector3> pixelPositions;
     private readonly LavaLampSkyState state;
     private readonly Stopwatch frameTimer = new Stopwatch();
-    private PreparedLavaLampBlob[] preparedBlobs =
-      Array.Empty<PreparedLavaLampBlob>();
+    private readonly LavaLampBlobField blobField = new LavaLampBlobField();
 
     public LEDDomeLavaLampSkyVisualizer(
       LayerRendererRuntime runtime,
@@ -85,46 +84,24 @@ namespace Spectrum.Visualizers {
     private void Paint(int selectedPalette) {
       this.buffer.ResetComposite();
       IReadOnlyList<LavaLampBlob> blobs = this.state.Blobs;
-      if (this.preparedBlobs.Length != blobs.Count) {
-        this.preparedBlobs = new PreparedLavaLampBlob[blobs.Count];
-      }
-      for (int blobIndex = 0; blobIndex < blobs.Count; blobIndex++) {
-        this.preparedBlobs[blobIndex] = PrepareBlob(blobs[blobIndex]);
-      }
+      this.blobField.Prepare(blobs);
       for (int pixelIndex = 0;
           pixelIndex < this.pixelPositions.Length; pixelIndex++) {
-        Vector3 point = LavaLampSkyState.FoldToUpperHemisphere(
+        LavaLampBlobFieldSample field = this.blobField.Sample(
           this.pixelPositions[pixelIndex]);
-        double uncovered = 1;
-        double strongest = 0;
-        PreparedLavaLampBlob strongestBlob = default;
-        for (int blobIndex = 0;
-            blobIndex < this.preparedBlobs.Length; blobIndex++) {
-          PreparedLavaLampBlob blob = this.preparedBlobs[blobIndex];
-          double strength = PreparedBlobStrength(point, blob);
-          if (strength <= 0) {
-            continue;
-          }
-          uncovered *= 1 - strength;
-          if (strength > strongest) {
-            strongest = strength;
-            strongestBlob = blob;
-          }
-        }
-
-        double coverage = 1 - uncovered;
-        if (coverage <= 0.001) {
+        if (field.Coverage <= 0.001) {
           continue;
         }
-        double heatGlow = Math.Clamp(strongestBlob.Temperature, 0, 1);
+        double heatGlow = Math.Clamp(field.Temperature, 0, 1);
         double brightness = Math.Clamp(
-          0.22 + 0.62 * coverage + 0.16 * heatGlow, 0, 1);
+          0.22 + 0.62 * field.Coverage + 0.16 * heatGlow, 0, 1);
         int tint = this.dome.GetGradientColor(
-          strongestBlob.PaletteIndex, 1 - strongest, 0, true, selectedPalette);
+          field.PaletteIndex, 1 - field.StrongestStrength,
+          0, true, selectedPalette);
         ref LEDDomeOutputPixel pixel = ref this.buffer.pixels[pixelIndex];
         pixel.color = LEDColor.ScaleColor(tint, brightness);
-        pixel.SetAlpha(Math.Clamp(coverage, 0, 1));
-        pixel.hue = (strongestBlob.PaletteIndex & 7) / 8.0;
+        pixel.SetAlpha(Math.Clamp(field.Coverage, 0, 1));
+        pixel.hue = (field.PaletteIndex & 7) / 8.0;
       }
     }
 
@@ -139,14 +116,68 @@ namespace Spectrum.Visualizers {
       return LavaLampSkyState.FoldToUpperHemisphere(aimed);
     }
 
+  }
+
+  internal readonly record struct LavaLampBlob(
+    Vector3 Position,
+    Vector3 Velocity,
+    Vector3 ShapeAxis,
+    double Radius,
+    double Temperature,
+    double Phase,
+    int PaletteIndex,
+    double Stretch,
+    double Split);
+
+  internal readonly record struct LavaLampBlobFieldSample(
+    double Coverage,
+    double StrongestStrength,
+    double Temperature,
+    int PaletteIndex);
+
+  // Prepared spherical field shared by the renderer and its geometry
+  // regression tests. Preparing once per frame keeps the live per-pixel path
+  // allocation-free while ensuring tests exercise the exact field Paint uses.
+  internal sealed class LavaLampBlobField {
+    private PreparedLavaLampBlob[] prepared =
+      Array.Empty<PreparedLavaLampBlob>();
+
+    public void Prepare(IReadOnlyList<LavaLampBlob> blobs) {
+      if (this.prepared.Length != blobs.Count) {
+        this.prepared = new PreparedLavaLampBlob[blobs.Count];
+      }
+      for (int index = 0; index < blobs.Count; index++) {
+        this.prepared[index] = PrepareBlob(blobs[index]);
+      }
+    }
+
+    public LavaLampBlobFieldSample Sample(Vector3 point) {
+      point = LavaLampSkyState.FoldToUpperHemisphere(point);
+      double uncovered = 1;
+      double strongest = 0;
+      PreparedLavaLampBlob strongestBlob = default;
+      for (int index = 0; index < this.prepared.Length; index++) {
+        PreparedLavaLampBlob blob = this.prepared[index];
+        double strength = PreparedBlobStrength(point, blob);
+        if (strength <= 0) {
+          continue;
+        }
+        uncovered *= 1 - strength;
+        if (strength > strongest) {
+          strongest = strength;
+          strongestBlob = blob;
+        }
+      }
+      return new LavaLampBlobFieldSample(
+        1 - uncovered,
+        strongest,
+        strongestBlob.Temperature,
+        strongestBlob.PaletteIndex);
+    }
+
     // Evaluates a soft spherical ellipse in the blob center's tangent plane.
     // Split is geometric rather than a field threshold: one ellipse becomes a
     // pinched pair of smaller lobes with preserved approximate area.
-    internal static double BlobStrength(Vector3 point, LavaLampBlob blob) {
-      return PreparedBlobStrength(
-        LavaLampSkyState.FoldToUpperHemisphere(point), PrepareBlob(blob));
-    }
-
     private static PreparedLavaLampBlob PrepareBlob(LavaLampBlob blob) {
       Vector3 center = LavaLampSkyState.FoldToUpperHemisphere(blob.Position);
       double radius = Math.Max(0.02, blob.Radius);
@@ -219,17 +250,6 @@ namespace Spectrum.Visualizers {
       double Temperature,
       int PaletteIndex);
   }
-
-  internal readonly record struct LavaLampBlob(
-    Vector3 Position,
-    Vector3 Velocity,
-    Vector3 ShapeAxis,
-    double Radius,
-    double Temperature,
-    double Phase,
-    int PaletteIndex,
-    double Stretch,
-    double Split);
 
   // Allocation-stable, deterministic spherical blob dynamics. Pair forces are
   // calculated before integration so no blob observes a partially updated

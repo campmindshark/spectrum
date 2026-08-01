@@ -89,11 +89,6 @@
             <BindingType>1</BindingType>
             <BindingName>global fade speed</BindingName>
           </IMidiBindingConfig>
-          <IMidiBindingConfig xsi:type="AdsrLevelDriverMidiBindingConfig">
-            <indexRangeStart>48</indexRangeStart>
-            <BindingType>4</BindingType>
-            <BindingName>adsr</BindingName>
-          </IMidiBindingConfig>
         </Bindings>
       </Value>
     </Item>
@@ -106,18 +101,6 @@
       </Value>
     </Item>
   </midiPresets>
-  <midiLevelDriverChannels>
-    <Item>
-      <Key>0</Key>
-      <Value>
-        <AttackTime>10</AttackTime>
-        <PeakLevel>1</PeakLevel>
-        <DecayTime>20</DecayTime>
-        <SustainLevel>0.8</SustainLevel>
-        <ReleaseTime>10</ReleaseTime>
-      </Value>
-    </Item>
-  </midiLevelDriverChannels>
   <domePalettes>
     <DomePalette>
       <Name>Palette 1</Name>

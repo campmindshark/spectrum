@@ -49,14 +49,13 @@ namespace Spectrum.Base {
   [XmlInclude(typeof(ContinuousKnobMidiBindingConfig))]
   [XmlInclude(typeof(DiscreteKnobMidiBindingConfig))]
   [XmlInclude(typeof(DiscreteLogarithmicKnobMidiBindingConfig))]
-  [XmlInclude(typeof(AdsrLevelDriverMidiBindingConfig))]
   public interface IMidiBindingConfig : ICloneable {
 
     int BindingType { get; set; }
     string? BindingName { get; set; }
 
     // `beat` is the live tempo service (owned by the Operator, not part of
-    // Configuration); only the tap-tempo and ADSR bindings use it.
+    // Configuration); the tap-tempo binding uses it.
     Binding[] GetBindings(
       Configuration config,
       BeatBroadcaster beat,

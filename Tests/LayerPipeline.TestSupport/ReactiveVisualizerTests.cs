@@ -14,56 +14,39 @@ namespace Spectrum.LayerPipeline.Tests {
   public static class ReactiveVisualizerTests {
     public static void Register(Action<string, Action> run) {
       run(nameof(MagneticFieldUsesSignedCharges), MagneticFieldUsesSignedCharges);
-      run(nameof(MetaballPoleMetricsMatchAntipodalGeometry),
-        MetaballPoleMetricsMatchAntipodalGeometry);
+      run(nameof(MetaballPotentialMatchesAntipodalGeometry),
+        MetaballPotentialMatchesAntipodalGeometry);
       run(nameof(RippleTankIsOrientationOnly), RippleTankIsOrientationOnly);
       run(nameof(WatchfulIrisBehavesAsSceneCharacter), WatchfulIrisBehavesAsSceneCharacter);
       run(nameof(LivingSkinUsesReactionDiffusion), LivingSkinUsesReactionDiffusion);
     }
 
-    private static void MetaballPoleMetricsMatchAntipodalGeometry() {
-      OrientationCenter.UnitPoleMetrics(
-        Vector3.UnitY, out double equatorScale, out double equatorSign);
-      AssertClose(0.5, equatorScale,
-        "equatorial metaball potential changed");
-      AssertClose(0, equatorSign,
-        "equatorial color-center sign changed");
-
-      var point = new Vector3(-0.5f, (float)Math.Sqrt(0.75), 0);
-      OrientationCenter.UnitPoleMetrics(
-        point, out double scale, out double sign);
-      double radius = Math.Sqrt(0.75);
-      AssertClose(1 / (2 * radius), scale,
-        "off-axis metaball potential changed");
-      AssertClose(0.5 / (1 + radius), sign,
-        "off-axis color-center sign changed");
-
-      OrientationCenter.UnitPoleMetrics(
-        Vector3.UnitX, out double poleScale, out double poleSign);
-      AssertClose(1 / 1e-9, poleScale,
-        "pole singularity guard changed");
-      AssertClose(-1, poleSign,
-        "positive-X color-center sign changed");
-
+    private static void MetaballPotentialMatchesAntipodalGeometry() {
+      var config = new global::Spectrum.SpectrumConfiguration();
+      var runtime = new global::Spectrum.Operator(config);
+      var center = new OrientationCenter(config, runtime.OrientationInput);
+      runtime.OrientationInput.BeginOperatorFrame();
+      center.Update(0);
+      Quaternion orientation = center.CurrentCenter;
       Vector3[] samples = {
         Vector3.UnitY,
         Vector3.Normalize(new Vector3(-0.72f, 0.55f, 0.31f)),
         Vector3.Normalize(new Vector3(0.41f, -0.28f, 0.87f)),
       };
-      foreach (Vector3 sample in samples) {
+      foreach (Vector3 localSample in samples) {
         double positiveDistance = Vector3.Distance(
-          sample, OrientationCenter.Spot);
+          localSample, OrientationCenter.Spot);
         double negativeDistance = Vector3.Distance(
-          sample, OrientationCenter.NegSpot);
+          localSample, OrientationCenter.NegSpot);
         double expectedScale = 1 / Math.Max(
           positiveDistance * negativeDistance, 1e-9);
-        double expectedSign = (negativeDistance - positiveDistance) /
-          (negativeDistance + positiveDistance);
-        OrientationCenter.UnitPoleMetrics(
-          sample, out double actualScale, out double actualSign);
+        Vector3 worldSample = Vector3.Transform(
+          localSample, Quaternion.Conjugate(orientation));
+        double actualScale = center.PotentialAt(
+          worldSample, out Quaternion colorCenter);
         Assert(Math.Abs(expectedScale - actualScale) < 0.000001 &&
-            Math.Abs(expectedSign - actualSign) < 0.000001,
-          "optimized pole metrics diverged from antipodal distances");
+            Math.Abs(Quaternion.Dot(colorCenter, orientation)) > 0.999999,
+          "live metaball potential diverged from antipodal distances");
       }
     }
 
@@ -300,12 +283,6 @@ namespace Spectrum.LayerPipeline.Tests {
       double targetTurn = Math.Acos(Math.Clamp(dramaticFacing.Z, -1, 1));
       Assert(laggedTurn > 0 && laggedTurn < targetTurn,
         "Watchful Iris globe did not pursue its iris with inertia");
-      Quaternion globeRotation =
-        LEDDomeWatchfulIrisVisualizer.RotationFromForward(laggedFacing);
-      Assert(Vector3.Distance(
-          Vector3.Transform(Vector3.UnitZ, globeRotation),
-          laggedFacing) < 0.000001,
-        "Watchful Iris globe rotation did not face its lagged gaze");
       Quaternion pursuedRotation =
         LEDDomeWatchfulIrisVisualizer.SmoothGlobeRotation(
           Quaternion.Identity, dramaticFacing, 0.1, 0.34);
@@ -331,8 +308,7 @@ namespace Spectrum.LayerPipeline.Tests {
           Quaternion.Identity, rightFacing, 0.1, 0);
       transported = LEDDomeWatchfulIrisVisualizer.SmoothGlobeRotation(
         transported, upperFacing, 0.1, 0);
-      Quaternion rebuilt =
-        LEDDomeWatchfulIrisVisualizer.RotationFromForward(upperFacing);
+      Quaternion rebuilt = ReferenceRotationFromForward(upperFacing);
       Assert(Vector3.Distance(
           Vector3.Transform(Vector3.UnitZ, transported),
           upperFacing) < 0.000001 &&
@@ -341,23 +317,6 @@ namespace Spectrum.LayerPipeline.Tests {
             Vector3.Transform(Vector3.UnitX, rebuilt)) > 0.01,
         "Watchful Iris discarded its transported globe orientation");
 
-      // At a nearly closed openness, the thin visible seam must travel to the
-      // rotated forward pole. Evaluating the same pole in fixed dome axes
-      // would incorrectly leave it behind the old horizontal eyelids.
-      Vector3 transportedPole = Vector3.Transform(
-        Vector3.UnitZ, transported);
-      Vector3 localPole =
-        LEDDomeWatchfulIrisVisualizer.GlobeLocalPosition(
-          transportedPole, transported);
-      double transportedClosure =
-        LEDDomeWatchfulIrisVisualizer.ApertureCoverage(
-          localPole.X, localPole.Y, 0.15, 0.01);
-      double fixedClosure =
-        LEDDomeWatchfulIrisVisualizer.ApertureCoverage(
-          transportedPole.X, transportedPole.Y, 0.15, 0.01);
-      Assert(Vector3.Distance(localPole, Vector3.UnitZ) < 0.000001 &&
-          transportedClosure > 0.99 && fixedClosure < 0.01,
-        "Watchful Iris blink seam did not rotate to the globe's new meridian");
       Assert(LEDDomeWatchfulIrisVisualizer.ScaleScleraColor(
           0x804020, 0) == 0 &&
           LEDDomeWatchfulIrisVisualizer.ScaleScleraColor(
@@ -404,6 +363,13 @@ namespace Spectrum.LayerPipeline.Tests {
             + (color & 0xFF) > 560;
         }),
         "Watchful Iris did not separate its dark pupil/lids and light sclera");
+
+      Vector3 leftPupil = RenderedIrisPupilCenter(Quaternion.Identity);
+      Vector3 rightPupil = RenderedIrisPupilCenter(
+        Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (float)-Math.PI));
+      Assert(leftPupil.X < -0.08 && rightPupil.X > 0.08 &&
+          Vector3.Distance(leftPupil, rightPupil) > 0.2,
+        "Watchful Iris live frame transform did not move the pupil with gaze");
     }
 
     private static double ReferenceApertureCoverage(
@@ -419,6 +385,73 @@ namespace Spectrum.LayerPipeline.Tests {
         (edge + softness) / (2 * softness), 0, 1);
       return t * t * (3 - 2 * t);
     }
+
+    private static Quaternion ReferenceRotationFromForward(Vector3 facing) {
+      facing = Vector3.Normalize(facing);
+      double angle = Math.Acos(Math.Clamp(facing.Z, -1, 1));
+      if (angle <= 0.000001) {
+        return Quaternion.Identity;
+      }
+      Vector3 axis = Vector3.Normalize(Vector3.Cross(
+        Vector3.UnitZ, facing));
+      return Quaternion.CreateFromAxisAngle(axis, (float)angle);
+    }
+
+    private static Vector3 RenderedIrisPupilCenter(
+      Quaternion sensorOrientation
+    ) {
+      var config = ConfigurationWithLayers(
+        Layer("watchful-iris", "watchful-iris-live-transform"));
+      SetPaletteColors(config, color => 0x205090 + color * 0x160C02);
+      var runtime = new global::Spectrum.Operator(config);
+      DomeLayerVisualizer iris = runtime.DomeOutput.GetVisualizers()
+        .OfType<DomeLayerVisualizer>()
+        .Single(layer => layer.LayerKey == "watchful-iris");
+      runtime.OrientationInput.ProcessDatagram(
+        CurrentWandPacket(sensorOrientation));
+
+      for (int frame = 0; frame < 13; frame++) {
+        if (frame > 0) {
+          System.Threading.Thread.Sleep(25);
+        }
+        runtime.OrientationInput.BeginOperatorFrame();
+        ((Visualizer)iris).Visualize();
+      }
+
+      ImmutableArray<Vector3> positions =
+        iris.LayerBuffer.BakePixelPositions();
+      Vector3 center = Vector3.Zero;
+      int count = 0;
+      for (int index = 0; index < iris.LayerBuffer.pixels.Length; index++) {
+        if (iris.LayerBuffer.pixels[index].color == 0x010104) {
+          center += positions[index];
+          count++;
+        }
+      }
+      Assert(count > 0 && center.LengthSquared() > 0,
+        "Watchful Iris live frame did not contain pupil pixels");
+      return Vector3.Normalize(center);
+    }
+
+    private static byte[] CurrentWandPacket(Quaternion orientation) {
+      orientation = Quaternion.Normalize(orientation);
+      var packet = new byte[16];
+      packet[0] = 7;
+      BitConverter.TryWriteBytes(packet.AsSpan(1, 4), 1);
+      packet[5] = 6;
+      packet[6] = 1;
+      WriteQuaternionComponent(packet, 7, orientation.W);
+      WriteQuaternionComponent(packet, 9, orientation.X);
+      WriteQuaternionComponent(packet, 11, orientation.Y);
+      WriteQuaternionComponent(packet, 13, orientation.Z);
+      return packet;
+    }
+
+    private static void WriteQuaternionComponent(
+      byte[] packet, int offset, float component
+    ) => BitConverter.TryWriteBytes(
+      packet.AsSpan(offset, 2),
+      (short)Math.Round(Math.Clamp(component, -1, 1) * 16384));
 
     private static void LivingSkinUsesReactionDiffusion() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("living-skin");

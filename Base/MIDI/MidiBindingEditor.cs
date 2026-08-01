@@ -20,7 +20,6 @@ namespace Spectrum.Base {
     LogarithmicKnobPropertyName,
     LogarithmicKnobNumPossibleValues,
     LogarithmicKnobStartValue,
-    AdsrLevelDriverIndexRangeStart,
   }
 
   public sealed class MidiBindingValidationError {
@@ -57,7 +56,6 @@ namespace Spectrum.Base {
     public string LogarithmicKnobPropertyName { get; set; } = "";
     public string LogarithmicKnobNumPossibleValues { get; set; } = "";
     public string LogarithmicKnobStartValue { get; set; } = "";
-    public string AdsrLevelDriverIndexRangeStart { get; set; } = "";
   }
 
   /**
@@ -214,21 +212,6 @@ namespace Spectrum.Base {
             configPropertyName = logarithmicProperty,
             numPossibleValues = logarithmicValueCount,
             startValue = logarithmicStart,
-          };
-          return true;
-
-        case 4:
-          if (!TryInt(
-              draft.AdsrLevelDriverIndexRangeStart,
-              MidiBindingEditorField.AdsrLevelDriverIndexRangeStart,
-              "Enter a whole-number starting MIDI note.",
-              out int rangeStart,
-              out error)) {
-            return false;
-          }
-          binding = new AdsrLevelDriverMidiBindingConfig {
-            BindingName = name,
-            indexRangeStart = rangeStart,
           };
           return true;
 

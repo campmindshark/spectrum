@@ -43,16 +43,6 @@ namespace Spectrum.LayerPipeline.Tests {
         audioDeviceID = "test-device",
       };
       config.ReplaceDomeLayerStack(new[] { serializedLayer });
-      config.ReplaceMidiLevelDriverChannels(
-        new Dictionary<int, MidiLevelDriverPreset> {
-          [2] = new MidiLevelDriverPreset {
-            AttackTime = 10,
-            PeakLevel = 0.9,
-            DecayTime = 20,
-            SustainLevel = 0.7,
-            ReleaseTime = 30,
-          },
-        });
       using var stream = new MemoryStream();
       new XmlSerializer<global::Spectrum.SpectrumConfigurationDocument>()
         .Serialize(
@@ -75,14 +65,6 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert(restored.domeLayerStack[0].RendererParams["color"] == 0x123456 &&
           restored.domeLayerStack[0].OperationParams["amount"] == .5,
         "round trip merged or lost parameter namespaces");
-      BeatSettingsSnapshot beat =
-        ((IRuntimeSettingsConfiguration)restored).BeatSettingsSnapshot;
-      Assert(beat.TryGetMidiPreset(
-          2, out MidiLevelDriverSettingsSnapshot envelope) &&
-          envelope.AttackTime == 10 && envelope.PeakLevel == 0.9 &&
-          envelope.DecayTime == 20 && envelope.SustainLevel == 0.7 &&
-          envelope.ReleaseTime == 30,
-        "round trip lost the MIDI level-driver channel");
     }
 
     private static void ConfigurationScalarSchemaIsExhaustive() {

@@ -87,28 +87,12 @@ namespace Spectrum.Base {
         ImmutableArray<ImmutableArray<int>>.Empty);
   }
 
-  public readonly record struct MidiLevelDriverSettingsSnapshot(
-    int AttackTime,
-    double PeakLevel,
-    int DecayTime,
-    double SustainLevel,
-    int ReleaseTime
-  );
-
   public sealed record BeatSettingsSnapshot(
     long Generation,
-    double FlashSpeed,
-    ImmutableDictionary<int, MidiLevelDriverSettingsSnapshot> MidiChannels
+    double FlashSpeed
   ) {
     public static BeatSettingsSnapshot Empty { get; } =
-      new BeatSettingsSnapshot(
-        0, 0,
-        ImmutableDictionary<int, MidiLevelDriverSettingsSnapshot>.Empty);
-
-    public bool TryGetMidiPreset(
-      int channelIndex,
-      out MidiLevelDriverSettingsSnapshot preset
-    ) => this.MidiChannels.TryGetValue(channelIndex, out preset);
+      new BeatSettingsSnapshot(0, 0);
   }
 
   public sealed record SceneRetentionSnapshot(

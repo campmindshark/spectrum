@@ -284,7 +284,6 @@
                     <ComboBoxItem>Continuous knob</ComboBoxItem>
                     <ComboBoxItem>Discrete knob</ComboBoxItem>
                     <ComboBoxItem>Logarithmic knob</ComboBoxItem>
-                    <ComboBoxItem>ADSR level driver</ComboBoxItem>
                   </ComboBox>
 
                   <StackPanel x:Name="midiTapTempoBindingPanel" Visibility="Collapsed" Margin="0,8,0,0">
@@ -328,11 +327,6 @@
                     <TextBlock Text="Starting value" Style="{StaticResource CaptionText}" Margin="0,6,0,0" />
                     <TextBox x:Name="midiLogarithmicKnobStartValue" />
                   </StackPanel>
-                  <StackPanel x:Name="midiAdsrLevelDriverBindingPanel" Visibility="Collapsed" Margin="0,8,0,0">
-                    <TextBlock Text="Start MIDI note" Style="{StaticResource CaptionText}" />
-                    <TextBox x:Name="midiAdsrLevelDriverIndexRangeStart" />
-                  </StackPanel>
-
                   <TextBlock x:Name="midiBindingValidationMessage"
                              Foreground="OrangeRed" TextWrapping="Wrap"
                              Visibility="Collapsed" Margin="0,8,0,0" />

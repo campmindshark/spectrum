@@ -192,18 +192,6 @@ namespace Spectrum.Base {
       };
   }
 
-  public sealed record AdsrLevelDriverMidiBindingView(
-    string? BindingName,
-    int IndexRangeStart
-  ) : IMidiBindingView {
-    public int BindingType => 4;
-    public IMidiBindingConfig ToConfig() =>
-      new AdsrLevelDriverMidiBindingConfig {
-        BindingName = this.BindingName,
-        indexRangeStart = this.IndexRangeStart,
-      };
-  }
-
   public sealed record MidiPresetView(
     int Id,
     string? Name,
@@ -270,9 +258,6 @@ namespace Spectrum.Base {
           new DiscreteLogarithmicKnobMidiBindingView(
             value.BindingName, value.knobIndex, value.configPropertyName,
             value.numPossibleValues, value.startValue),
-        AdsrLevelDriverMidiBindingConfig value =>
-          new AdsrLevelDriverMidiBindingView(
-            value.BindingName, value.indexRangeStart),
         _ => throw new System.InvalidOperationException(
           "Unsupported MIDI binding type: " + binding.GetType().FullName),
       };

@@ -338,11 +338,6 @@ namespace Spectrum.Visualizers {
       sign = -x / (1 + equatorialRadius);
     }
 
-    internal static void UnitPoleMetrics(
-      Vector3 transformedPoint, out double scale, out double sign
-    ) => PoleMetrics(
-      transformedPoint, Vector3.UnitX, out scale, out sign);
-
     // Signed version of the orientation metaball field. PotentialAt identifies
     // both ends of a wand by multiplying their distances; this keeps them
     // deliberately interchangeable. Magnetic Field completes the dipole

@@ -31,7 +31,7 @@ namespace Spectrum.MIDI {
 
     private readonly Configuration config;
     private readonly IRuntimeSettingsConfiguration runtimeSettings;
-    // The live tempo service, needed by tap-tempo/ADSR bindings (owned by the
+    // The live tempo service, needed by tap-tempo bindings (owned by the
     // Operator, not part of Configuration).
     private readonly BeatBroadcaster beat;
     private readonly ApplicationStateDispatcher stateDispatcher;

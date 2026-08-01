@@ -267,25 +267,6 @@ namespace Spectrum.Visualizers {
         currentRotation, delta));
     }
 
-    // Move a visible dome point back into the eye's transported shape frame.
-    // The aperture and color regions use this mapping so the whole object
-    // rotates around the sphere.
-    internal static Vector3 GlobeLocalPosition(
-      Vector3 surfacePosition, Quaternion globeRotation
-    ) {
-      Vector3 surface = NormalizeDirection(surfacePosition);
-      Quaternion inverse = Quaternion.Conjugate(
-        NormalizeRotation(globeRotation));
-      return NormalizeDirection(Vector3.Transform(surface, inverse));
-    }
-
-    // Minimal rotation taking the viewer-facing pole (+Z) to the globe's
-    // lagged facing direction. Applying its conjugate to a surface point gives
-    // stable globe-local coordinates for all of the eye's shapes.
-    internal static Quaternion RotationFromForward(Vector3 facing) {
-      return RotationBetween(Vector3.UnitZ, facing);
-    }
-
     private static Quaternion RotationBetween(Vector3 from, Vector3 to) {
       from = NormalizeDirection(from);
       to = NormalizeDirection(to);

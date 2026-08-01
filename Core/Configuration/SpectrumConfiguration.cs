@@ -590,9 +590,6 @@ namespace Spectrum {
       this.PublishMidiBindingSettings();
       this.RaisePropertyChanged(nameof(this.midiPresets));
     }
-    private Dictionary<int, MidiLevelDriverPreset> _midiLevelDriverChannels =
-      new Dictionary<int, MidiLevelDriverPreset>();
-
     private double _flashSpeed =
       SpectrumConfigurationSchema.FlashSpeed.TypedDefaultValue;
     public double flashSpeed {
@@ -802,28 +799,11 @@ namespace Spectrum {
     }
 
     private void PublishBeatSettings() {
-      var channels = ImmutableDictionary.CreateBuilder<
-        int, MidiLevelDriverSettingsSnapshot>();
-      if (this._midiLevelDriverChannels != null) {
-        foreach (KeyValuePair<int, MidiLevelDriverPreset> pair in
-            this._midiLevelDriverChannels) {
-          MidiLevelDriverPreset preset = pair.Value;
-          if (preset != null) {
-            channels[pair.Key] = new MidiLevelDriverSettingsSnapshot(
-              preset.AttackTime,
-              preset.PeakLevel,
-              preset.DecayTime,
-              preset.SustainLevel,
-              preset.ReleaseTime);
-          }
-        }
-      }
       Volatile.Write(
         ref this._beatSettingsSnapshot,
         new BeatSettingsSnapshot(
           Interlocked.Increment(ref this.beatSettingsGeneration),
-          this._flashSpeed,
-          channels.ToImmutable()));
+          this._flashSpeed));
     }
 
     private void PublishSceneRetentionSettings() {
@@ -844,14 +824,6 @@ namespace Spectrum {
         new SceneRetentionSnapshot(
           Interlocked.Increment(ref this.sceneRetentionGeneration),
           retained.ToImmutable()));
-    }
-
-    internal void ReplaceMidiLevelDriverChannels(
-      IReadOnlyDictionary<int, MidiLevelDriverPreset>? channels
-    ) {
-      this._midiLevelDriverChannels =
-        ConfigurationGraphCopy.MidiLevelDriverChannels(channels);
-      this.PublishBeatSettings();
     }
 
     internal SpectrumConfigurationDocument CreateDocument() =>
@@ -883,9 +855,6 @@ namespace Spectrum {
         vjHUDEnabled = this._vjHUDEnabled,
         midiDevices = ConfigurationGraphCopy.Dictionary(this._midiDevices),
         midiPresets = ConfigurationGraphCopy.MidiPresets(this._midiPresets),
-        midiLevelDriverChannels =
-          ConfigurationGraphCopy.MidiLevelDriverChannels(
-            this._midiLevelDriverChannels),
         flashSpeed = this._flashSpeed,
         beatInput = this._beatInput,
         orientationDeviceSpotlight = this._orientationDeviceSpotlight,
