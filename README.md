@@ -17,7 +17,10 @@ The complete desktop application and show audio/MIDI stack currently require a
    workloads.
 2. Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0),
    [Git for Windows](https://git-scm.com/download/win), and
-   [uv](https://docs.astral.sh/uv/getting-started/installation/).
+   [uv](https://docs.astral.sh/uv/getting-started/installation/). Install
+   FFmpeg from PowerShell with
+   `winget install --id Gyan.FFmpeg -e`; Madmom's build and tests require both
+   `ffmpeg` and `ffprobe` on `PATH`.
 3. Clone the repository. A recursive clone is preferred, but the build script
    also initializes missing submodules:
 
