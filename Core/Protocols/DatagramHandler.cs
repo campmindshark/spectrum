@@ -2,9 +2,7 @@ using System;
 using System.Numerics;
 
 namespace Spectrum {
-  public class DatagramHandler {
-    public DatagramHandler() {
-    }
+  public static class DatagramHandler {
 
     // Byte 0 is always the deviceId, and the two header layouts share an
     // identical prefix through the deviceType byte:
@@ -48,16 +46,15 @@ namespace Spectrum {
 
     // Classifies a datagram's header layout and reads the id/timestamp/deviceType
     // (and, for the seq layout, the sequence number). Returns false when the
-    // common header is incomplete, or when a seq-carrying type is missing its
-    // sequence byte. An unrecognized type falls through to the legacy
-    // interpretation, preserving the pre-existing placeholder-device behavior
-    // downstream.
+    // common header is incomplete, when a seq-carrying type is missing its
+    // sequence byte, or when the type is outside the explicitly supported 1-6
+    // protocol range.
     //
     // With the sequence byte moved AFTER the deviceType, id/timestamp/deviceType
     // occupy the same offsets in both layouts, so a single read of the deviceType
     // at byte 5 decides everything: types {5,6} carry a seq byte at byte 6 and
-    // start their payload at byte 7; every other type is legacy with no seq byte
-    // and a payload at byte 6.
+    // start their payload at byte 7; supported types {1,2,3,4} use the legacy
+    // layout with no seq byte and a payload at byte 6.
     public static bool TryReadHeader(byte[] buffer, out Header header) {
       header = default;
       if (buffer.Length < MinDatagramLength) {
@@ -73,41 +70,66 @@ namespace Spectrum {
           buffer[0], timestamp, deviceType, buffer[6], 7);
         return true;
       }
-      header = new Header(buffer[0], timestamp, deviceType, -1, 6);
-      return true;
+      if (deviceType >= 1 && deviceType <= 4) {
+        header = new Header(buffer[0], timestamp, deviceType, -1, 6);
+        return true;
+      }
+      return false;
     }
 
-    // Smallest datagram length that parseDatagram can unpack without reading
-    // past the end of the buffer, given the device type. Datagrams shorter than
-    // this for their type must be dropped (see OrientationInput). The seq-
-    // carrying types (5, 6) already account for the extra sequence byte.
-    public static int RequiredLength(int deviceType) {
+    // Smallest orientation-device datagram that can be unpacked without reading
+    // past the end of the buffer. Type 5 is a receiver heartbeat rather than an
+    // orientation device and is deliberately absent.
+    private static bool TryGetRequiredLength(
+      int deviceType, out int requiredLength
+    ) {
       switch (deviceType) {
         // wands / wands v2 / wristband: actionFlag is read at buffer[14].
         case 1:
         case 3:
         case 4:
-          return 15;
+          requiredLength = 15;
+          return true;
         // poi: avgDistanceShort is read as a UInt16 at buffer[15..16].
         case 2:
-          return 17;
-        // ESP-NOW receiver heartbeat: id[1] timestamp[4] deviceType[1] seq[1].
-        case 5:
-          return 7;
+          requiredLength = 17;
+          return true;
         // wand v3: the seq byte after the deviceType shifts the wand payload one
         // byte later, so actionFlag is read at buffer[15] rather than buffer[14].
         case 6:
-          return 16;
-        // Unknown types parse to a placeholder device and read nothing further.
+          requiredLength = 16;
+          return true;
         default:
-          return MinDatagramLength;
+          requiredLength = 0;
+          return false;
       }
     }
 
-    public static (OrientationDevice device, int actionFlag) parseDatagram(byte[] buffer) {
+    public readonly struct Datagram {
+      public Header Header { get; }
+      public OrientationDevice Device { get; }
+      public int ActionFlag { get; }
+
+      public Datagram(
+        Header header, OrientationDevice device, int actionFlag
+      ) {
+        this.Header = header;
+        this.Device = device;
+        this.ActionFlag = actionFlag;
+      }
+    }
+
+    // Parses only orientation-device packets. Receiver heartbeats, unknown
+    // types, and truncated payloads fail closed instead of manufacturing a
+    // placeholder OrientationDevice.
+    public static bool TryParseDatagram(
+      byte[] buffer, out Datagram datagram
+    ) {
+      datagram = default;
       if (!TryReadHeader(buffer, out var header) ||
-          buffer.Length < RequiredLength(header.DeviceType)) {
-        return (device: new OrientationDevice(-1, -1, new Quaternion(0, 0, 0, 0), new Quaternion(0, 0, 0, 0)), actionFlag: 0);
+          !TryGetRequiredLength(header.DeviceType, out int requiredLength) ||
+          buffer.Length < requiredLength) {
+        return false;
       }
       int timestamp = header.Timestamp;
       int deviceType = header.DeviceType;
@@ -129,7 +151,12 @@ namespace Spectrum {
         short Z = BitConverter.ToInt16(buffer, p + 6);
         Quaternion sensorState = new Quaternion(X / 16384.0f, Y / 16384.0f, Z / 16384.0f, W / 16384.0f);
         int actionFlag = buffer[p + 8]; // what the buttons do
-        return (device: new OrientationDevice(timestamp, deviceType, new Quaternion(0, 0, 0, 1), sensorState), actionFlag: actionFlag);
+        datagram = new Datagram(
+          header,
+          new OrientationDevice(
+            timestamp, deviceType, Quaternion.Identity, sensorState),
+          actionFlag);
+        return true;
       }
       // Device type 2 - Adam's poi
       if (deviceType == 2) {
@@ -146,9 +173,15 @@ namespace Spectrum {
         double avgDistanceShort = BitConverter.ToUInt16(buffer, p + 9) / 65536.0;
 
         Quaternion sensorState = new Quaternion(X / 16384.0f, Y / 16384.0f, Z / 16384.0f, W / 16384.0f);
-        return (device: new OrientationDevice(timestamp, deviceType, new Quaternion(0, 0, 0, 1), sensorState, avgDistanceShort), actionFlag: 0);
+        datagram = new Datagram(
+          header,
+          new OrientationDevice(
+            timestamp, deviceType, Quaternion.Identity, sensorState,
+            avgDistanceShort),
+          0);
+        return true;
       }
-      return (device: new OrientationDevice(-1, -1, new Quaternion(0, 0, 0, 0), new Quaternion(0, 0, 0, 0)), actionFlag: 0);
+      return false;
     }
   }
 }

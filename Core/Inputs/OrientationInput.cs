@@ -191,25 +191,21 @@ namespace Spectrum {
     public void ProcessDatagram(byte[] buffer) {
       // This is an unauthenticated UDP listener on 0.0.0.0 (and an equally
       // untrusted serial stream), so any short or spoofed datagram must be
-      // ignored rather than indexed blindly. TryReadHeader also classifies the
-      // two header layouts (legacy vs. the seq-carrying types 5/6), so the
-      // timestamp and deviceType below are read from the correct offsets.
-      if (!DatagramHandler.TryReadHeader(buffer, out var header)) {
+      // ignored rather than indexed blindly. TryParseDatagram accepts only the
+      // supported orientation-device types and classifies their legacy or
+      // sequence-carrying header layout. Receiver heartbeats are handled by the
+      // serial transport and never become devices.
+      if (!DatagramHandler.TryParseDatagram(buffer, out var datagram)) {
         return;
       }
+      var header = datagram.Header;
       var deviceId = header.DeviceId;
       var timestamp = header.Timestamp;
-      int deviceType = header.DeviceType;
-      if (buffer.Length < DatagramHandler.RequiredLength(deviceType)) {
-        return;
-      }
 
       var currentTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
       var arrivalMs = NowMillis();
 
-      // Datagram unpacking
-      var datagramOut = DatagramHandler.parseDatagram(buffer);
-      int actionFlag = datagramOut.actionFlag;
+      int actionFlag = datagram.ActionFlag;
 
       // All access to the shared device state must be under mLock, since the
       // operator thread reads/removes from these collections concurrently.
@@ -218,9 +214,9 @@ namespace Spectrum {
 
         // Connection-quality accounting. Uses the high-res arrival time and the
         // device's own send timestamp (buffer[1..4], ms) as the reference clock
-        // for jitter; both are valid even for an as-yet-unknown deviceType. The
-        // header's uint8 packet sequence number (header.Sequence, or -1 for the
-        // legacy layout that carries none) drives the packet-loss estimate.
+        // for jitter. The header's uint8 packet sequence number
+        // (header.Sequence, or -1 for the legacy layout that carries none)
+        // drives the packet-loss estimate.
         if (!stats.TryGetValue(deviceId, out var deviceStats)) {
           deviceStats = new DeviceStats();
           stats[deviceId] = deviceStats;
@@ -250,21 +246,21 @@ namespace Spectrum {
             // the second conditional is just to catch a case where the device was power cycled;
             //   assuming it was off for more than a second
             device.RecordMotion(
-              datagramOut.device.currentOrientation,
+              datagram.Device.currentOrientation,
               timestamp - device.timestamp,
               currentTime);
             device.timestamp = timestamp;
-            device.currentOrientation = datagramOut.device.currentOrientation;
+            device.currentOrientation = datagram.Device.currentOrientation;
             // This took me a while to track down. We must set the avgDistanceShort from the datagram
-            device.avgDistanceShort = datagramOut.device.avgDistanceShort;
+            device.avgDistanceShort = datagram.Device.avgDistanceShort;
           } else {
             // Duplicate/stale timestamp: no orientation to score, but the
             // moving flag still has to decay.
             device.RefreshMoving(currentTime);
           }
         } else {
-          datagramOut.device.NoteActivity(currentTime);
-          devices.Add(deviceId, datagramOut.device);
+          datagram.Device.NoteActivity(currentTime);
+          devices.Add(deviceId, datagram.Device);
         }
       }
     }

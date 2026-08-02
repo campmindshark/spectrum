@@ -12,15 +12,16 @@ namespace Spectrum {
   // run here; the encoded input therefore contains no 0x00 bytes itself.
   public static class CobsCodec {
 
-    // Smallest decoded frame we accept: the 6-byte deviceType-5 heartbeat plus
-    // its 1 CRC byte. This floor exists so the caller's `payload = decoded[..^1]`
-    // and CRC-index arithmetic can never go negative on a runt frame.
+    // Smallest decoded frame we accept: the 7-byte deviceType-5 heartbeat
+    // (including its sequence byte) plus its 1 CRC byte. This floor exists so
+    // the caller's `payload = decoded[..^1]` and CRC-index arithmetic can never
+    // go negative on a runt frame.
     //
-    // NOTE: 7 is heartbeat-sized, NOT wand-sized. Do not tighten this to a wand's
+    // NOTE: 8 is heartbeat-sized, NOT wand-sized. Do not tighten this to a wand's
     // 15+1 — the heartbeat (which drives the receiver-alive indicator) is the
     // smallest legitimate frame, and raising the floor would silently drop every
     // heartbeat.
-    private const int MinDecodedLength = 7;
+    private const int MinDecodedLength = 8;
 
     // Standard COBS decode. Returns false (with decoded = null) for a malformed
     // frame — an overlong code jump that runs past the end of the input — or for

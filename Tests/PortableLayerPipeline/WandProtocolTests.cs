@@ -45,13 +45,14 @@ namespace Spectrum.LayerPipeline.Tests {
         header.PayloadOffset == 7,
         "sequence-carrying header was misclassified");
 
-      var parsed = DatagramHandler.parseDatagram(payload);
-      Assert.IsTrue(parsed.device.timestamp == 42 && parsed.device.deviceType == 6,
+      Assert.IsTrue(DatagramHandler.TryParseDatagram(payload, out var parsed),
+        "type-6 datagram was rejected");
+      Assert.IsTrue(parsed.Device.timestamp == 42 && parsed.Device.deviceType == 6,
         "type-6 identity fields changed");
-      Assert.IsTrue(parsed.actionFlag == 2, "type-6 action byte shifted");
+      Assert.IsTrue(parsed.ActionFlag == 2, "type-6 action byte shifted");
       AssertQuaternion(
         new Quaternion(0.5f, 0, -0.25f, 1),
-        parsed.device.currentOrientation,
+        parsed.Device.currentOrientation,
         "type-6 orientation");
     }
 
@@ -70,12 +71,50 @@ namespace Spectrum.LayerPipeline.Tests {
         header.PayloadOffset == 6,
         "legacy header was misclassified");
 
-      var parsed = DatagramHandler.parseDatagram(payload);
-      Assert.IsTrue(parsed.actionFlag == 4, "legacy action byte shifted");
+      Assert.IsTrue(DatagramHandler.TryParseDatagram(payload, out var parsed),
+        "legacy datagram was rejected");
+      Assert.IsTrue(parsed.ActionFlag == 4, "legacy action byte shifted");
       AssertQuaternion(
         new Quaternion(-1, 0.25f, -0.5f, 0.5f),
-        parsed.device.currentOrientation,
+        parsed.Device.currentOrientation,
         "legacy orientation");
+    }
+
+    [TestMethod]
+    public void HeartbeatsAndUnknownTypesNeverBecomeDevices() {
+      byte[] encodedHeartbeat = {
+        0x03, 0x09, 0x2A, 0x01, 0x01, 0x04, 0x05, 0xFE, 0xA6,
+      };
+      byte[] expectedDecoded = {
+        0x09, 0x2A, 0x00, 0x00, 0x00, 0x05, 0xFE, 0xA6,
+      };
+      Assert.IsTrue(CobsCodec.TryDecode(
+          encodedHeartbeat, out byte[]? decoded),
+        "valid heartbeat frame was rejected");
+      AssertBytes(expectedDecoded, decoded, "decoded heartbeat frame");
+
+      byte[] heartbeat = decoded[..^1];
+      Assert.IsTrue(Crc8.Compute(heartbeat) == decoded[^1],
+        "heartbeat CRC was not preserved");
+      Assert.IsTrue(DatagramHandler.TryReadHeader(heartbeat, out var header) &&
+          header.DeviceType == 5 && header.Sequence == 254,
+        "heartbeat header was rejected");
+      Assert.IsFalse(DatagramHandler.TryParseDatagram(heartbeat, out _),
+        "receiver heartbeat parsed as an orientation device");
+
+      byte[] unknown = { 9, 42, 0, 0, 0, 99 };
+      Assert.IsFalse(DatagramHandler.TryReadHeader(unknown, out _),
+        "unknown device type was accepted as a legacy header");
+      Assert.IsFalse(DatagramHandler.TryParseDatagram(unknown, out _),
+        "unknown device type produced a placeholder device");
+
+      var input = new OrientationInput(
+        ConfigurationWithLayers(), new InlineGateway(), false);
+      input.ProcessDatagram(heartbeat);
+      input.ProcessDatagram(unknown);
+      Assert.IsTrue(input.DevicesSnapshot().Count == 0 &&
+          input.ConnectionStatsSnapshot().Count == 0,
+        "non-device packets reached orientation state");
     }
 
     [TestMethod]
@@ -91,9 +130,12 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert.IsTrue(!DatagramHandler.TryReadHeader(missingSequence, out _),
         "type-6 header without its sequence byte was accepted");
 
+      byte[] decodedRunt = { 0x08, 1, 2, 3, 4, 5, 6, 7 };
+      Assert.IsFalse(CobsCodec.TryDecode(decodedRunt, out _),
+        "decoded frame shorter than a current heartbeat was accepted");
+
       byte[] headerOnly = { 1, 0, 0, 0, 0, 6, 1 };
-      var parsed = DatagramHandler.parseDatagram(headerOnly);
-      Assert.IsTrue(parsed.device.timestamp == -1 && parsed.device.deviceType == -1,
+      Assert.IsFalse(DatagramHandler.TryParseDatagram(headerOnly, out _),
         "truncated type-6 payload produced a device");
     }
 
