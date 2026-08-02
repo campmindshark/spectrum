@@ -9,6 +9,10 @@
     const stateElement = options.stateElement || null;
     const ctx = canvas.getContext("2d", { alpha: false });
     const image = ctx.createImageData(canvas.width, canvas.height);
+    const blankImage = new Uint8ClampedArray(image.data.length);
+    for (let i = 3; i < blankImage.length; i += 4) {
+      blankImage[i] = 255;
+    }
     const maxFps = 60;
     let geometry = null;
     let stripPositions = null;
@@ -57,7 +61,11 @@
     function drawFrame(bytes) {
       if (!geometry || bytes.length !== geometry.pixelCount * 3) return;
       latestFrame = bytes;
-      image.data.fill(0);
+      // Keep the cleared pixels opaque. Some browsers retain the previous
+      // opaque backing-store color when transparent ImageData is written to a
+      // context requested with alpha: false, which leaves the old projection
+      // visible after switching views.
+      image.data.set(blankImage);
       for (let i = 0, p = 0; i < geometry.pixelCount; i++, p += 3) {
         const x = positions[i * 2];
         const y = positions[i * 2 + 1];
