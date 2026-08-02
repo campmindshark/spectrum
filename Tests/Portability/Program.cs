@@ -681,6 +681,29 @@ namespace Spectrum.Portability.Tests {
             "the runtime health API returned an unexpected response: " +
             runtimeResponse);
         }
+        string manualResponse = client.GetStringAsync(
+          "http://127.0.0.1:" + port +
+            "/docs/dome-user-manual.html")
+          .GetAwaiter().GetResult();
+        int tocEntryCount = manualResponse.Split(
+          "<li class=\"toc-level-", StringSplitOptions.None).Length - 1;
+        int tocBacklinkCount = manualResponse.Split(
+          "<a class=\"section-toc-link\"", StringSplitOptions.None).Length - 1;
+        Assert.IsTrue(
+          manualResponse.Contains(
+            "<nav class=\"table-of-contents\"", StringComparison.Ordinal) &&
+          manualResponse.Contains(
+            "href=\"#setup\">Setup</a>", StringComparison.Ordinal) &&
+          manualResponse.Contains(
+            "href=\"#operation\">Operation</a>", StringComparison.Ordinal) &&
+          tocEntryCount > 0 && tocBacklinkCount == tocEntryCount,
+          "the hosted dome manual lost its table of contents");
+        byte[] manualImage = client.GetByteArrayAsync(
+          "http://127.0.0.1:" + port +
+            "/docs/assets/dome-user-manual/desktop-readiness.png")
+          .GetAwaiter().GetResult();
+        Assert.IsTrue(manualImage.Length > 0,
+          "the hosted dome manual image assets were not packaged");
         string parametersResponse = client.GetStringAsync(
           "http://127.0.0.1:" + port +
             "/api/maintenance/parameters")

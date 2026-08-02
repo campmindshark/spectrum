@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<!-- Generated from docs/dome-user-manual.md by docs/generate-dome-user-manual.ps1. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#090b10" />
+  <meta name="source-sha256" content="391d97934bb0ab2b5938e70ca96178eba70215fb8dd8422ade099f6f803b5805" />
+  <title>Spectrum Dome User Manual</title>
+  <link rel="stylesheet" href="../console.css?v=square-corners" />
+  <link rel="stylesheet" href="manual.css?v=391d97934bb0" />
+</head>
+<body>
+  <a class="skip-link" href="#manual">Skip to manual</a>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">S</span>
+      <div>
+        <h1>Spectrum</h1>
+        <p>Dome user manual</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a class="header-link" href="/" aria-label="Open live controls"><span>Live controls</span><b aria-hidden="true">←</b></a>
+      <a class="header-link" href="/maintenance.html" aria-label="Open maintenance controls"><span>Maintenance</span><b aria-hidden="true">⚙</b></a>
+    </div>
+  </header>
+
+  <main class="manual-main" id="manual">
+    <article class="manual-content">
+<h1 id="dome-user-manual">Dome User Manual</h1>
+  <nav class="table-of-contents" id="contents" aria-labelledby="contents-title">
+    <h2 id="contents-title">Contents</h2>
+    <ul class="toc-list">
+      <li class="toc-level-2"><a href="#setup">Setup</a></li>
+      <li class="toc-level-3"><a href="#configure-the-equipment">Configure the equipment</a></li>
+      <li class="toc-level-3"><a href="#calibrate-the-physical-mapping">Calibrate the physical mapping</a></li>
+      <li class="toc-level-3"><a href="#browser-view">Browser view</a></li>
+      <li class="toc-level-3"><a href="#setup-troubleshooting">Setup troubleshooting</a></li>
+      <li class="toc-level-2"><a href="#operation">Operation</a></li>
+      <li class="toc-level-3"><a href="#start-a-session">Start a session</a></li>
+      <li class="toc-level-3"><a href="#open-the-browser-controller">Open the browser controller</a></li>
+      <li class="toc-level-3"><a href="#build-and-save-a-look">Build and save a look</a></li>
+      <li class="toc-level-3"><a href="#visualizer-and-layer-reference">Visualizer and layer reference</a></li>
+      <li class="toc-level-4"><a href="#controls-shared-by-every-layer">Controls shared by every layer</a></li>
+      <li class="toc-level-4"><a href="#volume-og">Volume (OG)</a></li>
+      <li class="toc-level-4"><a href="#radial-effects">Radial Effects</a></li>
+      <li class="toc-level-4"><a href="#race">Race</a></li>
+      <li class="toc-level-4"><a href="#snakes">Snakes</a></li>
+      <li class="toc-level-4"><a href="#splat-effect">Splat Effect</a></li>
+      <li class="toc-level-4"><a href="#quaternion-paintbrush">Quaternion Paintbrush</a></li>
+      <li class="toc-level-4"><a href="#tv-static">TV Static</a></li>
+      <li class="toc-level-4"><a href="#twinkle">Twinkle</a></li>
+      <li class="toc-level-4"><a href="#flash">Flash</a></li>
+      <li class="toc-level-4"><a href="#background">Background</a></li>
+      <li class="toc-level-4"><a href="#earth">Earth</a></li>
+      <li class="toc-level-4"><a href="#astronomy">Astronomy</a></li>
+      <li class="toc-level-4"><a href="#wave">Wave</a></li>
+      <li class="toc-level-4"><a href="#ripple">Ripple</a></li>
+      <li class="toc-level-4"><a href="#stamp">Stamp</a></li>
+      <li class="toc-level-4"><a href="#tunnel">Tunnel</a></li>
+      <li class="toc-level-4"><a href="#metaball">Metaball</a></li>
+      <li class="toc-level-4"><a href="#magnetic-field">Magnetic Field</a></li>
+      <li class="toc-level-4"><a href="#point-cloud">Point Cloud</a></li>
+      <li class="toc-level-4"><a href="#gyroscope">Gyroscope</a></li>
+      <li class="toc-level-4"><a href="#watchful-iris">Watchful Iris</a></li>
+      <li class="toc-level-4"><a href="#shooting-star">Shooting Star</a></li>
+      <li class="toc-level-4"><a href="#sparkler">Sparkler</a></li>
+      <li class="toc-level-4"><a href="#noise-cloud">Noise Cloud</a></li>
+      <li class="toc-level-4"><a href="#caustics">Caustics</a></li>
+      <li class="toc-level-4"><a href="#ripple-tank">Ripple Tank</a></li>
+      <li class="toc-level-4"><a href="#vortex">Vortex</a></li>
+      <li class="toc-level-4"><a href="#living-skin">Living Skin</a></li>
+      <li class="toc-level-4"><a href="#arc-lightning">Arc Lightning</a></li>
+      <li class="toc-level-4"><a href="#glass-mosaic">Glass Mosaic</a></li>
+      <li class="toc-level-4"><a href="#cellular-dome">Cellular Dome</a></li>
+      <li class="toc-level-4"><a href="#firefly-swarm">Firefly Swarm</a></li>
+      <li class="toc-level-4"><a href="#rain-chamber">Rain Chamber</a></li>
+      <li class="toc-level-4"><a href="#topographic-dream">Topographic Dream</a></li>
+      <li class="toc-level-4"><a href="#orbital-garden">Orbital Garden</a></li>
+      <li class="toc-level-4"><a href="#lava-lamp-sky">Lava Lamp Sky</a></li>
+      <li class="toc-level-3"><a href="#blend-mode-reference">Blend mode reference</a></li>
+      <li class="toc-level-4"><a href="#over">Over</a></li>
+      <li class="toc-level-4"><a href="#add">Add</a></li>
+      <li class="toc-level-4"><a href="#screen">Screen</a></li>
+      <li class="toc-level-4"><a href="#lighten">Lighten</a></li>
+      <li class="toc-level-4"><a href="#multiply">Multiply</a></li>
+      <li class="toc-level-4"><a href="#desaturate">Desaturate</a></li>
+      <li class="toc-level-4"><a href="#hue">Hue</a></li>
+      <li class="toc-level-4"><a href="#chromaticfringe">ChromaticFringe</a></li>
+      <li class="toc-level-4"><a href="#edgespectrum">EdgeSpectrum</a></li>
+      <li class="toc-level-4"><a href="#iridescence">Iridescence</a></li>
+      <li class="toc-level-4"><a href="#refract">Refract</a></li>
+      <li class="toc-level-4"><a href="#kaleidoscope">Kaleidoscope</a></li>
+      <li class="toc-level-4"><a href="#echo">Echo</a></li>
+      <li class="toc-level-4"><a href="#halftone">Halftone</a></li>
+      <li class="toc-level-4"><a href="#motion-embers">Motion Embers</a></li>
+    </ul>
+  </nav>
+<p>Spectrum has a Windows operator console for starting and configuring the
+system, plus a browser controller for running the dome from a computer, tablet,
+or phone.</p>
+<h2 id="setup">Setup <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Setup">toc</a></h2>
+<h3 id="configure-the-equipment">Configure the equipment <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Configure the equipment">toc</a></h3>
+<p><img src="assets/dome-user-manual/desktop-dome-setup.png" alt="Spectrum desktop Dome setup screen" /></p>
+<ul>
+<li><strong>OPC controller</strong>: Beaglebone network address and port</li>
+<li><strong>Receiver port</strong>: Serial port for the ESP-NOW receiver</li>
+<li><strong>Show performance HUD</strong> opens the visualization UI.</li>
+</ul>
+<p>The <strong>Advanced output processing</strong> option restarts the engine; leave the dome output on a separate thread unless you have a good reason to</p>
+<h3 id="calibrate-the-physical-mapping">Calibrate the physical mapping <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Calibrate the physical mapping">toc</a></h3>
+<ol>
+<li>Select <strong>Open dome mapping</strong> on the desktop <strong>Dome setup</strong> tab, or open
+<strong>Maintenance</strong> in the browser and select <strong>Dome mapping calibration</strong>.</li>
+<li>Follow the guided controller-cable and physical-strip mapping workflow.</li>
+<li>Finish or cancel the calibration before opening it from another browser or
+native window.</li>
+</ol>
+<h3 id="browser-view">Browser view <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Browser view">toc</a></h3>
+<p>The browser maintenance console collects the setup and diagnostic controls in
+one place.</p>
+<p><img src="assets/dome-user-manual/web-maintenance.png" alt="Spectrum browser maintenance console" /></p>
+<p>A lock icon means a control owns, or must acquire, an exclusive maintenance
+operation. If another browser or native window owns that operation, finish or
+cancel it there before continuing.</p>
+<h3 id="setup-troubleshooting">Setup troubleshooting <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Setup troubleshooting">toc</a></h3>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Readiness says <strong>No input</strong></td>
+<td>Select an audio capture device, then check that <strong>Signal</strong> responds.</td>
+</tr>
+<tr>
+<td>Dome output remains at 0 FPS</td>
+<td>Start the engine, enable dome output, and verify the OPC host and port.</td>
+</tr>
+<tr>
+<td>No wands are shown</td>
+<td>Select the receiver port in <strong>Dome setup</strong>, then open <strong>Wand status</strong>.</td>
+</tr>
+<tr>
+<td>A control is locked or disabled</td>
+<td>Finish or cancel the mapping/test operation in the browser or native window that owns it.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="operation">Operation <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Operation">toc</a></h2>
+<p>Operators should not need to change the OPC address, receiver port, physical mapping, or advanced output settings.</p>
+<h3 id="start-a-session">Start a session <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Start a session">toc</a></h3>
+<ol>
+<li>Open Spectrum on the dome computer.</li>
+<li>Select <strong>Start engine</strong>.</li>
+<li>Confirm that the engine and dome FPS values rise and that there are no fault
+messages.</li>
+</ol>
+<p><img src="assets/dome-user-manual/desktop-readiness.png" alt="Spectrum desktop Readiness screen" /></p>
+<p>The readiness badge summarizes the system:</p>
+<ul>
+<li><strong>Spectrum engine</strong> starts and stops live processing.</li>
+<li><strong>Audio input</strong> shows the selected capture device and signal level.</li>
+<li><strong>Dome output</strong> reports whether OPC frames are being sent.</li>
+<li><strong>Wands</strong> reports the receiver and connected-device count.</li>
+<li><strong>Web controller</strong> shows the address for other devices.</li>
+</ul>
+<h3 id="open-the-browser-controller">Open the browser controller <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Open the browser controller">toc</a></h3>
+<p>Open the address shown under <strong>Web controller</strong>. On the dome computer,
+<code>http://localhost:8080</code> also works.</p>
+<p><img src="assets/dome-user-manual/web-live-controls.png" alt="Spectrum browser live controls" /></p>
+<p>Check the badge in the upper-right corner before making changes:</p>
+<ul>
+<li><strong>Live</strong> means the page is connected and receiving updates.</li>
+<li><strong>Connecting</strong> or a warning message means the page is not ready for control.</li>
+</ul>
+<p>Most browser changes take effect immediately. To apply an existing look, select
+it under <strong>Scenes</strong> and choose <strong>Load</strong>.</p>
+<h3 id="build-and-save-a-look">Build and save a look <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Build and save a look">toc</a></h3>
+<ol>
+<li>Set the global <strong>Fade speed</strong>, <strong>Hue speed</strong>, and <strong>Flash rate</strong> as needed.</li>
+<li>In <strong>Palettes</strong>, select a palette and edit its color slots. Enable a
+gradient on a slot to use separate start and end colors.</li>
+<li>In <strong>Layers</strong>, select the visualizer for each layer and adjust its controls.</li>
+<li>Set each layer's blend mode and opacity.</li>
+<li>Enable, disable, add, remove, or reorder layers. The top row is the front;
+layers blend from the bottom upward.</li>
+<li>Enter a name under <strong>Scenes</strong> and select <strong>Save</strong>.</li>
+</ol>
+<p>Use the <a href="#visualizer-and-layer-reference">visualizer and layer reference</a> for
+effect-specific controls and the <a href="#blend-mode-reference">blend mode reference</a>
+for compositing behavior.</p>
+<p>A scene saves the layer stack and global fade and hue speeds. Loading it
+restores that look, but does not overwrite the colors in the named palettes its
+layers use.</p>
+<ul>
+<li>Palette edits are live. <strong>Add copy</strong> makes a new palette without changing the
+current one.</li>
+<li>Saving with an existing scene name asks before overwriting it.</li>
+<li><strong>Load</strong> replaces the current layer stack and global speeds with the selected
+scene.</li>
+<li><strong>Delete</strong> permanently removes the selected palette or scene after
+confirmation.</li>
+<li>Layer <strong>Fire</strong> and <strong>Clear</strong> buttons appear only when the selected visualizer
+supports them.</li>
+</ul>
+<h3 id="visualizer-and-layer-reference">Visualizer and layer reference <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Visualizer and layer reference">toc</a></h3>
+<p>The visualizers below are listed in the same order as the <strong>Visualizer</strong>
+selector. Parameter changes take effect immediately.</p>
+<h4 id="controls-shared-by-every-layer">Controls shared by every layer <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Controls shared by every layer">toc</a></h4>
+<ul>
+<li><strong>Visualizer</strong> selects the effect rendered by the layer. Changing it resets
+that layer's visualizer-specific parameters to the new visualizer's defaults.</li>
+<li><strong>Up/Down</strong> changes the compositing order. The top row is the frontmost layer.</li>
+<li><strong>On</strong> enables or disables the layer without removing its settings.</li>
+<li><strong>Remove</strong> deletes the layer from the current stack.</li>
+<li><strong>Notes</strong> stores an operator note with the layer.</li>
+<li><strong>Blend mode</strong> controls how the layer combines with the layers below it.</li>
+<li><strong>Opacity</strong> scales the layer's contribution after it is rendered.</li>
+<li><strong>Palette</strong> selects a named live palette. Editing that palette changes every
+layer that uses it.</li>
+</ul>
+<p>Some visualizers also show <strong>Fire</strong>, <strong>Blink</strong>, <strong>Play</strong>, <strong>Stop</strong>, or <strong>Clear</strong>.
+These buttons operate only that layer instance. <strong>Fire</strong>, <strong>Blink</strong>, and
+<strong>Play</strong> start a manual action; <strong>Stop</strong> halts Astronomy playback; <strong>Clear</strong>
+removes the visualizer's accumulated live state.</p>
+<p>Triggerable layers use the same trigger controls:</p>
+<ul>
+<li><strong>Trigger</strong> selects an automatic source: Manual, Beat, or Audio. The layer's
+action button remains available with any selection.</li>
+<li><strong>Button</strong> optionally binds wand button 1, 2, or 3. <strong>Unbound</strong> disables wand
+triggering.</li>
+<li><strong>Loudness Threshold</strong> sets the minimum input level for an Audio trigger.</li>
+<li><strong>Audio Interval (ms)</strong> sets the minimum time between Audio triggers.</li>
+</ul>
+<h4 id="volume-og">Volume (OG) <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Volume (OG)">toc</a></h4>
+<p>An audio-reactive legacy look that fills the dome's physical strut regions as
+the input level rises. Its layout and palette gradient move with the beat.</p>
+<ul>
+<li><strong>Animation Size</strong> — Sets how many concentric dome regions participate.</li>
+<li><strong>Rotation Speed</strong> — Sets how quickly the strut layout moves to a new center.</li>
+<li><strong>Gradient Speed</strong> — Sets how quickly colors travel through the palette.</li>
+<li><strong>Palette</strong> — Selects the named palette used for the strut colors.</li>
+</ul>
+<h4 id="radial-effects">Radial Effects <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Radial Effects">toc</a></h4>
+<p>Draws audio-sized geometric patterns around a movable center.</p>
+<ul>
+<li><strong>Effect</strong> — Selects Radar spokes, Pulse rings, Spiral arms, or Bubbles.</li>
+<li><strong>Size</strong> — Sets the maximum thickness or coverage of the pattern; input
+volume scales the visible result.</li>
+<li><strong>Frequency</strong> — Sets how many pattern repetitions appear around the dome.</li>
+<li><strong>Center Angle</strong> — Sets the direction of the pattern's offset center.</li>
+<li><strong>Center Distance</strong> — Moves that center away from the middle of the dome.</li>
+<li><strong>Center Speed</strong> — Rotates the offset center around the dome.</li>
+<li><strong>Rotation Speed</strong> — Rotates or advances the selected pattern.</li>
+<li><strong>Gradient Speed</strong> — Moves the palette gradient through the pattern.</li>
+<li><strong>Palette</strong> — Selects the named palette used by the effect.</li>
+</ul>
+<h4 id="race">Race <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Race">toc</a></h4>
+<p>Draws several horizontal racers that circle the dome with fixed combinations
+of constant, audio-reactive, and beat-driven motion.</p>
+<ul>
+<li><strong>Speed</strong> — Adjusts the travel speed of the constant and audio-driven racers.</li>
+<li><strong>Spacing</strong> — Adds padding between racers; higher values make the bands
+narrower.</li>
+<li><strong>Palette</strong> — Selects the named palette used by the racers.</li>
+</ul>
+<h4 id="snakes">Snakes <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Snakes">toc</a></h4>
+<p>Runs two short paths across connected dome triangles, leaving cycling palette
+colors in their wakes.</p>
+<ul>
+<li><strong>Palette</strong> — Selects the named palette used for the trails.</li>
+</ul>
+<h4 id="splat-effect">Splat Effect <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Splat Effect">toc</a></h4>
+<p>Places a random fading color splat once per measure. Louder audio produces a
+larger splat.</p>
+<ul>
+<li><strong>Palette</strong> — Selects the named palette used for new splats.</li>
+</ul>
+<h4 id="quaternion-paintbrush">Quaternion Paintbrush <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Quaternion Paintbrush">toc</a></h4>
+<p>A legacy all-in-one wand look that combines orientation-driven paint fields,
+stamps, expanding ripples, and white twinkles. Audio and beat timing animate
+parts of the effect.</p>
+<ul>
+<li><strong>Size</strong> — Sets the size of the orientation-driven paint field.</li>
+<li><strong>Twinkle Density</strong> — Sets how often random white twinkles appear.</li>
+<li><strong>Ripple Cooldown</strong> — Sets how quickly the next automatic ripple becomes
+available; higher values shorten the wait.</li>
+<li><strong>Ripple Speed</strong> — Sets how quickly each ripple expands.</li>
+</ul>
+<h4 id="tv-static">TV Static <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from TV Static">toc</a></h4>
+<p>Fills every pixel with rapidly changing random RGB noise.</p>
+<p>This visualizer has no visualizer-specific parameters.</p>
+<h4 id="twinkle">Twinkle <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Twinkle">toc</a></h4>
+<p>Creates random bright white points high on the dome and fades them into the
+current stack.</p>
+<ul>
+<li><strong>Density</strong> — Sets how frequently new twinkles appear.</li>
+</ul>
+<h4 id="flash">Flash <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Flash">toc</a></h4>
+<p>Flashes the entire dome with one color, then fades it using the global fade
+speed.</p>
+<ul>
+<li><strong>Color</strong> — Sets the flash color.</li>
+<li><strong>Trigger</strong> — Selects Manual, Beat, or Audio triggering.</li>
+<li><strong>Button</strong> — Optionally binds a wand button.</li>
+<li><strong>Loudness Threshold</strong> — Sets the Audio trigger level.</li>
+<li><strong>Audio Interval (ms)</strong> — Limits how frequently Audio can trigger a flash.</li>
+<li><strong>Fire</strong> — Immediately starts a flash.</li>
+</ul>
+<h4 id="background">Background <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Background">toc</a></h4>
+<p>Fills the entire layer with a solid color. It is usually placed at the bottom
+of the stack so transparent areas above it remain lit.</p>
+<ul>
+<li><strong>Color</strong> — Sets the fill color.</li>
+</ul>
+<h4 id="earth">Earth <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Earth">toc</a></h4>
+<p>Wraps an Earth texture around the physical dome. A moving or spotlighted wand
+sets the globe's pole; otherwise the globe follows the idle orientation.</p>
+<ul>
+<li><strong>Spin Speed (rev/s)</strong> — Sets longitude rotation speed. Negative values
+reverse the direction.</li>
+</ul>
+<h4 id="astronomy">Astronomy <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Astronomy">toc</a></h4>
+<p>Renders an approximate Black Rock City sky with the Sun, Moon, visible planets,
+bright stars, and a deterministic faint-star field. It is a lighting effect,
+not a navigation instrument.</p>
+<ul>
+<li><strong>North Heading (deg clockwise)</strong> — Aligns true north to the physical dome.</li>
+<li><strong>Start Date</strong> — Sets the first day of the simulated week in Pacific time.</li>
+<li><strong>Time (hours from start)</strong> — Scrubs up to one week forward from midnight on
+the start date.</li>
+<li><strong>Show Daytime Sky</strong> — Shows or hides the daytime sky.</li>
+<li><strong>Show Nighttime Sky</strong> — Shows or hides the nighttime sky and stars.</li>
+<li><strong>Playback Speed (x)</strong> — Sets the rate of automatic timeline playback.</li>
+<li><strong>Loop</strong> — Restarts playback when it reaches the end of the week.</li>
+<li><strong>Play</strong> — Starts or resumes timeline playback.</li>
+<li><strong>Stop</strong> — Stops playback at the current simulated time.</li>
+</ul>
+<h4 id="wave">Wave <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Wave">toc</a></h4>
+<p>Draws a colored band that sweeps across the dome around a configurable center.
+It can loop continuously or run once when fired.</p>
+<ul>
+<li><strong>Band Width</strong> — Sets the thickness of the moving band.</li>
+<li><strong>Sweep Speed</strong> — Sets speed and direction; negative values reverse it.</li>
+<li><strong>Center Angle</strong> — Sets the direction of the sweep's offset center.</li>
+<li><strong>Center Distance</strong> — Moves the sweep center away from the dome center.</li>
+<li><strong>Color</strong> — Sets the band color.</li>
+<li><strong>Playback Mode</strong> — <strong>Loop</strong> runs continuously; <strong>OneShot</strong> waits for a
+manual or wand trigger and then crosses the dome once.</li>
+<li><strong>Button</strong> — Optionally binds a wand button for OneShot playback.</li>
+<li><strong>Fire</strong> — Starts or restarts a OneShot sweep.</li>
+</ul>
+<h4 id="ripple">Ripple <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Ripple">toc</a></h4>
+<p>Launches a colored ring from the current wand or idle aim. Successive ripples
+alternate between a fixed center and one that follows the wand.</p>
+<ul>
+<li><strong>Ripple Speed</strong> — Sets how quickly the ring expands.</li>
+<li><strong>Desaturation</strong> — Removes color from the ring as the value increases.</li>
+<li><strong>Trigger</strong> — Selects Manual, Beat, or Audio triggering.</li>
+<li><strong>Button</strong> — Optionally binds a wand button.</li>
+<li><strong>Loudness Threshold</strong> — Sets the Audio trigger level.</li>
+<li><strong>Audio Interval (ms)</strong> — Limits how frequently Audio can launch a ripple.</li>
+<li><strong>Fire</strong> — Immediately launches a ripple when the current ripple permits it.</li>
+</ul>
+<h4 id="stamp">Stamp <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Stamp">toc</a></h4>
+<p>Places a short-lived shape at the current wand or idle aim. Each trigger
+alternates between a grid of rings and a beat-driven rhythm band; position and
+color remain fixed for that stamp.</p>
+<ul>
+<li><strong>Trigger</strong> — Selects Manual, Beat, or Audio triggering.</li>
+<li><strong>Button</strong> — Optionally binds a wand button.</li>
+<li><strong>Loudness Threshold</strong> — Sets the Audio trigger level.</li>
+<li><strong>Audio Interval (ms)</strong> — Limits how frequently Audio can place a stamp.</li>
+<li><strong>Fire</strong> — Immediately places the next stamp.</li>
+</ul>
+<h4 id="tunnel">Tunnel <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Tunnel">toc</a></h4>
+<p>Runs concentric rings from the crown toward the rim. Each ring has a stable
+variation in speed, thickness, and brightness.</p>
+<ul>
+<li><strong>Ring Count</strong> — Sets the number of rings in circulation.</li>
+<li><strong>Travel Speed</strong> — Sets how quickly rings move toward the rim.</li>
+<li><strong>Ring Thickness</strong> — Sets the width of every ring.</li>
+<li><strong>Brightness</strong> — Sets the base ring intensity.</li>
+<li><strong>Ring Variation</strong> — Sets how different individual rings are from one
+another.</li>
+<li><strong>Bind to Orientation</strong> — Rotates the tunnel axis with the wand or idle
+orientation.</li>
+<li><strong>Color</strong> — Sets the ring color.</li>
+</ul>
+<h4 id="metaball">Metaball <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Metaball">toc</a></h4>
+<p>Draws a live potential field around wand orientations, with optional animated
+contour lines. A trigger briefly enlarges the field.</p>
+<ul>
+<li><strong>Size</strong> — Sets the base size of the metaball field.</li>
+<li><strong>Show Contours</strong> — Adds animated level curves to the field.</li>
+<li><strong>Button</strong> — Optionally binds a wand button to the size burst.</li>
+<li><strong>Fire</strong> — Immediately starts a size burst.</li>
+</ul>
+<h4 id="magnetic-field">Magnetic Field <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Magnetic Field">toc</a></h4>
+<p>Treats every wand as a positive pole at its aim and a negative pole at its
+antipode. Colored charge regions and optional white streamlines show the
+combined signed field.</p>
+<ul>
+<li><strong>Field Strength</strong> — Sets how quickly the field reaches full brightness near
+a pole.</li>
+<li><strong>+1 Color</strong> — Sets the positive-field color.</li>
+<li><strong>-1 Color</strong> — Sets the negative-field color.</li>
+<li><strong>Field Lines</strong> — Sets the number of white streamlines; zero hides them.</li>
+<li><strong>Line Width</strong> — Sets the thickness of the streamlines.</li>
+</ul>
+<h4 id="point-cloud">Point Cloud <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Point Cloud">toc</a></h4>
+<p>Scatters glowing spots over the dome. Moving wands push nearby spots along the
+surface; springs return them toward their resting constellation.</p>
+<ul>
+<li><strong>Spot Count</strong> — Sets the population and reseeds the constellation when
+changed.</li>
+<li><strong>Spot Size</strong> — Sets the drawn radius of each spot.</li>
+<li><strong>Push Radius</strong> — Sets how far each wand's influence reaches.</li>
+<li><strong>Push Strength</strong> — Sets how strongly a wand repels nearby spots.</li>
+<li><strong>Spring Strength</strong> — Sets how strongly spots return to their home positions.</li>
+<li><strong>Damping</strong> — Sets how much velocity is retained; higher values coast longer,
+while lower values settle faster.</li>
+</ul>
+<h4 id="gyroscope">Gyroscope <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Gyroscope">toc</a></h4>
+<p>Renders three nested gimbal rings driven by the current wand or idle
+orientation, with a moving highlight around the inner rotor.</p>
+<ul>
+<li><strong>Ring Width</strong> — Sets the thickness of all three gimbal rings.</li>
+<li><strong>Rotor Speed</strong> — Sets the speed of the highlight around the rotor.</li>
+<li><strong>Palette</strong> — Uses the first three colors for the outer, middle, and inner
+rings.</li>
+</ul>
+<h4 id="watchful-iris">Watchful Iris <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Watchful Iris">toc</a></h4>
+<p>Turns the full dome into an eye that follows the current orientation. Audio
+dilates the pupil, and the eye can blink manually, on beats, or on audio
+transients.</p>
+<ul>
+<li><strong>Iris Complexity</strong> — Sets the number of radial iris filaments.</li>
+<li><strong>Pupil Size</strong> — Sets the resting pupil radius.</li>
+<li><strong>Dilation Gain</strong> — Sets how strongly audio enlarges the pupil.</li>
+<li><strong>Blink Trigger</strong> — Selects Manual, Beat, or Audio Transient blinking.</li>
+<li><strong>Eyelid Softness</strong> — Softens the resting eyelid edge and blink transition.</li>
+<li><strong>Sclera Brightness</strong> — Sets the brightness of the white, blush, and vascular
+surface.</li>
+<li><strong>Palette</strong> — Selects the iris colors.</li>
+<li><strong>Blink</strong> — Immediately blinks the eye.</li>
+</ul>
+<h4 id="shooting-star">Shooting Star <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Shooting Star">toc</a></h4>
+<p>Spawns stars just outside the rim and accelerates them toward the current wand
+or idle aim, leaving fading streaks. Triggers add an extra star to the steady
+spawn rate.</p>
+<ul>
+<li><strong>Spawn Rate</strong> — Sets the continuous number of stars created per second.</li>
+<li><strong>Acceleration</strong> — Sets how strongly stars accelerate toward their targets.</li>
+<li><strong>Max Speed</strong> — Caps star travel speed.</li>
+<li><strong>Dot Size</strong> — Sets the drawn size of each star.</li>
+<li><strong>Homing</strong> — When enabled, stars follow the live moving aim; when disabled,
+each star keeps the target captured at spawn.</li>
+<li><strong>Trigger</strong> — Selects Manual, Beat, or Audio triggering for extra stars.</li>
+<li><strong>Button</strong> — Optionally binds a wand button.</li>
+<li><strong>Loudness Threshold</strong> — Sets the Audio trigger level.</li>
+<li><strong>Audio Interval (ms)</strong> — Limits how frequently Audio adds a star.</li>
+<li><strong>Palette</strong> — Selects colors for the star volley.</li>
+<li><strong>Fire</strong> — Launches one extra star.</li>
+<li><strong>Clear</strong> — Removes the current stars and accumulated state.</li>
+</ul>
+<h4 id="sparkler">Sparkler <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Sparkler">toc</a></h4>
+<p>Continuously emits colored particles from the current wand or idle aim in
+random directions. Triggers add an extra spark.</p>
+<ul>
+<li><strong>Emission Rate</strong> — Sets the continuous number of particles emitted per
+second.</li>
+<li><strong>Speed</strong> — Sets particle travel speed.</li>
+<li><strong>Dot Size</strong> — Sets the drawn size of each particle.</li>
+<li><strong>Trigger</strong> — Selects Manual, Beat, or Audio triggering for extra sparks.</li>
+<li><strong>Button</strong> — Optionally binds a wand button.</li>
+<li><strong>Loudness Threshold</strong> — Sets the Audio trigger level.</li>
+<li><strong>Audio Interval (ms)</strong> — Limits how frequently Audio adds a spark.</li>
+<li><strong>Palette</strong> — Selects the spark colors.</li>
+<li><strong>Fire</strong> — Emits one extra particle.</li>
+<li><strong>Clear</strong> — Removes current particles and accumulated state.</li>
+</ul>
+<h4 id="noise-cloud">Noise Cloud <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Noise Cloud">toc</a></h4>
+<p>Creates a seamless animated fractal-noise texture. It works well beneath Add,
+Screen, or Multiply to break up a flat layer.</p>
+<ul>
+<li><strong>Scale</strong> — Sets the spatial frequency; higher values produce smaller cloud
+features.</li>
+<li><strong>Morph Speed</strong> — Sets how quickly the cloud changes in place; zero freezes
+it.</li>
+<li><strong>Detail</strong> — Adds finer layers of noise.</li>
+<li><strong>Contrast</strong> — Strengthens the difference between bright and dark regions.</li>
+<li><strong>Color</strong> — Sets the cloud tint.</li>
+</ul>
+<h4 id="caustics">Caustics <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Caustics">toc</a></h4>
+<p>Creates the moving filament pattern of light seen on the floor of a sunlit
+pool. It can also provide a displacement field to the Refract blend mode.</p>
+<ul>
+<li><strong>Method</strong> — <strong>Shimmer</strong> uses soft bands, <strong>Interference</strong> produces a classic
+caustic web, and <strong>Lens</strong> models focusing through a moving water surface.</li>
+<li><strong>Scale</strong> — Sets the spatial frequency and feature size.</li>
+<li><strong>Speed</strong> — Sets how quickly the pattern churns.</li>
+<li><strong>Sharpness</strong> — Makes bright filaments broader or thinner.</li>
+<li><strong>Brightness</strong> — Sets output gain.</li>
+<li><strong>Color</strong> — Sets the caustic tint.</li>
+</ul>
+<h4 id="ripple-tank">Ripple Tank <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Ripple Tank">toc</a></h4>
+<p>Simulates a damped water surface. Moving wands press wakes into the surface;
+with no wand motion, an idle orientation supplies a gentle wake.</p>
+<ul>
+<li><strong>Wave Speed</strong> — Sets how quickly waves cross the surface.</li>
+<li><strong>Damping</strong> — Sets how quickly existing waves lose energy.</li>
+<li><strong>Sharpness</strong> — Sets how tightly wave highlights are focused.</li>
+<li><strong>Brightness</strong> — Sets output gain.</li>
+<li><strong>Color</strong> — Sets the water-light tint.</li>
+<li><strong>Clear</strong> — Flattens the simulated surface.</li>
+</ul>
+<h4 id="vortex">Vortex <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Vortex">toc</a></h4>
+<p>Creates a procedural particle-like vortex with persistent trails and optional
+audio or beat response.</p>
+<ul>
+<li><strong>Style</strong> — <strong>Whirlpool</strong> draws broad spiral wisps; <strong>Sandstorm</strong> draws finer
+thresholded grains.</li>
+<li><strong>Spin Speed</strong> — Sets speed and direction of rotation.</li>
+<li><strong>Audio Brightness</strong> — Scales vortex brightness with the audio input level.</li>
+<li><strong>Beat Speed</strong> — Adds a short motion impulse on each beat.</li>
+<li><strong>Twist</strong> — Sets the curvature and angular shear of the spiral.</li>
+<li><strong>Grain Scale</strong> — Sets the procedural field's spatial frequency.</li>
+<li><strong>Density</strong> — Sets the amount of visible material.</li>
+<li><strong>Core Size</strong> — Sets the radius of the dark center.</li>
+<li><strong>Inflow</strong> — Sets the rate and direction of radial flow.</li>
+<li><strong>Turbulence</strong> — Adds fine irregularity to the field.</li>
+<li><strong>Color</strong> — Sets the vortex tint.</li>
+</ul>
+<h4 id="living-skin">Living Skin <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Living Skin">toc</a></h4>
+<p>Runs a persistent reaction-diffusion simulation over the dome. Manual or beat
+seeds grow into organic patterns, and wand buttons can feed, poison, or erase
+the chemistry under the aim.</p>
+<ul>
+<li><strong>Feed Rate</strong> — Controls how quickly the first chemical is replenished and
+strongly affects the resulting pattern.</li>
+<li><strong>Kill Rate</strong> — Controls how quickly the second chemical is removed and
+strongly affects the resulting pattern.</li>
+<li><strong>Diffusion Scale</strong> — Selects how broadly chemicals spread across neighboring
+LEDs.</li>
+<li><strong>Simulation Speed</strong> — Sets how quickly the chemistry advances.</li>
+<li><strong>Seed Source</strong> — Uses the initial/manual seed only, or adds a seed on beats.</li>
+<li><strong>Edge Contrast</strong> — Emphasizes boundaries in the chemical field.</li>
+<li><strong>Feed Button</strong> — Binds a held wand button that adds feed chemical.</li>
+<li><strong>Poison Button</strong> — Binds a held wand button that adds the second chemical.</li>
+<li><strong>Erase Button</strong> — Binds a held wand button that clears chemistry.</li>
+<li><strong>Brush Radius</strong> — Sets the size of the wand chemistry brush.</li>
+<li><strong>Brush Strength</strong> — Sets how quickly a held brush changes the field.</li>
+<li><strong>Palette</strong> — Selects colors for the chemical concentrations and edges.</li>
+<li><strong>Fire</strong> — Injects a seed patch.</li>
+<li><strong>Clear</strong> — Clears the active second chemical until the layer is seeded
+again.</li>
+</ul>
+<h4 id="arc-lightning">Arc Lightning <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Arc Lightning">toc</a></h4>
+<p>Routes connected lightning bolts over the physical dome graph. A strike can
+branch, widen across neighboring LEDs, and leave a fading afterglow.</p>
+<ul>
+<li><strong>Branch Count</strong> — Sets the number of side branches on a strike.</li>
+<li><strong>Jaggedness</strong> — Sets how strongly the main route deviates from a direct
+path.</li>
+<li><strong>Width</strong> — Expands the energized path across neighboring LEDs.</li>
+<li><strong>Afterglow (s)</strong> — Sets the half-life of light after the strike.</li>
+<li><strong>Strike Duration (s)</strong> — Sets how long the live bolt remains energized.</li>
+<li><strong>Trigger</strong> — Selects Manual, Beat, or Audio triggering.</li>
+<li><strong>Button</strong> — Optionally binds a wand button.</li>
+<li><strong>Loudness Threshold</strong> — Sets the Audio trigger level.</li>
+<li><strong>Audio Interval (ms)</strong> — Limits how frequently Audio creates a strike.</li>
+<li><strong>Palette</strong> — Selects bolt and branch colors.</li>
+<li><strong>Fire</strong> — Starts a strike.</li>
+<li><strong>Clear</strong> — Removes the live strike and afterglow state.</li>
+</ul>
+<h4 id="glass-mosaic">Glass Mosaic <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Glass Mosaic">toc</a></h4>
+<p>Treats the dome's triangular faces as stained-glass tiles. A trigger starts at
+the current aim and propagates a connected color-change cascade.</p>
+<ul>
+<li><strong>Tile Grouping</strong> — Sets how many connected faces change as one tile group.</li>
+<li><strong>Cascade Speed (tiles/s)</strong> — Sets how quickly the cascade advances.</li>
+<li><strong>Propagation Rule</strong> — Selects Neighbor Wave, Clockwise Wave, or Random
+Domino ordering.</li>
+<li><strong>Border Brightness</strong> — Sets the resting brightness of shared tile edges.</li>
+<li><strong>Tile Transition</strong> — Changes colors instantly or uses an edge-on Flip.</li>
+<li><strong>Trigger</strong> — Selects Manual, Beat, or Audio triggering.</li>
+<li><strong>Button</strong> — Optionally binds a wand button.</li>
+<li><strong>Loudness Threshold</strong> — Sets the Audio trigger level.</li>
+<li><strong>Audio Interval (ms)</strong> — Limits how frequently Audio starts a cascade.</li>
+<li><strong>Palette</strong> — Selects the tile colors.</li>
+<li><strong>Fire</strong> — Starts a cascade.</li>
+<li><strong>Clear</strong> — Clears the active cascade state.</li>
+</ul>
+<h4 id="cellular-dome">Cellular Dome <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Cellular Dome">toc</a></h4>
+<p>Runs a binary cellular automaton on the dome's triangular faces. Cells are born,
+survive, age through palette colors, and can advance on a timer or beat.</p>
+<ul>
+<li><strong>Rule</strong> — Selects Colonies, Oscillators, Traveling Fronts, or Chaos behavior.</li>
+<li><strong>Neighborhood</strong> — Uses only faces across shared edges or all faces touching
+shared vertices.</li>
+<li><strong>Generation Rate (gen/s)</strong> — Sets the update rate in Timed mode.</li>
+<li><strong>Birth Color</strong> — Selects which palette slot a newly born cell uses.</li>
+<li><strong>Age Decay (s)</strong> — Sets how quickly surviving cells dim and move through
+later palette slots.</li>
+<li><strong>Trigger Mode</strong> — <strong>Timed</strong> uses Generation Rate, <strong>Beat Step</strong> advances one
+generation per beat, and <strong>Beat Rule Cycle</strong> also selects the next rule.</li>
+<li><strong>Palette</strong> — Selects colors for born and aging cells.</li>
+<li><strong>Fire</strong> — Injects a live colony.</li>
+<li><strong>Clear</strong> — Empties the automaton.</li>
+</ul>
+<h4 id="firefly-swarm">Firefly Swarm <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Firefly Swarm">toc</a></h4>
+<p>Maintains a flock of luminous agents over the dome. Wands attract or repel the
+flock, and a sharp audio rise startles it outward before it regroups.</p>
+<ul>
+<li><strong>Population</strong> — Sets the number of fireflies.</li>
+<li><strong>Cohesion</strong> — Sets how strongly agents gather into a flock.</li>
+<li><strong>Separation</strong> — Sets how strongly nearby agents avoid crowding.</li>
+<li><strong>Wander</strong> — Sets autonomous directional variation.</li>
+<li><strong>Wand Interaction</strong> — Makes moving wand aims attract or repel the flock.</li>
+<li><strong>Dot Size</strong> — Sets the size of each firefly.</li>
+<li><strong>Trail Half-Life (s)</strong> — Sets how long rendered trails remain.</li>
+<li><strong>Palette</strong> — Selects the firefly colors.</li>
+</ul>
+<h4 id="rain-chamber">Rain Chamber <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Rain Chamber">toc</a></h4>
+<p>Spawns droplets at the crown and pulls them toward the rim. Audio controls the
+amount of rain, wands modify local rainfall, and rim impacts create splash
+rings.</p>
+<ul>
+<li><strong>Rainfall Rate (drops/s)</strong> — Sets the base spawn rate; input volume scales
+the result.</li>
+<li><strong>Spherical Gravity</strong> — Sets how strongly droplets accelerate toward the rim.</li>
+<li><strong>Droplet Size</strong> — Sets the rendered droplet size.</li>
+<li><strong>Trail Half-Life (s)</strong> — Sets how long droplet trails remain.</li>
+<li><strong>Wand Interaction</strong> — <strong>Umbrella</strong> deflects droplets, <strong>Dry Region</strong> clears
+rain near the aim, and <strong>Wind</strong> uses wand motion to push droplets.</li>
+<li><strong>Wand Strength</strong> — Sets the strength of the selected interaction.</li>
+<li><strong>Splash Strength</strong> — Sets the size and brightness of rim-impact splashes.</li>
+<li><strong>Palette</strong> — Selects droplet and splash colors.</li>
+</ul>
+<h4 id="topographic-dream">Topographic Dream <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Topographic Dream">toc</a></h4>
+<p>Draws a seamless evolving landscape directly on the dome, with subdued land
+and water fills, bright contours, and a coastline. Audio raises the sea level.</p>
+<ul>
+<li><strong>Terrain Scale</strong> — Sets the size and frequency of terrain features.</li>
+<li><strong>Evolution Speed</strong> — Sets how quickly the landscape changes.</li>
+<li><strong>Contour Interval</strong> — Sets the elevation spacing between contour lines.</li>
+<li><strong>Line Width</strong> — Sets contour and coastline thickness.</li>
+<li><strong>Quiet Sea Level</strong> — Sets the baseline water level before audio raises it.</li>
+<li><strong>Follow Orientation</strong> — Rotates the landscape with the wand or idle
+orientation.</li>
+<li><strong>Palette</strong> — Selects land, water, contour, and coastline colors.</li>
+</ul>
+<h4 id="orbital-garden">Orbital Garden <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Orbital Garden">toc</a></h4>
+<p>Maintains luminous bodies orbiting gravity wells created by connected wands.
+Without wands, a fixed fallback well keeps the system moving.</p>
+<ul>
+<li><strong>Body Count</strong> — Sets the number of persistent orbiting bodies.</li>
+<li><strong>Gravity</strong> — Sets attraction strength toward wand gravity wells.</li>
+<li><strong>Orbital Damping</strong> — Sets how quickly orbital motion loses energy.</li>
+<li><strong>Collisions</strong> — <strong>Bounce</strong> keeps collisions elastic, <strong>Bloom</strong> adds a light
+burst, and <strong>Fragment Bloom</strong> also launches temporary fragments.</li>
+<li><strong>Trail Half-Life (s)</strong> — Sets how long orbital trails remain.</li>
+<li><strong>Body Size</strong> — Sets the size of bodies, wells, fragments, and blooms.</li>
+<li><strong>Palette</strong> — Selects colors for the garden.</li>
+</ul>
+<h4 id="lava-lamp-sky">Lava Lamp Sky <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Lava Lamp Sky">toc</a></h4>
+<p>Moves large soft blobs over the dome. Warm blobs rise, cool blobs sink, nearby
+blobs merge visually, and audio increases heat and buoyancy.</p>
+<ul>
+<li><strong>Blob Count</strong> — Sets the number of persistent blobs.</li>
+<li><strong>Viscosity</strong> — Sets resistance to motion; higher values produce heavier,
+slower movement.</li>
+<li><strong>Buoyancy</strong> — Sets how strongly temperature moves blobs along gravity.</li>
+<li><strong>Surface Tension</strong> — Encourages nearby blobs to merge and return to rounded
+shapes.</li>
+<li><strong>Heat</strong> — Sets the base blob temperature before audio response.</li>
+<li><strong>Follow Orientation</strong> — Tilts the gravity axis with the wand or idle
+orientation instead of fixing it at the crown.</li>
+<li><strong>Palette</strong> — Selects the blob colors.</li>
+</ul>
+<h3 id="blend-mode-reference">Blend mode reference <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Blend mode reference">toc</a></h3>
+<p>A blend mode determines how one layer changes the composite built from the
+layers below it. Because Spectrum composites from the bottom upward, changing
+the order of two layers can produce a completely different result.</p>
+<p>There are two broad families:</p>
+<ul>
+<li><strong>Paint blends</strong> use the visualizer's rendered colors. Over, Add, Screen,
+Lighten, and Multiply belong to this family.</li>
+<li><strong>Adjustment blends</strong> primarily use the visualizer's coverage as a mask and
+reprocess the already-composited layers below. A full-dome visualizer such as
+Background applies an adjustment everywhere; a Wave, Ripple, or other
+partially transparent visualizer restricts it to that moving shape.</li>
+</ul>
+<p>The layer's <strong>Opacity</strong> always controls the strength of the selected blend, but
+its exact role depends on the blend. At 0% the blend has no visible effect. For
+paint blends it scales or mixes the source color; for adjustment blends it
+scales the adjustment mask.</p>
+<h4 id="over">Over <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Over">toc</a></h4>
+<p><strong>Over</strong> is conventional foreground compositing. Where the visualizer drew an
+opaque pixel, its color replaces the composite below. Partially transparent
+pixels mix the source and destination, and transparent areas reveal the lower
+layers unchanged.</p>
+<p>Use Over when a layer should read as a distinct foreground object: solid
+backgrounds, opaque shapes, or effects whose own transparency and soft edges
+should be respected.</p>
+<p>Opacity multiplies the visualizer's own coverage. At 50%, a fully opaque source
+is mixed halfway with the composite below.</p>
+<p>Over has no blend-specific controls.</p>
+<h4 id="add">Add <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Add">toc</a></h4>
+<p><strong>Add</strong> adds the source's red, green, and blue values to the composite below.
+Black adds nothing; brighter colors increase the corresponding channels. When
+several bright layers overlap, the result can reach the output ceiling and
+become white.</p>
+<p>Add is the default for new layers. It works especially well for light-emitting
+effects such as Twinkle, Sparkler, Shooting Star, lightning, and highlights,
+where overlapping light should become brighter.</p>
+<p>Opacity scales the source color before it is added. Lower it when overlapping
+effects clip, lose color, or make the dome too bright.</p>
+<p>Add has no blend-specific controls.</p>
+<h4 id="screen">Screen <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Screen">toc</a></h4>
+<p><strong>Screen</strong> is another lightening blend. It combines the inverse of the source
+and destination, so black has no effect and white produces white. Unlike Add,
+it approaches white progressively instead of summing channel values directly.</p>
+<p>Screen is useful for glows, atmospheric textures, caustics, and other bright
+overlays that should lighten the look while retaining more detail and color
+than a strong additive stack.</p>
+<p>Opacity reduces the source's contribution before the screen calculation.</p>
+<p>Screen has no blend-specific controls.</p>
+<h4 id="lighten">Lighten <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Lighten">toc</a></h4>
+<p><strong>Lighten</strong> compares each color channel and keeps whichever is brighter: the
+existing composite or the opacity-scaled source. It does not sum the two.</p>
+<p>Use Lighten for crisp sparkles, highlights, or competing bright patterns when
+you want the strongest value to win without making overlaps progressively
+brighter. Because the comparison happens independently for red, green, and
+blue, overlapping colors can combine into a new color.</p>
+<p>Opacity scales the source before the comparison. Reducing it raises the bar a
+source pixel must clear before it replaces a destination channel.</p>
+<p>Lighten has no blend-specific controls.</p>
+<h4 id="multiply">Multiply <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Multiply">toc</a></h4>
+<p><strong>Multiply</strong> multiplies the composite below by the source color. White leaves
+the lower composite unchanged, midtones tint and darken it, and black produces
+black.</p>
+<p>Use Multiply for shadows, cloud textures, patterned dimming, color filtering,
+and adding surface variation to a bright base layer. It needs illuminated
+content below it; multiplying black cannot create light.</p>
+<p>Multiply uses the source's RGB values rather than its transparency. A
+visualizer whose unused pixels are black will darken those areas too, so
+full-frame sources such as Background or Noise Cloud are usually the most
+predictable choices.</p>
+<p>Opacity moves the multiplier toward white: 0% is no change and 100% applies the
+source color fully.</p>
+<p>Multiply has no blend-specific controls.</p>
+<h4 id="desaturate">Desaturate <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Desaturate">toc</a></h4>
+<p><strong>Desaturate</strong> ignores the visualizer's RGB color and uses only its coverage as
+a mask. Inside that mask, the composite below is converted toward grayscale
+using its perceived brightness.</p>
+<p>Use a full-dome source to desaturate the entire look, or a moving source such as
+Wave to sweep a grayscale region across colored layers. The source's displayed
+color is irrelevant; only where it draws and how transparent it is matter.</p>
+<p>Opacity sets the amount of desaturation. At 50%, the destination is mixed
+halfway toward grayscale.</p>
+<p>Desaturate has no blend-specific controls.</p>
+<h4 id="hue">Hue <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Hue">toc</a></h4>
+<p><strong>Hue</strong> is a specialized adjustment blend. The source provides coverage and
+brightness, but not its own hue or saturation. Spectrum recolors that shape at
+full saturation using the hue carried upward by the composite below.</p>
+<p>This is most useful above a visualizer that publishes a meaningful per-pixel
+hue field, such as Metaball or another colored paint layer. For example, a
+white Wave using Hue can become a moving, fully saturated window into the hue
+field below. If the lower stack does not carry a useful hue, the result may be
+uniform or surprising.</p>
+<p>The source's brightest channel sets the output brightness. Source alpha and
+layer opacity set the adjustment mask.</p>
+<p>Hue has no blend-specific controls.</p>
+<h4 id="chromaticfringe">ChromaticFringe <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from ChromaticFringe">toc</a></h4>
+<p><strong>ChromaticFringe</strong> creates RGB channel separation in the composite below. Red
+is sampled from one side of each pixel, blue from the opposite side, and green
+stays centered. This produces a lens-aberration or misregistered-projector
+look.</p>
+<p>The selecting visualizer supplies only the mask. Use Background for a
+full-dome fringe, or a moving shape to reveal the split locally.</p>
+<ul>
+<li><strong>Fringe Offset</strong> — Sets the distance between the red and blue samples.
+Small values produce a tight colored edge; large values visibly separate the
+channels.</li>
+<li><strong>Angle Spin</strong> — Rotates the split axis over time. Positive and negative
+values rotate in opposite directions; zero holds a fixed axis.</li>
+<li><strong>Follow Orientation</strong> — Uses the current wand or idle orientation angle for
+the split axis. While an orientation angle is available, it replaces Angle
+Spin.</li>
+</ul>
+<p>Opacity controls how strongly the separated channels replace the original
+composite inside the mask.</p>
+<h4 id="edgespectrum">EdgeSpectrum <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from EdgeSpectrum">toc</a></h4>
+<p><strong>EdgeSpectrum</strong> finds brightness edges in the composite below and adds spectral
+color along them. The hue follows the direction of the local brightness
+gradient, so differently oriented edges receive different colors. Flat regions
+remain unchanged.</p>
+<p>It is useful for outlining geometry, revealing fine motion in subdued layers,
+or adding a colored energy edge without replacing the underlying image.</p>
+<ul>
+<li><strong>Edge Strength</strong> — Sets the brightness of the added spectral outline.</li>
+<li><strong>Sample Radius</strong> — Sets how far apart the edge detector samples the
+composite. Small values find fine edges; larger values respond to broader
+transitions.</li>
+</ul>
+<p>The source visualizer supplies the mask, and opacity scales the added edge
+color.</p>
+<h4 id="iridescence">Iridescence <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Iridescence">toc</a></h4>
+<p><strong>Iridescence</strong> adds a thin-film spectral sheen based on the physical curvature
+of the dome. A virtual light direction selects a rainbow tint from each
+pixel's surface angle. The tint is scaled by the destination's existing
+brightness, so dark areas stay dark.</p>
+<p>Use it to give solid objects, landscapes, or full-dome textures an oil-slick,
+pearl, or interference-film appearance without losing their brightness
+structure.</p>
+<ul>
+<li><strong>Sheen Strength</strong> — Sets how far the existing color is recolored toward the
+spectral tint.</li>
+<li><strong>Spectral Bands</strong> — Sets how many rainbow cycles repeat across the dome's
+curvature.</li>
+<li><strong>Light Spin</strong> — Rotates the virtual light around the dome. Positive and
+negative values rotate in opposite directions.</li>
+<li><strong>Follow Orientation</strong> — Uses the current wand or idle orientation angle for
+the virtual light. While an orientation angle is available, it replaces
+Light Spin.</li>
+</ul>
+<p>The source visualizer supplies the mask. Layer opacity and Sheen Strength both
+scale the recoloring.</p>
+<h4 id="refract">Refract <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Refract">toc</a></h4>
+<p><strong>Refract</strong> distorts the composite below as though it were viewed through a
+moving surface. Each masked pixel samples a nearby destination pixel; the
+source layer provides both the displacement direction and magnitude.</p>
+<p>Caustics and Ripple Tank are designed to publish the displacement data Refract
+expects. With either one, the visible source paint is replaced by a shimmer or
+water-lens distortion of the lower stack. Other visualizers may provide no
+useful displacement field and can produce little or unpredictable movement.</p>
+<ul>
+<li><strong>Refraction Strength</strong> — Sets the maximum sampling displacement. Low values
+create subtle shimmer; high values create stronger warping.</li>
+</ul>
+<p>The source field's own magnitude controls both local displacement and coverage.
+Layer opacity scales how strongly the displaced sample replaces the original.</p>
+<h4 id="kaleidoscope">Kaleidoscope <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Kaleidoscope">toc</a></h4>
+<p><strong>Kaleidoscope</strong> folds the top-down projection of the composite below into
+repeated angular sectors. The selecting visualizer supplies only the mask; its
+color is ignored.</p>
+<p>Use a full-dome mask to transform the entire composition, or a patterned mask
+to reveal kaleidoscopic regions inside an otherwise normal look.</p>
+<ul>
+<li><strong>Sector Count</strong> — Sets the number of angular repetitions.</li>
+<li><strong>Sector Mode</strong> — <strong>Repeat</strong> copies every sector with the same orientation;
+<strong>Mirror</strong> flips alternating sectors for a traditional kaleidoscope seam.</li>
+<li><strong>Sector Spin</strong> — Rotates the entire folded pattern over time. Positive and
+negative values rotate in opposite directions.</li>
+<li><strong>Focal Angle</strong> — Sets the direction in which the folding center is offset.</li>
+<li><strong>Focal Distance</strong> — Moves the folding center away from the center of the
+dome. At zero, Focal Angle has no visible effect.</li>
+<li><strong>Follow Orientation</strong> — Uses the current wand or idle orientation angle as
+the Focal Angle. Sector Spin continues to rotate the folded pattern.</li>
+</ul>
+<p>Opacity mixes the folded sample with the original composite inside the mask.</p>
+<h4 id="echo">Echo <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Echo">toc</a></h4>
+<p><strong>Echo</strong> stores the composite below and screens delayed, transformed copies back
+over the current frame. Each older copy can rotate, scale, drift, fade, shift
+hue, and lose saturation. Because it reads real history, motion creates trails
+and repeated silhouettes while static content tends to overlap itself.</p>
+<p>The selecting visualizer supplies the mask. A full-dome mask shows complete
+frame echoes; a moving or partial mask confines them to selected regions.</p>
+<ul>
+<li><strong>Copy Count</strong> — Sets how many delayed frames are composited.</li>
+<li><strong>Copy Delay</strong> — Sets the time in seconds between successive historical
+copies.</li>
+<li><strong>Rotation Per Copy</strong> — Adds a signed rotation step to each older copy.</li>
+<li><strong>Scale Per Copy</strong> — Multiplies scale for each copy. Values below 1 shrink
+older echoes; values above 1 enlarge them.</li>
+<li><strong>Drift Per Copy</strong> — Adds a position offset to each successive copy.</li>
+<li><strong>Drift Direction</strong> — Sets the direction of that offset.</li>
+<li><strong>Copy Decay</strong> — Multiplies the intensity of each successive copy. Lower
+values make older echoes disappear sooner.</li>
+<li><strong>Hue Shift Per Copy</strong> — Rotates each copy farther around the color wheel.</li>
+<li><strong>Saturation Per Copy</strong> — Multiplies saturation for each successive copy.
+Values below 1 make older echoes progressively paler.</li>
+</ul>
+<p>Opacity scales the screened echo copies inside the source mask; it does not
+remove the undelayed composite below.</p>
+<h4 id="halftone">Halftone <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Halftone">toc</a></h4>
+<p><strong>Halftone</strong> replaces the masked composite with a regular field of luminous
+cells. Each cell samples the brightness of the composite below. Brighter source
+areas produce larger cells, while the selected palette supplies their color.</p>
+<p>Dots and Triangles use the dome's top-down projection. Strut Segments follow
+physical LED addressing, keeping their breaks coherent along installed
+hardware.</p>
+<ul>
+<li><strong>Cell Type</strong> — Selects Dots, Triangles, or Strut Segments.</li>
+<li><strong>Cell Scale</strong> — Sets cell spacing and overall feature size.</li>
+<li><strong>Brightness Threshold</strong> — Hides cells whose sampled brightness is below the
+threshold and remaps the remaining brightness range.</li>
+<li><strong>Minimum Dot</strong> — Sets the smallest occupied portion of a visible cell.</li>
+<li><strong>Maximum Dot</strong> — Sets the largest occupied portion of a bright cell.</li>
+<li><strong>Rotation</strong> — Rotates the dot or triangle grid. For Strut Segments it shifts
+the segmentation phase along each strut.</li>
+<li><strong>Palette</strong> — Maps sampled brightness through the selected named palette.</li>
+</ul>
+<p>The source visualizer supplies the mask, and opacity mixes the halftone result
+with the original composite.</p>
+<h4 id="motion-embers">Motion Embers <a class="section-toc-link" href="#contents" aria-label="Back to table of contents from Motion Embers">toc</a></h4>
+<p><strong>Motion Embers</strong> compares the composite below with its previous frame and
+replaces the masked region with fading light only where change was detected.
+By default, newly brightening areas create a warm ember afterglow and unchanged
+areas decay to black.</p>
+<p>Use it over animated layers to isolate motion, turn moving edges into glowing
+trails, or suppress static scenery. A full-dome mask observes all changes;
+partial masks limit both detection output and the visible embers to selected
+areas.</p>
+<ul>
+<li><strong>Change Threshold</strong> — Sets how much frame-to-frame change is required before
+an ember is created. Raise it to ignore small flicker and noise.</li>
+<li><strong>Ember Brightness</strong> — Sets the gain applied to newly detected motion.</li>
+<li><strong>Retention Half-Life (s)</strong> — Sets the time for existing embers to lose half
+their brightness. Zero removes them immediately on the next frame.</li>
+<li><strong>Color Mode</strong> — <strong>Source</strong> uses the changing source color, <strong>Ember Heat</strong>
+maps change strength from warm orange toward white, and <strong>Difference</strong> uses
+the absolute RGB difference between frames.</li>
+<li><strong>Count Fading as Motion</strong> — Treats pixels becoming darker as motion in
+addition to the default brightening detection.</li>
+<li><strong>Count Hue Changes as Motion</strong> — Detects color changes even when brightness
+stays similar.</li>
+</ul>
+<p>Opacity controls how strongly the ember buffer replaces the current composite
+inside the source mask. Motion Embers needs one previous frame before it can
+detect a change, so the first rendered frame establishes its baseline.</p>
+
+    </article>
+  </main>
+
+  <a class="back-to-contents" href="#contents">Contents ↑</a>
+  <footer class="page-footer">Spectrum dome user manual · <a href="/">Open live controls</a></footer>
+</body>
+</html>

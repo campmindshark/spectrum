@@ -4,168 +4,118 @@ Spectrum has a Windows operator console for starting and configuring the
 system, plus a browser controller for running the dome from a computer, tablet,
 or phone.
 
-## Safety first
+## Setup
 
-- Set **Maximum brightness** before raising **Brightness**.
-- Dome test patterns and mapping calibration override the live look and may
-  flash large parts of the dome. Warn the crew and audience before using them.
-- Stop the engine before changing wiring, disconnecting the OPC controller, or
-  leaving the system unattended.
-- When a test is finished, set **Dome test pattern** back to **None**.
+### Configure the equipment
 
-## Quick start
+
+![Spectrum desktop Dome setup screen](assets/dome-user-manual/desktop-dome-setup.png)
+
+- **OPC controller**: Beaglebone network address and port
+- **Receiver port**: Serial port for the ESP-NOW receiver
+- **Show performance HUD** opens the visualization UI.
+
+The **Advanced output processing** option restarts the engine; leave the dome output on a separate thread unless you have a good reason to
+
+### Calibrate the physical mapping
+
+1. Select **Open dome mapping** on the desktop **Dome setup** tab, or open
+   **Maintenance** in the browser and select **Dome mapping calibration**.
+2. Follow the guided controller-cable and physical-strip mapping workflow.
+3. Finish or cancel the calibration before opening it from another browser or
+   native window.
+
+### Browser view
+
+The browser maintenance console collects the setup and diagnostic controls in
+one place.
+
+![Spectrum browser maintenance console](assets/dome-user-manual/web-maintenance.png)
+
+A lock icon means a control owns, or must acquire, an exclusive maintenance
+operation. If another browser or native window owns that operation, finish or
+cancel it there before continuing.
+
+### Setup troubleshooting
+
+| Symptom | What to check |
+| --- | --- |
+| Readiness says **No input** | Select an audio capture device, then check that **Signal** responds. |
+| Dome output remains at 0 FPS | Start the engine, enable dome output, and verify the OPC host and port. |
+| No wands are shown | Select the receiver port in **Dome setup**, then open **Wand status**. |
+| A control is locked or disabled | Finish or cancel the mapping/test operation in the browser or native window that owns it. |
+
+## Operation
+
+Operators should not need to change the OPC address, receiver port, physical mapping, or advanced output settings.
+
+### Start a session
 
 1. Open Spectrum on the dome computer.
-2. On **Readiness**, select an audio input and confirm that the web controller
-   says it is ready.
-3. Open **Dome setup** and check the OPC address, maximum brightness, current
-   brightness, and **Enable dome output** setting.
-4. Optionally select **Show dome simulator** for a local preview.
-5. Return to **Readiness** and select **Start engine**.
-6. Confirm that the engine and dome FPS values rise and that there are no fault
+2. Select **Start engine**.
+3. Confirm that the engine and dome FPS values rise and that there are no fault
    messages.
-7. Use **Copy address** to open the browser controller on a device connected to
-   the same network.
 
 ![Spectrum desktop Readiness screen](assets/dome-user-manual/desktop-readiness.png)
 
 The readiness badge summarizes the system:
 
-- **Spectrum engine** starts and stops all live processing.
-- **Audio input** selects the capture device and shows its signal level.
+- **Spectrum engine** starts and stops live processing.
+- **Audio input** shows the selected capture device and signal level.
 - **Dome output** reports whether OPC frames are being sent.
 - **Wands** reports the receiver and connected-device count.
-- **Web controller** shows the address to use on another device.
+- **Web controller** shows the address for other devices.
 
-## Configure the dome
-
-Open the **Dome setup** tab before the show.
-
-![Spectrum desktop Dome setup screen](assets/dome-user-manual/desktop-dome-setup.png)
-
-- **Enable dome output** allows live frames to be sent to the OPC controller.
-- **Maximum brightness** is the safety ceiling for all output.
-- **Brightness** is the current output level.
-- **OPC controller** accepts `host:port` or `host:port:channel`.
-- **Open dome mapping** starts the guided cable and strip calibration.
-- **Dome test pattern** temporarily replaces the live look for diagnostics.
-- **Receiver port** selects the wand receiver.
-- **Show performance HUD** opens the native performance display.
-- **Show dome simulator** opens the native dome preview.
-
-The **Advanced output processing** option restarts the engine and should
-normally be left unchanged unless output timing is being diagnosed.
-
-## Use the browser controller
+### Open the browser controller
 
 Open the address shown under **Web controller**. On the dome computer,
 `http://localhost:8080` also works.
 
 ![Spectrum browser live controls](assets/dome-user-manual/web-live-controls.png)
 
-Check the badge in the upper-right corner before operating:
+Check the badge in the upper-right corner before making changes:
 
 - **Live** means the page is connected and receiving updates.
-- **Connecting** or a warning message means the page is not ready for show
-  control.
+- **Connecting** or a warning message means the page is not ready for control.
 
-Most browser changes take effect immediately.
+Most browser changes take effect immediately. To apply an existing look, select
+it under **Scenes** and choose **Load**.
 
-### Build a look
+### Build and save a look
 
 1. Set the global **Fade speed**, **Hue speed**, and **Flash rate** as needed.
 2. In **Palettes**, select a palette and edit its color slots. Enable a
    gradient on a slot to use separate start and end colors.
 3. In **Layers**, select the visualizer for each layer and adjust its controls.
-4. Set the layer's blend mode and opacity.
+4. Set each layer's blend mode and opacity.
 5. Enable, disable, add, remove, or reorder layers. The top row is the front;
    layers blend from the bottom upward.
 6. Enter a name under **Scenes** and select **Save**.
 
-A scene saves the layer stack and the global fade and hue speeds. Loading a
-scene restores that look; it does not overwrite the colors in the named
-palettes used by its layers.
+Use the [visualizer and layer reference](#visualizer-and-layer-reference) for
+effect-specific controls and the [blend mode reference](#blend-mode-reference)
+for compositing behavior.
 
-### Palettes, scenes, and layers
+A scene saves the layer stack and global fade and hue speeds. Loading it
+restores that look, but does not overwrite the colors in the named palettes its
+layers use.
 
-- Palette edits are live. **Add copy** is a convenient way to make a new
-  palette without changing the current one.
+- Palette edits are live. **Add copy** makes a new palette without changing the
+  current one.
 - Saving with an existing scene name asks before overwriting it.
 - **Load** replaces the current layer stack and global speeds with the selected
   scene.
 - **Delete** permanently removes the selected palette or scene after
   confirmation.
-- Layer **Fire** and **Clear** buttons appear only for visualizers that support
-  those actions.
+- Layer **Fire** and **Clear** buttons appear only when the selected visualizer
+  supports them.
 
-### Wands
-
-The **Wand status** section shows connected devices and lets the operator select
-the active spotlight source. Use the maintenance console for detailed wand
-telemetry and the desktop **Dome setup** tab to select the receiver port.
-
-## Preview the dome
-
-Select **Simulator** in the browser header.
-
-![Spectrum browser dome simulator](assets/dome-user-manual/web-dome-simulator.png)
-
-- **Stop preview** pauses browser rendering; select it again to resume.
-- **View: Strip extents** switches between strip geometry and the top-down
-  projection.
-- A black preview usually means the engine is stopped or no dome frame has been
-  produced yet.
-- Close the simulator when it is not needed; it can stream at up to 60 FPS.
-
-## Maintenance console
-
-Select **Maintenance** in the browser header.
-
-![Spectrum browser maintenance console](assets/dome-user-manual/web-maintenance.png)
-
-Use this page for setup and troubleshooting:
-
-- **Brightness** controls the current level and safety ceiling.
-- **BPM source** selects Human, Madmom, or Pro DJ Link. With Human selected,
-  press **Tap** repeatedly at the desired tempo.
-- **Test patterns** temporarily overrides the live look.
-- **Devices and windows** controls dome output, MIDI, native windows, and the
-  OPC address.
-- **Audio** selects the capture device and shows the live input meter.
-- **Wands** shows detailed receiver and device status.
-- **Dome mapping calibration** guides the operator through controller-cable and
-  physical-strip mapping.
-- **Advanced** contains settings that are not normally changed during a show.
-
-A lock icon means a control owns, or must acquire, an exclusive maintenance
-operation. If another browser or native window owns that operation, finish or
-cancel it there before continuing.
-
-## Shut down
-
-1. Set **Dome test pattern** to **None**.
-2. Stop the engine from the browser controller or desktop **Readiness** screen.
-3. Confirm that engine and dome output FPS return to zero.
-4. Close Spectrum on the dome computer.
-
-## Troubleshooting
-
-| Symptom | What to check |
-| --- | --- |
-| Readiness says **No input** | Select an audio capture device, then check that **Signal** responds. |
-| Browser stays on **Connecting** | Confirm the desktop says the web controller is ready, use the displayed address, and connect both devices to the same network. |
-| Dome output remains at 0 FPS | Start the engine, enable dome output, and verify the OPC host and port. |
-| Simulator is black | Start the engine, resume the preview, and confirm that the engine is producing frames. |
-| The live look is missing | Set **Dome test pattern** to **None** and check that the intended scene and layers are enabled. |
-| No wands are shown | Select the receiver port in **Dome setup**, then open **Wand status**. |
-| A control is locked or disabled | Finish or cancel the mapping/test operation in the browser or native window that owns it. |
-
-## Appendix: Visualizer layers
+### Visualizer and layer reference
 
 The visualizers below are listed in the same order as the **Visualizer**
 selector. Parameter changes take effect immediately.
 
-### Controls shared by every layer
+#### Controls shared by every layer
 
 - **Visualizer** selects the effect rendered by the layer. Changing it resets
   that layer's visualizer-specific parameters to the new visualizer's defaults.
@@ -192,7 +142,7 @@ Triggerable layers use the same trigger controls:
 - **Loudness Threshold** sets the minimum input level for an Audio trigger.
 - **Audio Interval (ms)** sets the minimum time between Audio triggers.
 
-### Volume (OG)
+#### Volume (OG)
 
 An audio-reactive legacy look that fills the dome's physical strut regions as
 the input level rises. Its layout and palette gradient move with the beat.
@@ -202,7 +152,7 @@ the input level rises. Its layout and palette gradient move with the beat.
 - **Gradient Speed** — Sets how quickly colors travel through the palette.
 - **Palette** — Selects the named palette used for the strut colors.
 
-### Radial Effects
+#### Radial Effects
 
 Draws audio-sized geometric patterns around a movable center.
 
@@ -217,7 +167,7 @@ Draws audio-sized geometric patterns around a movable center.
 - **Gradient Speed** — Moves the palette gradient through the pattern.
 - **Palette** — Selects the named palette used by the effect.
 
-### Race
+#### Race
 
 Draws several horizontal racers that circle the dome with fixed combinations
 of constant, audio-reactive, and beat-driven motion.
@@ -227,21 +177,21 @@ of constant, audio-reactive, and beat-driven motion.
   narrower.
 - **Palette** — Selects the named palette used by the racers.
 
-### Snakes
+#### Snakes
 
 Runs two short paths across connected dome triangles, leaving cycling palette
 colors in their wakes.
 
 - **Palette** — Selects the named palette used for the trails.
 
-### Splat Effect
+#### Splat Effect
 
 Places a random fading color splat once per measure. Louder audio produces a
 larger splat.
 
 - **Palette** — Selects the named palette used for new splats.
 
-### Quaternion Paintbrush
+#### Quaternion Paintbrush
 
 A legacy all-in-one wand look that combines orientation-driven paint fields,
 stamps, expanding ripples, and white twinkles. Audio and beat timing animate
@@ -253,20 +203,20 @@ parts of the effect.
   available; higher values shorten the wait.
 - **Ripple Speed** — Sets how quickly each ripple expands.
 
-### TV Static
+#### TV Static
 
 Fills every pixel with rapidly changing random RGB noise.
 
 This visualizer has no visualizer-specific parameters.
 
-### Twinkle
+#### Twinkle
 
 Creates random bright white points high on the dome and fades them into the
 current stack.
 
 - **Density** — Sets how frequently new twinkles appear.
 
-### Flash
+#### Flash
 
 Flashes the entire dome with one color, then fades it using the global fade
 speed.
@@ -278,14 +228,14 @@ speed.
 - **Audio Interval (ms)** — Limits how frequently Audio can trigger a flash.
 - **Fire** — Immediately starts a flash.
 
-### Background
+#### Background
 
 Fills the entire layer with a solid color. It is usually placed at the bottom
 of the stack so transparent areas above it remain lit.
 
 - **Color** — Sets the fill color.
 
-### Earth
+#### Earth
 
 Wraps an Earth texture around the physical dome. A moving or spotlighted wand
 sets the globe's pole; otherwise the globe follows the idle orientation.
@@ -293,7 +243,7 @@ sets the globe's pole; otherwise the globe follows the idle orientation.
 - **Spin Speed (rev/s)** — Sets longitude rotation speed. Negative values
   reverse the direction.
 
-### Astronomy
+#### Astronomy
 
 Renders an approximate Black Rock City sky with the Sun, Moon, visible planets,
 bright stars, and a deterministic faint-star field. It is a lighting effect,
@@ -310,7 +260,7 @@ not a navigation instrument.
 - **Play** — Starts or resumes timeline playback.
 - **Stop** — Stops playback at the current simulated time.
 
-### Wave
+#### Wave
 
 Draws a colored band that sweeps across the dome around a configurable center.
 It can loop continuously or run once when fired.
@@ -325,7 +275,7 @@ It can loop continuously or run once when fired.
 - **Button** — Optionally binds a wand button for OneShot playback.
 - **Fire** — Starts or restarts a OneShot sweep.
 
-### Ripple
+#### Ripple
 
 Launches a colored ring from the current wand or idle aim. Successive ripples
 alternate between a fixed center and one that follows the wand.
@@ -338,7 +288,7 @@ alternate between a fixed center and one that follows the wand.
 - **Audio Interval (ms)** — Limits how frequently Audio can launch a ripple.
 - **Fire** — Immediately launches a ripple when the current ripple permits it.
 
-### Stamp
+#### Stamp
 
 Places a short-lived shape at the current wand or idle aim. Each trigger
 alternates between a grid of rings and a beat-driven rhythm band; position and
@@ -350,7 +300,7 @@ color remain fixed for that stamp.
 - **Audio Interval (ms)** — Limits how frequently Audio can place a stamp.
 - **Fire** — Immediately places the next stamp.
 
-### Tunnel
+#### Tunnel
 
 Runs concentric rings from the crown toward the rim. Each ring has a stable
 variation in speed, thickness, and brightness.
@@ -365,7 +315,7 @@ variation in speed, thickness, and brightness.
   orientation.
 - **Color** — Sets the ring color.
 
-### Metaball
+#### Metaball
 
 Draws a live potential field around wand orientations, with optional animated
 contour lines. A trigger briefly enlarges the field.
@@ -375,7 +325,7 @@ contour lines. A trigger briefly enlarges the field.
 - **Button** — Optionally binds a wand button to the size burst.
 - **Fire** — Immediately starts a size burst.
 
-### Magnetic Field
+#### Magnetic Field
 
 Treats every wand as a positive pole at its aim and a negative pole at its
 antipode. Colored charge regions and optional white streamlines show the
@@ -388,7 +338,7 @@ combined signed field.
 - **Field Lines** — Sets the number of white streamlines; zero hides them.
 - **Line Width** — Sets the thickness of the streamlines.
 
-### Point Cloud
+#### Point Cloud
 
 Scatters glowing spots over the dome. Moving wands push nearby spots along the
 surface; springs return them toward their resting constellation.
@@ -402,7 +352,7 @@ surface; springs return them toward their resting constellation.
 - **Damping** — Sets how much velocity is retained; higher values coast longer,
   while lower values settle faster.
 
-### Gyroscope
+#### Gyroscope
 
 Renders three nested gimbal rings driven by the current wand or idle
 orientation, with a moving highlight around the inner rotor.
@@ -412,7 +362,7 @@ orientation, with a moving highlight around the inner rotor.
 - **Palette** — Uses the first three colors for the outer, middle, and inner
   rings.
 
-### Watchful Iris
+#### Watchful Iris
 
 Turns the full dome into an eye that follows the current orientation. Audio
 dilates the pupil, and the eye can blink manually, on beats, or on audio
@@ -428,7 +378,7 @@ transients.
 - **Palette** — Selects the iris colors.
 - **Blink** — Immediately blinks the eye.
 
-### Shooting Star
+#### Shooting Star
 
 Spawns stars just outside the rim and accelerates them toward the current wand
 or idle aim, leaving fading streaks. Triggers add an extra star to the steady
@@ -448,7 +398,7 @@ spawn rate.
 - **Fire** — Launches one extra star.
 - **Clear** — Removes the current stars and accumulated state.
 
-### Sparkler
+#### Sparkler
 
 Continuously emits colored particles from the current wand or idle aim in
 random directions. Triggers add an extra spark.
@@ -465,7 +415,7 @@ random directions. Triggers add an extra spark.
 - **Fire** — Emits one extra particle.
 - **Clear** — Removes current particles and accumulated state.
 
-### Noise Cloud
+#### Noise Cloud
 
 Creates a seamless animated fractal-noise texture. It works well beneath Add,
 Screen, or Multiply to break up a flat layer.
@@ -478,7 +428,7 @@ Screen, or Multiply to break up a flat layer.
 - **Contrast** — Strengthens the difference between bright and dark regions.
 - **Color** — Sets the cloud tint.
 
-### Caustics
+#### Caustics
 
 Creates the moving filament pattern of light seen on the floor of a sunlit
 pool. It can also provide a displacement field to the Refract blend mode.
@@ -491,7 +441,7 @@ pool. It can also provide a displacement field to the Refract blend mode.
 - **Brightness** — Sets output gain.
 - **Color** — Sets the caustic tint.
 
-### Ripple Tank
+#### Ripple Tank
 
 Simulates a damped water surface. Moving wands press wakes into the surface;
 with no wand motion, an idle orientation supplies a gentle wake.
@@ -503,7 +453,7 @@ with no wand motion, an idle orientation supplies a gentle wake.
 - **Color** — Sets the water-light tint.
 - **Clear** — Flattens the simulated surface.
 
-### Vortex
+#### Vortex
 
 Creates a procedural particle-like vortex with persistent trails and optional
 audio or beat response.
@@ -521,7 +471,7 @@ audio or beat response.
 - **Turbulence** — Adds fine irregularity to the field.
 - **Color** — Sets the vortex tint.
 
-### Living Skin
+#### Living Skin
 
 Runs a persistent reaction-diffusion simulation over the dome. Manual or beat
 seeds grow into organic patterns, and wand buttons can feed, poison, or erase
@@ -546,7 +496,7 @@ the chemistry under the aim.
 - **Clear** — Clears the active second chemical until the layer is seeded
   again.
 
-### Arc Lightning
+#### Arc Lightning
 
 Routes connected lightning bolts over the physical dome graph. A strike can
 branch, widen across neighboring LEDs, and leave a fading afterglow.
@@ -565,7 +515,7 @@ branch, widen across neighboring LEDs, and leave a fading afterglow.
 - **Fire** — Starts a strike.
 - **Clear** — Removes the live strike and afterglow state.
 
-### Glass Mosaic
+#### Glass Mosaic
 
 Treats the dome's triangular faces as stained-glass tiles. A trigger starts at
 the current aim and propagates a connected color-change cascade.
@@ -584,7 +534,7 @@ the current aim and propagates a connected color-change cascade.
 - **Fire** — Starts a cascade.
 - **Clear** — Clears the active cascade state.
 
-### Cellular Dome
+#### Cellular Dome
 
 Runs a binary cellular automaton on the dome's triangular faces. Cells are born,
 survive, age through palette colors, and can advance on a timer or beat.
@@ -602,7 +552,7 @@ survive, age through palette colors, and can advance on a timer or beat.
 - **Fire** — Injects a live colony.
 - **Clear** — Empties the automaton.
 
-### Firefly Swarm
+#### Firefly Swarm
 
 Maintains a flock of luminous agents over the dome. Wands attract or repel the
 flock, and a sharp audio rise startles it outward before it regroups.
@@ -616,7 +566,7 @@ flock, and a sharp audio rise startles it outward before it regroups.
 - **Trail Half-Life (s)** — Sets how long rendered trails remain.
 - **Palette** — Selects the firefly colors.
 
-### Rain Chamber
+#### Rain Chamber
 
 Spawns droplets at the crown and pulls them toward the rim. Audio controls the
 amount of rain, wands modify local rainfall, and rim impacts create splash
@@ -633,7 +583,7 @@ rings.
 - **Splash Strength** — Sets the size and brightness of rim-impact splashes.
 - **Palette** — Selects droplet and splash colors.
 
-### Topographic Dream
+#### Topographic Dream
 
 Draws a seamless evolving landscape directly on the dome, with subdued land
 and water fills, bright contours, and a coastline. Audio raises the sea level.
@@ -647,7 +597,7 @@ and water fills, bright contours, and a coastline. Audio raises the sea level.
   orientation.
 - **Palette** — Selects land, water, contour, and coastline colors.
 
-### Orbital Garden
+#### Orbital Garden
 
 Maintains luminous bodies orbiting gravity wells created by connected wands.
 Without wands, a fixed fallback well keeps the system moving.
@@ -661,7 +611,7 @@ Without wands, a fixed fallback well keeps the system moving.
 - **Body Size** — Sets the size of bodies, wells, fragments, and blooms.
 - **Palette** — Selects colors for the garden.
 
-### Lava Lamp Sky
+#### Lava Lamp Sky
 
 Moves large soft blobs over the dome. Warm blobs rise, cool blobs sink, nearby
 blobs merge visually, and audio increases heat and buoyancy.
@@ -677,7 +627,7 @@ blobs merge visually, and audio increases heat and buoyancy.
   orientation instead of fixing it at the crown.
 - **Palette** — Selects the blob colors.
 
-## Appendix: Blend modes
+### Blend mode reference
 
 A blend mode determines how one layer changes the composite built from the
 layers below it. Because Spectrum composites from the bottom upward, changing
@@ -697,7 +647,7 @@ its exact role depends on the blend. At 0% the blend has no visible effect. For
 paint blends it scales or mixes the source color; for adjustment blends it
 scales the adjustment mask.
 
-### Over
+#### Over
 
 **Over** is conventional foreground compositing. Where the visualizer drew an
 opaque pixel, its color replaces the composite below. Partially transparent
@@ -713,7 +663,7 @@ is mixed halfway with the composite below.
 
 Over has no blend-specific controls.
 
-### Add
+#### Add
 
 **Add** adds the source's red, green, and blue values to the composite below.
 Black adds nothing; brighter colors increase the corresponding channels. When
@@ -729,7 +679,7 @@ effects clip, lose color, or make the dome too bright.
 
 Add has no blend-specific controls.
 
-### Screen
+#### Screen
 
 **Screen** is another lightening blend. It combines the inverse of the source
 and destination, so black has no effect and white produces white. Unlike Add,
@@ -743,7 +693,7 @@ Opacity reduces the source's contribution before the screen calculation.
 
 Screen has no blend-specific controls.
 
-### Lighten
+#### Lighten
 
 **Lighten** compares each color channel and keeps whichever is brighter: the
 existing composite or the opacity-scaled source. It does not sum the two.
@@ -758,7 +708,7 @@ source pixel must clear before it replaces a destination channel.
 
 Lighten has no blend-specific controls.
 
-### Multiply
+#### Multiply
 
 **Multiply** multiplies the composite below by the source color. White leaves
 the lower composite unchanged, midtones tint and darken it, and black produces
@@ -778,7 +728,7 @@ source color fully.
 
 Multiply has no blend-specific controls.
 
-### Desaturate
+#### Desaturate
 
 **Desaturate** ignores the visualizer's RGB color and uses only its coverage as
 a mask. Inside that mask, the composite below is converted toward grayscale
@@ -793,7 +743,7 @@ halfway toward grayscale.
 
 Desaturate has no blend-specific controls.
 
-### Hue
+#### Hue
 
 **Hue** is a specialized adjustment blend. The source provides coverage and
 brightness, but not its own hue or saturation. Spectrum recolors that shape at
@@ -810,7 +760,7 @@ layer opacity set the adjustment mask.
 
 Hue has no blend-specific controls.
 
-### ChromaticFringe
+#### ChromaticFringe
 
 **ChromaticFringe** creates RGB channel separation in the composite below. Red
 is sampled from one side of each pixel, blue from the opposite side, and green
@@ -832,7 +782,7 @@ full-dome fringe, or a moving shape to reveal the split locally.
 Opacity controls how strongly the separated channels replace the original
 composite inside the mask.
 
-### EdgeSpectrum
+#### EdgeSpectrum
 
 **EdgeSpectrum** finds brightness edges in the composite below and adds spectral
 color along them. The hue follows the direction of the local brightness
@@ -850,7 +800,7 @@ or adding a colored energy edge without replacing the underlying image.
 The source visualizer supplies the mask, and opacity scales the added edge
 color.
 
-### Iridescence
+#### Iridescence
 
 **Iridescence** adds a thin-film spectral sheen based on the physical curvature
 of the dome. A virtual light direction selects a rainbow tint from each
@@ -874,7 +824,7 @@ structure.
 The source visualizer supplies the mask. Layer opacity and Sheen Strength both
 scale the recoloring.
 
-### Refract
+#### Refract
 
 **Refract** distorts the composite below as though it were viewed through a
 moving surface. Each masked pixel samples a nearby destination pixel; the
@@ -891,7 +841,7 @@ useful displacement field and can produce little or unpredictable movement.
 The source field's own magnitude controls both local displacement and coverage.
 Layer opacity scales how strongly the displaced sample replaces the original.
 
-### Kaleidoscope
+#### Kaleidoscope
 
 **Kaleidoscope** folds the top-down projection of the composite below into
 repeated angular sectors. The selecting visualizer supplies only the mask; its
@@ -913,7 +863,7 @@ to reveal kaleidoscopic regions inside an otherwise normal look.
 
 Opacity mixes the folded sample with the original composite inside the mask.
 
-### Echo
+#### Echo
 
 **Echo** stores the composite below and screens delayed, transformed copies back
 over the current frame. Each older copy can rotate, scale, drift, fade, shift
@@ -940,7 +890,7 @@ frame echoes; a moving or partial mask confines them to selected regions.
 Opacity scales the screened echo copies inside the source mask; it does not
 remove the undelayed composite below.
 
-### Halftone
+#### Halftone
 
 **Halftone** replaces the masked composite with a regular field of luminous
 cells. Each cell samples the brightness of the composite below. Brighter source
@@ -963,7 +913,7 @@ hardware.
 The source visualizer supplies the mask, and opacity mixes the halftone result
 with the original composite.
 
-### Motion Embers
+#### Motion Embers
 
 **Motion Embers** compares the composite below with its previous frame and
 replaces the masked region with fading light only where change was detected.

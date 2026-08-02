@@ -30,6 +30,11 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       <Link>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
+    <Content Include="..\docs\assets\dome-user-manual\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Link>wwwroot\docs\assets\dome-user-manual\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
   </ItemGroup>
 
 </Project>
