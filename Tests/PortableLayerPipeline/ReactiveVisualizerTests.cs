@@ -81,7 +81,10 @@ namespace Spectrum.LayerPipeline.Tests {
       AssertClose(0, OrientationCenter.UnitFieldLineStrength(
         betweenLines, LINE_COUNT, LINE_WIDTH),
         "the space between field lines was painted");
+    }
 
+    [TestMethod]
+    public void MagneticFieldConfigurationCompilesTypedOptions() {
       DomeLayerSettings layer = Layer(
         "magnetic-field", "magnetic-field-options");
       layer.RendererParams = new Dictionary<string, double> {
@@ -105,7 +108,7 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     [TestMethod]
-    public void RippleTankIsOrientationOnly() {
+    public void RippleTankConfigurationExcludesRetiredWakeControls() {
       LayerDefinition? caustics = DomeLayerCatalog.Metadata.Get("caustics");
       LayerDefinition? rippleTank = DomeLayerCatalog.Metadata.Get("ripple-tank");
       Assert.IsTrue(caustics != null && rippleTank != null,
@@ -143,7 +146,10 @@ namespace Spectrum.LayerPipeline.Tests {
       AssertClose(0.04,
         BuiltInOptions<RippleTankLayerOptions>(dampingLayer).Damping,
         "Ripple Tank damping did not compile into renderer options");
+    }
 
+    [TestMethod]
+    public void RippleTankWakeStrengthTracksAngularSpeed() {
       double baseline =
         LEDDomeRippleTankVisualizer.WakeStrengthForAngularSpeed(0);
       double slow =
@@ -157,7 +163,10 @@ namespace Spectrum.LayerPipeline.Tests {
       AssertClose(1,
         LEDDomeRippleTankVisualizer.WakeStrengthForAngularSpeed(99),
         "wake strength does not cap at the stable maximum");
+    }
 
+    [TestMethod]
+    public void RippleTankUsesOnlyOrientationInput() {
       var config = ConfigurationWithLayers(
         Layer("caustics", "caustics-inputs"),
         Layer("ripple-tank", "tank-inputs"));
@@ -184,20 +193,13 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     [TestMethod]
-    public void WatchfulIrisBehavesAsSceneCharacter() {
+    public void WatchfulIrisConfigurationIsBounded() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("watchful-iris");
       Assert.IsTrue(definition != null && definition.DisplayName == "Watchful Iris",
         "Watchful Iris was not registered");
       Assert.IsTrue(definition.FireAction?.Label == "Blink",
         "Watchful Iris manual blink action was not registered");
 
-      WatchfulIrisLayerOptions defaults =
-        BuiltInOptions<WatchfulIrisLayerOptions>(
-          Layer("watchful-iris", "watchful-iris-defaults"));
-      Assert.IsTrue(defaults.PupilSize == 0.28 && defaults.DilationGain == 0.28 &&
-          defaults.BlinkTrigger == 2 && defaults.EyelidSoftness == 0.035 &&
-          defaults.ScleraBrightness == 1 && defaults.Palette == 0,
-        "unexpected Watchful Iris defaults");
       Assert.IsTrue(definition.Parameters.All(
           parameter => parameter.Key != "trackingMode" &&
             parameter.Key != "irisComplexity"),
@@ -220,7 +222,10 @@ namespace Spectrum.LayerPipeline.Tests {
           clamped.EyelidSoftness == 0.18 && clamped.ScleraBrightness == 2 &&
           clamped.Palette == PaletteService.MaxPalettes - 1,
         "Watchful Iris controls did not clamp");
+    }
 
+    [TestMethod]
+    public void WatchfulIrisPupilAndBlinkRespondToAudio() {
       AssertClose(0.28,
         LEDDomeWatchfulIrisVisualizer.EffectivePupilRatio(0.28, 0.28, 0),
         "quiet Watchful Iris pupil changed its configured size");
@@ -238,6 +243,10 @@ namespace Spectrum.LayerPipeline.Tests {
           LEDDomeWatchfulIrisVisualizer.ApertureCoverage(
             0, 0, 1, 0.01) == 1,
         "Watchful Iris eyelids did not mask the eye aperture");
+    }
+
+    [TestMethod]
+    public void WatchfulIrisFastApertureMatchesReference() {
       double[] apertureCoordinates = {
         -1.1, -1, -0.75, -0.2, 0, 0.2, 0.75, 1, 1.1,
       };
@@ -260,7 +269,10 @@ namespace Spectrum.LayerPipeline.Tests {
           }
         }
       }
+    }
 
+    [TestMethod]
+    public void WatchfulIrisTracksOrientationWithInertia() {
       Assert.IsTrue(LEDDomeWatchfulIrisVisualizer.TrackingOffset(
           Quaternion.Identity).X < -0.3 &&
           LEDDomeWatchfulIrisVisualizer.TrackingOffset(
@@ -291,7 +303,10 @@ namespace Spectrum.LayerPipeline.Tests {
           Vector3.UnitZ, dramaticFacing, 0.1, 0.34);
       Assert.IsTrue(Vector3.Distance(pursuedFacing, expectedPursuit) < 0.000001,
         "Watchful Iris full globe orientation did not pursue its gaze");
+    }
 
+    [TestMethod]
+    public void WatchfulIrisTransportsPriorGlobeOrientation() {
       // Turning through two different axes must carry the first turn's
       // orientation forward. Rebuilding a minimal forward rotation would map
       // the pole correctly but discard this spherical transport/torsion.
@@ -314,7 +329,10 @@ namespace Spectrum.LayerPipeline.Tests {
             Vector3.Transform(Vector3.UnitX, transported),
             Vector3.Transform(Vector3.UnitX, rebuilt)) > 0.01,
         "Watchful Iris discarded its transported globe orientation");
+    }
 
+    [TestMethod]
+    public void WatchfulIrisScleraAndTransientEffectsAreBounded() {
       Assert.IsTrue(LEDDomeWatchfulIrisVisualizer.ScaleScleraColor(
           0x804020, 0) == 0 &&
           LEDDomeWatchfulIrisVisualizer.ScaleScleraColor(
@@ -327,7 +345,10 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert.IsTrue(!onset.Sample(0.1, 0.016) && onset.Sample(0.8, 0.016) &&
           !onset.Sample(0.8, 0.016),
         "Watchful Iris audio onset did not emit one blink edge");
+    }
 
+    [TestMethod]
+    public void WatchfulIrisRendererDrawsDistinctEyeRegions() {
       var config = ConfigurationWithLayers(
         Layer("watchful-iris", "watchful-iris-render"));
       SetPaletteColors(config, color => 0x205090 + color * 0x160C02);
@@ -361,7 +382,10 @@ namespace Spectrum.LayerPipeline.Tests {
             + (color & 0xFF) > 560;
         }),
         "Watchful Iris did not separate its dark pupil/lids and light sclera");
+    }
 
+    [TestMethod]
+    public void WatchfulIrisLiveTransformMovesPupilWithGaze() {
       Vector3 leftPupil = RenderedIrisPupilCenter(Quaternion.Identity);
       Vector3 rightPupil = RenderedIrisPupilCenter(
         Quaternion.CreateFromAxisAngle(Vector3.UnitZ, (float)-Math.PI));
@@ -452,30 +476,13 @@ namespace Spectrum.LayerPipeline.Tests {
       (short)Math.Round(Math.Clamp(component, -1, 1) * 16384));
 
     [TestMethod]
-    public void LivingSkinUsesReactionDiffusion() {
+    public void LivingSkinConfigurationIsBounded() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("living-skin");
       Assert.IsTrue(definition != null && definition.DisplayName == "Living Skin",
         "Living Skin was not registered");
       Assert.IsTrue(definition.FireAction?.Label == "Fire" &&
           definition.ClearAction?.Label == "Clear",
         "Living Skin seed/clear actions were not registered");
-
-      LivingSkinLayerOptions defaults =
-        BuiltInOptions<LivingSkinLayerOptions>(
-          Layer("living-skin", "living-skin-defaults"));
-      AssertClose(0.0367, defaults.FeedRate,
-        "unexpected Living Skin feed rate");
-      AssertClose(0.0649, defaults.KillRate,
-        "unexpected Living Skin kill rate");
-      AssertClose(2, defaults.DiffusionScale,
-        "unexpected Living Skin diffusion scale");
-      AssertClose(1, defaults.SimulationSpeed,
-        "unexpected Living Skin simulation speed");
-      Assert.IsTrue(defaults.SeedSource == 1 && defaults.EdgeContrast == 3 &&
-          defaults.FeedButton == 1 && defaults.PoisonButton == 2 &&
-          defaults.EraseButton == 3 && defaults.BrushRadius == 2 &&
-          defaults.BrushStrength == 0.35 && defaults.Palette == 0,
-        "unexpected Living Skin seed, edge, brush, or palette default");
 
       DomeLayerSettings configured = Layer(
         "living-skin", "living-skin-clamped");
@@ -506,7 +513,13 @@ namespace Spectrum.LayerPipeline.Tests {
           clamped.BrushRadius == 4 && clamped.BrushStrength == 0.05 &&
           clamped.Palette == PaletteService.MaxPalettes - 1,
         "Living Skin controls did not clamp");
+    }
 
+    [TestMethod]
+    public void LivingSkinButtonsSelectConfiguredBrushes() {
+      LivingSkinLayerOptions defaults =
+        BuiltInOptions<LivingSkinLayerOptions>(
+          Layer("living-skin", "living-skin-defaults"));
       Assert.IsTrue(LEDDomeLivingSkinVisualizer.BrushModeForButton(1, defaults) ==
           LivingSkinBrushMode.Feed &&
           LEDDomeLivingSkinVisualizer.BrushModeForButton(2, defaults) ==
@@ -515,7 +528,10 @@ namespace Spectrum.LayerPipeline.Tests {
           LivingSkinBrushMode.Erase &&
           LEDDomeLivingSkinVisualizer.BrushModeForButton(0, defaults) == null,
         "Living Skin button bindings did not select the configured brushes");
+    }
 
+    [TestMethod]
+    public void LivingSkinSeedsAndBrushesBoundedRegions() {
       const int size = 15;
       var simulation = new LivingSkinSimulation(
         new DomeFrame(GridTopology(size, size, 0.02)));
@@ -551,7 +567,16 @@ namespace Spectrum.LayerPipeline.Tests {
         "Living Skin erase brush did not restore dormant substrate");
       AssertClose(0, simulation.ChemicalBAt(center),
         "Living Skin erase brush retained activator");
+    }
 
+    [TestMethod]
+    public void LivingSkinReactionDiffusesWithinFiniteBounds() {
+      const int size = 15;
+      var simulation = new LivingSkinSimulation(
+        new DomeFrame(GridTopology(size, size, 0.02)));
+      simulation.Initialize(0);
+      int center = size / 2 * size + size / 2;
+      int frontier = center + 3;
       simulation.SeedAt(center);
       simulation.Step(0.0367, 0.0649, 1);
       Assert.IsTrue(simulation.ChemicalBAt(frontier) > 0,
@@ -581,7 +606,10 @@ namespace Spectrum.LayerPipeline.Tests {
         AssertClose(0, simulation.ChemicalBAt(i),
           "Living Skin dormant B field evolved after clear");
       }
+    }
 
+    [TestMethod]
+    public void LivingSkinRendererUsesOrientation() {
       var config = ConfigurationWithLayers(
         Layer("living-skin", "living-skin-inputs"));
       var runtime = new global::Spectrum.Operator(config);

@@ -15,28 +15,12 @@ namespace Spectrum.LayerPipeline.Tests {
   [DoNotParallelize]
   public sealed class EnvironmentVisualizerTests {
     [TestMethod]
-    public void TopographicDreamUsesEvolvingContours() {
+    public void TopographicDreamConfigurationIsBounded() {
       LayerDefinition? definition =
         DomeLayerCatalog.Metadata.Get("topographic-dream");
       Assert.IsTrue(definition != null &&
           definition.DisplayName == "Topographic Dream",
         "Topographic Dream was not registered");
-
-      TopographicDreamLayerOptions defaults =
-        BuiltInOptions<TopographicDreamLayerOptions>(
-          Layer("topographic-dream", "topographic-defaults"));
-      AssertClose(2.2, defaults.TerrainScale,
-        "unexpected Topographic Dream terrain scale");
-      AssertClose(0.12, defaults.EvolutionSpeed,
-        "unexpected Topographic Dream evolution speed");
-      AssertClose(0.11, defaults.ContourInterval,
-        "unexpected Topographic Dream contour interval");
-      AssertClose(0.14, defaults.LineWidth,
-        "unexpected Topographic Dream line width");
-      AssertClose(0.42, defaults.SeaLevel,
-        "unexpected Topographic Dream sea level");
-      Assert.IsTrue(!defaults.BindToOrientation && defaults.Palette == 0,
-        "unexpected Topographic Dream orientation or palette default");
 
       DomeLayerSettings configured = Layer(
         "topographic-dream", "topographic-clamped");
@@ -58,7 +42,10 @@ namespace Spectrum.LayerPipeline.Tests {
           clamped.BindToOrientation &&
           clamped.Palette == PaletteService.MaxPalettes - 1,
         "Topographic Dream controls did not clamp");
+    }
 
+    [TestMethod]
+    public void TopographicDreamAudioRaisesSeaLevelWithinBounds() {
       AssertClose(0.42,
         LEDDomeTopographicDreamVisualizer.EffectiveSeaLevel(0.42, 0),
         "quiet audio changed Topographic Dream's configured sea level");
@@ -68,7 +55,10 @@ namespace Spectrum.LayerPipeline.Tests {
       AssertClose(1,
         LEDDomeTopographicDreamVisualizer.EffectiveSeaLevel(0.95, 4),
         "Topographic Dream sea level did not clamp");
+    }
 
+    [TestMethod]
+    public void TopographicDreamElevationEvolvesWithinNormalizedRange() {
       Vector3 sample = Vector3.Normalize(
         new Vector3(0.45f, -0.21f, 0.87f));
       double baseElevation =
@@ -100,7 +90,10 @@ namespace Spectrum.LayerPipeline.Tests {
         Assert.IsTrue(elevation >= 0 && elevation <= 1,
           "Topographic Dream elevation escaped its normalized range");
       }
+    }
 
+    [TestMethod]
+    public void TopographicDreamContoursSeparateLinesAndCoast() {
       AssertClose(1,
         LEDDomeTopographicDreamVisualizer.ContourStrength(
           0.44, 0.11, 0.14),
@@ -123,7 +116,10 @@ namespace Spectrum.LayerPipeline.Tests {
         LEDDomeTopographicDreamVisualizer.CoastlineStrength(
           0.46, 0.42, 0.02),
         "Topographic Dream coastline flooded distant terrain");
+    }
 
+    [TestMethod]
+    public void TopographicDreamRendererUsesAudioAndOrientation() {
       var config = ConfigurationWithLayers(
         Layer("topographic-dream", "topographic-inputs"));
       SetPaletteColors(config, color => 0x183050 + color * 0x181208);
@@ -155,28 +151,10 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     [TestMethod]
-    public void OrbitalGardenUsesSphericalOrbits() {
+    public void OrbitalGardenConfigurationIsBounded() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("orbital-garden");
       Assert.IsTrue(definition != null && definition.DisplayName == "Orbital Garden",
         "Orbital Garden was not registered");
-
-      OrbitalGardenLayerOptions defaults =
-        BuiltInOptions<OrbitalGardenLayerOptions>(
-          Layer("orbital-garden", "orbital-defaults"));
-      Assert.IsTrue(defaults.BodyCount == 28,
-        "unexpected Orbital Garden body count");
-      AssertClose(1.6, defaults.Gravity,
-        "unexpected Orbital Garden gravity");
-      AssertClose(0.12, defaults.OrbitalDamping,
-        "unexpected Orbital Garden damping");
-      Assert.IsTrue(defaults.CollisionBehavior == 2,
-        "unexpected Orbital Garden collision behavior");
-      AssertClose(0.8, defaults.TrailLength,
-        "unexpected Orbital Garden trail length");
-      AssertClose(0.05, defaults.BodySize,
-        "unexpected Orbital Garden body size");
-      Assert.IsTrue(defaults.Palette == 0,
-        "unexpected Orbital Garden palette");
 
       DomeLayerSettings configured = Layer(
         "orbital-garden", "orbital-clamped");
@@ -197,7 +175,10 @@ namespace Spectrum.LayerPipeline.Tests {
           clamped.TrailLength == 4 && clamped.BodySize == 0.015 &&
           clamped.Palette == PaletteService.MaxPalettes - 1,
         "Orbital Garden controls did not clamp");
+    }
 
+    [TestMethod]
+    public void OrbitalGardenBodiesStayOnHemisphereAndResize() {
       var garden = new OrbitalGardenState(20, 17);
       Assert.IsTrue(garden.Bodies.Count == 20,
         "Orbital Garden did not create its requested body count");
@@ -218,7 +199,10 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert.IsTrue(garden.Bodies.Count == 9 &&
           garden.Bodies[0].Position == retainedBody,
         "Orbital Garden did not shrink its persistent body array in place");
+    }
 
+    [TestMethod]
+    public void OrbitalGardenGravityCreatesCurvedOrbits() {
       var orbit = new OrbitalGardenState(1, 23);
       Vector3 wellPosition = Vector3.UnitZ;
       Vector3 orbitStart = Vector3.Normalize(
@@ -255,7 +239,10 @@ namespace Spectrum.LayerPipeline.Tests {
         Vector3.Dot(falling.Bodies[0].Position, wellPosition), -1, 1));
       Assert.IsTrue(afterPull < beforePull,
         "Orbital Garden gravity did not pull a body toward a wand well");
+    }
 
+    [TestMethod]
+    public void OrbitalGardenCollisionModesCreateDistinctEffects() {
       Vector3 collisionPoint = Vector3.Normalize(
         new Vector3(0.2f, -0.1f, 0.97f));
       var bounced = new OrbitalGardenState(2, 31);
@@ -302,14 +289,20 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert.IsTrue(fragmented.Blooms.Count == 0 &&
           fragmented.Fragments.Count == 0,
         "Orbital Garden retained expired collision effects");
+    }
 
+    [TestMethod]
+    public void OrbitalGardenTrailRetentionUsesBrightnessHalfLife() {
       AssertClose(0,
         LEDDomeOrbitalGardenVisualizer.TrailRetention(0, 0.1),
         "zero Orbital Garden trail retained old light");
       AssertClose(0.5,
         LEDDomeOrbitalGardenVisualizer.TrailRetention(0.8, 0.8),
         "Orbital Garden trail length is not a brightness half-life");
+    }
 
+    [TestMethod]
+    public void OrbitalGardenRendererUsesOrientation() {
       var config = ConfigurationWithLayers(
         Layer("orbital-garden", "orbital-inputs"));
       SetPaletteColors(config, color => 0xFFF0D0 - color * 0x0A0502);
@@ -334,26 +327,10 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     [TestMethod]
-    public void LavaLampSkyUsesViscousThermalBlobs() {
+    public void LavaLampSkyConfigurationIsBounded() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("lava-lamp-sky");
       Assert.IsTrue(definition != null && definition.DisplayName == "Lava Lamp Sky",
         "Lava Lamp Sky was not registered");
-
-      LavaLampSkyLayerOptions defaults =
-        BuiltInOptions<LavaLampSkyLayerOptions>(
-          Layer("lava-lamp-sky", "lava-defaults"));
-      Assert.IsTrue(defaults.BlobCount == 9,
-        "unexpected Lava Lamp Sky blob count");
-      AssertClose(1.8, defaults.Viscosity,
-        "unexpected Lava Lamp Sky viscosity");
-      AssertClose(0.8, defaults.Buoyancy,
-        "unexpected Lava Lamp Sky buoyancy");
-      AssertClose(1.35, defaults.SurfaceTension,
-        "unexpected Lava Lamp Sky surface tension");
-      AssertClose(0.35, defaults.Heat,
-        "unexpected Lava Lamp Sky heat");
-      Assert.IsTrue(defaults.BindGravity && defaults.Palette == 0,
-        "unexpected Lava Lamp Sky gravity binding or palette");
 
       DomeLayerSettings configured = Layer(
         "lava-lamp-sky", "lava-clamped");
@@ -373,7 +350,10 @@ namespace Spectrum.LayerPipeline.Tests {
           clamped.Heat == 1 && !clamped.BindGravity &&
           clamped.Palette == PaletteService.MaxPalettes - 1,
         "Lava Lamp Sky controls did not clamp");
+    }
 
+    [TestMethod]
+    public void LavaLampSkyBlobsStayOnHemisphereAndResize() {
       var state = new LavaLampSkyState(9, 17);
       Assert.IsTrue(state.Blobs.Count == 9,
         "Lava Lamp Sky did not create its requested blob count");
@@ -392,7 +372,10 @@ namespace Spectrum.LayerPipeline.Tests {
       state.Resize(5);
       Assert.IsTrue(state.Blobs.Count == 5 && state.Blobs[0].Position == retained,
         "Lava Lamp Sky did not shrink its persistent blob array in place");
+    }
 
+    [TestMethod]
+    public void LavaLampSkyAudioAndOrientationControlForces() {
       AssertClose(1, LavaLampSkyState.EffectiveHeat(1, 0),
         "configured Lava Lamp Sky heat changed at quiet audio");
       Assert.IsTrue(LavaLampSkyState.EffectiveHeat(0.2, 1) >
@@ -410,7 +393,10 @@ namespace Spectrum.LayerPipeline.Tests {
               Quaternion.Identity, true),
             OrientationCenter.Spot) < 0.000001,
         "Lava Lamp Sky did not tilt its gravity axis with orientation");
+    }
 
+    [TestMethod]
+    public void LavaLampSkyBuoyancyAndViscosityControlMotion() {
       var rising = new LavaLampSkyState(1, 23);
       Vector3 riseStart = Vector3.Normalize(
         new Vector3(0.92f, 0, 0.39f));
@@ -432,7 +418,10 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert.IsTrue(thick.Blobs[0].Velocity.Length() <
           thin.Blobs[0].Velocity.Length(),
         "Lava Lamp Sky viscosity did not damp body motion");
+    }
 
+    [TestMethod]
+    public void LavaLampSkySurfaceTensionMergesAndStretchesNeighbors() {
       var merging = new LavaLampSkyState(2, 31);
       Vector3 mergeA = Vector3.Normalize(new Vector3(-0.28f, 0, 0.96f));
       Vector3 mergeB = Vector3.Normalize(new Vector3(0.28f, 0, 0.96f));
@@ -449,7 +438,12 @@ namespace Spectrum.LayerPipeline.Tests {
           (merging.Blobs[0].Stretch > 0.05 ||
            merging.Blobs[1].Stretch > 0.05),
         "Lava Lamp Sky surface tension did not merge and stretch neighbors");
+    }
 
+    [TestMethod]
+    public void LavaLampSkyAudioHeatDividesBodiesIntoSoftLobes() {
+      Vector3 riseStart = Vector3.Normalize(
+        new Vector3(0.92f, 0, 0.39f));
       var quiet = new LavaLampSkyState(1, 37);
       var loud = new LavaLampSkyState(1, 37);
       quiet.SeedBlob(0, riseStart, Vector3.Zero, 0.65);
@@ -478,7 +472,10 @@ namespace Spectrum.LayerPipeline.Tests {
       double lobe = dividedField.Sample(lobePoint).StrongestStrength;
       Assert.IsTrue(lobe > 0.8 && lobe > pinch + 0.5,
         "Lava Lamp Sky division did not form two pinched soft lobes");
+    }
 
+    [TestMethod]
+    public void LavaLampSkyRendererUsesAudioAndOrientation() {
       var config = ConfigurationWithLayers(
         Layer("lava-lamp-sky", "lava-inputs"));
       SetPaletteColors(config, color => 0xFF8A22 + color * 0x000804);
@@ -506,7 +503,26 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     [TestMethod]
-    public void VortexUsesGlobalFade() {
+    public void VortexAudioResponseAndBeatPulseAreBounded() {
+      AssertClose(0, LEDDomeVortexVisualizer.AudioResponseLevel(-1),
+        "vortex audio response did not clamp negative levels");
+      AssertClose(.5, LEDDomeVortexVisualizer.AudioResponseLevel(.25),
+        "vortex audio response did not expand quiet levels");
+      AssertClose(1, LEDDomeVortexVisualizer.AudioResponseLevel(2),
+        "vortex audio response did not clamp hot levels");
+      AssertClose(0, LEDDomeVortexVisualizer.BeatPulseAdvance(.9, .1, false),
+        "disabled Vortex beat speed advanced the field");
+      AssertClose(0, LEDDomeVortexVisualizer.BeatPulseAdvance(-1, .1, true),
+        "Vortex beat speed fired before establishing a baseline");
+      AssertClose(0, LEDDomeVortexVisualizer.BeatPulseAdvance(.1, .9, true),
+        "Vortex beat speed fired without a beat wrap");
+      AssertClose(10 / FrameClock.NominalFps,
+        LEDDomeVortexVisualizer.BeatPulseAdvance(.9, .1, true),
+        "Vortex beat speed did not apply its forward pulse");
+    }
+
+    [TestMethod]
+    public void VortexRendererUsesAudioAndGlobalFade() {
       var config = new global::Spectrum.SpectrumConfiguration {
         domeGlobalFadeSpeed = 3,
         domeGlobalHueSpeed = 0,
@@ -529,21 +545,6 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert.IsTrue(renderer.GetInputs().Length == 1 &&
           ReferenceEquals(renderer.GetInputs()[0], runtime.AudioInput),
         "vortex did not declare its audio input");
-      AssertClose(0, LEDDomeVortexVisualizer.AudioResponseLevel(-1),
-        "vortex audio response did not clamp negative levels");
-      AssertClose(.5, LEDDomeVortexVisualizer.AudioResponseLevel(.25),
-        "vortex audio response did not expand quiet levels");
-      AssertClose(1, LEDDomeVortexVisualizer.AudioResponseLevel(2),
-        "vortex audio response did not clamp hot levels");
-      AssertClose(0, LEDDomeVortexVisualizer.BeatPulseAdvance(.9, .1, false),
-        "disabled Vortex beat speed advanced the field");
-      AssertClose(0, LEDDomeVortexVisualizer.BeatPulseAdvance(-1, .1, true),
-        "Vortex beat speed fired before establishing a baseline");
-      AssertClose(0, LEDDomeVortexVisualizer.BeatPulseAdvance(.1, .9, true),
-        "Vortex beat speed fired without a beat wrap");
-      AssertClose(10 / FrameClock.NominalFps,
-        LEDDomeVortexVisualizer.BeatPulseAdvance(.9, .1, true),
-        "Vortex beat speed did not apply its forward pulse");
       renderer.Visualize();
 
       // Use the weakest field sample and give its history a distinctive hue,

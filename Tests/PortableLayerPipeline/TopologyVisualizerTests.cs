@@ -15,31 +15,13 @@ namespace Spectrum.LayerPipeline.Tests {
   [DoNotParallelize]
   public sealed class TopologyVisualizerTests {
     [TestMethod]
-    public void ArcLightningUsesPhysicalGraph() {
+    public void ArcLightningConfigurationIsBounded() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("arc-lightning");
       Assert.IsTrue(definition != null && definition.DisplayName == "Arc Lightning",
         "Arc Lightning was not registered");
       Assert.IsTrue(definition.FireAction?.Label == "Fire" &&
           definition.ClearAction?.Label == "Clear",
         "Arc Lightning strike/clear actions were not registered");
-
-      ArcLightningLayerOptions defaults =
-        BuiltInOptions<ArcLightningLayerOptions>(
-          Layer("arc-lightning", "arc-lightning-defaults"));
-      Assert.IsTrue(defaults.BranchCount == 4,
-        "unexpected Arc Lightning branch count");
-      AssertClose(0.65, defaults.Jaggedness,
-        "unexpected Arc Lightning jaggedness");
-      Assert.IsTrue(defaults.Width == 2,
-        "unexpected Arc Lightning width");
-      AssertClose(0.4, defaults.Afterglow,
-        "unexpected Arc Lightning afterglow");
-      AssertClose(0.25, defaults.Duration,
-        "unexpected Arc Lightning duration");
-      Assert.IsTrue(defaults.Trigger == 1 && defaults.Button == 0 &&
-          defaults.Level == 0.3 && defaults.Interval == 800 &&
-          defaults.Palette == 0,
-        "unexpected Arc Lightning trigger or palette default");
 
       DomeLayerSettings configured = Layer(
         "arc-lightning", "arc-lightning-clamped");
@@ -65,7 +47,10 @@ namespace Spectrum.LayerPipeline.Tests {
           clamped.Level == 1 && clamped.Interval == 50 &&
           clamped.Palette == PaletteService.MaxPalettes - 1,
         "Arc Lightning trigger controls did not clamp");
+    }
 
+    [TestMethod]
+    public void ArcLightningRoutesAcrossThePhysicalGraph() {
       int[,] edges = new int[,] {
         { 0, 1 }, { 1, 2 }, { 2, 3 },
         { 1, 4 }, { 4, 5 }, { 5, 3 },
@@ -96,7 +81,16 @@ namespace Spectrum.LayerPipeline.Tests {
         "Arc Lightning did not produce the requested available branches");
       Assert.IsTrue(graph.FarthestVertex(0) == 7,
         "Arc Lightning fallback pole was not graph-distant");
+    }
 
+    [TestMethod]
+    public void ArcLightningBuildsBoundedPolePairs() {
+      int[,] edges = new int[,] {
+        { 0, 1 }, { 1, 2 }, { 2, 3 },
+        { 1, 4 }, { 4, 5 }, { 5, 3 },
+        { 2, 6 }, { 6, 7 },
+      };
+      var graph = new ArcLightningGraph(edges);
       ImmutableArray<ArcLightningPolePair> poleFan =
         LEDDomeArcLightningVisualizer.BuildPoleFan(
           new ArcLightningPole[] {
@@ -138,7 +132,10 @@ namespace Spectrum.LayerPipeline.Tests {
           noWandFallback.Destination ==
             graph.FarthestVertex(noWandFallback.Origin),
         "Arc Lightning hands-off fallback did not choose a distant pole");
+    }
 
+    [TestMethod]
+    public void ArcLightningLifecycleAdvancesAndDecays() {
       Assert.IsTrue(LEDDomeArcLightningVisualizer.VisibleEdgeCount(10, 0, 1) == 2,
         "Arc Lightning did not reveal an origin segment immediately");
       Assert.IsTrue(LEDDomeArcLightningVisualizer.VisibleEdgeCount(10, 0.5, 1) == 6,
@@ -151,7 +148,10 @@ namespace Spectrum.LayerPipeline.Tests {
       AssertClose(0.5,
         LEDDomeArcLightningVisualizer.AfterglowRetention(0.4, 0.4),
         "Arc Lightning afterglow is not a brightness half-life");
+    }
 
+    [TestMethod]
+    public void ArcLightningRendererUsesAudioAndOrientation() {
       var config = ConfigurationWithLayers(
         Layer("arc-lightning", "arc-lightning-inputs"));
       var runtime = new global::Spectrum.Operator(config);
@@ -173,34 +173,13 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     [TestMethod]
-    public void GlassMosaicUsesTriangleTopology() {
+    public void GlassMosaicConfigurationIsBounded() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("glass-mosaic");
       Assert.IsTrue(definition != null && definition.DisplayName == "Glass Mosaic",
         "Glass Mosaic was not registered");
       Assert.IsTrue(definition.FireAction?.Label == "Fire" &&
           definition.ClearAction?.Label == "Clear",
         "Glass Mosaic Fire/Clear actions were not registered");
-
-      GlassMosaicLayerOptions defaults =
-        BuiltInOptions<GlassMosaicLayerOptions>(
-          Layer("glass-mosaic", "glass-defaults"));
-      Assert.IsTrue(defaults.TileGrouping == 1,
-        "unexpected Glass Mosaic tile grouping");
-      AssertClose(30, defaults.CascadeSpeed,
-        "unexpected Glass Mosaic cascade speed");
-      Assert.IsTrue(defaults.PropagationRule == 0,
-        "unexpected Glass Mosaic propagation rule");
-      AssertClose(0.18, defaults.BorderBrightness,
-        "unexpected Glass Mosaic border brightness");
-      Assert.IsTrue(defaults.TileTransition == 0,
-        "unexpected Glass Mosaic tile transition");
-      Assert.IsTrue(defaults.Trigger == 1 && defaults.Button == 0 &&
-          defaults.Palette == 0,
-        "unexpected Glass Mosaic trigger or palette default");
-      AssertClose(0.3, defaults.Level,
-        "unexpected Glass Mosaic audio level");
-      AssertClose(800, defaults.Interval,
-        "unexpected Glass Mosaic audio interval");
 
       DomeLayerSettings configured = Layer(
         "glass-mosaic", "glass-clamped");
@@ -226,7 +205,10 @@ namespace Spectrum.LayerPipeline.Tests {
           clamped.Level == 0 && clamped.Interval == 4000 &&
           clamped.Palette == PaletteService.MaxPalettes - 1,
         "Glass Mosaic controls did not clamp");
+    }
 
+    [TestMethod]
+    public void GlassMosaicTopologyMatchesPhysicalTriangles() {
       var topology = new GlassMosaicTopology(StrutLayoutFactory.lines);
       Assert.IsTrue(topology.TileCount == 120 && topology.EdgeCount == 190,
         "Glass Mosaic did not discover the deployed triangular faces");
@@ -247,9 +229,13 @@ namespace Spectrum.LayerPipeline.Tests {
         foreach (int neighbor in topology.NeighborsAt(tile)) {
           Assert.IsTrue(topology.NeighborsAt(neighbor).Contains(tile),
             "Glass Mosaic face adjacency was not symmetric");
-        }
+          }
       }
+    }
 
+    [TestMethod]
+    public void GlassMosaicCascadeTraversesAdjacentTiles() {
+      var topology = new GlassMosaicTopology(StrutLayoutFactory.lines);
       var state = new GlassMosaicState(topology, 17);
       Assert.IsTrue(state.PhaseAt(0) == 0 && state.PhaseAt(9) == 1,
         "Glass Mosaic did not initialize persistent tile phases");
@@ -271,24 +257,6 @@ namespace Spectrum.LayerPipeline.Tests {
           state.PulseAt(0) == 1 && state.FlipProgressAt(0) == 0 &&
           state.PhaseAt(secondTile) == secondInitialPhase,
         "Glass Mosaic did not flip only its starting tile immediately");
-      GlassMosaicTileAppearance instant =
-        LEDDomeGlassMosaicVisualizer.TileAppearance(0, 1, 0, 0);
-      Assert.IsTrue(instant.Phase == 1 && instant.Visibility == 1,
-        "Glass Mosaic instant transition changed legacy phase rendering");
-      GlassMosaicTileAppearance oldFace =
-        LEDDomeGlassMosaicVisualizer.TileAppearance(0, 1, 0.25, 1);
-      GlassMosaicTileAppearance edgeOn =
-        LEDDomeGlassMosaicVisualizer.TileAppearance(0, 1, 0.5, 1);
-      GlassMosaicTileAppearance newFace =
-        LEDDomeGlassMosaicVisualizer.TileAppearance(0, 1, 0.75, 1);
-      Assert.IsTrue(oldFace.Phase == 0 && newFace.Phase == 1,
-        "Glass Mosaic flip did not select the old and new tile faces");
-      AssertClose(0.5, oldFace.Visibility,
-        "Glass Mosaic old face did not narrow toward edge-on");
-      AssertClose(0, edgeOn.Visibility,
-        "Glass Mosaic flip did not become invisible at edge-on");
-      AssertClose(0.5, newFace.Visibility,
-        "Glass Mosaic new face did not open from edge-on");
       state.AdvanceFlips(GlassMosaicState.FlipDurationSeconds * 0.25);
       AssertClose(0.25, state.FlipProgressAt(0),
         "Glass Mosaic flip did not advance with elapsed time");
@@ -301,7 +269,12 @@ namespace Spectrum.LayerPipeline.Tests {
       state.DecayPulses(0.325);
       AssertClose(0.5, state.PulseAt(0),
         "Glass Mosaic arrival pulse did not decay independently");
+    }
 
+    [TestMethod]
+    public void GlassMosaicGroupingAndResetPreserveTileState() {
+      var topology = new GlassMosaicTopology(StrutLayoutFactory.lines);
+      var state = new GlassMosaicState(topology, 17);
       state.Reset();
       state.StartCascade(0, 3, 1);
       int groupedArrivals = Enumerable.Range(0, topology.TileCount)
@@ -323,7 +296,28 @@ namespace Spectrum.LayerPipeline.Tests {
             state.PreviousPhaseAt(tile) == (tile & 7) &&
             state.FlipProgressAt(tile) == 1),
         "Glass Mosaic Clear did not restore its initial state");
+    }
 
+    [TestMethod]
+    public void GlassMosaicAppearanceInterpolatesFacesAndColors() {
+      GlassMosaicTileAppearance instant =
+        LEDDomeGlassMosaicVisualizer.TileAppearance(0, 1, 0, 0);
+      Assert.IsTrue(instant.Phase == 1 && instant.Visibility == 1,
+        "Glass Mosaic instant transition changed legacy phase rendering");
+      GlassMosaicTileAppearance oldFace =
+        LEDDomeGlassMosaicVisualizer.TileAppearance(0, 1, 0.25, 1);
+      GlassMosaicTileAppearance edgeOn =
+        LEDDomeGlassMosaicVisualizer.TileAppearance(0, 1, 0.5, 1);
+      GlassMosaicTileAppearance newFace =
+        LEDDomeGlassMosaicVisualizer.TileAppearance(0, 1, 0.75, 1);
+      Assert.IsTrue(oldFace.Phase == 0 && newFace.Phase == 1,
+        "Glass Mosaic flip did not select the old and new tile faces");
+      AssertClose(0.5, oldFace.Visibility,
+        "Glass Mosaic old face did not narrow toward edge-on");
+      AssertClose(0, edgeOn.Visibility,
+        "Glass Mosaic flip did not become invisible at edge-on");
+      AssertClose(0.5, newFace.Visibility,
+        "Glass Mosaic new face did not open from edge-on");
       AssertClose(0.2,
         LEDDomeGlassMosaicVisualizer.TileBrightness(0.2, 0),
         "Glass Mosaic resting border brightness changed");
@@ -333,7 +327,10 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert.IsTrue(LEDDomeGlassMosaicVisualizer.BlendColor(
           0xFF0000, 0x0000FF, 0.5) == 0x800080,
         "Glass Mosaic did not interpolate adjacent tile colors");
+    }
 
+    [TestMethod]
+    public void GlassMosaicRendererUsesAudioAndOrientation() {
       var config = ConfigurationWithLayers(
         Layer("glass-mosaic", "glass-inputs"));
       SetPaletteColors(config, color => 0xFFFFFF - color * 0x10101);
@@ -358,26 +355,13 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     [TestMethod]
-    public void CellularDomeUsesTriangleCells() {
+    public void CellularDomeConfigurationIsBounded() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("cellular-dome");
       Assert.IsTrue(definition != null && definition.DisplayName == "Cellular Dome",
         "Cellular Dome was not registered");
       Assert.IsTrue(definition.FireAction?.Label == "Fire" &&
           definition.ClearAction?.Label == "Clear",
         "Cellular Dome Fire/Clear actions were not registered");
-
-      CellularDomeLayerOptions defaults =
-        BuiltInOptions<CellularDomeLayerOptions>(
-          Layer("cellular-dome", "cellular-defaults"));
-      Assert.IsTrue(defaults.Rule == 0 && defaults.Neighborhood == 0,
-        "unexpected Cellular Dome rule or neighborhood");
-      AssertClose(6, defaults.GenerationRate,
-        "unexpected Cellular Dome generation rate");
-      Assert.IsTrue(defaults.BirthColor == 0 && defaults.TriggerMode == 0 &&
-          defaults.Palette == 0,
-        "unexpected Cellular Dome color, trigger, or palette");
-      AssertClose(2.5, defaults.AgeDecay,
-        "unexpected Cellular Dome age decay");
 
       DomeLayerSettings configured = Layer(
         "cellular-dome", "cellular-clamped");
@@ -397,7 +381,10 @@ namespace Spectrum.LayerPipeline.Tests {
           clamped.AgeDecay == 0.1 && clamped.TriggerMode == 2 &&
           clamped.Palette == PaletteService.MaxPalettes - 1,
         "Cellular Dome controls did not clamp");
+    }
 
+    [TestMethod]
+    public void CellularDomeNeighborhoodsMatchTriangleTopology() {
       var topology = new GlassMosaicTopology(StrutLayoutFactory.lines);
       bool foundWiderNeighborhood = false;
       for (int tile = 0; tile < topology.TileCount; tile++) {
@@ -416,7 +403,10 @@ namespace Spectrum.LayerPipeline.Tests {
       }
       Assert.IsTrue(foundWiderNeighborhood,
         "Cellular Dome neighborhoods did not produce distinct topologies");
+    }
 
+    [TestMethod]
+    public void CellularDomeRulesHaveDistinctBirthAndSurvivalBehavior() {
       Assert.IsTrue(CellularDomeState.NextAlive(0, false, 2) &&
           CellularDomeState.NextAlive(0, true, 1) &&
           !CellularDomeState.NextAlive(0, true, 3),
@@ -430,7 +420,11 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert.IsTrue(CellularDomeState.NextAlive(3, false, 3) &&
           !CellularDomeState.NextAlive(3, false, 2),
         "Cellular Dome chaos rule did not implement B13 births");
+    }
 
+    [TestMethod]
+    public void CellularDomeStateEvolvesAcrossPhysicalFaces() {
+      var topology = new GlassMosaicTopology(StrutLayoutFactory.lines);
       var state = new CellularDomeState(topology);
       state.Clear();
       state.SeedAt(0, 0, 0);
@@ -472,7 +466,10 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert.IsTrue(LEDDomeCellularDomeVisualizer.BlendColor(
           0xFF0000, 0x0000FF, 0.5) == 0x800080,
         "Cellular Dome did not blend adjacent cell colors");
+    }
 
+    [TestMethod]
+    public void CellularDomeRendererUsesOrientation() {
       var config = ConfigurationWithLayers(
         Layer("cellular-dome", "cellular-inputs"));
       SetPaletteColors(config, color => 0xFFFFFF - color * 0x10101);

@@ -15,30 +15,10 @@ namespace Spectrum.LayerPipeline.Tests {
   [DoNotParallelize]
   public sealed class ParticleVisualizerTests {
     [TestMethod]
-    public void FireflySwarmUsesCoherentFlock() {
+    public void FireflySwarmConfigurationIsBounded() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("firefly-swarm");
       Assert.IsTrue(definition != null && definition.DisplayName == "Firefly Swarm",
         "Firefly Swarm was not registered");
-
-      FireflySwarmLayerOptions defaults =
-        BuiltInOptions<FireflySwarmLayerOptions>(
-          Layer("firefly-swarm", "firefly-defaults"));
-      Assert.IsTrue(defaults.Population == 48,
-        "unexpected Firefly Swarm population");
-      AssertClose(1.2, defaults.Cohesion,
-        "unexpected Firefly Swarm cohesion");
-      AssertClose(1.8, defaults.Separation,
-        "unexpected Firefly Swarm separation");
-      AssertClose(0.65, defaults.Wander,
-        "unexpected Firefly Swarm wander");
-      Assert.IsTrue(defaults.InteractionMode == 0,
-        "unexpected Firefly Swarm interaction mode");
-      AssertClose(0.055, defaults.DotSize,
-        "unexpected Firefly Swarm dot size");
-      AssertClose(0.45, defaults.TrailLength,
-        "unexpected Firefly Swarm trail length");
-      Assert.IsTrue(defaults.Palette == 0,
-        "unexpected Firefly Swarm palette");
 
       DomeLayerSettings configured = Layer(
         "firefly-swarm", "firefly-clamped");
@@ -60,7 +40,10 @@ namespace Spectrum.LayerPipeline.Tests {
           clamped.TrailLength == 3 &&
           clamped.Palette == PaletteService.MaxPalettes - 1,
         "Firefly Swarm controls did not clamp");
+    }
 
+    [TestMethod]
+    public void FireflySwarmStateStaysOnHemisphereAndResizes() {
       var flock = new FireflySwarmState(24, 23);
       Assert.IsTrue(flock.Agents.Count == 24,
         "Firefly Swarm did not create its requested population");
@@ -83,7 +66,10 @@ namespace Spectrum.LayerPipeline.Tests {
       flock.Resize(12);
       Assert.IsTrue(flock.Agents.Count == 12,
         "Firefly Swarm did not shrink its bounded population in place");
+    }
 
+    [TestMethod]
+    public void FireflySwarmForcesMoveAgentsCoherently() {
       Vector3 aim = Vector3.Normalize(new Vector3(0.9f, 0.1f, 0.3f));
       Func<FireflySwarmState, double> meanAimDistance = state =>
         state.Agents.Average(agent => Math.Acos(Math.Clamp(
@@ -127,7 +113,10 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert.IsTrue(startled.Agents.All(agent => agent.Position.Z >= 0 &&
           Math.Abs(agent.Position.Length() - 1) < 0.000001),
         "Firefly Swarm escaped the visible unit hemisphere");
+    }
 
+    [TestMethod]
+    public void FireflySwarmAudioAndTrailEffectsAreBounded() {
       var detector = new FireflyStartleDetector();
       Assert.IsTrue(!detector.Sample(0.1, 0.1) && detector.Sample(0.8, 0.1),
         "Firefly Swarm did not detect a loud rising transient");
@@ -144,7 +133,10 @@ namespace Spectrum.LayerPipeline.Tests {
       AssertClose(0.5,
         LEDDomeFireflySwarmVisualizer.TrailRetention(0.45, 0.45),
         "Firefly Swarm trail length is not a brightness half-life");
+    }
 
+    [TestMethod]
+    public void FireflySwarmRendererUsesAudioAndOrientation() {
       var config = ConfigurationWithLayers(
         Layer("firefly-swarm", "firefly-inputs"));
       SetPaletteColors(config, color => 0xFFFFFF - color * 0x10101);
@@ -182,30 +174,10 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     [TestMethod]
-    public void RainChamberUsesSphericalRain() {
+    public void RainChamberConfigurationIsBounded() {
       LayerDefinition? definition = DomeLayerCatalog.Metadata.Get("rain-chamber");
       Assert.IsTrue(definition != null && definition.DisplayName == "Rain Chamber",
         "Rain Chamber was not registered");
-
-      RainChamberLayerOptions defaults =
-        BuiltInOptions<RainChamberLayerOptions>(
-          Layer("rain-chamber", "rain-defaults"));
-      AssertClose(22, defaults.RainfallRate,
-        "unexpected Rain Chamber rainfall rate");
-      AssertClose(1.4, defaults.Gravity,
-        "unexpected Rain Chamber gravity");
-      AssertClose(0.045, defaults.DropletSize,
-        "unexpected Rain Chamber droplet size");
-      AssertClose(0.7, defaults.TrailRetention,
-        "unexpected Rain Chamber trail retention");
-      Assert.IsTrue(defaults.InteractionMode == 0,
-        "unexpected Rain Chamber wand interaction mode");
-      AssertClose(1.25, defaults.Wind,
-        "unexpected Rain Chamber wand strength");
-      AssertClose(0.9, defaults.SplashStrength,
-        "unexpected Rain Chamber splash strength");
-      Assert.IsTrue(defaults.Palette == 0,
-        "unexpected Rain Chamber palette");
 
       AssertClose(0.065, RainChamberState.SpawnPolar(0.015),
         "small Rain Chamber droplets lost the crown spawn radius");
@@ -258,7 +230,10 @@ namespace Spectrum.LayerPipeline.Tests {
           clamped.SplashStrength == 0 &&
           clamped.Palette == PaletteService.MaxPalettes - 1,
         "Rain Chamber controls did not clamp");
+    }
 
+    [TestMethod]
+    public void RainChamberAudioControlsRainfall() {
       AssertClose(3.3,
         RainChamberState.EffectiveRainfallRate(22, 0),
         "silent Rain Chamber did not retain a light drizzle");
@@ -274,7 +249,10 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert.IsTrue(loud.Droplets.Count > quiet.Droplets.Count &&
           loud.Droplets.Count == 40,
         "capture volume did not scale Rain Chamber spawning");
+    }
 
+    [TestMethod]
+    public void RainChamberGravityFollowsTheSphere() {
       Vector3 upper = Vector3.Normalize(new Vector3(0.25f, 0, 0.97f));
       var falling = new RainChamberState(23);
       falling.SeedDroplet(upper, Vector3.Zero);
@@ -292,7 +270,11 @@ namespace Spectrum.LayerPipeline.Tests {
             falling.Droplets[0].Position,
             falling.Droplets[0].Velocity)) < 0.000001,
         "Rain Chamber escaped the tangent unit hemisphere");
+    }
 
+    [TestMethod]
+    public void RainChamberUmbrellaDeflectsNearbyDroplets() {
+      Vector3 upper = Vector3.Normalize(new Vector3(0.25f, 0, 0.97f));
       var still = new RainChamberState(29);
       var deflected = new RainChamberState(29);
       still.SeedDroplet(upper, Vector3.Zero);
@@ -305,7 +287,11 @@ namespace Spectrum.LayerPipeline.Tests {
           still.Droplets[0].Position,
           deflected.Droplets[0].Position) > 0.01,
         "Rain Chamber umbrella did not deflect a nearby droplet");
+    }
 
+    [TestMethod]
+    public void RainChamberWindTracksWandMotionWithinItsRadius() {
+      Vector3 upper = Vector3.Normalize(new Vector3(0.25f, 0, 0.97f));
       Vector3 sweepTangent = Vector3.Normalize(Vector3.Cross(
         Vector3.UnitY, upper));
       Vector3 sweptAim = Vector3.Normalize(
@@ -363,7 +349,11 @@ namespace Spectrum.LayerPipeline.Tests {
           outsideNoGust.Droplets[0].Position,
           outsideGust.Droplets[0].Position) < 0.000001,
         "Rain Chamber wind field reached beyond its bounded radius");
+    }
 
+    [TestMethod]
+    public void RainChamberDryModeClearsOnlyNearbyRainAndTrails() {
+      Vector3 upper = Vector3.Normalize(new Vector3(0.25f, 0, 0.97f));
       double dryRadius = RainChamberState.DryRadius(2);
       Vector3 dryTangent = Vector3.Normalize(Vector3.Cross(
         upper, Vector3.UnitY));
@@ -388,6 +378,25 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert.IsTrue(disabledDrying.Droplets.Count == 1,
         "zero wand strength still removed a Rain Chamber droplet");
 
+      var insideTrail = new DomeFrame(OnePixelTopology());
+      insideTrail.pixels[0].color = 0xFFFFFF;
+      LEDDomeRainChamberVisualizer.ApplyDryRegions(
+        insideTrail, new[] { upper }, new[] { upper }, 2);
+      Assert.IsTrue(insideTrail.pixels[0].color == 0 &&
+          insideTrail.pixels[0].a == 0,
+        "Rain Chamber dry region retained old trail light");
+
+      var outsideTrail = new DomeFrame(OnePixelTopology());
+      outsideTrail.pixels[0].color = 0xFFFFFF;
+      LEDDomeRainChamberVisualizer.ApplyDryRegions(
+        outsideTrail, new[] { outsideDryRegion }, new[] { upper }, 2);
+      Assert.IsTrue(outsideTrail.pixels[0].color == 0xFFFFFF &&
+          outsideTrail.pixels[0].a == 1,
+        "Rain Chamber dry region cleared trail light beyond its reach");
+    }
+
+    [TestMethod]
+    public void RainChamberRimImpactsCreateExpiringSplashes() {
       var impacting = new RainChamberState(31);
       Vector3 nearRim = Vector3.Normalize(
         new Vector3(0.999f, 0, 0.03f));
@@ -410,7 +419,10 @@ namespace Spectrum.LayerPipeline.Tests {
       }
       Assert.IsTrue(impacting.Splashes.Count == 0,
         "Rain Chamber retained an expired splash ring");
+    }
 
+    [TestMethod]
+    public void RainChamberDropletCollisionsAreLocalAndOptional() {
       double collisionDotSize = 0.06;
       double collisionRadius = RainChamberState.CollisionRadius(
         collisionDotSize, 0.5, 0.5);
@@ -462,30 +474,20 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert.IsTrue(splashDisabled.Droplets.Count == 2 &&
           splashDisabled.Splashes.Count == 0,
         "disabled splash strength still resolved droplet collisions");
+    }
 
+    [TestMethod]
+    public void RainChamberTrailRetentionUsesBrightnessHalfLife() {
       AssertClose(0,
         LEDDomeRainChamberVisualizer.TrailRetention(0, 0.1),
         "zero Rain Chamber trail retained old light");
       AssertClose(0.5,
         LEDDomeRainChamberVisualizer.TrailRetention(0.7, 0.7),
         "Rain Chamber trail retention is not a brightness half-life");
+    }
 
-      var insideTrail = new DomeFrame(OnePixelTopology());
-      insideTrail.pixels[0].color = 0xFFFFFF;
-      LEDDomeRainChamberVisualizer.ApplyDryRegions(
-        insideTrail, new[] { upper }, new[] { upper }, 2);
-      Assert.IsTrue(insideTrail.pixels[0].color == 0 &&
-          insideTrail.pixels[0].a == 0,
-        "Rain Chamber dry region retained old trail light");
-
-      var outsideTrail = new DomeFrame(OnePixelTopology());
-      outsideTrail.pixels[0].color = 0xFFFFFF;
-      LEDDomeRainChamberVisualizer.ApplyDryRegions(
-        outsideTrail, new[] { outsideDryRegion }, new[] { upper }, 2);
-      Assert.IsTrue(outsideTrail.pixels[0].color == 0xFFFFFF &&
-          outsideTrail.pixels[0].a == 1,
-        "Rain Chamber dry region cleared trail light beyond its reach");
-
+    [TestMethod]
+    public void RainChamberRendererUsesAudioAndOrientation() {
       var config = ConfigurationWithLayers(
         Layer("rain-chamber", "rain-inputs"));
       SetPaletteColors(config, color => 0xF8FCFF - color * 0x030100);

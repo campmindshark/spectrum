@@ -24,6 +24,7 @@ namespace Spectrum.LayerPipeline.Tests {
         var keys = new HashSet<string>();
         foreach (DomeLayerParam parameter in definition.Parameters) {
           Assert.IsTrue(keys.Add(parameter.Key), "duplicate parameter " + parameter.Key);
+          AssertParameterDefaultIsValid(definition.Id, parameter);
         }
         (LayerStackSnapshot? snapshot, string? error) =
           new LayerStackService(DomeLayerCatalog.Metadata).CreateSnapshot(new[] {
@@ -33,6 +34,48 @@ namespace Spectrum.LayerPipeline.Tests {
         ILayerRendererOptions options = definition.CompileOptions(
           snapshot.Layers[0].RendererParameters);
         Assert.IsTrue(options != null, "null options for " + definition.Id);
+      }
+    }
+
+    private static void AssertParameterDefaultIsValid(
+      string layerId, DomeLayerParam parameter
+    ) {
+      string context = layerId + "." + parameter.Key;
+      Assert.IsTrue(double.IsFinite(parameter.Default),
+        "non-finite default for " + context);
+      switch (parameter.Type) {
+        case DomeLayerParamType.Double:
+          Assert.IsTrue(double.IsFinite(parameter.Min) &&
+              double.IsFinite(parameter.Max) &&
+              double.IsFinite(parameter.Step) &&
+              parameter.Min <= parameter.Default &&
+              parameter.Default <= parameter.Max && parameter.Step > 0,
+            "invalid numeric range/default for " + context);
+          break;
+        case DomeLayerParamType.Bool:
+          Assert.IsTrue(parameter.Default == 0 || parameter.Default == 1,
+            "invalid boolean default for " + context);
+          break;
+        case DomeLayerParamType.Enum:
+          Assert.IsTrue(parameter.Options is { Length: > 0 } &&
+              parameter.Default == Math.Truncate(parameter.Default) &&
+              parameter.Default >= 0 &&
+              parameter.Default < parameter.Options.Length,
+            "invalid enum default for " + context);
+          break;
+        case DomeLayerParamType.Color:
+          Assert.IsTrue(parameter.Default == Math.Truncate(parameter.Default) &&
+              parameter.Default >= 0 && parameter.Default <= 0xFFFFFF,
+            "invalid color default for " + context);
+          break;
+        case DomeLayerParamType.Date:
+          Assert.IsTrue(parameter.Default == 0 ||
+              DomeLayerDate.TryDecode(parameter.Default, out _),
+            "invalid date default for " + context);
+          break;
+        default:
+          Assert.Fail("unknown parameter type for " + context);
+          break;
       }
     }
 
