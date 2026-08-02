@@ -104,7 +104,6 @@ namespace Spectrum.Platform.Linux {
       }
     }
 
-    public bool AlwaysActive => true;
     public bool Enabled => true;
     public float Volume => Volatile.Read(ref this.volume);
     public string BackendName => "ALSA";

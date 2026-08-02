@@ -7,7 +7,7 @@ using Spectrum.Base;
 
 namespace Spectrum.LEDs {
 
-  public class LEDDomeOutput : Output, DomeRenderContext {
+  public class LEDDomeOutput : DomeRenderContext {
 
     private readonly IRuntimeSettingsConfiguration runtimeSettings;
     private readonly DomeOpcTransport transport;

@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Numerics;
+using System.Text.Json;
 using static Spectrum.LayerPipeline.Tests.LayerPipelineTestFixtures;
 
 namespace Spectrum.LayerPipeline.Tests {
@@ -164,6 +165,62 @@ namespace Spectrum.LayerPipeline.Tests {
       Assert.IsTrue(device.isMoving, "wand became idle inside the pause grace period");
       device.RefreshMoving(8001);
       Assert.IsTrue(!device.isMoving, "wand remained active after the pause grace period");
+    }
+
+    [TestMethod]
+    public void LinkQualityClassification() {
+      AssertQuality(WandLinkQuality.Waiting, rateHz: 0, packetCount: 1);
+      AssertQuality(WandLinkQuality.Good, rateHz: 200, packetCount: 2);
+
+      AssertQuality(
+        WandLinkQuality.Fair, rateHz: 119, packetCount: 2);
+      AssertQuality(
+        WandLinkQuality.Fair, rateHz: 200, packetCount: 2,
+        jitterMs: 8.01);
+      AssertQuality(
+        WandLinkQuality.Fair, rateHz: 200, packetCount: 2,
+        packetLossFraction: 0.0101);
+
+      AssertQuality(
+        WandLinkQuality.Poor, rateHz: 59, packetCount: 2);
+      AssertQuality(
+        WandLinkQuality.Poor, rateHz: 200, packetCount: 2,
+        jitterMs: 20.01);
+      AssertQuality(
+        WandLinkQuality.Poor, rateHz: 200, packetCount: 2,
+        packetLossFraction: 0.0501);
+      AssertQuality(
+        WandLinkQuality.Poor, rateHz: 200, packetCount: 2,
+        millisSinceLastPacket: 400.01);
+    }
+
+    [TestMethod]
+    public void LinkQualityWebContractUsesEnumNames() {
+      string json = JsonSerializer.Serialize(
+        new global::Spectrum.Web.WandStatusController.WandStatusRow {
+          quality = WandLinkQuality.Poor,
+        });
+      Assert.IsTrue(json.Contains("\"quality\":\"Poor\""),
+        "the browser quality contract stopped using enum names");
+    }
+
+    private static void AssertQuality(
+      WandLinkQuality expected,
+      double rateHz,
+      long packetCount,
+      double jitterMs = 0,
+      double packetLossFraction = 0,
+      double millisSinceLastPacket = 0
+    ) {
+      var stats = new OrientationDeviceStats(
+        rateHz,
+        rateHz > 0 ? 1000.0 / rateHz : 0,
+        jitterMs,
+        packetCount,
+        millisSinceLastPacket,
+        packetLossFraction,
+        0);
+      Assert.AreEqual(expected, stats.LinkQuality);
     }
 
     private static void AssertQuaternion(

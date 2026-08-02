@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 using Spectrum.Base;
 
 namespace Spectrum.Web {
@@ -18,9 +19,8 @@ namespace Spectrum.Web {
    */
   public sealed class WandStatusController {
 
-    // One device's row. Raw numbers only — the browser formats them and derives
-    // the Good/Fair/Poor quality rating, exactly as WandRow does for the native
-    // ListView, so the heuristic lives in the view layer either way.
+    // One device's row. The browser formats the raw measurements but consumes
+    // the shared server-side quality classification.
     public sealed class WandStatusRow {
       public int deviceId { get; set; }
       public string typeName { get; set; } = "";
@@ -45,6 +45,8 @@ namespace Spectrum.Web {
       public double dataRateBytesPerSec { get; set; }
       public long packetCount { get; set; }
       public double millisSinceLastPacket { get; set; }
+      [JsonConverter(typeof(JsonStringEnumConverter<WandLinkQuality>))]
+      public WandLinkQuality quality { get; set; }
     }
 
     private readonly OrientationInput orientation;
@@ -93,6 +95,7 @@ namespace Spectrum.Web {
           dataRateBytesPerSec = s.DataRateBytesPerSec,
           packetCount = s.PacketCount,
           millisSinceLastPacket = s.MillisSinceLastPacket,
+          quality = s.LinkQuality,
         });
       }
       return rows;

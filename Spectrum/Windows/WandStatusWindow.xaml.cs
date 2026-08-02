@@ -111,23 +111,6 @@ namespace Spectrum {
   // refresh in place without rebuilding the ListView each poll.
   public class WandRow : INotifyPropertyChanged {
 
-    // Quality thresholds (heuristic). A device is timed out by OrientationInput
-    // at 1000ms, so staleness well before that signals dropped packets. Jitter
-    // bands are in milliseconds of interarrival variation.
-    private const double StaleMs = 400.0;
-    private const double JitterFairMs = 8.0;
-    private const double JitterPoorMs = 20.0;
-    // Packet-loss bands (fraction of sent packets missing).
-    private const double LossFairFraction = 0.01;
-    private const double LossPoorFraction = 0.05;
-    // Update-rate bands, as fractions of the wands' 200 Hz transmit cap
-    // (OrientationInput.WandMaxTransmitRateHz). A wand that stays connected but
-    // whose rate has collapsed well below the ceiling — RF congestion, a dying
-    // battery — is degraded even when jitter and loss still read benign, so the
-    // rate feeds the rating too.
-    private const double RateFairFraction = 0.6;
-    private const double RatePoorFraction = 0.3;
-
     private static readonly Brush GoodBrush = Frozen(0x16, 0x73, 0x3D);
     private static readonly Brush FairBrush = Frozen(0x8A, 0x5A, 0x00);
     private static readonly Brush PoorBrush = Frozen(0xB3, 0x26, 0x1E);
@@ -272,33 +255,28 @@ namespace Spectrum {
       this.LastSeen = stats.MillisSinceLastPacket.ToString(
         "F0", CultureInfo.InvariantCulture);
 
-      this.ApplyQuality(stats);
+      this.ApplyQuality(stats.LinkQuality);
     }
 
-    // Maps the measured stats onto a coarse Good/Fair/Poor rating plus a matching
-    // row color, so the operator can spot a flaky wand at a glance.
-    private void ApplyQuality(OrientationDeviceStats stats) {
-      if (stats.PacketCount < 2) {
-        this.Quality = "…";
-        this.QualityBrush = GoodBrush;
-        return;
-      }
-      double rateFraction =
-        stats.UpdateRateHz / OrientationInput.WandMaxTransmitRateHz;
-      if (stats.MillisSinceLastPacket > StaleMs ||
-          stats.JitterMs > JitterPoorMs ||
-          stats.PacketLossFraction > LossPoorFraction ||
-          rateFraction < RatePoorFraction) {
-        this.Quality = "Poor";
-        this.QualityBrush = PoorBrush;
-      } else if (stats.JitterMs > JitterFairMs ||
-                 stats.PacketLossFraction > LossFairFraction ||
-                 rateFraction < RateFairFraction) {
-        this.Quality = "Fair";
-        this.QualityBrush = FairBrush;
-      } else {
-        this.Quality = "Good";
-        this.QualityBrush = GoodBrush;
+    // Maps the shared classification to native presentation.
+    private void ApplyQuality(WandLinkQuality quality) {
+      switch (quality) {
+        case WandLinkQuality.Waiting:
+          this.Quality = "…";
+          this.QualityBrush = GoodBrush;
+          break;
+        case WandLinkQuality.Good:
+          this.Quality = "Good";
+          this.QualityBrush = GoodBrush;
+          break;
+        case WandLinkQuality.Fair:
+          this.Quality = "Fair";
+          this.QualityBrush = FairBrush;
+          break;
+        case WandLinkQuality.Poor:
+          this.Quality = "Poor";
+          this.QualityBrush = PoorBrush;
+          break;
       }
     }
 

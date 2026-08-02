@@ -396,8 +396,8 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     private sealed class ThrowingBrightnessConfiguration :
-      global::Spectrum.SpectrumConfiguration, Configuration {
-      double Configuration.domeBrightness {
+      global::Spectrum.SpectrumConfiguration {
+      public override double domeBrightness {
         get => base.domeBrightness;
         set => throw new InvalidOperationException("setter exploded");
       }

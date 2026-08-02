@@ -76,29 +76,45 @@ namespace Spectrum {
    *
    * This catalog owns stable property identifiers, code defaults, web
    * validation/display metadata, persistence participation, and engine restart
-   * policy. The serializer DTO remains explicit for XSerializer, while tests
-   * enforce an exhaustive one-to-one mapping between its scalar properties,
-   * Configuration, and this catalog.
+   * policy. Scalar declarations, defaults, storage, and copy semantics live in
+   * ConfigurationScalars; tests enforce an exhaustive one-to-one mapping
+   * between that shared surface and this catalog.
    */
   public static class SpectrumConfigurationSchema {
 
-    public const bool DomeEnabledDefault = false;
-    public const bool MidiInputEnabledDefault = false;
-    public const bool DomeOutputInSeparateThreadDefault = false;
-    public const string DomeBeagleboneOpcAddressDefault = "";
-    public const bool DomeSimulationEnabledDefault = false;
-    public const bool WebDomeSimulatorEnabledDefault = true;
-    public const double DomeMaxBrightnessDefault = 0.5;
-    public const double DomeBrightnessDefault = 0.1;
-    public const int DomeTestPatternDefault = 0;
-    public const double DomeGlobalFadeSpeedDefault = 0.0;
-    public const double DomeGlobalHueSpeedDefault = 1.0;
-    public const bool VjHudEnabledDefault = false;
-    public const double FlashSpeedDefault = 0.0;
-    public const int BeatInputDefault = 0;
-    public const int OrientationDeviceSpotlightDefault = 0;
-    public const bool OrientationCalibrateDefault = false;
-    public const string WandSerialPortDefault = "";
+    public const bool DomeEnabledDefault =
+      ConfigurationScalars.DomeEnabledDefault;
+    public const bool MidiInputEnabledDefault =
+      ConfigurationScalars.MidiInputEnabledDefault;
+    public const bool DomeOutputInSeparateThreadDefault =
+      ConfigurationScalars.DomeOutputInSeparateThreadDefault;
+    public const string DomeBeagleboneOpcAddressDefault =
+      ConfigurationScalars.DomeBeagleboneOpcAddressDefault;
+    public const bool DomeSimulationEnabledDefault =
+      ConfigurationScalars.DomeSimulationEnabledDefault;
+    public const bool WebDomeSimulatorEnabledDefault =
+      ConfigurationScalars.WebDomeSimulatorEnabledDefault;
+    public const double DomeMaxBrightnessDefault =
+      ConfigurationScalars.DomeMaxBrightnessDefault;
+    public const double DomeBrightnessDefault =
+      ConfigurationScalars.DomeBrightnessDefault;
+    public const int DomeTestPatternDefault =
+      ConfigurationScalars.DomeTestPatternDefault;
+    public const double DomeGlobalFadeSpeedDefault =
+      ConfigurationScalars.DomeGlobalFadeSpeedDefault;
+    public const double DomeGlobalHueSpeedDefault =
+      ConfigurationScalars.DomeGlobalHueSpeedDefault;
+    public const bool VjHudEnabledDefault =
+      ConfigurationScalars.VjHudEnabledDefault;
+    public const double FlashSpeedDefault =
+      ConfigurationScalars.FlashSpeedDefault;
+    public const int BeatInputDefault = ConfigurationScalars.BeatInputDefault;
+    public const int OrientationDeviceSpotlightDefault =
+      ConfigurationScalars.OrientationDeviceSpotlightDefault;
+    public const bool OrientationCalibrateDefault =
+      ConfigurationScalars.OrientationCalibrateDefault;
+    public const string WandSerialPortDefault =
+      ConfigurationScalars.WandSerialPortDefault;
 
     public const double DomeGlobalFadeSpeedMinimum = 0.0;
     public const double DomeGlobalFadeSpeedMaximum = 3.0;
@@ -120,7 +136,7 @@ namespace Spectrum {
       get;
     } = OptionalString(
       nameof(Configuration.audioDeviceID),
-      defaultValue: null,
+      ConfigurationScalars.AudioDeviceIdDefault,
       c => c.audioDeviceID,
       (c, value) => c.audioDeviceID = value,
       ControlRole.Maintenance,

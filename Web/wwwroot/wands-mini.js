@@ -17,16 +17,10 @@
   // drops about as fast as the server times them out.
   const POLL_MS = 1000;
 
-  // Quality heuristic — a trimmed mirror of wands.js's (which in turn mirrors
-  // the native WandRow). These thresholds and the server-side rate ceiling must
-  // stay in sync with wands.js; that file is the canonical copy.
-  const STALE_MS = 400, JITTER_FAIR_MS = 8, JITTER_POOR_MS = 20;
-  const LOSS_FAIR_FRACTION = 0.01, LOSS_POOR_FRACTION = 0.05;
-  const WAND_MAX_RATE_HZ = 200;
-  const RATE_FAIR_FRACTION = 0.6, RATE_POOR_FRACTION = 0.3;
   const ROW_COLORS =
-    { good: "#ddd", fair: "#ffd24d", poor: "#ff6b6b", wait: "#ddd" };
-  const QUALITY_LABEL = { good: "Good", fair: "Fair", poor: "Poor", wait: "…" };
+    { Good: "#ddd", Fair: "#ffd24d", Poor: "#ff6b6b", Waiting: "#ddd" };
+  const QUALITY_LABEL =
+    { Good: "Good", Fair: "Fair", Poor: "Poor", Waiting: "…" };
 
   const COLUMNS = ["ID", "Type", "Motion", "Quality", "Spotlight"];
 
@@ -67,22 +61,6 @@
     }
   }
 
-  function quality(row) {
-    if (row.packetCount < 2) return "wait";
-    const rateFraction = row.updateRateHz / WAND_MAX_RATE_HZ;
-    if (row.millisSinceLastPacket > STALE_MS || row.jitterMs > JITTER_POOR_MS ||
-        row.packetLossFraction > LOSS_POOR_FRACTION ||
-        rateFraction < RATE_POOR_FRACTION) {
-      return "poor";
-    }
-    if (row.jitterMs > JITTER_FAIR_MS ||
-        row.packetLossFraction > LOSS_FAIR_FRACTION ||
-        rateFraction < RATE_FAIR_FRACTION) {
-      return "fair";
-    }
-    return "good";
-  }
-
   function cells(row) {
     return [
       row.deviceId,
@@ -90,7 +68,7 @@
       // "Still" = transmitting but not physically moving (excluded from the
       // visualization); mirrors the native Motion column.
       row.isMoving ? "Moving" : "Still",
-      QUALITY_LABEL[quality(row)],
+      QUALITY_LABEL[row.quality],
     ];
   }
 
@@ -168,7 +146,7 @@
     tbodyEl.innerHTML = "";
     rows.forEach((row) => {
       const tr = document.createElement("tr");
-      tr.style.color = ROW_COLORS[quality(row)];
+      tr.style.color = ROW_COLORS[row.quality];
       cells(row).forEach((val) => {
         const td = document.createElement("td");
         td.textContent = val;

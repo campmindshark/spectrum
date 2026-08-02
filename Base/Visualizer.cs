@@ -8,10 +8,10 @@ namespace Spectrum.Base {
 
   /**
    * A Visualizer processes data from Inputs and then draws something pretty on
-   * an Output. It is executed on the Operator thread. Visualize() is what the
+   * the dome. It is executed on the Operator thread. Visualize() is what the
    * Operator calls to make the Visualizer do work.
    * 
-   * Only the Visualizers with the highest nonzero priority for their Output
+   * Only the Visualizers with the highest nonzero priority
    * actually get run. If there's a tie, all of the tied Visualizers will run.
    */
   public interface Visualizer {

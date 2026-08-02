@@ -141,12 +141,6 @@ namespace Spectrum {
       client?.Close();
     }
 
-    public bool AlwaysActive {
-      get {
-        return true;
-      }
-    }
-
     public bool Enabled {
       get {
         return true;
@@ -551,6 +545,10 @@ namespace Spectrum {
     public double PacketLossFraction { get; }
     // Smoothed received payload throughput, in bytes per second.
     public double DataRateBytesPerSec { get; }
+    // Coarse operator-facing assessment shared by every native and browser
+    // wand-status surface.
+    public WandLinkQuality LinkQuality =>
+      WandLinkQualityEvaluator.Classify(this);
 
     public OrientationDeviceStats(
       double updateRateHz,
@@ -568,6 +566,47 @@ namespace Spectrum {
       this.MillisSinceLastPacket = millisSinceLastPacket;
       this.PacketLossFraction = packetLossFraction;
       this.DataRateBytesPerSec = dataRateBytesPerSec;
+    }
+  }
+
+  public enum WandLinkQuality {
+    Waiting,
+    Good,
+    Fair,
+    Poor,
+  }
+
+  // Owns the connection-quality heuristic so all status surfaces classify the
+  // same measurements identically. Presentation labels and colors remain the
+  // responsibility of each frontend.
+  public static class WandLinkQualityEvaluator {
+    private const double StaleMs = 400.0;
+    private const double JitterFairMs = 8.0;
+    private const double JitterPoorMs = 20.0;
+    private const double LossFairFraction = 0.01;
+    private const double LossPoorFraction = 0.05;
+    private const double RateFairFraction = 0.6;
+    private const double RatePoorFraction = 0.3;
+
+    public static WandLinkQuality Classify(OrientationDeviceStats stats) {
+      if (stats.PacketCount < 2) {
+        return WandLinkQuality.Waiting;
+      }
+
+      double rateFraction =
+        stats.UpdateRateHz / OrientationInput.WandMaxTransmitRateHz;
+      if (stats.MillisSinceLastPacket > StaleMs ||
+          stats.JitterMs > JitterPoorMs ||
+          stats.PacketLossFraction > LossPoorFraction ||
+          rateFraction < RatePoorFraction) {
+        return WandLinkQuality.Poor;
+      }
+      if (stats.JitterMs > JitterFairMs ||
+          stats.PacketLossFraction > LossFairFraction ||
+          rateFraction < RateFairFraction) {
+        return WandLinkQuality.Fair;
+      }
+      return WandLinkQuality.Good;
     }
   }
 }

@@ -212,14 +212,12 @@ namespace Spectrum.LayerPipeline.Tests {
 
     public sealed class FakeInput : Input {
       public bool Active { get; set; }
-      public bool AlwaysActive => false;
       public bool Enabled => true;
       public void OperatorUpdate() { }
     }
 
     public sealed class FakeAudioLevelInput : IAudioLevelInput {
       public bool Active { get; set; }
-      public bool AlwaysActive => true;
       public bool Enabled => true;
       public float Volume => 0.25f;
       public void OperatorUpdate() { }
@@ -227,7 +225,6 @@ namespace Spectrum.LayerPipeline.Tests {
 
     public sealed class FakeMidiControlInput : IMidiControlInput {
       public bool Active { get; set; }
-      public bool AlwaysActive => true;
       public bool Enabled => true;
       public ObservableMidiLog MidiLog { get; } = new ObservableMidiLog();
       public long AppliedDeviceGeneration => 0;

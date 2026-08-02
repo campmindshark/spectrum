@@ -16,7 +16,7 @@ namespace Spectrum.Visualizers {
   // button) and a bound wand "button" are always live, and the "trigger" param
   // selects one autonomous source — Beat (default) or Audio. Center-free like
   // Background; it declares OrientationInput only so the Button source can read
-  // wand state (AlwaysActive, so it never gates eligibility), and reads
+  // wand state (the enabled orientation input never gates eligibility), and reads
   // audio.Volume opportunistically for the Audio source without declaring it an
   // input (same as Stamp).
   class LEDDomeFlashVisualizer : DomeLayerVisualizer {

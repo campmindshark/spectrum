@@ -18,13 +18,7 @@
     bool Active { get; set; }
 
     /**
-     * An AlwaysActive Input is active whenever the operator is enabled.
-     * Otherwise, an Input needs an active Visualizer using it to be active.
-     */
-    bool AlwaysActive { get; }
-
-    /**
-     * This property reflects whether the Output is enabled by the UI.
+     * This property reflects whether the Input is enabled by configuration.
      */
     bool Enabled { get; }
 

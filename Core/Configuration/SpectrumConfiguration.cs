@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using Spectrum.Base;
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Spectrum {
@@ -12,7 +11,7 @@ namespace Spectrum {
       ILayerStackSnapshotSource, IDomeShowStateConfiguration,
       IRuntimeSettingsConfiguration, ConfigurationEditor {
 
-    public event PropertyChangedEventHandler? PropertyChanged;
+    public override event PropertyChangedEventHandler? PropertyChanged;
 
     // Set once by the application composition root after deserialization.
     // Tests and serializer-only callers may leave it unset and use the
@@ -69,99 +68,66 @@ namespace Spectrum {
       return true;
     }
 
-    private void SetField<T>(ref T field, T value,
-        Action? publish = null,
-        [CallerMemberName] string name = "") {
-      if (this.DispatchMutationIfRequired(name, value)) {
-        return;
+    protected override bool DispatchScalarMutation<T>(
+      string propertyName, T value
+    ) => this.DispatchMutationIfRequired(propertyName, value);
+
+    protected override void ScalarChanged(string propertyName) {
+      switch (propertyName) {
+        case nameof(this.audioDeviceID):
+        case nameof(this.beatInput):
+          this.PublishAudioSettings();
+          break;
+        case nameof(this.domeEnabled):
+        case nameof(this.domeOutputInSeparateThread):
+        case nameof(this.domeBeagleboneOPCAddress):
+          this.PublishDomeTransportSettings();
+          break;
+        case nameof(this.midiInputEnabled):
+          this.PublishMidiEnabledSettings();
+          break;
+        case nameof(this.domeSimulationEnabled):
+          this.PublishDomeOutputState();
+          break;
+        case nameof(this.domeMaxBrightness):
+        case nameof(this.domeBrightness):
+        case nameof(this.domeTestPattern):
+          this.PublishDomeRuntimeFrameSettings();
+          break;
+        case nameof(this.domeGlobalFadeSpeed):
+        case nameof(this.domeGlobalHueSpeed):
+          this.PublishDomeShowStateSnapshot();
+          break;
+        case nameof(this.flashSpeed):
+          this.PublishBeatSettings();
+          break;
+        case nameof(this.orientationDeviceSpotlight):
+          this.PublishOrientationAndFrameSettings();
+          break;
+        case nameof(this.orientationCalibrate):
+        case nameof(this.wandSerialPort):
+          this.PublishOrientationSettings();
+          break;
       }
-      if (EqualityComparer<T>.Default.Equals(field, value)) {
-        return;
+
+      this.RaisePropertyChanged(propertyName);
+      if (propertyName == nameof(this.domeGlobalFadeSpeed) ||
+          propertyName == nameof(this.domeGlobalHueSpeed)) {
+        this.RaisePropertyChanged(
+          DomeShowStateSnapshot.NotificationPropertyName);
       }
-      field = value;
-      publish?.Invoke();
-      this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    private string? _audioDeviceID =
-      SpectrumConfigurationSchema.AudioDeviceId.TypedDefaultValue;
-    public string? audioDeviceID {
-      get => _audioDeviceID;
-      set => SetField(ref _audioDeviceID, value, this.PublishAudioSettings);
+    protected override void ScalarsReplaced() {
+      this.PublishDomeRuntimeFrameSettings();
+      this.PublishDomeShowStateSnapshot();
+      this.PublishAudioSettings();
+      this.PublishMidiEnabledSettings();
+      this.PublishOrientationSettings();
+      this.PublishDomeTransportSettings();
+      this.PublishBeatSettings();
     }
 
-    private bool _domeEnabled =
-      SpectrumConfigurationSchema.DomeEnabled.TypedDefaultValue;
-    public bool domeEnabled {
-      get => _domeEnabled;
-      set => SetField(
-        ref _domeEnabled, value, this.PublishDomeTransportSettings);
-    }
-    private bool _midiInputEnabled =
-      SpectrumConfigurationSchema.MidiInputEnabled.TypedDefaultValue;
-    public bool midiInputEnabled {
-      get => _midiInputEnabled;
-      set => SetField(
-        ref _midiInputEnabled, value,
-        this.PublishMidiEnabledSettings);
-    }
-
-    private bool _domeOutputInSeparateThread =
-      SpectrumConfigurationSchema.DomeOutputInSeparateThread.TypedDefaultValue;
-    public bool domeOutputInSeparateThread {
-      get => _domeOutputInSeparateThread;
-      set => SetField(
-        ref _domeOutputInSeparateThread, value,
-        this.PublishDomeTransportSettings);
-    }
-
-    private string _domeBeagleboneOPCAddress =
-      SpectrumConfigurationSchema.DomeBeagleboneOpcAddress.TypedDefaultValue;
-    public string domeBeagleboneOPCAddress {
-      get => _domeBeagleboneOPCAddress;
-      set => SetField(
-        ref _domeBeagleboneOPCAddress, value,
-        this.PublishDomeTransportSettings);
-    }
-
-    private bool _domeSimulationEnabled =
-      SpectrumConfigurationSchema.DomeSimulationEnabled.TypedDefaultValue;
-    public bool domeSimulationEnabled {
-      get => _domeSimulationEnabled;
-      set => SetField(
-        ref _domeSimulationEnabled, value,
-        this.PublishDomeOutputState);
-    }
-    private bool _webDomeSimulatorEnabled =
-      SpectrumConfigurationSchema.WebDomeSimulatorEnabled.TypedDefaultValue;
-    public bool webDomeSimulatorEnabled {
-      get => _webDomeSimulatorEnabled;
-      set => SetField(ref _webDomeSimulatorEnabled, value);
-    }
-    private double _domeMaxBrightness =
-      SpectrumConfigurationSchema.DomeMaxBrightness.TypedDefaultValue;
-    public double domeMaxBrightness {
-      get => _domeMaxBrightness;
-      set => SetField(
-        ref _domeMaxBrightness, value,
-        this.PublishDomeRuntimeFrameSettings);
-    }
-    private double _domeBrightness =
-      SpectrumConfigurationSchema.DomeBrightness.TypedDefaultValue;
-    public double domeBrightness {
-      get => _domeBrightness;
-      set => SetField(
-        ref _domeBrightness, value,
-        this.PublishDomeRuntimeFrameSettings);
-    }
-    private int _domeTestPattern =
-      SpectrumConfigurationSchema.DomeTestPattern.TypedDefaultValue;
-    public int domeTestPattern {
-      get => _domeTestPattern;
-      set => SetField(
-        ref _domeTestPattern, value,
-        this.PublishDomeRuntimeFrameSettings);
-    }
     // Empty or omitted document collections are projected as cached empty
     // immutable views.
     private List<DomeLayerSettings> _domeLayerStack = new();
@@ -171,7 +137,7 @@ namespace Spectrum {
       new LayerStackService(BuiltInDomeLayerCatalog.Metadata);
     private LayerStackSnapshot _domeLayerStackSnapshot =
       LayerStackSnapshot.Empty;
-    public ImmutableArray<DomeLayerView> domeLayerStack =>
+    public override ImmutableArray<DomeLayerView> domeLayerStack =>
       this._domeLayerStackView;
 
     public void ReplaceDomeLayerStack(
@@ -233,7 +199,7 @@ namespace Spectrum {
     private int[] _domeCableMapping = System.Array.Empty<int>();
     private ImmutableArray<int> _domeCableMappingView =
       ImmutableArray<int>.Empty;
-    public ImmutableArray<int> domeCableMapping =>
+    public override ImmutableArray<int> domeCableMapping =>
       this._domeCableMappingView;
 
     public void ReplaceDomeCableMapping(IReadOnlyList<int>? value) {
@@ -255,7 +221,7 @@ namespace Spectrum {
       System.Array.Empty<DomePortMapping?>();
     private ImmutableArray<ImmutableArray<int>> _domePortMappingsView =
       ImmutableArray<ImmutableArray<int>>.Empty;
-    public ImmutableArray<ImmutableArray<int>> domePortMappings =>
+    public override ImmutableArray<ImmutableArray<int>> domePortMappings =>
       this._domePortMappingsView;
 
     public void ReplaceDomePortMappings(
@@ -289,51 +255,12 @@ namespace Spectrum {
       return result.MoveToImmutable();
     }
 
-    // Cross-layer visual state; per-visualizer tuning lives in each layer's
-    // renderer parameter bag instead (see Configuration).
-    private double _domeGlobalFadeSpeed =
-      SpectrumConfigurationSchema.DomeGlobalFadeSpeed.TypedDefaultValue;
-    public double domeGlobalFadeSpeed {
-      get => _domeGlobalFadeSpeed;
-      set {
-        if (this.DispatchMutationIfRequired(
-            nameof(this.domeGlobalFadeSpeed), value)) {
-          return;
-        }
-        if (this._domeGlobalFadeSpeed == value) {
-          return;
-        }
-        this._domeGlobalFadeSpeed = value;
-        this.PublishDomeShowStateSnapshot();
-        this.RaisePropertyChanged(nameof(this.domeGlobalFadeSpeed));
-        this.RaisePropertyChanged(
-          DomeShowStateSnapshot.NotificationPropertyName);
-      }
-    }
-    private double _domeGlobalHueSpeed =
-      SpectrumConfigurationSchema.DomeGlobalHueSpeed.TypedDefaultValue;
-    public double domeGlobalHueSpeed {
-      get => _domeGlobalHueSpeed;
-      set {
-        if (this.DispatchMutationIfRequired(
-            nameof(this.domeGlobalHueSpeed), value)) {
-          return;
-        }
-        if (this._domeGlobalHueSpeed == value) {
-          return;
-        }
-        this._domeGlobalHueSpeed = value;
-        this.PublishDomeShowStateSnapshot();
-        this.RaisePropertyChanged(nameof(this.domeGlobalHueSpeed));
-        this.RaisePropertyChanged(
-          DomeShowStateSnapshot.NotificationPropertyName);
-      }
-    }
     // Null private storage is projected as an empty immutable view.
     private List<DomeScene> _domeScenes = new();
     private ImmutableArray<DomeSceneView> _domeScenesView =
       ImmutableArray<DomeSceneView>.Empty;
-    public ImmutableArray<DomeSceneView> domeScenes => this._domeScenesView;
+    public override ImmutableArray<DomeSceneView> domeScenes =>
+      this._domeScenesView;
 
     public void ReplaceDomeScenes(IReadOnlyList<DomeScene>? value) {
       List<DomeScene> detached = ConfigurationGraphCopy.Scenes(value);
@@ -348,7 +275,7 @@ namespace Spectrum {
     }
     // Null private storage is projected as an empty immutable view.
     private List<DomePalette> _domePalettes = new();
-    public ImmutableArray<DomePaletteSnapshot> domePalettes =>
+    public override ImmutableArray<DomePaletteSnapshot> domePalettes =>
       this.compiledDomePalettes;
 
     public void ReplaceDomePalettes(IReadOnlyList<DomePalette>? value) {
@@ -405,8 +332,9 @@ namespace Spectrum {
 
       (List<DomeLayerSettings> layers, LayerStackSnapshot layerSnapshot) =
         this.PrepareLayerStack(detached.Layers);
-      bool fadeChanged = this._domeGlobalFadeSpeed != detached.GlobalFadeSpeed;
-      bool hueChanged = this._domeGlobalHueSpeed != detached.GlobalHueSpeed;
+      bool fadeChanged =
+        this.domeGlobalFadeSpeed != detached.GlobalFadeSpeed;
+      bool hueChanged = this.domeGlobalHueSpeed != detached.GlobalHueSpeed;
 
       // Assign every persisted field and compile the deep immutable generation
       // before the first notification. Subscribers can read any combination of
@@ -417,8 +345,8 @@ namespace Spectrum {
         this._domePalettes = detached.Palettes ?? new List<DomePalette>();
         this.CompileDomePalettes();
       }
-      this._domeGlobalFadeSpeed = detached.GlobalFadeSpeed;
-      this._domeGlobalHueSpeed = detached.GlobalHueSpeed;
+      this.SetDomeGlobalSpeedsWithoutNotification(
+        detached.GlobalFadeSpeed, detached.GlobalHueSpeed);
       if (detached.ScenesChanged) {
         this._domeScenes = detached.Scenes ?? new List<DomeScene>();
         this._domeScenesView = DomeSceneView.Compile(this._domeScenes);
@@ -451,8 +379,8 @@ namespace Spectrum {
         generation,
         Volatile.Read(ref this._domeLayerStackSnapshot),
         this.compiledDomePalettes,
-        this._domeGlobalFadeSpeed,
-        this._domeGlobalHueSpeed);
+        this.domeGlobalFadeSpeed,
+        this.domeGlobalHueSpeed);
       Volatile.Write(ref this._domeShowStateSnapshot, snapshot);
     }
 
@@ -471,7 +399,7 @@ namespace Spectrum {
       new Dictionary<string, int>();
     private ImmutableDictionary<string, int> _domeLayerFireCountersView =
       ImmutableDictionary<string, int>.Empty;
-    public ImmutableDictionary<string, int> domeLayerFireCounters =>
+    public override ImmutableDictionary<string, int> domeLayerFireCounters =>
       this._domeLayerFireCountersView;
 
     public void ReplaceDomeLayerFireCounters(
@@ -496,7 +424,7 @@ namespace Spectrum {
       new Dictionary<string, int>();
     private ImmutableDictionary<string, int> _domeLayerClearCountersView =
       ImmutableDictionary<string, int>.Empty;
-    public ImmutableDictionary<string, int> domeLayerClearCounters =>
+    public override ImmutableDictionary<string, int> domeLayerClearCounters =>
       this._domeLayerClearCountersView;
 
     public void ReplaceDomeLayerClearCounters(
@@ -514,17 +442,12 @@ namespace Spectrum {
       this.RaisePropertyChanged(nameof(this.domeLayerClearCounters));
     }
 
-    // maps from device ID to preset ID
-    private bool _vjHUDEnabled =
-      SpectrumConfigurationSchema.VjHudEnabled.TypedDefaultValue;
-    public bool vjHUDEnabled {
-      get => _vjHUDEnabled;
-      set => SetField(ref _vjHUDEnabled, value);
-    }
+    // Maps from device ID to preset ID.
     private Dictionary<int, int> _midiDevices = new Dictionary<int, int>();
     private ImmutableDictionary<int, int> _midiDevicesView =
       ImmutableDictionary<int, int>.Empty;
-    public ImmutableDictionary<int, int> midiDevices => this._midiDevicesView;
+    public override ImmutableDictionary<int, int> midiDevices =>
+      this._midiDevicesView;
 
     public void ReplaceMidiDevices(IReadOnlyDictionary<int, int>? value) {
       Dictionary<int, int> detached = ConfigurationGraphCopy.Dictionary(value);
@@ -540,7 +463,7 @@ namespace Spectrum {
     private Dictionary<int, MidiPreset> _midiPresets = new Dictionary<int, MidiPreset>();
     private ImmutableDictionary<int, MidiPresetView> _midiPresetsView =
       ImmutableDictionary<int, MidiPresetView>.Empty;
-    public ImmutableDictionary<int, MidiPresetView> midiPresets =>
+    public override ImmutableDictionary<int, MidiPresetView> midiPresets =>
       this._midiPresetsView;
 
     public void ReplaceMidiPresets(
@@ -590,49 +513,6 @@ namespace Spectrum {
       this.PublishMidiBindingSettings();
       this.RaisePropertyChanged(nameof(this.midiPresets));
     }
-    private double _flashSpeed =
-      SpectrumConfigurationSchema.FlashSpeed.TypedDefaultValue;
-    public double flashSpeed {
-      get => _flashSpeed;
-      set => SetField(ref _flashSpeed, value, this.PublishBeatSettings);
-    }
-
-    // 0 = human, 1 = Madmom, 2 = Pro DJ Link
-    private int _beatInput =
-      SpectrumConfigurationSchema.BeatInput.TypedDefaultValue;
-    public int beatInput {
-      get => _beatInput;
-      set => SetField(ref _beatInput, value, this.PublishAudioSettings);
-    }
-
-    private int _orientationDeviceSpotlight =
-      SpectrumConfigurationSchema.OrientationDeviceSpotlight.TypedDefaultValue;
-    public int orientationDeviceSpotlight {
-      get => _orientationDeviceSpotlight;
-      set => SetField(
-        ref _orientationDeviceSpotlight, value,
-        this.PublishOrientationAndFrameSettings);
-    }
-    private bool _orientationCalibrate =
-      SpectrumConfigurationSchema.OrientationCalibrate.TypedDefaultValue;
-    public bool orientationCalibrate {
-      get => _orientationCalibrate;
-      set => SetField(
-        ref _orientationCalibrate, value,
-        this.PublishOrientationSettings);
-    }
-    // Initialized to "" (not left null) so both the receiver's IsNullOrEmpty
-    // check and StringParameter.Coerce/Get have a real string, and a
-    // spectrum_config.xml predating this property (which leaves the field
-    // untouched on deserialize) still reads as "no serial input".
-    private string _wandSerialPort =
-      SpectrumConfigurationSchema.WandSerialPort.TypedDefaultValue;
-    public string wandSerialPort {
-      get => _wandSerialPort;
-      set => SetField(
-        ref _wandSerialPort, value, this.PublishOrientationSettings);
-    }
-
     private long domeRuntimeFrameGeneration;
     private DomeRuntimeFrameSnapshot _domeRuntimeFrameSnapshot =
       DomeRuntimeFrameSnapshot.Empty;
@@ -686,10 +566,10 @@ namespace Spectrum {
         ref this._domeRuntimeFrameSnapshot,
         new DomeRuntimeFrameSnapshot(
           Interlocked.Increment(ref this.domeRuntimeFrameGeneration),
-          this._domeTestPattern,
-          this._domeMaxBrightness,
-          this._domeBrightness,
-          this._orientationDeviceSpotlight,
+          this.domeTestPattern,
+          this.domeMaxBrightness,
+          this.domeBrightness,
+          this.orientationDeviceSpotlight,
           this._domeLayerFireCounters == null
             ? ImmutableDictionary<string, int>.Empty
             : this._domeLayerFireCounters.ToImmutableDictionary(),
@@ -703,8 +583,8 @@ namespace Spectrum {
         ref this._audioSettingsSnapshot,
         new AudioSettingsSnapshot(
           Interlocked.Increment(ref this.audioSettingsGeneration),
-          this._audioDeviceID,
-          this._beatInput));
+          this.audioDeviceID,
+          this.beatInput));
     }
 
     private void PublishMidiEnabledSettings() =>
@@ -736,7 +616,7 @@ namespace Spectrum {
           bindingsChanged
             ? Interlocked.Increment(ref this.midiBindingGeneration)
             : Volatile.Read(ref this.midiBindingGeneration),
-          this._midiInputEnabled,
+          this.midiInputEnabled,
           this._midiDevices == null
             ? ImmutableDictionary<int, int>.Empty
             : this._midiDevices.ToImmutableDictionary(),
@@ -753,9 +633,9 @@ namespace Spectrum {
         ref this._orientationSettingsSnapshot,
         new OrientationSettingsSnapshot(
           Interlocked.Increment(ref this.orientationSettingsGeneration),
-          this._orientationDeviceSpotlight,
-          this._orientationCalibrate,
-          this._wandSerialPort ?? ""));
+          this.orientationDeviceSpotlight,
+          this.orientationCalibrate,
+          this.wandSerialPort));
     }
 
     private void PublishDomeOutputState() =>
@@ -790,10 +670,10 @@ namespace Spectrum {
           transportChanged
             ? Interlocked.Increment(ref this.domeOutputTransportGeneration)
             : Volatile.Read(ref this.domeOutputTransportGeneration),
-          this._domeEnabled,
-          this._domeSimulationEnabled,
-          this._domeBeagleboneOPCAddress ?? "",
-          this._domeOutputInSeparateThread,
+          this.domeEnabled,
+          this.domeSimulationEnabled,
+          this.domeBeagleboneOPCAddress,
+          this.domeOutputInSeparateThread,
           cables,
           ports.MoveToImmutable()));
     }
@@ -803,7 +683,7 @@ namespace Spectrum {
         ref this._beatSettingsSnapshot,
         new BeatSettingsSnapshot(
           Interlocked.Increment(ref this.beatSettingsGeneration),
-          this._flashSpeed));
+          this.flashSpeed));
     }
 
     private void PublishSceneRetentionSettings() {
@@ -826,41 +706,26 @@ namespace Spectrum {
           retained.ToImmutable()));
     }
 
-    internal SpectrumConfigurationDocument CreateDocument() =>
-      new SpectrumConfigurationDocument {
-        audioDeviceID = this._audioDeviceID,
-        domeEnabled = this._domeEnabled,
-        midiInputEnabled = this._midiInputEnabled,
-        domeOutputInSeparateThread = this._domeOutputInSeparateThread,
-        domeBeagleboneOPCAddress = this._domeBeagleboneOPCAddress,
-        domeSimulationEnabled = this._domeSimulationEnabled,
-        webDomeSimulatorEnabled = this._webDomeSimulatorEnabled,
-        domeMaxBrightness = this._domeMaxBrightness,
-        domeBrightness = this._domeBrightness,
-        domeTestPattern = this._domeTestPattern,
+    internal SpectrumConfigurationDocument CreateDocument() {
+      var document = new SpectrumConfigurationDocument {
         domeLayerStack = ConfigurationGraphCopy.Layers(
           this._domeLayerStack),
         domeCableMapping = ConfigurationGraphCopy.Array(
           this._domeCableMapping),
         domePortMappings = ConfigurationGraphCopy.PortMappings(
           this._domePortMappings),
-        domeGlobalFadeSpeed = this._domeGlobalFadeSpeed,
-        domeGlobalHueSpeed = this._domeGlobalHueSpeed,
         domeLayerFireCounters = ConfigurationGraphCopy.Dictionary(
           this._domeLayerFireCounters),
         domeLayerClearCounters = ConfigurationGraphCopy.Dictionary(
           this._domeLayerClearCounters),
         domeScenes = ConfigurationGraphCopy.Scenes(this._domeScenes),
         domePalettes = ConfigurationGraphCopy.Palettes(this._domePalettes),
-        vjHUDEnabled = this._vjHUDEnabled,
         midiDevices = ConfigurationGraphCopy.Dictionary(this._midiDevices),
         midiPresets = ConfigurationGraphCopy.MidiPresets(this._midiPresets),
-        flashSpeed = this._flashSpeed,
-        beatInput = this._beatInput,
-        orientationDeviceSpotlight = this._orientationDeviceSpotlight,
-        orientationCalibrate = this._orientationCalibrate,
-        wandSerialPort = this._wandSerialPort,
       };
+      this.CopyScalarsTo(document);
+      return document;
+    }
   }
 
 }

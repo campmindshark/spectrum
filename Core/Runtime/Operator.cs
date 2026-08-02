@@ -31,7 +31,6 @@ namespace Spectrum {
     private readonly IDomeShowStateConfiguration showStateSource;
     private readonly IRuntimeSettingsConfiguration runtimeSettingsSource;
     private readonly List<Input> inputs;
-    private readonly List<Output> outputs;
     private readonly List<Visualizer> visualizers;
     private readonly LayerCatalog layerCatalog;
     // The sole owner of per-instance renderer state. Matching IDs retain
@@ -92,10 +91,8 @@ namespace Spectrum {
     // Scratch collections reused across every OperatorThread frame so the
     // scheduling pass allocates nothing steady-state. Only ever touched on the
     // operator thread, so they need no synchronization.
-    private readonly List<Output> activeOutputs = new List<Output>();
     private readonly HashSet<Visualizer> activeVisualizers =
       new HashSet<Visualizer>();
-    private readonly HashSet<Input> activeInputs = new HashSet<Input>();
     private readonly List<Visualizer> topPriVisualizers =
       new List<Visualizer>();
     private readonly List<Visualizer> alwaysRunVisualizers =
@@ -113,16 +110,17 @@ namespace Spectrum {
       visualizerFailures = new(VisualizerQuarantineThreshold);
     private readonly ConsecutiveFailureTracker<Input> inputUpdateFailures =
       new(DeviceQuarantineThreshold);
-    private readonly ConsecutiveFailureTracker<Output> outputUpdateFailures =
-      new(DeviceQuarantineThreshold);
-    // Hardware initialization happens inside Input/Output.Active setters. A
-    // failed transition is quarantined until the operator is restarted so a
-    // missing device cannot throw (and retry) hundreds of times per second.
+    private readonly ConsecutiveFailureTracker<LEDDomeOutput>
+      outputUpdateFailures = new(DeviceQuarantineThreshold);
+    // Hardware initialization happens inside Input.Active and
+    // LEDDomeOutput.Active setters. A failed transition is quarantined until
+    // the operator is restarted so a missing device cannot throw (and retry)
+    // hundreds of times per second.
     private readonly HashSet<Input> inputActivationFailures = new HashSet<Input>();
-    private readonly HashSet<Output> outputActivationFailures = new HashSet<Output>();
+    private bool outputActivationFailed;
     private readonly Dictionary<Visualizer, string> visualizerFaults = new();
     private readonly Dictionary<Input, string> inputFaults = new();
-    private readonly Dictionary<Output, string> outputFaults = new();
+    private string? outputFault;
 
     public Operator(Configuration config) : this(
       config,
@@ -214,13 +212,11 @@ namespace Spectrum {
       var orientationCenter = new OrientationCenter(config, orientation);
       this.layerEnvironment = new ConfigurationDomeLayerEnvironment();
 
-      this.outputs = new List<Output>();
       // orientationCenter doubles as the blends' live aim source (Follow
       // Orientation), so ChromaticFringe/Iridescence/Kaleidoscope track the
       // spotlighted wand or the shared idle orientation.
       var dome = new LEDDomeOutput(
         config, this.Telemetry, this.BeatBroadcaster, orientationCenter);
-      this.outputs.Add(dome);
       this.DomeOutput = dome;
 
       this.visualizers = new List<Visualizer>();
@@ -448,9 +444,7 @@ namespace Spectrum {
             foreach (var input in this.inputs) {
               this.SetInputActiveSafely(input, false);
             }
-            foreach (var output in this.outputs) {
-              this.SetOutputActiveSafely(output, false);
-            }
+            this.SetDomeOutputActiveSafely(false);
           }
           this.enabled = value;
         }
@@ -520,20 +514,16 @@ namespace Spectrum {
           }
         }
 
-        // We're going to start by figuring out which Outputs consider
-        // themselves enabled. For each enabled Output, we'll find what the
-        // highest priority reported by any Visualizer is, and we'll consider
-        // those Visualizers as candidates to enable.
-        this.activeOutputs.Clear();
+        // Find the highest-priority visualizers for the one dome output.
+        // Layer membership is already resolved by the compiled render plan;
+        // priority remains for diagnostic overrides.
         this.activeVisualizers.Clear();
-        foreach (var output in this.outputs) {
-          if (!this.IsOutputAvailable(output)) {
-            continue;
-          }
+        bool domeOutputActive = false;
+        if (this.IsDomeOutputAvailable()) {
           int topPri = 1;
           this.topPriVisualizers.Clear();
           this.alwaysRunVisualizers.Clear();
-          foreach (var visualizer in output.GetVisualizers()) {
+          foreach (var visualizer in this.DomeOutput.GetVisualizers()) {
             bool isLayerVisualizer = visualizer is DomeLayerVisualizer;
             if (isLayerVisualizer) {
               if (!this.plannedLayerInputs.TryGetValue(
@@ -575,9 +565,7 @@ namespace Spectrum {
             this.topPriVisualizers.Add(visualizer);
           }
           this.topPriVisualizers.AddRange(this.alwaysRunVisualizers);
-          if (this.topPriVisualizers.Count != 0) {
-            this.activeOutputs.Add(output);
-          }
+          domeOutputActive = this.topPriVisualizers.Count != 0;
           // HashSet.UnionWith receives IEnumerable<T>, which boxes List<T>'s
           // struct enumerator. Add by index to keep scheduling allocation-free.
           for (int i = 0; i < this.topPriVisualizers.Count; i++) {
@@ -585,36 +573,18 @@ namespace Spectrum {
           }
         }
 
-        this.activeInputs.Clear();
-        foreach (var visualizer in this.activeVisualizers) {
-          if (this.plannedLayerInputs.TryGetValue(
-              visualizer, out ImmutableArray<Input> plannedInputs)) {
-            for (int i = 0; i < plannedInputs.Length; i++) {
-              this.activeInputs.Add(plannedInputs[i]);
-            }
-          } else {
-            foreach (Input input in visualizer.GetInputs()) {
-              this.activeInputs.Add(input);
-            }
-          }
-        }
-        foreach (var input in this.inputs) {
-          if (this.IsInputAvailable(input) && input.AlwaysActive) {
-            this.activeInputs.Add(input);
-          }
-        }
-
-        foreach (var output in this.outputs) {
-          this.SetOutputActiveSafely(output, activeOutputs.Contains(output));
-        }
+        this.SetDomeOutputActiveSafely(domeOutputActive);
         foreach (var visualizer in this.visualizers) {
           visualizer.Enabled = activeVisualizers.Contains(visualizer);
         }
+        // Every enabled input runs while the operator runs. Visualizer input
+        // declarations still gate individual visualizers when a required input
+        // is disabled or quarantined.
         foreach (var input in this.inputs) {
-          this.SetInputActiveSafely(input, activeInputs.Contains(input));
+          this.SetInputActiveSafely(input, this.IsInputAvailable(input));
         }
 
-        foreach (var input in activeInputs) {
+        foreach (var input in this.inputs) {
           // Activation may have failed after this frame's schedule was built.
           // Do not call into an inactive/quarantined device in that same frame.
           if (!this.IsInputAvailable(input)) {
@@ -649,20 +619,17 @@ namespace Spectrum {
           }
         }
 
-        foreach (var output in activeOutputs) {
-          // Activation may have failed after this frame's schedule was built.
-          if (!this.IsOutputAvailable(output)) {
-            continue;
-          }
+        // Activation may have failed after this frame's schedule was built.
+        if (domeOutputActive && this.IsDomeOutputAvailable()) {
           try {
-            output.OperatorUpdate();
-            this.outputUpdateFailures.RecordSuccess(output);
+            this.DomeOutput.OperatorUpdate();
+            this.outputUpdateFailures.RecordSuccess(this.DomeOutput);
           } catch (Exception e) {
-            this.RecordOutputFailure(output, e);
+            this.RecordOutputFailure(e);
           }
         }
 
-        // A frame is generated only after all visualizers and outputs have
+        // A frame is generated only after all visualizers and the output have
         // finished. Counting at the top of the loop made an expensive,
         // in-progress frame appear complete and reported a raw frame count as
         // FPS even when the measurement window stretched well past a second.
@@ -753,19 +720,21 @@ namespace Spectrum {
       }
     }
 
-    private void RecordOutputFailure(Output output, Exception e) {
-      FailureUpdate update = this.outputUpdateFailures.RecordFailure(output);
+    private void RecordOutputFailure(Exception e) {
+      FailureUpdate update =
+        this.outputUpdateFailures.RecordFailure(this.DomeOutput);
       if (update.NewlyQuarantined) {
-        this.outputFaults[output] = FormatFault(output, e);
-        this.PublishOutputFaults();
+        this.outputFault = FormatFault(this.DomeOutput, e);
+        this.PublishOutputFault();
         Debug.WriteLine(
-          "Operator: quarantining output " + output.GetType().Name +
+          "Operator: quarantining output " +
+          this.DomeOutput.GetType().Name +
           " after " + update.ConsecutiveFailures +
           " consecutive update failures; last error: " + e);
-        this.SetOutputActiveSafely(output, false);
-      } else if (!this.outputUpdateFailures.IsQuarantined(output)) {
+        this.SetDomeOutputActiveSafely(false);
+      } else if (!this.outputUpdateFailures.IsQuarantined(this.DomeOutput)) {
         Debug.WriteLine(
-          "Operator: output " + output.GetType().Name +
+          "Operator: output " + this.DomeOutput.GetType().Name +
           " threw in OperatorUpdate: " + e);
       }
     }
@@ -798,27 +767,27 @@ namespace Spectrum {
       }
     }
 
-    private void SetOutputActiveSafely(Output output, bool active) {
-      if (active && this.outputActivationFailures.Contains(output)) {
+    private void SetDomeOutputActiveSafely(bool active) {
+      if (active && this.outputActivationFailed) {
         return;
       }
       try {
-        output.Active = active;
+        this.DomeOutput.Active = active;
       } catch (Exception e) {
         if (active) {
-          this.outputActivationFailures.Add(output);
-          this.outputFaults[output] = FormatFault(output, e);
-          this.PublishOutputFaults();
+          this.outputActivationFailed = true;
+          this.outputFault = FormatFault(this.DomeOutput, e);
+          this.PublishOutputFault();
           try {
-            output.Active = false;
+            this.DomeOutput.Active = false;
           } catch (Exception rollbackError) {
             Debug.WriteLine(
-              "Operator: output " + output.GetType().Name +
+              "Operator: output " + this.DomeOutput.GetType().Name +
               " also failed activation rollback: " + rollbackError);
           }
         }
         Debug.WriteLine(
-          "Operator: output " + output.GetType().Name +
+          "Operator: output " + this.DomeOutput.GetType().Name +
           " failed to become " + (active ? "active" : "inactive") + ": " + e);
       }
     }
@@ -828,10 +797,10 @@ namespace Spectrum {
       this.inputUpdateFailures.Reset();
       this.outputUpdateFailures.Reset();
       this.inputActivationFailures.Clear();
-      this.outputActivationFailures.Clear();
+      this.outputActivationFailed = false;
       this.visualizerFaults.Clear();
       this.inputFaults.Clear();
-      this.outputFaults.Clear();
+      this.outputFault = null;
       this.Telemetry.VisualizerFault = null;
       this.Telemetry.InputFault = null;
       this.Telemetry.OutputFault = null;
@@ -852,21 +821,18 @@ namespace Spectrum {
         : string.Join("; ", this.inputFaults.Values);
     }
 
-    private void PublishOutputFaults() {
-      this.Telemetry.OutputFault = this.outputFaults.Count == 0
-        ? null
-        : string.Join("; ", this.outputFaults.Values);
-    }
+    private void PublishOutputFault() =>
+      this.Telemetry.OutputFault = this.outputFault;
 
     private bool IsInputAvailable(Input input) =>
       input.Enabled &&
       !this.inputActivationFailures.Contains(input) &&
       !this.inputUpdateFailures.IsQuarantined(input);
 
-    private bool IsOutputAvailable(Output output) =>
-      output.Enabled &&
-      !this.outputActivationFailures.Contains(output) &&
-      !this.outputUpdateFailures.IsQuarantined(output);
+    private bool IsDomeOutputAvailable() =>
+      this.DomeOutput.Enabled &&
+      !this.outputActivationFailed &&
+      !this.outputUpdateFailures.IsQuarantined(this.DomeOutput);
 
     private bool VisualizerInputsAvailable(Visualizer visualizer) {
       if (this.plannedLayerInputs.TryGetValue(

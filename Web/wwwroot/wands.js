@@ -20,19 +20,10 @@
   // WandSerialReceiver.RECEIVER_ALIVE_MS — the two surfaces must agree.
   const RECEIVER_ALIVE_MS = 1500;
 
-  // Quality heuristic, mirroring WandRow: staleness, high jitter, or high
-  // packet loss → Poor.
-  const STALE_MS = 400, JITTER_FAIR_MS = 8, JITTER_POOR_MS = 20;
-  const LOSS_FAIR_FRACTION = 0.01, LOSS_POOR_FRACTION = 0.05;
-  // The wand radios transmit at a hard 200 Hz ceiling; a rate that has
-  // collapsed well below it is a degraded link even when jitter/loss read fine.
-  // Mirrors OrientationInput.WandMaxTransmitRateHz and WandRow's RateFair/Poor
-  // fractions — the surfaces must agree.
-  const WAND_MAX_RATE_HZ = 200;
-  const RATE_FAIR_FRACTION = 0.6, RATE_POOR_FRACTION = 0.3;
   const ROW_COLORS =
-    { good: "#ddd", fair: "#ffd24d", poor: "#ff6b6b", wait: "#ddd" };
-  const QUALITY_LABEL = { good: "Good", fair: "Fair", poor: "Poor", wait: "…" };
+    { Good: "#ddd", Fair: "#ffd24d", Poor: "#ff6b6b", Waiting: "#ddd" };
+  const QUALITY_LABEL =
+    { Good: "Good", Fair: "Fair", Poor: "Poor", Waiting: "…" };
 
   const COLUMNS = [
     "ID", "Type", "Button", "Motion", "Quality", "Rate (Hz, ≤200)", "Jitter (ms)",
@@ -47,22 +38,6 @@
     if (window.spectrumStatus) window.spectrumStatus(msg, isError);
   }
 
-  function quality(row) {
-    if (row.packetCount < 2) return "wait";
-    const rateFraction = row.updateRateHz / WAND_MAX_RATE_HZ;
-    if (row.millisSinceLastPacket > STALE_MS || row.jitterMs > JITTER_POOR_MS ||
-        row.packetLossFraction > LOSS_POOR_FRACTION ||
-        rateFraction < RATE_POOR_FRACTION) {
-      return "poor";
-    }
-    if (row.jitterMs > JITTER_FAIR_MS ||
-        row.packetLossFraction > LOSS_FAIR_FRACTION ||
-        rateFraction < RATE_FAIR_FRACTION) {
-      return "fair";
-    }
-    return "good";
-  }
-
   const f = (v, digits) => v.toFixed(digits);
 
   function cells(row) {
@@ -73,7 +48,7 @@
       // "Still" = transmitting but not physically moving, so excluded from
       // the visualization (mirrors the native Motion column).
       row.isMoving ? "Moving" : "Still",
-      QUALITY_LABEL[quality(row)],
+      QUALITY_LABEL[row.quality],
       row.updateRateHz > 0 ? f(row.updateRateHz, 1) : "—",
       row.packetCount > 1 ? f(row.jitterMs, 2) : "—",
       row.packetCount > 1 ? f(row.packetLossFraction * 100, 1) : "—",
@@ -227,7 +202,7 @@
     tbodyEl.innerHTML = "";
     rows.forEach((row) => {
       const tr = document.createElement("tr");
-      tr.style.color = ROW_COLORS[quality(row)];
+      tr.style.color = ROW_COLORS[row.quality];
       cells(row).forEach((val) => {
         const td = document.createElement("td");
         td.textContent = val;

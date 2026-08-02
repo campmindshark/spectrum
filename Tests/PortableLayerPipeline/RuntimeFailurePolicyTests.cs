@@ -142,7 +142,6 @@ namespace Spectrum.LayerPipeline.Tests {
         get => this.active;
         set => this.active = value;
       }
-      public bool AlwaysActive => true;
       public bool Enabled => true;
       public float Volume => 0;
       public int UpdateCount => Volatile.Read(ref this.updateCount);
@@ -166,7 +165,6 @@ namespace Spectrum.LayerPipeline.Tests {
           }
         }
       }
-      public bool AlwaysActive => true;
       public bool Enabled => true;
       public float Volume => 0;
       public int ActivationAttempts =>

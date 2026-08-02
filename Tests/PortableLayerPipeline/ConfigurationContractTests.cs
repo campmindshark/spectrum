@@ -164,6 +164,62 @@ namespace Spectrum.LayerPipeline.Tests {
     }
 
     [TestMethod]
+    public void ConfigurationScalarsRoundTripAsOneValueObject() {
+      var config = new global::Spectrum.SpectrumConfiguration();
+      foreach (global::Spectrum.ConfigurationPropertyMetadata metadata in
+          global::Spectrum.SpectrumConfigurationSchema.All) {
+        System.Reflection.PropertyInfo property =
+          typeof(Configuration).GetProperty(metadata.Key) ??
+            throw new InvalidOperationException(
+              "missing scalar property " + metadata.Key);
+        object value = metadata.ValueType == typeof(bool)
+          ? !(bool)metadata.DefaultValue!
+          : metadata.ValueType == typeof(double)
+            ? 0.75
+            : metadata.ValueType == typeof(int)
+              ? 1
+              : metadata.Key == nameof(Configuration.domeBeagleboneOPCAddress)
+                ? "127.0.0.1:7890"
+                : metadata.Key == nameof(Configuration.wandSerialPort)
+                  ? "COM42"
+                  : "test-device";
+        property.SetValue(config, value);
+      }
+
+      using var stream = new MemoryStream();
+      var serializer =
+        new XmlSerializer<global::Spectrum.SpectrumConfigurationDocument>();
+      serializer.Serialize(
+        stream,
+        global::Spectrum.SpectrumConfigurationDocument.FromConfiguration(
+          config));
+      stream.Position = 0;
+      global::Spectrum.SpectrumConfiguration restored =
+        serializer.Deserialize(stream).ToConfiguration();
+
+      foreach (global::Spectrum.ConfigurationPropertyMetadata metadata in
+          global::Spectrum.SpectrumConfigurationSchema.All) {
+        Assert.AreEqual(
+          metadata.Read(config),
+          metadata.Read(restored),
+          metadata.Key + " did not survive the shared scalar round trip");
+      }
+
+      var runtime = (IRuntimeSettingsConfiguration)restored;
+      Assert.IsTrue(
+        runtime.DomeRuntimeFrameSnapshot.Brightness ==
+          restored.domeBrightness &&
+        runtime.AudioSettingsSnapshot.DeviceId == restored.audioDeviceID &&
+        runtime.MidiSettingsSnapshot.Enabled == restored.midiInputEnabled &&
+        runtime.OrientationSettingsSnapshot.WandSerialPort ==
+          restored.wandSerialPort &&
+        runtime.DomeOutputSettingsSnapshot.OpcAddress ==
+          restored.domeBeagleboneOPCAddress &&
+        runtime.BeatSettingsSnapshot.FlashSpeed == restored.flashSpeed,
+        "bulk scalar restoration did not publish coherent runtime snapshots");
+    }
+
+    [TestMethod]
     public void ConfigurationCollectionsIsolateNestedAliases() {
       var layer = Layer("background", "alias-layer");
       layer.RendererParams = new Dictionary<string, double> {

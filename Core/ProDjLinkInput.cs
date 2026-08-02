@@ -109,8 +109,6 @@ namespace Spectrum {
       }
     }
 
-    public bool AlwaysActive => true;
-
     public bool Enabled =>
       this.runtimeSettings.AudioSettingsSnapshot.BeatInput == 2;
 

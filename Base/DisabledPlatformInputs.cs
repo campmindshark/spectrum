@@ -26,7 +26,6 @@ namespace Spectrum.Base {
     private sealed class DisabledAudioLevelInput :
       IAudioLevelInput, IAudioDeviceProvider {
       public bool Active { get; set; }
-      public bool AlwaysActive => true;
       public bool Enabled => true;
       public float Volume => 0;
       public string BackendName => "Disabled";
@@ -38,7 +37,6 @@ namespace Spectrum.Base {
 
     private sealed class DisabledMidiControlInput : IMidiControlInput {
       public bool Active { get; set; }
-      public bool AlwaysActive => true;
       public bool Enabled => true;
       public ObservableMidiLog MidiLog { get; } = new ObservableMidiLog();
       public long AppliedDeviceGeneration => 0;

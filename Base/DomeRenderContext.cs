@@ -2,7 +2,7 @@ namespace Spectrum.Base {
 
   // Hardware-independent services available to a layer renderer. Lifecycle,
   // output transport, calibration commands, and simulator queues deliberately
-  // stay on the host's concrete Output implementation.
+  // stay on the host's concrete dome-output implementation.
   public interface DomeRenderContext {
     DomeFrame MakeDomeFrame();
     int StrutCount { get; }
