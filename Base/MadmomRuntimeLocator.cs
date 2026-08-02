@@ -39,14 +39,12 @@ namespace Spectrum.Base {
           return packaged;
         }
 
-        foreach (string environmentName in new[] { ".build-env", "env" }) {
-          MadmomRuntimePaths? development = FindInEnvironment(
-            Path.Combine(madmomRoot, environmentName),
-            useWindowsLayout,
-            isPackagedRuntime: false);
-          if (development != null) {
-            return development;
-          }
+        MadmomRuntimePaths? development = FindInEnvironment(
+          Path.Combine(madmomRoot, ".build-env"),
+          useWindowsLayout,
+          isPackagedRuntime: false);
+        if (development != null) {
+          return development;
         }
         directory = directory.Parent;
       }

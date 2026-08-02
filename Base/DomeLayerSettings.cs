@@ -168,21 +168,6 @@ namespace Spectrum.Base {
     public Dictionary<string, double>? RendererParams { get; set; }
     public Dictionary<string, double>? OperationParams { get; set; }
 
-    public static DomeLayerSettings? ForInstance(
-      IList<DomeLayerSettings>? stack, string? instanceId
-    ) {
-      if (stack == null || instanceId == null) {
-        return null;
-      }
-      for (int i = 0; i < stack.Count; i++) {
-        DomeLayerSettings layer = stack[i];
-        if (layer != null && layer.InstanceId == instanceId) {
-          return layer;
-        }
-      }
-      return null;
-    }
-
   }
 
 }

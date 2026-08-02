@@ -34,7 +34,7 @@ namespace Spectrum {
       var factories = new Dictionary<
         string, Func<LayerRendererRuntime, ILayerRenderer>> {
         ["volume"] = r => new LEDDomeVolumeVisualizer(
-          d.Environment, r, d.Audio, d.Beats, d.RenderContext),
+          r, d.Audio, d.Beats, d.RenderContext),
         ["radial"] = r => new LEDDomeRadialVisualizer(
           d.Environment, r, d.Audio, d.Beats, d.RenderContext),
         ["race"] = r => new LEDDomeRaceVisualizer(

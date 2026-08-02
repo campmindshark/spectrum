@@ -166,13 +166,6 @@ namespace Spectrum.LEDs {
       return this.renderState.BeginFrame(runtimeSettings);
     }
 
-    // Compatibility helper for direct compositor/output tests.
-    public void PublishRenderPlan(RenderPlan plan) {
-      DomeRenderGeneration current = this.renderState.CurrentGeneration;
-      this.PublishRenderGeneration(new DomeRenderGeneration(
-        plan ?? RenderPlan.Empty, current.ShowState));
-    }
-
     public RenderPlan RenderPlan => this.renderState.Plan;
 
     public DomeShowStateSnapshot ShowState => this.renderState.ShowState;
@@ -268,13 +261,6 @@ namespace Spectrum.LEDs {
       this.simulatorPublisher.PublishPixel(
         strutIndex, ledIndex, color,
         this.OutputSettings.SimulationEnabled);
-    }
-
-    // Compatibility path for the other raw diagnostic visualizers, which want
-    // their unpermuted hardware address mirrored at the same logical strut.
-    public void SetPixelRaw(int strutIndex, int ledIndex, int color) {
-      this.SetPixelRawHardware(strutIndex, ledIndex, color);
-      this.SetPixelSimulator(strutIndex, ledIndex, color);
     }
 
     public DomeFrame MakeDomeFrame() {

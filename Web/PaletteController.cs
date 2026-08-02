@@ -132,22 +132,6 @@ namespace Spectrum.Web {
       return null;
     }
 
-    private static List<SlotDto> ToSlots(LEDColor?[]? colors) {
-      var slots = new List<SlotDto>(DomePalette.SlotCount);
-      for (int i = 0; i < DomePalette.SlotCount; i++) {
-        LEDColor? color = colors != null && i < colors.Length
-          ? colors[i]
-          : null;
-        slots.Add(color == null
-          ? new SlotDto { start = null, end = null }
-          : new SlotDto {
-              start = ToHex(color.Color1),
-              end = color.IsGradient ? ToHex(color.Color2) : null,
-            });
-      }
-      return slots;
-    }
-
     private static LEDColor?[] ToColors(List<SlotDto> slots) {
       var colors = new LEDColor?[DomePalette.SlotCount];
       for (int i = 0; i < DomePalette.SlotCount && i < slots.Count; i++) {

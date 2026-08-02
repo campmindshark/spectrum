@@ -384,12 +384,6 @@ namespace Spectrum {
       }
     }
 
-    public Quaternion deviceCalibration(int deviceId) {
-      lock (mLock) {
-        return devices.TryGetValue(deviceId, out var device) ? device.calibrationOrigin : new Quaternion(0, 0, 0, 1);
-      }
-    }
-
     // Mutable per-device accumulator, only ever touched on the receive threads
     // (UDP callback + serial worker), serialized by mLock. Tracks a smoothed
     // inter-arrival interval (→ update rate), an

@@ -5,7 +5,6 @@ using System.Linq;
 using Sanford.Multimedia.Midi;
 using Spectrum.Base;
 using System.Threading;
-using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -16,18 +15,6 @@ namespace Spectrum.MIDI {
   using InnerBindingKey = Tuple<int, MidiCommandType, int>;
 
   public class MidiInput : IMidiControlInput {
-
-    // Each key on the keyboard corresponds to a color
-    private static readonly int[] colorFromColorIndex = new int[] {
-      0x000000, 0xFF0000, 0xFF3232, 0xFE00FF, 0xFD32FF, 0xFD54FF, 0xA100FF,
-      0xA432FF, 0xA954FF, 0x0055FF, 0x3262FF, 0x00D5FF, 0x33D9FF, 0x54DEFF,
-      0x00FFB9, 0x33FFBA, 0x39FF00, 0x50FF34, 0xE6FF00, 0xE8FF34, 0xFFD300,
-      0xFFD334, 0xFF7100, 0xFF7834, 0xFFFFFF,
-      /*0x000000, 0xFF0000, 0xFF4400, 0xFF8800, 0xFFCC00, 0xFFFF00, 0xCCFF00,
-      0x88FF00, 0x44FF00, 0x00FF00, 0x00FF44, 0x00FF88, 0x00FFCC, 0x00FFFF,
-      0x00CCFF, 0x0088FF, 0x0044FF, 0x0000FF, 0x4400FF, 0x8800FF, 0xCC00FF,
-      0xFF00FF, 0xFF55FF, 0xFFABFF, 0xFFFFFF,*/
-    };
 
     private readonly Configuration config;
     private readonly IRuntimeSettingsConfiguration runtimeSettings;
@@ -41,13 +28,7 @@ namespace Spectrum.MIDI {
     public long AppliedDeviceGeneration =>
       Volatile.Read(ref this.appliedDeviceGeneration);
     internal event Action? SettingsApplied;
-    private readonly ConcurrentQueue<MidiCommand> buffer;
-    // Latest-value state has one deliberately chosen owner lock: driver
-    // callbacks write under it and the operator/visualizers read under it.
-    private readonly object midiStateLock = new object();
-    private readonly Dictionary<int, Dictionary<int, double>> knobValues;
-    private readonly Dictionary<int, Dictionary<int, double>> noteVelocities;
-    private MidiCommand[] commandsSinceLastTick;
+    private readonly object lifecycleLock = new object();
     // Callbacks capture exactly one fully compiled generation. SetBindings
     // never publishes the mutable builder it uses during compilation.
     private ImmutableDictionary<InnerBindingKey, ImmutableArray<Binding>>
@@ -82,10 +63,6 @@ namespace Spectrum.MIDI {
       this.stateDispatcher = stateDispatcher ??
         throw new ArgumentNullException(nameof(stateDispatcher));
       this.connectHardware = connectHardware;
-      this.buffer = new ConcurrentQueue<MidiCommand>();
-      this.knobValues = new Dictionary<int, Dictionary<int, double>>();
-      this.noteVelocities = new Dictionary<int, Dictionary<int, double>>();
-      this.commandsSinceLastTick = new MidiCommand[0];
       this.SetBindings();
       this.config.PropertyChanged += ConfigUpdated;
     }
@@ -104,44 +81,6 @@ namespace Spectrum.MIDI {
         new Dictionary<InnerBindingKey, List<Binding>>();
       KeyValuePair<int, int>[] configuredDevices =
         settings.Devices.ToArray();
-
-      foreach (KeyValuePair<int, int> configuredDevice in configuredDevices) {
-        int deviceIndex = configuredDevice.Key;
-        lock (this.midiStateLock) {
-          if (!this.noteVelocities.ContainsKey(deviceIndex)) {
-            this.noteVelocities[deviceIndex] = new Dictionary<int, double>();
-          }
-          if (!this.knobValues.ContainsKey(deviceIndex)) {
-            this.knobValues[deviceIndex] = new Dictionary<int, double>();
-          }
-        }
-        AddBinding(
-          nextBindings,
-          new Binding() {
-            key = new BindingKey(MidiCommandType.Note, -1),
-            callback = (index, val) => {
-              lock (this.midiStateLock) {
-                this.noteVelocities[deviceIndex][index] = val;
-              }
-              return new BindingInvocation(null);
-            },
-          },
-          deviceIndex
-        );
-        AddBinding(
-          nextBindings,
-          new Binding() {
-            key = new BindingKey(MidiCommandType.Knob, -1),
-            callback = (index, val) => {
-              lock (this.midiStateLock) {
-                this.knobValues[deviceIndex][index] = val;
-              }
-              return new BindingInvocation(null);
-            },
-          },
-          deviceIndex
-        );
-      }
 
       ImmutableDictionary<int, MidiPreset> presets = settings.Presets;
       foreach (KeyValuePair<int, int> pair in configuredDevices) {
@@ -207,12 +146,12 @@ namespace Spectrum.MIDI {
     private bool active;
     public bool Active {
       get {
-        lock (this.buffer) {
+        lock (this.lifecycleLock) {
           return this.active;
         }
       }
       set {
-        lock (this.buffer) {
+        lock (this.lifecycleLock) {
           if (this.active == value) {
             return;
           }
@@ -309,7 +248,6 @@ namespace Spectrum.MIDI {
       } else {
         return;
       }
-      this.buffer.Enqueue(command);
       _ = this.DispatchBindingsAsync(command);
     }
 
@@ -388,8 +326,7 @@ namespace Spectrum.MIDI {
         this.runtimeSettings.MidiSettingsSnapshot;
       if (this.active &&
           settings.DeviceGeneration != this.appliedDeviceGeneration) {
-        // Sanford callbacks keep feeding the concurrent command queue while
-        // the operator thread exclusively owns this device-set transition.
+        // The operator thread exclusively owns this device-set transition.
         // Mark the generation before opening devices so a bad device is
         // contained by Operator's input exception boundary instead of being
         // retried hundreds of times per second.
@@ -403,18 +340,6 @@ namespace Spectrum.MIDI {
           throw;
         }
       }
-      int numMessages = this.buffer.Count;
-      MidiCommand[] commands = numMessages == 0
-        ? Array.Empty<MidiCommand>()
-        : new MidiCommand[numMessages];
-      for (int i = 0; i < numMessages; i++) {
-        bool result = this.buffer.TryDequeue(out commands[i]);
-        if (!result) {
-          throw new System.Exception("Someone else is dequeueing!");
-        }
-      }
-
-      this.commandsSinceLastTick = commands;
     }
 
     private void PublishSettingsApplied() {
@@ -433,32 +358,6 @@ namespace Spectrum.MIDI {
 
     public static string GetDeviceName(int deviceIndex) {
       return InputDevice.GetDeviceCapabilities(deviceIndex).name;
-    }
-
-    public double GetKnobValue(int deviceIndex, int knob) {
-      lock (this.midiStateLock) {
-        if (!this.knobValues.TryGetValue(
-            deviceIndex, out Dictionary<int, double>? values) ||
-            !values.TryGetValue(knob, out double value)) {
-          return -1.0;
-        }
-        return value;
-      }
-    }
-
-    public double GetNoteVelocity(int deviceIndex, int note) {
-      lock (this.midiStateLock) {
-        if (!this.noteVelocities.TryGetValue(
-            deviceIndex, out Dictionary<int, double>? values) ||
-            !values.TryGetValue(note, out double value)) {
-          return 0.0;
-        }
-        return value;
-      }
-    }
-
-    public MidiCommand[] GetCommandsSinceLastTick() {
-      return this.commandsSinceLastTick;
     }
 
   }

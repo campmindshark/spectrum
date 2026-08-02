@@ -245,6 +245,19 @@ namespace Spectrum.Portability.Tests {
             unix.TrackerPath == unixTracker,
           "the packaged Unix runtime layout was not found");
 
+        Directory.Delete(Path.Combine(directory, "Madmom"), recursive: true);
+        string legacyEnvironment = Path.Combine(
+          directory, "Madmom", "env", "Scripts");
+        Directory.CreateDirectory(legacyEnvironment);
+        File.WriteAllText(
+          Path.Combine(legacyEnvironment, "python.exe"), "");
+        File.WriteAllText(
+          Path.Combine(legacyEnvironment, "DBNBeatTracker"), "");
+        MadmomRuntimePaths? legacy = MadmomRuntimeLocator.Find(
+          nested, useWindowsLayout: true);
+        Assert.IsTrue(legacy == null,
+          "the removed Madmom/env development layout was still accepted");
+
         MadmomRuntimePaths? missing = MadmomRuntimeLocator.Find(
           Path.Combine(
             Path.GetTempPath(),

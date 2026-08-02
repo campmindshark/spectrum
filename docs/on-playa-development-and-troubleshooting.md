@@ -1261,8 +1261,8 @@ Human:
 
 Madmom on Windows:
 
-- the runtime locator searches upward for `Madmom/runtime`,
-  `Madmom/.build-env`, then legacy `Madmom/env`,
+- the runtime locator searches upward for `Madmom/runtime`, then
+  `Madmom/.build-env`,
 - packaged Windows Python is `Madmom/runtime/python.exe`,
 - the tracker is `Madmom/runtime/Scripts/DBNBeatTracker`,
 - the child receives a PortAudio device index derived from the selected WASAPI

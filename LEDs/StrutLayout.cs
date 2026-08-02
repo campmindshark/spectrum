@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Spectrum.LEDs {
 
@@ -86,12 +83,7 @@ namespace Spectrum.LEDs {
 
     public StrutLayoutSegment(HashSet<Strut> struts) {
       this.struts = struts;
-      if (struts.Count > 0) this.AverageStrutLength = struts.Average(strut => strut.Length);
-      this.TotalLength = struts.Sum(strut => strut.Length);
     }
-
-    public double AverageStrutLength { get; } = 0;
-    public double TotalLength { get; } = 0;
 
     public HashSet<Strut> GetStruts() {
       return this.struts;
